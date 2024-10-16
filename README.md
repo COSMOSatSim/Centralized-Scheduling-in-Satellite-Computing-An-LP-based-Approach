@@ -12,7 +12,7 @@ The goal is to define a simulation model for the coverage of LEO satellites, con
 
 An answer to theses questions is provided in [3]
 
-3. Can we realize a model, to be embedded in the LCB simulator, that given a user position on the ground and given one or more satellite orbits on the same shell, allows to determine the satellite to which connect (the one with the lower latency) for demanding the task execution, and what will be the satellite position and latency at the end of the computation? Based on this information, could the model determine if the task should be executed by the same satellite that received the request or by another satellite?
+3. Can we realize a model, to be embedded in the LCB simulator [4], that given a user position on the ground and given one or more satellite orbits on the same shell, allows to determine the satellite to which connect (the one with the lower latency) for demanding the task execution, and what will be the satellite position and latency at the end of the computation? Based on this information, could the model determine if the task should be executed by the same satellite that received the request or by another satellite?
 
 Assumptions:
 
@@ -28,3 +28,4 @@ Initial papers:
 [2] Computation Offloading in LEO Satellite Networks With Hybrid Cloud and Edge Computing
 
 [3] The Parameters Comparison of the “Starlink” LEO Satellites Constellation for Different Orbital Shells https://www.frontiersin.org/journals/communications-and-networks/articles/10.3389/frcmn.2021.643095/full
+[4] https://github.com/DMagliarisi/LCBsimulation
