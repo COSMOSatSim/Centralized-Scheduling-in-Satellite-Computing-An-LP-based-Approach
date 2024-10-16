@@ -20,5 +20,7 @@ Assumptions:
 Initial papers:
 
 [1] Resource Scheduling and Offloading Strategy Based on LEO Satellite Edge Computing
+
 [2] Computation Offloading in LEO Satellite Networks With Hybrid Cloud and Edge Computing
+
 [3] The Parameters Comparison of the “Starlink” LEO Satellites Constellation for Different Orbital Shells https://www.frontiersin.org/journals/communications-and-networks/articles/10.3389/frcmn.2021.643095/full
