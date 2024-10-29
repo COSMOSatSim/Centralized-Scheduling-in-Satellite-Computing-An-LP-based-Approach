@@ -23,7 +23,7 @@ Assumptions:
 - A1: the user does not move - it is stationary
 - A2: at times t, a user is connected with the best satellite (let's say Si), although many satellites (let's say Sz and Sj) can cover the area where the user is 
 - A3: we can compute the time interval T to move from the situation where Si is the best satellite to the situation where Si does not cover the user anymore because the elevation angle is too small
-- A4: although the earth rotates along its N-S axis, we can assume the task service time is small enough that the heart rotation effect wrt the satellite orbit movement is negligible [3].
+- ????A4: although the earth rotates along its N-S axis, we can assume the task service time is small enough that the heart rotation effect wrt the satellite orbit movement is negligible [3].?????
 
 Initial papers:
 
