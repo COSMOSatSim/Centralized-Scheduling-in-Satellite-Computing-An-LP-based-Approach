@@ -36,4 +36,6 @@ Initial papers:
 [4] https://github.com/DMagliarisi/LCB
 
 
-So far, the following results have been achieved: See files Report 1 e Report 2
+So far, the following results have been achieved: 
+- Relazione_I 
+- Relazione_II https://github.com/casalicchio/SECMotionModel/blob/main/Relazione_II_Modello_di%20movimento.pdf
