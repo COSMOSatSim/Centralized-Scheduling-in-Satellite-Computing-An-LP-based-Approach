@@ -37,5 +37,5 @@ Initial papers:
 
 
 So far, the following results have been achieved: 
-- Relazione_I 
+- Relazione_I https://github.com/casalicchio/SECMotionModel/blob/main/Relazione_I_Answer_To_openquestions.pdf
 - Relazione_II https://github.com/casalicchio/SECMotionModel/blob/main/Relazione_II_Modello_di%20movimento.pdf
