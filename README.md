@@ -33,7 +33,7 @@ Initial papers:
 
 [3] The Parameters Comparison of the “Starlink” LEO Satellites Constellation for Different Orbital Shells https://www.frontiersin.org/journals/communications-and-networks/articles/10.3389/frcmn.2021.643095/full
 
-[4] https://github.com/DMagliarisi/LCBsimulation
+[4] https://github.com/DMagliarisi/LCB
 
 
 So far, the following results have been achieved: See files Report 1 e Report 2
