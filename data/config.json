@@ -1,0 +1,13 @@
+{
+    "location":{
+        "Roma": {
+            "lat": 41.8967,
+            "lon": 12.4822,
+            "alt": 0
+        }
+    },
+    "LEO_orbit": 300,
+    "Phi_max":40,
+    "Laser_Comunication_Range": 659,
+    "Simulation_delta_t": 10
+}
