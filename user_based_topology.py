@@ -324,21 +324,72 @@ def get_orbit_proximity(sat1 , sat2, t):
 
     return sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)     # Calculate the Euclidean distance
 
+
+# ---------------------------------------------------------------------------- #
+#                              DISTANCE CALCULATOR                             #
+# ---------------------------------------------------------------------------- #
+
 def get_distance_from_Access_Point(sorted_sat, t = time_now):
+    """
+    
+    """
     sat_distance_vector = [(sorted_sat[0][0], sorted_sat[0][1].km, 0)]         # The first element is always 0. Because it is the distance from Sat 0 (closest to the user) compared to the other satellites around
     for i in range(1, len(sorted_sat)-1):
         sat_distance_vector.append((sorted_sat[i][0], sorted_sat[i][1].km, get_orbit_proximity(sorted_sat[0][0], sorted_sat[i][0], t)))
     sat_distance_vector_sorted = sorted(sat_distance_vector, key=lambda x: x[2])
-    print(sat_distance_vector_sorted)
+    #print(sat_distance_vector_sorted)
     return sat_distance_vector_sorted
 
+def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t):
+    """
+    :param accessPoint: Satellite Object 'Access Point' in our dome
+    :param closerSatellite_sorted: List of Satellite Object in our dome
 
+    We calculate the distance between satellites to a satellite that is an access point
+
+    :return list: (satellite name, position (x, y, z), distance from AP )
+    """
+
+    # ! Assert Section
+    assert isinstance(accessPoint, EarthSatellite), "The parameter accessPoint is not EarthSatellite type" 
+    for sat in closerSatellite_Sorted:
+        assert isinstance(sat, EarthSatellite), "closerSatellite_Sorted is not a list of EarthSatellite type"
+
+    vector_Sat_Topology = []
+    for i in range(len(closerSatellite_Sorted)):
+        if i == 0:                                                                              # Gestione del primo elemento 
+            print(accessPoint.name)
+            sys = getSystemFromSat(accessPoint, time = t)                                       # reference system
+            x, y, z = sys.position.km                                                           # Position in km of the cartesian coordinates (x, y, z)
+            vector_Sat_Topology.append((accessPoint.name, (x, y, z), 0))
+        else:
+            print(closerSatellite_Sorted[i].name)
+            if accessPoint.name == closerSatellite_Sorted[i].name:
+                pass
+            else:
+                proximity = get_orbit_proximity(accessPoint, closerSatellite_Sorted[i], t)  # Prendiamo il satellite i-1 per evitare il primo, che è stato sostituito dall'accessPoint
+                if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
+                    sys = getSystemFromSat(closerSatellite_Sorted[i], time = t)                  # reference system
+                    x, y, z = sys.position.km                                                       # Position in km of the cartesian coordinates (x, y, z)
+                    vector_Sat_Topology.append((closerSatellite_Sorted[i].name, (x, y, z), proximity)) 
+        print(vector_Sat_Topology)
+    sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[2])
+    #print("Finale Vector:\n\n", vector_Sat_Topology,"\n\n\n")
+    return sat_vector_Topology_sorted
+
+# ---------------------------------------------------------------------------- #
 
 def getSatOnMe(Phi_max = config["Phi_max"], time = time_now):
     """
-    Input: Phi_max angolo di ascolto dell'osservatore
-    Output: Tutti i Sat che sono all'interno del cono costruito rispetto alla Phi_max e alla posizione dell'observer
+    :param Phi_max: The listening angle (maximum angle for satellite visibility).
+    :param time: A specific moment within an interval.
+
+    :returns:
+    - satellites: An ordered list of satellites within the listening dome. [(obj Satellite, obj distance), ...]
+    - animation_satellite_list: A list of satellites and their corresponding positions in 3D space. [(sat name, (x, y, z)), ....]
+
     """
+
     satellites, animation_satellite_list = [], []
     
     tle_data = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
@@ -365,6 +416,17 @@ def getSatOnMe(Phi_max = config["Phi_max"], time = time_now):
 
 
 def buildTopology(sat_ordered):
+    """
+    :param sat_ordered: A list of tuples, where each tuple contains:
+        - An `EarthSatellite` object (Skyfield satellite).
+        - A float representing the distance to the observer.
+        - A float representing the distance to the "Access Point" satellite.
+    :type sat_ordered: list[tuple[EarthSatellite, float, float]]
+
+    :returns: 
+        - (list): A bidimensional topology containing tuples of satellite information (EarthSatellite) and their distance from the "Access Point," limited by the laser communication range.
+    """
+
     biDim_Topology = []                                 # Bidimensional Topology
     for s in sat_ordered:
         if s[2] <= config["Laser_Comunication_Range"] : # Check laser distance 
@@ -375,24 +437,41 @@ def buildTopology(sat_ordered):
 
 
 def makeTopology(time = time_now):
+    """
+    :param t: The specific moment in time for which the topology is constructed.
+    :type t: skyfield.api.Time
+
+    :returns: 
+        - sat_distance_vector_sorted_from_access_point (list): Satellites sorted by their distance to the "Access Point."
+        - biDim_Topology_Animation (list): Satellites' positions in 3D space at time `t`.
+
+    Constructs a bidimensional topology of satellites at a specific time `t`, provided as input.
+    """
+
     closerSatellite_Sorted, biDim_Topology_Animation = getSatOnMe(time = time)
     sat_distance_vector_sorted_from_access_point = get_distance_from_Access_Point(closerSatellite_Sorted, time)
+
+    topologyFromAP = compute_distances_from_target_satellite(closerSatellite_Sorted[0][0], [elem[0] for elem in closerSatellite_Sorted], t = time)
+
+
     [print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in sat_distance_vector_sorted_from_access_point]
     print("-------------------------------------------------------------------------------------------------------\n")
+    [print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in topologyFromAP]
+
 
     #plot_satellites_3d(closerSatellite_Sorted, time_now)                                       # ! Plot SAT in the Sky
     #plot_satellites_3d_with_point(closerSatellite_Sorted, time_now)                            # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing"
-    #plot_satellites_with_distances(sat_distance_vector_sorted_from_access_point, time_now)     # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing" and line between all Sat and Location
+    plot_satellites_with_distances(sat_distance_vector_sorted_from_access_point, time_now)      # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing" and line between all Sat and Location
 
     return buildTopology(sat_distance_vector_sorted_from_access_point), biDim_Topology_Animation   # Bidimensional Topology
 
 
 def generate_topology_over_time(delta_minutes):
     """
-    Scorre ogni secondo da t=0 fino a delta_t minuti nel futuro,
-    richiamando `makeTopology` per ciascun secondo.
+    From t=0 to delta_t minutes in the future,
+    Calling up the makeTopology every second.
 
-    :param delta_minutes: Intervallo di tempo in minuti.
+    :param delta_minutes: Time interval in minutes.
     """
     ts = load.timescale()
     time_now = ts.now()
@@ -427,5 +506,5 @@ def generate_topology_over_time(delta_minutes):
 # ---------------------------------------------------------------------------- #
 #                                     TEST                                     #
 # ---------------------------------------------------------------------------- #
-#makeTopology()
-generate_topology_over_time(1)  # ! 1 minuti di simulazione
+makeTopology()
+#generate_topology_over_time(1)  # ! 1 minuti di simulazione
