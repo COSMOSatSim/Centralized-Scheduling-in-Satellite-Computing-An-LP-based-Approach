@@ -5,7 +5,6 @@ from matplotlib.animation import FuncAnimation
 
 
 
-
 with open('./data/config.json') as config_file:
     config = json.load(config_file)
 ts = load.timescale()                                   # ts : time management with astronomical time
