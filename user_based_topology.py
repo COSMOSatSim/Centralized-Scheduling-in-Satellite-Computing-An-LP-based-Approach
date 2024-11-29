@@ -2,11 +2,12 @@ import json
 from math import sqrt
 from skyfield.api import load, EarthSatellite, Topos
 from matplotlib.animation import FuncAnimation
+import random
 
 
-
-with open('./data/config.json') as config_file:
+with open('config.json') as config_file:
     config = json.load(config_file)
+
 ts = load.timescale()                                   # ts : time management with astronomical time
 time_now = ts.now()
 
@@ -24,12 +25,45 @@ def loadTLEFromFile(filename):
     except IOError as e:
         print(f"Errore nella lettura del file: {e}")
         return None
+
+TLE_DATA = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
+
 # ---------------------------------------------------------------------------- #
 #                                   Plotters                                   #
 # ---------------------------------------------------------------------------- #
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
+
+
+def plot_globe(satellite_coordinates):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Estrai le coordinate
+    x = [sat['x'] for sat in satellite_coordinates]
+    y = [sat['y'] for sat in satellite_coordinates]
+    z = [sat['z'] for sat in satellite_coordinates]
+    names = [sat['name'] for sat in satellite_coordinates]
+
+    # Crea il grafico 3D
+    ax.scatter(x, y, z, c='b', marker='o')  # punti blu per i satelliti
+
+    # Etichette
+    for i in range(len(names)):
+        ax.text(x[i], y[i], z[i], names[i], size=8, zorder=1)
+
+    ax.set_xlabel('X (km)')
+    ax.set_ylabel('Y (km)')
+    ax.set_zlabel('Z (km)')
+    ax.set_title('Posizioni dei Satelliti Starlink in 3D')
+
+    # Imposta l'angolo di visualizzazione: elevazione (elev) e azimut (azim)
+    #ax.view_init(elev=90, azim=0)  # 90 gradi dall'alto, 0 gradi di rotazione
+
+    plt.show()
+
+
 
 def plot_satellites_3d(satellites, ts):
     """
@@ -339,7 +373,12 @@ def get_distance_from_Access_Point(sorted_sat, t = time_now):
     #print(sat_distance_vector_sorted)
     return sat_distance_vector_sorted
 
-def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t):
+
+
+
+
+
+def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t = time_now):
     """
     :param accessPoint: Satellite Object 'Access Point' in our dome
     :param closerSatellite_sorted: List of Satellite Object in our dome
@@ -349,34 +388,78 @@ def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted,
     :return list: (satellite name, position (x, y, z), distance from AP )
     """
 
-    # ! Assert Section
-    assert isinstance(accessPoint, EarthSatellite), "The parameter accessPoint is not EarthSatellite type" 
-    for sat in closerSatellite_Sorted:
-        assert isinstance(sat, EarthSatellite), "closerSatellite_Sorted is not a list of EarthSatellite type"
+    print(accessPoint)
 
     vector_Sat_Topology = []
     for i in range(len(closerSatellite_Sorted)):
         if i == 0:                                                                              # Gestione del primo elemento 
-            print(accessPoint.name)
             sys = getSystemFromSat(accessPoint, time = t)                                       # reference system
             x, y, z = sys.position.km                                                           # Position in km of the cartesian coordinates (x, y, z)
             vector_Sat_Topology.append((accessPoint.name, (x, y, z), 0))
         else:
-            print(closerSatellite_Sorted[i].name)
             if accessPoint.name == closerSatellite_Sorted[i].name:
                 pass
             else:
-                proximity = get_orbit_proximity(accessPoint, closerSatellite_Sorted[i], t)  # Prendiamo il satellite i-1 per evitare il primo, che è stato sostituito dall'accessPoint
+                proximity = get_orbit_proximity(accessPoint, closerSatellite_Sorted[i], t)          # Prendiamo il satellite i-1 per evitare il primo, che è stato sostituito dall'accessPoint
                 if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
-                    sys = getSystemFromSat(closerSatellite_Sorted[i], time = t)                  # reference system
+                    sys = getSystemFromSat(closerSatellite_Sorted[i], time = t)                     # reference system
                     x, y, z = sys.position.km                                                       # Position in km of the cartesian coordinates (x, y, z)
                     vector_Sat_Topology.append((closerSatellite_Sorted[i].name, (x, y, z), proximity)) 
-        print(vector_Sat_Topology)
     sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[2])
     #print("Finale Vector:\n\n", vector_Sat_Topology,"\n\n\n")
     return sat_vector_Topology_sorted
 
+
+
+
+def are_satellites_equal(sat1, sat2):
+    # Confronta per nome e numero satnum
+    return (
+        sat1.name == sat2.name and
+        sat1.model.satnum == sat2.model.satnum
+    )
+
+def getLatency(distance:float):
+    lightSpeed = 299792458  #m/s
+    # converto in m la distance
+    dist_m = distance * 1000
+
+    return dist_m/lightSpeed
+
+
+
 # ---------------------------------------------------------------------------- #
+
+
+def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now):
+    """
+    :param Phi_max: The listening angle (maximum angle for satellite visibility).
+    :param time: A specific moment within an interval.
+
+    :returns:
+    - satellites: An ordered list of satellites within the listening dome. [(obj Satellite, obj distance), ...]
+    - animation_satellite_list: A list of satellites and their corresponding positions in 3D space. [(sat name, (x, y, z)), ....]
+
+    """
+    satellites, animation_satellite_list = [], []
+    tle_data = TLE_DATA
+
+    for i in range(0, len(tle_data), 3):
+        name = tle_data[i].strip()
+        line1 = tle_data[i + 1].strip()
+        line2 = tle_data[i + 2].strip()
+
+        satellite = EarthSatellite(line1, line2, name, ts)  # Converting tle Data in SGP4 Satellite Object
+        sys = getSystemFromSat(satellite, time = time)      # reference system 
+        
+        alt, az, distance = sys.altaz()                     # alt : Altitude in degrees relative to the observer
+                                                            # az : Sat Azimuth Angle relative to the observer
+                                                            # distance: distance Sat - Observer
+        if alt.degrees > Phi_max:
+            satellites.append((satellite))
+            #print(f"{name} - {distance.km} - POS: {position}\n")
+    
+    return satellites
 
 def getSatOnMe(Phi_max = config["Phi_max"], time = time_now):
     """
@@ -390,8 +473,7 @@ def getSatOnMe(Phi_max = config["Phi_max"], time = time_now):
     """
 
     satellites, animation_satellite_list = [], []
-    
-    tle_data = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
+    tle_data = TLE_DATA
 
     for i in range(0, len(tle_data), 3):
         name = tle_data[i].strip()
@@ -446,21 +528,22 @@ def makeTopology(time = time_now):
 
     Constructs a bidimensional topology of satellites at a specific time `t`, provided as input.
     """
-
+    #satellites = getAllSatOnMe(time = time)
     closerSatellite_Sorted, biDim_Topology_Animation = getSatOnMe(time = time)
     sat_distance_vector_sorted_from_access_point = get_distance_from_Access_Point(closerSatellite_Sorted, time)
 
-    topologyFromAP = compute_distances_from_target_satellite(closerSatellite_Sorted[0][0], [elem[0] for elem in closerSatellite_Sorted], t = time)
+    #topologyFromAP = compute_distances_from_target_satellite(closerSatellite_Sorted[0][0], [elem[0] for elem in closerSatellite_Sorted], t = time)
 
+    #[print(element) for element in satellites]
 
-    [print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in sat_distance_vector_sorted_from_access_point]
-    print("-------------------------------------------------------------------------------------------------------\n")
-    [print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in topologyFromAP]
+    #[print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in sat_distance_vector_sorted_from_access_point]
+    #print("-------------------------------------------------------------------------------------------------------\n")
+    #[print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in topologyFromAP]
 
 
     #plot_satellites_3d(closerSatellite_Sorted, time_now)                                       # ! Plot SAT in the Sky
     #plot_satellites_3d_with_point(closerSatellite_Sorted, time_now)                            # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing"
-    plot_satellites_with_distances(sat_distance_vector_sorted_from_access_point, time_now)      # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing" and line between all Sat and Location
+    #plot_satellites_with_distances(sat_distance_vector_sorted_from_access_point, time_now)      # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing" and line between all Sat and Location
 
     return buildTopology(sat_distance_vector_sorted_from_access_point), biDim_Topology_Animation   # Bidimensional Topology
 
@@ -502,8 +585,80 @@ def generate_topology_over_time(delta_minutes):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def getAllSat_plot(percentage = 15):
+    """
+    :param percentge: (int) [0,9]
+
+    Questa funzione ritorna una percentuale di satelliti, equamente distribuiti nel globo.
+
+    """
+    satellites = []
+    tle_data = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
+
+    for i in range(0, len(tle_data), 3):
+        name = tle_data[i].strip()
+        line1 = tle_data[i + 1].strip()
+        line2 = tle_data[i + 2].strip()
+        val = random.randint(0, 99)
+
+        if val <= percentage:
+            satellite = EarthSatellite(line1, line2, name, ts)
+            geocentric = satellite.at(time_now)
+            position = geocentric.position.km  # Ottieni la posizione in km
+        
+            satellites.append({
+                "name": name,
+                "x": position[0],
+                "y": position[1],
+                "z": position[2]
+            })
+    return satellites
+
+
+
+
+def getAllSat(percentage = 15):
+    """
+    :param percentge: (int) [0,99]
+
+    Questa funzione ritorna una percentuale di satelliti, equamente distribuiti nel globo.
+
+    """
+    satellites = []
+    tle_data = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
+
+    for i in range(0, len(tle_data), 3):
+        name = tle_data[i].strip()
+        line1 = tle_data[i + 1].strip()
+        line2 = tle_data[i + 2].strip()
+        val = random.randint(0, 99)
+
+        if val <= percentage:
+            satellite = EarthSatellite(line1, line2, name, ts)        
+            satellites.append(satellite)
+    
+    return satellites
+
+
+
 # ---------------------------------------------------------------------------- #
 #                                     TEST                                     #
 # ---------------------------------------------------------------------------- #
-makeTopology()
+#makeTopology()
 #generate_topology_over_time(1)  # ! 1 minuti di simulazione
+#satellites = getAllSat_plot()
+#plot_globe(satellites)

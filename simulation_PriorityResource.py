@@ -3,6 +3,10 @@ import math
 import simpy
 import logging
 from numpy import random
+from skyfield.api import load, EarthSatellite, Topos
+from SaveCurrentSATOnFile import saveTLEOnFile
+from user_based_topology import getAllSat, get_orbit_proximity, time_now, getLatency, are_satellites_equal
+
 
 def setup_logging(log_file_path):
     logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
@@ -14,7 +18,7 @@ with open('config.json') as config_file:
     config = json.load(config_file)
 
 class EdgeServer:
-    def __init__(self, env, name):
+    def __init__(self, env, name, satellite : EarthSatellite):
         '''
                 Initialize an EdgeServer instance.
 
@@ -23,6 +27,7 @@ class EdgeServer:
                 '''
         self.env = env
         self.name = name
+        self.satellite = satellite
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
@@ -79,6 +84,9 @@ class EdgeServer:
                 neighbors_at_distance_one.append(neighbor)
 
         return neighbors_at_distance_one
+    
+    def get_satellite(self):
+        return self.satellite
 
     def get_latency(self, neighbor_server):
         '''
@@ -99,6 +107,13 @@ class EdgeServer:
         :return: Bandwidth to the neighbor server.
         '''
         return self.bandwidth.get(neighbor_server, None)
+    
+
+
+    def __str__(self):
+        return f"Satellite : (nome={self.name}) neighbor: ({self.neighbors})"
+
+
 
     def UpdateUtilityValue(self, required_cpu, transfer_time, restart_time, download_time, server, task_priority):
         '''
@@ -179,97 +194,41 @@ class EdgeServer:
             self.utility_value = self.Th_ij + self.Tl_ij + (required_cpu / C_i_MAX) + total_time
 
 
-def create_topology(num_servers, network_type):
+
+
+def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t = time_now):
+    vector_Sat_Topology = []
+    for i in range(0, len(closerSatellite_Sorted)):
+        if are_satellites_equal(accessPoint.satellite, closerSatellite_Sorted[i].satellite):
+            pass
+        else:
+            proximity = get_orbit_proximity(accessPoint.get_satellite() , closerSatellite_Sorted[i].get_satellite(), t)         
+            if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
+                vector_Sat_Topology.append((closerSatellite_Sorted[i], proximity)) 
+
+    sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
+    return sat_vector_Topology_sorted
+
+
+def create_topology():
     edge_servers = []
 
+    satellites = getAllSat()            #Prendiamo il 10% di tutti i Satelliti mondiali di Starlink
+    num_servers = len(satellites)
+
+
     for i in range(num_servers):
-        server_id = f"{1 + i}"
-        edge_server = EdgeServer(env, server_id)
+        server_id = f"{satellites[i].name}"
+        edge_server = EdgeServer(env, server_id, satellites[i])
         edge_servers.append(edge_server)
 
-    # Aggiunta dei collegamenti solo con i vicini a destra, sinistra, sopra e sotto
-    rows = int(math.sqrt(config["topology"]))
-    cols = int(math.sqrt(config["topology"]))
-
-    for i in range(rows):
-        for j in range(cols):
-            index = i * cols + j
-            current_server = edge_servers[index]
-
-            # Collegamento con il vicino a destra
-            if j + 1 < cols:
-                right_neighbor = edge_servers[index + 1]
-                current_server.add_neighbor(right_neighbor, 1,
-                                            random.uniform(config["latency"]["min"], config["latency"]["max"]),
-                                            random.uniform(config["available_bandwidth"]["min"],
-                                                           config["available_bandwidth"]["max"]))
-            # Collegamento con il vicino a sinistra
-            if j - 1 >= 0:
-                left_neighbor = edge_servers[index - 1]
-                current_server.add_neighbor(left_neighbor, 1,
-                                            random.uniform(config["latency"]["min"], config["latency"]["max"]),
-                                            random.uniform(config["available_bandwidth"]["min"],
-                                                           config["available_bandwidth"]["max"]))
-            # Collegamento con il vicino sopra
-            if i - 1 >= 0:
-                upper_neighbor = edge_servers[index - cols]
-                current_server.add_neighbor(upper_neighbor, 1,
-                                            random.uniform(config["latency"]["min"], config["latency"]["max"]),
-                                            random.uniform(config["available_bandwidth"]["min"],
-                                                           config["available_bandwidth"]["max"]))
-            # Collegamento con il vicino sotto
-            if i + 1 < rows:
-                lower_neighbor = edge_servers[index + cols]
-                current_server.add_neighbor(lower_neighbor, 1,
-                                            random.uniform(config["latency"]["min"], config["latency"]["max"]),
-                                            random.uniform(config["available_bandwidth"]["min"],
-                                                           config["available_bandwidth"]["max"]))
-    # Aggiungi i collegamenti "a ponte"
-    if network_type == "close":
-        for i in range(num_servers):
-            # Collegamenti "a ponte" lungo le colonne
-            if num_servers >= cols and (i + 1) % cols == 0:
-                next_server_index = (i - cols + 1) % num_servers
-                edge_servers[i].add_neighbor(edge_servers[next_server_index], 1,
-                                             random.uniform(config["latency"]["min"], config["latency"]["max"]),
-                                             random.uniform(config["available_bandwidth"]["min"],
-                                                            config["available_bandwidth"]["max"]))
-                # Aggiungi il collegamento inverso
-                edge_servers[next_server_index].add_neighbor(edge_servers[i], 1,
-                                                             random.uniform(config["latency"]["min"],
-                                                                            config["latency"]["max"]),
-                                                             random.uniform(config["available_bandwidth"]["min"],
-                                                                            config["available_bandwidth"]["max"]))
-            # Collegamenti "a ponte" lungo le righe
-            if num_servers >= rows and i >= cols * (rows - 1):
-                next_server_index = (i - cols * (rows - 1)) % num_servers
-                edge_servers[i].add_neighbor(edge_servers[next_server_index], 1,
-                                             random.uniform(config["latency"]["min"], config["latency"]["max"]),
-                                             random.uniform(config["available_bandwidth"]["min"],
-                                                            config["available_bandwidth"]["max"]))
-                # Aggiungi il collegamento inverso
-                edge_servers[next_server_index].add_neighbor(edge_servers[i], 1,
-                                                             random.uniform(config["latency"]["min"],
-                                                                            config["latency"]["max"]),
-                                                             random.uniform(config["available_bandwidth"]["min"],
-                                                                            config["available_bandwidth"]["max"]))
-    # Stampa dei nodi e dei loro collegamenti
-    print("# Matrice delle adiacenze")
-    print("   ", end="")
-    for i in range(len(edge_servers)):
-        print(f"s{i} ", end="")
-    print()
-
-    for i, server in enumerate(edge_servers):
-        print(f"s{i} ", end="")
-        for j in range(len(edge_servers)):
-            neighbor = edge_servers[j]
-            if neighbor in server.neighbors:
-                print(" 1 ", end="")
-            else:
-                print(" 0 ", end="")
-        print()
-
+    for j in range(0, num_servers):
+        current_server = edge_servers[j]
+        neighbor = compute_distances_from_target_satellite(current_server, edge_servers)
+        for n in neighbor:
+            current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
+                                        random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
+        print(current_server,"\n")
     return edge_servers
 
 
@@ -279,3 +238,6 @@ if __name__ == "__main__":
     random.seed(config["seed"])
 
     env = simpy.Environment()
+
+    #saveTLEOnFile()  # Save LTE DATA
+    edge_servers = create_topology()

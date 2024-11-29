@@ -49,4 +49,4 @@ def saveTLEOnFile():
     else:
         print("Nessun dato TLE disponibile per il salvataggio.")
 
-saveTLEOnFile()
+#saveTLEOnFile()
