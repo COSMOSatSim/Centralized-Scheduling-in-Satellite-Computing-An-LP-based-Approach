@@ -441,7 +441,9 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now):
     - animation_satellite_list: A list of satellites and their corresponding positions in 3D space. [(sat name, (x, y, z)), ....]
 
     """
-    satellites, animation_satellite_list = [], []
+    
+    buffer_Phi = Phi_max - config["Phi_buffer"]             # Angle of a Buffer Zone
+    satellites_dome, satellites_buffer = [], []
     tle_data = TLE_DATA
 
     for i in range(0, len(tle_data), 3):
@@ -455,11 +457,14 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now):
         alt, az, distance = sys.altaz()                     # alt : Altitude in degrees relative to the observer
                                                             # az : Sat Azimuth Angle relative to the observer
                                                             # distance: distance Sat - Observer
-        if alt.degrees > Phi_max:
-            satellites.append((satellite))
-            #print(f"{name} - {distance.km} - POS: {position}\n")
+        if alt.degrees > buffer_Phi:
+            if alt.degrees > Phi_max:
+                satellites_dome.append((satellite, distance.km))
+            else:
+                satellites_buffer.append((satellite, distance.km))
     
-    return satellites
+    return sorted(satellites_dome, key=lambda x: x[1]), sorted(satellites_buffer, key=lambda x: x[1])
+
 
 def getSatOnMe(Phi_max = config["Phi_max"], time = time_now):
     """
@@ -639,7 +644,7 @@ def getAllSat(percentage = 15):
 
     """
     satellites = []
-    tle_data = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
+    tle_data = TLE_DATA
 
     for i in range(0, len(tle_data), 3):
         name = tle_data[i].strip()

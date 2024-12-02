@@ -78,5 +78,6 @@
     },
     "LEO_orbit": 300,
     "Phi_max": 40,
+    "Phi_buffer": 10,
     "Laser_Comunication_Range": 659
 }

@@ -1,11 +1,13 @@
 import json
 import math
 import simpy
+import time
 import logging
 from numpy import random
 from skyfield.api import load, EarthSatellite, Topos
 from SaveCurrentSATOnFile import saveTLEOnFile
-from user_based_topology import getAllSat, get_orbit_proximity, time_now, getLatency, are_satellites_equal
+from user_based_topology import getAllSat, get_orbit_proximity, time_now, getLatency, are_satellites_equal, getAllSatOnMe
+
 
 
 def setup_logging(log_file_path):
@@ -31,6 +33,7 @@ class EdgeServer:
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
+        self.distance_from_user = -1
         self.process_queue = simpy.PriorityResource(env, capacity=1)  # Initialize a PriorityResource for the task queue
         self.server_queue = []
         self.utility_value = 0  # Valore iniziale di utilità del server
@@ -111,8 +114,10 @@ class EdgeServer:
 
 
     def __str__(self):
-        return f"Satellite : (nome={self.name}) neighbor: ({self.neighbors})"
+        return f"Satellite : (nome={self.name}) neighbor: ({self.neighbors})\n"
 
+    def set_DistanceFromUser(self, distance):
+        self.distance_from_user = distance
 
 
     def UpdateUtilityValue(self, required_cpu, transfer_time, restart_time, download_time, server, task_priority):
@@ -210,12 +215,37 @@ def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted,
     return sat_vector_Topology_sorted
 
 
-def create_topology():
+
+def create_topology_dome():
+    edge_servers = []
+    satellites_dome, satellites_buffer = getAllSatOnMe()
+    num_sat_dome, num_sat_buffer = len(satellites_dome), len(satellites_buffer)
+
+    print(f"Satelliti Considerati TOT: {num_sat_buffer + num_sat_dome} DOME: {num_sat_dome} BUFF: {num_sat_buffer} \n")
+    tmp_sat = satellites_dome + satellites_buffer
+
+    for i in range(0, num_sat_dome + num_sat_buffer):
+        server_id = f"{tmp_sat[i][0].name}"
+        edge_server = EdgeServer(env, server_id, tmp_sat[i][0])
+        edge_server.set_DistanceFromUser(tmp_sat[i][1])
+        edge_servers.append(edge_server)
+    
+    for i in range(len(edge_servers)):
+        current_server = edge_servers[i]
+        neighbor = compute_distances_from_target_satellite(current_server, edge_servers)
+        for n in neighbor:
+            current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
+                                        random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
+        #print(current_server)
+    return edge_servers
+
+
+def create_topology_globe():
     edge_servers = []
 
-    satellites = getAllSat()            #Prendiamo il 10% di tutti i Satelliti mondiali di Starlink
+    satellites = getAllSat()            #Prendiamo il 15% di tutti i Satelliti mondiali di Starlink
     num_servers = len(satellites)
-
+    print(f"Satelliti Considerati TOT: {num_servers}")
 
     for i in range(num_servers):
         server_id = f"{satellites[i].name}"
@@ -228,7 +258,7 @@ def create_topology():
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-        print(current_server,"\n")
+        #print(current_server,"\n")
     return edge_servers
 
 
@@ -238,6 +268,13 @@ if __name__ == "__main__":
     random.seed(config["seed"])
 
     env = simpy.Environment()
+    
+    start_time = time.time()  # Tempo iniziale  
+    #edge_servers = create_topology_globe()
+    edge_servers = create_topology_dome()
 
-    #saveTLEOnFile()  # Save LTE DATA
-    edge_servers = create_topology()
+    end_time = time.time()    # Tempo finale
+
+    execution_time = end_time - start_time
+    print(f"Tempo di esecuzione: {execution_time:.5f} secondi")
+    
