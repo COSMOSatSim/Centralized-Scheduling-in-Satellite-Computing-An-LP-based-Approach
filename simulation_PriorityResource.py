@@ -5,6 +5,8 @@ import time
 import logging
 from numpy import random
 from skyfield.api import load, EarthSatellite, Topos
+
+import experiments
 from SaveCurrentSATOnFile import saveTLEOnFile
 from user_based_topology import getAllSat, get_orbit_proximity, time_now, getLatency, are_satellites_equal, getAllSatOnMe
 
@@ -198,6 +200,65 @@ class EdgeServer:
         else:  # Task a bassa priorità
             self.utility_value = self.Th_ij + self.Tl_ij + (required_cpu / C_i_MAX) + total_time
 
+#funzione per generare n numeri random da 0 alla lunghezza di num_server
+random_numbers = []
+def generate_random_numbers(n, num_server):
+    # Genera 5 numeri casuali non uguali tra 0 e 25
+    while len(random_numbers) < n:
+        random_number = random.randint(0, num_server)
+        if random_number not in random_numbers:
+            random_numbers.append(random_number)
+def generate_tasks(env, edge_servers):
+    edge_servers = create_topology_dome()
+    # funzione per generare 5 access point random in base al numero totale di server
+    generate_random_numbers(config["access_point"], config["topology"])
+
+    global next_server_index, priority_combination, arrival_time, random_server, next_index, next_number
+    #print('Genero i task')
+    logging.info('Genero i task')
+    num_servers = len(edge_servers)
+    task_id = 1
+
+    while True:
+        # Read the distribution type from the configuration
+        distribution_type = config["generate_tasks"]["distribution"]
+
+        # Get the corresponding function based on the distribution type
+        distribution_function = getattr(experiments, distribution_type, None)
+
+        # Check if the function exists
+        if distribution_function is not None and callable(distribution_function):
+            arrival_time = distribution_function('Task') #Inter arrival time, tempo tra l'arrivo di 2 task.
+        else:
+            logging.debug(f"Unrecognized or invalid distribution type: {distribution_type}")
+            raise ValueError("Unrecognized distribution type")
+
+        yield env.timeout(arrival_time)
+
+        # Calcola l'indice del server da selezionare in base al round-robin
+        #next_server_index = (next_server_index + 1) % num_servers  # Incrementa l'indice e ritorna a 0 se è l'ultimo server
+        #random_server = edge_servers[next_server_index]
+
+        # Data la lista random numbers, Calcola l'indice del server successivo da selezionare in base al round-robin
+        next_server_index = (next_server_index + 1) % len(random_numbers)
+        random_server = edge_servers[random_numbers[next_server_index]-1]
+        #print(f"Prossimo server selezionato: {random_server.name}")
+
+        '''
+        #per avere una distibuzione su server specifici togliere il commento
+        distribution_string = config["request_distribution"]["distribution"]
+        distribution_values = list(map(int, distribution_string.split("_")))
+        random_server = edge_servers[experiments.request_distribution(*distribution_values)]'''
+
+        priority_combination_string = config["priority_combination"]["distribution"]
+        priority_combination_values = list(map(int, priority_combination_string.split("_")))
+        priority_combination = experiments.priority_combination(*priority_combination_values)
+
+        task_priority = priority_combination
+        print(task_priority)
+
+        #env.process(task(env, task_id, random_server, task_priority))
+        task_id += 1
 
 
 
@@ -236,7 +297,7 @@ def create_topology_dome():
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-        #print(current_server)
+        print(current_server.name)
     return edge_servers
 
 
@@ -258,7 +319,7 @@ def create_topology_globe():
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-        #print(current_server,"\n")
+        print(current_server.name,"\n")
     return edge_servers
 
 
@@ -271,7 +332,11 @@ if __name__ == "__main__":
     
     start_time = time.time()  # Tempo iniziale  
     #edge_servers = create_topology_globe()
+
     edge_servers = create_topology_dome()
+
+    env.process(generate_tasks(env, edge_servers))
+    env.run(config['simulation_duration'])
 
     end_time = time.time()    # Tempo finale
 
