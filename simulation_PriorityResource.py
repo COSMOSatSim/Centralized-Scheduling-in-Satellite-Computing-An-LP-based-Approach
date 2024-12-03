@@ -4,7 +4,7 @@ import simpy
 import time
 import logging
 from numpy import random
-from skyfield.api import load, EarthSatellite, Topos
+from skyfield.api import EarthSatellite
 
 import experiments
 from SaveCurrentSATOnFile import saveTLEOnFile
@@ -279,11 +279,27 @@ def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted,
 
 def create_topology_dome():
     edge_servers = []
-    satellites_dome, satellites_buffer = getAllSatOnMe()
-    num_sat_dome, num_sat_buffer = len(satellites_dome), len(satellites_buffer)
+    acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe()
+    num_sat_dome, num_sat_buffer, num_AP = len(satellites_dome), len(satellites_buffer), len(acc_point)
 
-    print(f"Satelliti Considerati TOT: {num_sat_buffer + num_sat_dome} DOME: {num_sat_dome} BUFF: {num_sat_buffer} \n")
+    print(f"Satelliti Considerati TOT: {num_sat_buffer + num_sat_dome + num_AP} AP: {num_AP} DOME: {num_sat_dome} BUFF: {num_sat_buffer} \n")
     tmp_sat = satellites_dome + satellites_buffer
+
+    print("-"*20)
+    print("\n ACCESS POINT: \n")
+    [print(f"SATELLITE: {s[0].name} Distance: {s[1]}") for s in acc_point]
+    print("-"*20)
+    print("\nDOME: \n")
+    [print(f"SATELLITE: {s[0].name} Distance: {s[1]}") for s in satellites_dome]
+    print("-"*20)
+    print("\nBUFFER:\n")
+    [print(f"SATELLITE: {s[0].name} Distance: {s[1]}") for s in satellites_buffer]
+
+    for k in range(0, num_AP):
+        server_id = f"{acc_point[k][0].name}"
+        edge_server = EdgeServer(env, server_id, acc_point[k][0])
+        edge_server.set_DistanceFromUser(acc_point[k][1])
+        edge_servers.append(edge_server)
 
     for i in range(0, num_sat_dome + num_sat_buffer):
         server_id = f"{tmp_sat[i][0].name}"
@@ -319,7 +335,7 @@ def create_topology_globe():
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-        print(current_server.name,"\n")
+        print(current_server)
     return edge_servers
 
 

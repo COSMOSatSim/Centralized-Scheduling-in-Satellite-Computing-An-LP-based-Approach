@@ -358,24 +358,33 @@ def get_orbit_proximity(sat1 , sat2, t):
     return sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)     # Calculate the Euclidean distance
 
 
+def filterSatellitesInView(satellite):
+    """
+    Input: Satellites
+    Output: Boolean value | True : sat is coming in our direction
+                          | False : sat is not coming in our direction
+    """
+    sys = getSystemFromSat(satellite) 
+    
+    velocity = sys.velocity    
+
+    r = sys.position.km                             # r è la posizione relativa del SAT rispetto all'observer
+    r_unit = r / np.linalg.norm(r)                  # Vettore unitario 
+    v_rel = np.dot(velocity.km_per_s, r_unit)       # Calcoliamo la velocità calcolando il prodotto scalare tra r e r_unit
+    
+    return True if v_rel < 0 else False
+
 # ---------------------------------------------------------------------------- #
 #                              DISTANCE CALCULATOR                             #
 # ---------------------------------------------------------------------------- #
 
 def get_distance_from_Access_Point(sorted_sat, t = time_now):
-    """
-    
-    """
     sat_distance_vector = [(sorted_sat[0][0], sorted_sat[0][1].km, 0)]         # The first element is always 0. Because it is the distance from Sat 0 (closest to the user) compared to the other satellites around
     for i in range(1, len(sorted_sat)-1):
         sat_distance_vector.append((sorted_sat[i][0], sorted_sat[i][1].km, get_orbit_proximity(sorted_sat[0][0], sorted_sat[i][0], t)))
     sat_distance_vector_sorted = sorted(sat_distance_vector, key=lambda x: x[2])
     #print(sat_distance_vector_sorted)
     return sat_distance_vector_sorted
-
-
-
-
 
 
 def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t = time_now):
@@ -429,23 +438,13 @@ def getLatency(distance:float):
 
 
 # ---------------------------------------------------------------------------- #
-
-
-def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now):
-    """
-    :param Phi_max: The listening angle (maximum angle for satellite visibility).
-    :param time: A specific moment within an interval.
-
-    :returns:
-    - satellites: An ordered list of satellites within the listening dome. [(obj Satellite, obj distance), ...]
-    - animation_satellite_list: A list of satellites and their corresponding positions in 3D space. [(sat name, (x, y, z)), ....]
-
-    """
+def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point = config["access_point"]):    
     
     buffer_Phi = Phi_max - config["Phi_buffer"]             # Angle of a Buffer Zone
-    satellites_dome, satellites_buffer = [], []
+    satellites_dome, satellites_buffer = [], []             
     tle_data = TLE_DATA
 
+    # Prendo tutti i satelliti nella mia Cupola e BufferZone
     for i in range(0, len(tle_data), 3):
         name = tle_data[i].strip()
         line1 = tle_data[i + 1].strip()
@@ -462,8 +461,23 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now):
                 satellites_dome.append((satellite, distance.km))
             else:
                 satellites_buffer.append((satellite, distance.km))
+
+    #Ordino i satelliti in base alla posizione rispetto all'utente
+    sat_sort_dome, sat_sort_buff = sorted(satellites_dome, key=lambda x: x[1]), sorted(satellites_buffer, key=lambda x: x[1])
     
-    return sorted(satellites_dome, key=lambda x: x[1]), sorted(satellites_buffer, key=lambda x: x[1])
+    #Capisco quali stanno venendo nella mia direzione e prendo gli 'num_access_point' migliori Access Point
+    counter, acc_points, dome = 0, [], []
+    for s in sat_sort_dome:
+        if counter < Num_Access_point and filterSatellitesInView(s[0]):
+            acc_points.append((s[0], s[1]))
+            counter+=1
+        else:
+            dome.append((s[0], s[1]))
+    
+    return acc_points, dome, sat_sort_buff
+
+
+
 
 
 def getSatOnMe(Phi_max = config["Phi_max"], time = time_now):
