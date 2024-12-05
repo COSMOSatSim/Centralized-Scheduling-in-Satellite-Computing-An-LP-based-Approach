@@ -254,14 +254,23 @@ def generate_tasks(env):
 
 
 
+def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
+    """
+    Compute the distances from the target satellite to other satellites.
 
-def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t):
+    :param sat: The target satellite.
+    :param closerSatellite_Sorted: List of satellites sorted by proximity.
+    :param t: Current time.
+
+    :return: List of tuples containing satellites and their distances from the target satellite.
+    """
+    
     vector_Sat_Topology = []
     for i in range(0, len(closerSatellite_Sorted)):
-        if are_satellites_equal(accessPoint.satellite, closerSatellite_Sorted[i].satellite):
+        if are_satellites_equal(sat.satellite, closerSatellite_Sorted[i].satellite):
             pass
         else:
-            proximity = get_orbit_proximity(accessPoint.get_satellite() , closerSatellite_Sorted[i].get_satellite(), t)         
+            proximity = get_orbit_proximity(sat.get_satellite() , closerSatellite_Sorted[i].get_satellite(), t)         
             if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
                 vector_Sat_Topology.append((closerSatellite_Sorted[i], proximity)) 
 
@@ -274,10 +283,10 @@ def periodic_Recall():
     time.sleep(config["topology_sleeping_time"] * 60)
     edge_servers = create_topology_dome()
 
+
 def create_topology_dome():
     
     global global_access_point
-    
     time = get_current_time()
 
     edge_servers = []
@@ -287,6 +296,7 @@ def create_topology_dome():
     print(f"Satelliti Considerati TOT: {num_sat_buffer + num_sat_dome + num_AP} AP: {num_AP} DOME: {num_sat_dome} BUFF: {num_sat_buffer} \n")
     tmp_sat = satellites_dome + satellites_buffer
     
+    #Access Point Edge Servers
     for k in range(0, num_AP):
         server_id = f"{acc_point[k][0].name}"
         edge_server = EdgeServer(env, server_id, acc_point[k][0])
@@ -294,11 +304,13 @@ def create_topology_dome():
         
     global_access_point = edge_servers.copy()   #Salvo i nuovi access point globali
 
+    # Tutti i satelliti nella cupola
     for i in range(0, num_sat_dome + num_sat_buffer):
         server_id = f"{tmp_sat[i][0].name}"
         edge_server = EdgeServer(env, server_id, tmp_sat[i][0])
         edge_servers.append(edge_server)
     
+    # Calcola i vicini di ogni server
     for i in range(len(edge_servers)):
         current_server = edge_servers[i]
         neighbor = compute_distances_from_target_satellite(current_server, edge_servers, time)

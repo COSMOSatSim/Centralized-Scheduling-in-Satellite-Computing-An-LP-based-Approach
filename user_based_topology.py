@@ -43,20 +43,34 @@ def printSatList(*sats):
 # ---------------------------------------------------------------------------- #
 
 def get_current_time():
+    """
+    Get the current time using Skyfield's timescale.
+
+    This function loads the timescale from the Skyfield library and returns the current time.
+
+    Returns:
+        skyfield.timelib.Time: The current time according to Skyfield's timescale.
+    """
     ts = load.timescale()  # Carica la scala temporale di Skyfield
     return ts.now()   
 
 # Getter reference system from a Satellite 
 def getSystemFromSat(satellite, Geocentric = False, time = time_now):
     """
-    Geocentric = False, we want to return the system relative to the observer's point of view; 
-    otherwise, if Geocentric = True, we return the system relative to the center of the Earth.
-    """
+    Get the reference system from a satellite.
 
+    Args:
+        satellite (EarthSatellite): The satellite object.
+        Geocentric (bool): If False, return the system relative to the observer's point of view.
+                           If True, return the satellite's position relative to the center of the Earth (Geocentric).
+        time (Time): The time at which to get the satellite's position.
+    Returns:
+        Geocentric or Topocentric: The reference system of the satellite at the given time.
+    """
     if Geocentric : # Satellite Position from the Center of Earth
         return satellite.at(time)                   # return geocentric system  
     else:           # Satellite Position from the Observer Position
-        difference = satellite - getObserverObj()   # Change the reference system from ⁡⁢⁢⁢Geocentric⁡ to ⁡⁢⁣⁢Topocentric⁡
+        difference = satellite - getObserverObj()   # Calculate the difference between the satellite's position and the observer's position to get the topocentric reference system
         return difference.at(time)                  # return topocentric system
     
 
@@ -87,6 +101,16 @@ def get_orbit_proximity(sat1 , sat2, t):
     return sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)     # Calculate the Euclidean distance
 
 def are_satellites_equal(sat1, sat2):
+    """
+    Compare two satellites to check if they are the same based on their name and satellite number.
+
+    Args:
+        sat1: EarthSatellite object representing the first satellite.
+        sat2: EarthSatellite object representing the second satellite.
+
+    Returns:
+        bool: True if the satellites are the same, False otherwise.
+    """
     # Confronta per nome e numero satnum
     return (
         sat1.name == sat2.name and
@@ -94,11 +118,11 @@ def are_satellites_equal(sat1, sat2):
     )
 
 def getLatency(distance:float):
-    lightSpeed = 299792458  #m/s
-    # converto in m la distance
-    dist_m = distance * 1000
+    LIGHT_SPEED = 299792458  #m/s
+    # convert distance to meters
+    distance_m = distance * 1000
 
-    return dist_m/lightSpeed
+    return distance_m / LIGHT_SPEED  # Calculate latency in seconds
 
 # ---------------------------------------------------------------------------- #
 #                                    Filter                                    #
@@ -229,6 +253,6 @@ def checkConsistency():
         line2 = tle_data[i + 2].strip()
 
         satellite = EarthSatellite(line1, line2, name, ts)
-
+        # TODO ricordati di effettuare il controllo della consistenza
 
     
