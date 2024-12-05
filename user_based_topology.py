@@ -3,7 +3,7 @@ from math import sqrt
 import numpy as np
 import sys
 from datetime import timedelta
-from skyfield.api import load, EarthSatellite, Topos
+from skyfield.api import load, EarthSatellite, Topos, wgs84
 
 
 with open('config.json') as config_file:
@@ -188,3 +188,47 @@ def classifySat_BufferZone(buffer_satellites, time = time_now):
             selected_satellites.append((s[0], s[1], max_elevation))
     
     return selected_satellites
+
+
+
+
+
+
+# ---------------------------------------------------------------------------- #
+
+def check_satellite_visibility(satellite, location, start, end):
+    # Intervallo di tempo con step di 1 minuto
+    times = ts.utc_range(start.utc_datetime(), end.utc_datetime(), timedelta(minutes=1))
+    
+    # Trova elevazioni per ogni punto temporale
+    elevations = []
+    for t in times:
+        difference = satellite - location
+        topocentric = difference.at(t)
+        alt, _, _ = topocentric.altaz()
+        elevations.append((t, alt.degrees))
+    
+    # Filtra le elevazioni tra 20° e 40° e verifica se superano i 40°
+    between_20_40 = any(20 <= alt <= 40 for _, alt in elevations)
+    exceeds_40 = any(alt > 40 for _, alt in elevations)
+    
+    return between_20_40 and exceeds_40
+
+def checkConsistency():
+    tle_data = TLE_DATA
+    satellites = []
+    t0 = time_now
+
+    location = wgs84.latlon(41.9028, 12.4964)  # Roma
+
+
+    #Genero la lista di Satelliti
+    for i in range(0, len(tle_data), 3):
+        name = tle_data[i].strip()
+        line1 = tle_data[i + 1].strip()
+        line2 = tle_data[i + 2].strip()
+
+        satellite = EarthSatellite(line1, line2, name, ts)
+
+
+    

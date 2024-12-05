@@ -36,7 +36,6 @@ class EdgeServer:
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
-        self.distance_from_user = -1
         self.process_queue = simpy.PriorityResource(env, capacity=1)  # Initialize a PriorityResource for the task queue
         self.server_queue = []
         self.utility_value = 0  # Valore iniziale di utilità del server
@@ -119,10 +118,6 @@ class EdgeServer:
     def __str__(self):
         return f"Satellite : (nome={self.name}) neighbor: ({self.neighbors})\n"
 
-    def set_DistanceFromUser(self, distance):
-        self.distance_from_user = distance
-
-
     def UpdateUtilityValue(self, required_cpu, transfer_time, restart_time, download_time, server, task_priority):
         '''
         Aggiorna il valore di utilità del server in base ai task attualmente in coda e al carico richiesto.
@@ -201,19 +196,11 @@ class EdgeServer:
         else:  # Task a bassa priorità
             self.utility_value = self.Th_ij + self.Tl_ij + (required_cpu / C_i_MAX) + total_time
 
-#funzione per generare n numeri random da 0 alla lunghezza di num_server
-random_numbers = []
-def generate_random_numbers(n, num_server):
-    # Genera 5 numeri casuali non uguali tra 0 e 25
-    while len(random_numbers) < n:
-        random_number = random.randint(0, num_server)
-        if random_number not in random_numbers:
-            random_numbers.append(random_number)
+# Dichiarazione di una variabile globale per tenere traccia del prossimo server da selezionare
+next_server_index = 0
 def generate_tasks(env):
-    # funzione per generare 5 access point random in base al numero totale di server
-    generate_random_numbers(config["access_point"], config["topology"])
 
-    global next_server_index, priority_combination, arrival_time, random_server, next_index, next_number
+    global next_server_index, priority_combination, arrival_time, selected_server, next_index, next_number
     #print('Genero i task')
     logging.info('Genero i task')
     num_servers = len(edge_servers)
@@ -240,9 +227,13 @@ def generate_tasks(env):
         #random_server = edge_servers[next_server_index]
 
         # Data la lista random numbers, Calcola l'indice del server successivo da selezionare in base al round-robin
-        next_server_index = (next_server_index + 1) % len(random_numbers)
-        random_server = edge_servers[random_numbers[next_server_index]-1]
+        #next_server_index = (next_server_index + 1) % len(random_numbers)
+        #random_server = edge_servers[random_numbers[next_server_index]-1]
         #print(f"Prossimo server selezionato: {random_server.name}")
+
+        #! Prendo il prossimo server in base al round robin dalla lista di access point
+        next_server_index = (next_server_index + 1) % len(global_access_point)
+        selected_server = global_access_point[next_server_index]      # ho cambiato il nome 
 
         '''
         #per avere una distibuzione su server specifici togliere il commento
@@ -255,7 +246,7 @@ def generate_tasks(env):
         priority_combination = experiments.priority_combination(*priority_combination_values)
 
         task_priority = priority_combination
-        print(task_priority)
+        print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
 
         #env.process(task(env, task_id, random_server, task_priority))
         task_id += 1
@@ -277,11 +268,16 @@ def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted,
     sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
     return sat_vector_Topology_sorted
 
+#Richiamiamo questa funzione periodicamente per aggiornare la topologia
 def periodic_Recall():
+    global edge_servers
     time.sleep(config["topology_sleeping_time"] * 60)
     edge_servers = create_topology_dome()
 
 def create_topology_dome():
+    
+    global global_access_point
+    
     time = get_current_time()
 
     edge_servers = []
@@ -294,18 +290,18 @@ def create_topology_dome():
     for k in range(0, num_AP):
         server_id = f"{acc_point[k][0].name}"
         edge_server = EdgeServer(env, server_id, acc_point[k][0])
-        edge_server.set_DistanceFromUser(acc_point[k][1])
         edge_servers.append(edge_server)
+        
+    global_access_point = edge_servers.copy()   #Salvo i nuovi access point globali
 
     for i in range(0, num_sat_dome + num_sat_buffer):
         server_id = f"{tmp_sat[i][0].name}"
         edge_server = EdgeServer(env, server_id, tmp_sat[i][0])
-        edge_server.set_DistanceFromUser(tmp_sat[i][1])
         edge_servers.append(edge_server)
     
     for i in range(len(edge_servers)):
         current_server = edge_servers[i]
-        neighbor = compute_distances_from_target_satellite(current_server, edge_servers)
+        neighbor = compute_distances_from_target_satellite(current_server, edge_servers, time)
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
@@ -323,6 +319,7 @@ if __name__ == "__main__":
     
     edge_servers = create_topology_dome()
 
+    #Gestione del Thread per la creazione della topologia Periodicamente
     thread = threading.Thread(target=periodic_Recall)
     thread.daemon = True 
     thread.start()
