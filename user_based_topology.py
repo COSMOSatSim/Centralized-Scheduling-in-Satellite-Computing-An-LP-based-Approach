@@ -1,8 +1,9 @@
 import json
 from math import sqrt
+import numpy as np
+import sys
+from datetime import timedelta
 from skyfield.api import load, EarthSatellite, Topos
-from matplotlib.animation import FuncAnimation
-import random
 
 
 with open('config.json') as config_file:
@@ -27,294 +28,23 @@ def loadTLEFromFile(filename):
         return None
 
 TLE_DATA = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
-
 # ---------------------------------------------------------------------------- #
-#                                   Plotters                                   #
+#                                    Printer                                   #
 # ---------------------------------------------------------------------------- #
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
 
-
-def plot_globe(satellite_coordinates):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
-    # Estrai le coordinate
-    x = [sat['x'] for sat in satellite_coordinates]
-    y = [sat['y'] for sat in satellite_coordinates]
-    z = [sat['z'] for sat in satellite_coordinates]
-    names = [sat['name'] for sat in satellite_coordinates]
-
-    # Crea il grafico 3D
-    ax.scatter(x, y, z, c='b', marker='o')  # punti blu per i satelliti
-
-    # Etichette
-    for i in range(len(names)):
-        ax.text(x[i], y[i], z[i], names[i], size=8, zorder=1)
-
-    ax.set_xlabel('X (km)')
-    ax.set_ylabel('Y (km)')
-    ax.set_zlabel('Z (km)')
-    ax.set_title('Posizioni dei Satelliti Starlink in 3D')
-
-    # Imposta l'angolo di visualizzazione: elevazione (elev) e azimut (azim)
-    #ax.view_init(elev=90, azim=0)  # 90 gradi dall'alto, 0 gradi di rotazione
-
-    plt.show()
-
-
-
-def plot_satellites_3d(satellites, ts):
-    """
-    Rappresenta una lista di satelliti nello spazio 3D con i nomi e linee che collegano ciascun satellite
-    al primo della lista.
-
-    :param satellites: Lista di oggetti EarthSatellite.
-    :param ts: Oggetto time per calcolare la posizione dei satelliti.
-    """
-    # Estrai le coordinate 3D dei satelliti
-    positions = [sat[0].at(ts).position.km for sat in satellites]
-    names = [sat[0].name for sat in satellites]
-
-    # Estrai le coordinate X, Y, Z
-    x_coords = [pos[0] for pos in positions]
-    y_coords = [pos[1] for pos in positions]
-    z_coords = [pos[2] for pos in positions]
-
-    # Creazione della figura 3D
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Traccia i punti dei satelliti
-    ax.scatter(x_coords, y_coords, z_coords, color='blue', label='Satelliti')
-
-    # Aggiungi i nomi dei satelliti accanto ai punti
-    for x, y, z, name in zip(x_coords, y_coords, z_coords, names):
-        ax.text(x, y, z, name, color='red')
-
-    # Disegna linee tra il primo satellite e tutti gli altri
-    ref_x, ref_y, ref_z = x_coords[0], y_coords[0], z_coords[0]
-    for x, y, z in zip(x_coords[1:], y_coords[1:], z_coords[1:]):
-        ax.plot([ref_x, x], [ref_y, y], [ref_z, z], color='green', linestyle='--')
-
-    # Etichette degli assi
-    ax.set_xlabel("X (km)")
-    ax.set_ylabel("Y (km)")
-    ax.set_zlabel("Z (km)")
-    ax.set_title("Posizioni dei satelliti in 3D")
-
-    # Mostra il grafico
-    plt.legend()
-    plt.show()
-
-
-def plot_satellites_3d_with_point(satellites, ts, lat = config["location"]["Roma"]["lat"], lon = config["location"]["Roma"]["lon"], earth_radius=6371):
-    """
-    Rappresenta una lista di satelliti nello spazio 3D con i nomi e un punto rosso sulla Terra dato da latitudine e longitudine.
-    Collega ciascun satellite al primo satellite della lista.
-
-    :param satellites: Lista di oggetti EarthSatellite.
-    :param ts: Oggetto time per calcolare la posizione dei satelliti.
-    :param lat: Latitudine del punto terrestre (in gradi).
-    :param lon: Longitudine del punto terrestre (in gradi).
-    :param earth_radius: Raggio medio terrestre (in km). Default: 6371 km.
-    """
-    # Converti latitudine e longitudine in coordinate cartesiane
-    lat_rad = np.radians(lat)
-    lon_rad = np.radians(lon)
-    point_x = earth_radius * np.cos(lat_rad) * np.cos(lon_rad)
-    point_y = earth_radius * np.cos(lat_rad) * np.sin(lon_rad)
-    point_z = earth_radius * np.sin(lat_rad)
-
-    # Estrai le coordinate 3D dei satelliti
-    positions = [sat[0].at(ts).position.km for sat in satellites]
-    names = [sat[0].name for sat in satellites]
-
-    # Estrai le coordinate X, Y, Z
-    x_coords = [pos[0] for pos in positions]
-    y_coords = [pos[1] for pos in positions]
-    z_coords = [pos[2] for pos in positions]
-
-    # Creazione della figura 3D
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Traccia i punti dei satelliti
-    ax.scatter(x_coords, y_coords, z_coords, color='blue', label='Satelliti')
-
-    # Aggiungi i nomi dei satelliti accanto ai punti
-    for x, y, z, name in zip(x_coords, y_coords, z_coords, names):
-        ax.text(x, y, z, name, color='red')
-
-    # Disegna linee tra il primo satellite e tutti gli altri
-    ref_x, ref_y, ref_z = x_coords[0], y_coords[0], z_coords[0]
-    for x, y, z in zip(x_coords[1:], y_coords[1:], z_coords[1:]):
-        ax.plot([ref_x, x], [ref_y, y], [ref_z, z], color='green', linestyle='--')
-
-    # Aggiungi il punto terrestre (rosso)
-    ax.scatter(point_x, point_y, point_z, color='red', s=100, label='Punto terrestre')
-    ax.text(point_x, point_y, point_z, "Location", color='black')
-
-    # Etichette degli assi
-    ax.set_xlabel("X (km)")
-    ax.set_ylabel("Y (km)")
-    ax.set_zlabel("Z (km)")
-    ax.set_title("Posizioni dei satelliti in 3D e punto terrestre")
-
-    # Mostra la legenda
-    plt.legend()
-    plt.show()
-
-
-def plot_satellites_with_distances(satellite_tuples, ts, lat = config["location"]["Roma"]["lat"], lon = config["location"]["Roma"]["lon"], earth_radius=6371):
-    """
-    Rappresenta i satelliti in uno spazio 3D con linee che collegano i satelliti tra loro e al punto terrestre specificato.
-
-    :param satellite_tuples: Lista di tuple con il formato:
-        (EarthSatellite, distanza_terra, distanza_altri_satelliti).
-    :param lat: Latitudine del punto terrestre (in gradi).
-    :param lon: Longitudine del punto terrestre (in gradi).
-    :param earth_radius: Raggio medio terrestre (in km). Default: 6371 km.
-    """
-    # Converti latitudine/longitudine del punto terrestre in coordinate cartesiane
-    lat_rad = np.radians(lat)
-    lon_rad = np.radians(lon)
-    point_x = earth_radius * np.cos(lat_rad) * np.cos(lon_rad)
-    point_y = earth_radius * np.cos(lat_rad) * np.sin(lon_rad)
-    point_z = earth_radius * np.sin(lat_rad)
-
-    # Estrai i dati dalle tuple
-    satellites = [sat[0] for sat in satellite_tuples]
-    distances_to_point = [sat[1] for sat in satellite_tuples]
-    distances_between_satellites = [sat[2] for sat in satellite_tuples]
-
-    # Calcola le posizioni 3D dei satelliti
-    positions = [sat.at(ts).position.km for sat in satellites]
-    names = [sat.name for sat in satellites]
-
-    # Estrai le coordinate X, Y, Z
-    x_coords = [pos[0] for pos in positions]
-    y_coords = [pos[1] for pos in positions]
-    z_coords = [pos[2] for pos in positions]
-
-    # Creazione della figura 3D
-    fig = plt.figure(figsize=(12, 9))
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Traccia i punti dei satelliti
-    ax.scatter(x_coords, y_coords, z_coords, color='blue', label='Satelliti')
-
-    # Aggiungi i nomi dei satelliti accanto ai punti
-    for x, y, z, name in zip(x_coords, y_coords, z_coords, names):
-        ax.text(x, y, z, name, color='red')
-
-    # Disegna linee gialle tra ogni satellite e il punto terrestre
-    for x, y, z, distance in zip(x_coords, y_coords, z_coords, distances_to_point):
-        ax.plot([x, point_x], [y, point_y], [z, point_z], color='yellow', linestyle='--')
-        # Aggiungi l'etichetta della distanza
-        mid_x, mid_y, mid_z = (x + point_x) / 2, (y + point_y) / 2, (z + point_z) / 2
-        ax.text(mid_x, mid_y, mid_z, f"{distance:.2f} km", color='orange')
-
-    # Disegna linee verdi tra il primo satellite e tutti gli altri
-    ref_x, ref_y, ref_z = x_coords[0], y_coords[0], z_coords[0]
-    for x, y, z, distance in zip(x_coords[1:], y_coords[1:], z_coords[1:], distances_between_satellites[1:]):
-        ax.plot([ref_x, x], [ref_y, y], [ref_z, z], color='green', linestyle='--')
-        # Aggiungi l'etichetta della distanza
-        mid_x, mid_y, mid_z = (ref_x + x) / 2, (ref_y + y) / 2, (ref_z + z) / 2
-        ax.text(mid_x, mid_y, mid_z, f"{distance:.2f} km", color='green')
-
-    # Aggiungi il punto terrestre (rosso)
-    ax.scatter(point_x, point_y, point_z, color='red', s=100, label='Punto terrestre')
-    ax.text(point_x, point_y, point_z, "Location", color='black')
-
-    # Etichette degli assi
-    ax.set_xlabel("X (km)")
-    ax.set_ylabel("Y (km)")
-    ax.set_zlabel("Z (km)")
-    ax.set_title("Posizioni dei satelliti in 3D con distanze")
-
-    # Mostra la legenda
-    plt.legend()
-    plt.show()
-
-# Funzione per animare i satelliti
-def animate_satellites_from_tuples(satellite_states, lat=config["location"]["Roma"]["lat"], lon=config["location"]["Roma"]["lon"], earth_radius=6371):
-    """
-    Anima il movimento dei satelliti basato su una lista di liste di tuple.
-
-    :param satellite_states: Lista di liste, dove ogni sotto-lista rappresenta lo stato dei satelliti a un dato momento.
-                             Ogni tupla contiene (nome_satellite, (x, y, z)).
-    :param lat: Latitudine del punto terrestre (in gradi).
-    :param lon: Longitudine del punto terrestre (in gradi).
-    :param earth_radius: Raggio medio terrestre (in km). Default: 6371 km.
-    """
-    # Converti latitudine e longitudine in coordinate cartesiane
-    lat_rad = np.radians(lat)
-    lon_rad = np.radians(lon)
-    point_x = earth_radius * np.cos(lat_rad) * np.cos(lon_rad)
-    point_y = earth_radius * np.cos(lat_rad) * np.sin(lon_rad)
-    point_z = earth_radius * np.sin(lat_rad)
-
-    # Creazione della figura 3D
-    fig = plt.figure(figsize=(10, 7))
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Punto terrestre
-    ax.scatter(point_x, point_y, point_z, color='red', s=100, label='Punto terrestre')
-    ax.text(point_x, point_y, point_z, "Location", color='black')
-
-    # Imposta i limiti
-    ax.set_xlim([-earth_radius * 2, earth_radius * 2])
-    ax.set_ylim([-earth_radius * 2, earth_radius * 2])
-    ax.set_zlim([-earth_radius * 2, earth_radius * 2])
-    ax.set_xlabel("X (km)")
-    ax.set_ylabel("Y (km)")
-    ax.set_zlabel("Z (km)")
-    ax.set_title("Animazione satelliti in 3D")
-
-    # Inizializza gli elementi dell'animazione
-    scatter = ax.scatter([], [], [], color='blue', label='Satelliti')
-    text_annotations = []
-
-    # Funzione di aggiornamento per l'animazione
-    def update(frame):
-        nonlocal text_annotations
-
-        # Cancella le annotazioni esistenti
-        for annotation in text_annotations:
-            annotation.remove()
-        text_annotations.clear()
-
-        # Ottieni lo stato dei satelliti al frame corrente
-        current_state = satellite_states[frame]
-
-        # Estrai posizioni e nomi
-        x_coords = [sat[1][0] for sat in current_state]
-        y_coords = [sat[1][1] for sat in current_state]
-        z_coords = [sat[1][2] for sat in current_state]
-        names = [sat[0] for sat in current_state]
-
-        # Aggiorna il grafico
-        scatter._offsets3d = (x_coords, y_coords, z_coords)
-
-        # Aggiungi i nomi dei satelliti
-        for x, y, z, name in zip(x_coords, y_coords, z_coords, names):
-            text = ax.text(x, y, z, name, color='red')
-            text_annotations.append(text)
-
-        return scatter,
-
-    # Creazione animazione
-    ani = FuncAnimation(fig, update, frames=len(satellite_states), interval=500, blit=False)
-
-    plt.legend()
-    plt.show()
+def printSatList(*sats):
+    for l in sats:
+        print("-"*20)
+        [print(f"SATELLITE: {s[0].name} Distance: {s[1]}") for s in l]
 
 
 # ---------------------------------------------------------------------------- #
 #                                    Getter                                    #
 # ---------------------------------------------------------------------------- #
+
+def get_current_time():
+    ts = load.timescale()  # Carica la scala temporale di Skyfield
+    return ts.now()   
 
 # Getter reference system from a Satellite 
 def getSystemFromSat(satellite, Geocentric = False, time = time_now):
@@ -335,7 +65,6 @@ def getObserverObj(lat = config["location"]["Roma"]["lat"], lon = config["locati
     return Topos( lat, lon)  
 
 
-# Get the distance between two satellites in a certain time
 def get_orbit_proximity(sat1 , sat2, t):
     """
     Calculates the distance between two satellites in kilometers.
@@ -357,6 +86,23 @@ def get_orbit_proximity(sat1 , sat2, t):
 
     return sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)     # Calculate the Euclidean distance
 
+def are_satellites_equal(sat1, sat2):
+    # Confronta per nome e numero satnum
+    return (
+        sat1.name == sat2.name and
+        sat1.model.satnum == sat2.model.satnum
+    )
+
+def getLatency(distance:float):
+    lightSpeed = 299792458  #m/s
+    # converto in m la distance
+    dist_m = distance * 1000
+
+    return dist_m/lightSpeed
+
+# ---------------------------------------------------------------------------- #
+#                                    Filter                                    #
+# ---------------------------------------------------------------------------- #
 
 def filterSatellitesInView(satellite):
     """
@@ -373,69 +119,6 @@ def filterSatellitesInView(satellite):
     v_rel = np.dot(velocity.km_per_s, r_unit)       # Calcoliamo la velocità calcolando il prodotto scalare tra r e r_unit
     
     return True if v_rel < 0 else False
-
-# ---------------------------------------------------------------------------- #
-#                              DISTANCE CALCULATOR                             #
-# ---------------------------------------------------------------------------- #
-
-def get_distance_from_Access_Point(sorted_sat, t = time_now):
-    sat_distance_vector = [(sorted_sat[0][0], sorted_sat[0][1].km, 0)]         # The first element is always 0. Because it is the distance from Sat 0 (closest to the user) compared to the other satellites around
-    for i in range(1, len(sorted_sat)-1):
-        sat_distance_vector.append((sorted_sat[i][0], sorted_sat[i][1].km, get_orbit_proximity(sorted_sat[0][0], sorted_sat[i][0], t)))
-    sat_distance_vector_sorted = sorted(sat_distance_vector, key=lambda x: x[2])
-    #print(sat_distance_vector_sorted)
-    return sat_distance_vector_sorted
-
-
-def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t = time_now):
-    """
-    :param accessPoint: Satellite Object 'Access Point' in our dome
-    :param closerSatellite_sorted: List of Satellite Object in our dome
-
-    We calculate the distance between satellites to a satellite that is an access point
-
-    :return list: (satellite name, position (x, y, z), distance from AP )
-    """
-
-    print(accessPoint)
-
-    vector_Sat_Topology = []
-    for i in range(len(closerSatellite_Sorted)):
-        if i == 0:                                                                              # Gestione del primo elemento 
-            sys = getSystemFromSat(accessPoint, time = t)                                       # reference system
-            x, y, z = sys.position.km                                                           # Position in km of the cartesian coordinates (x, y, z)
-            vector_Sat_Topology.append((accessPoint.name, (x, y, z), 0))
-        else:
-            if accessPoint.name == closerSatellite_Sorted[i].name:
-                pass
-            else:
-                proximity = get_orbit_proximity(accessPoint, closerSatellite_Sorted[i], t)          # Prendiamo il satellite i-1 per evitare il primo, che è stato sostituito dall'accessPoint
-                if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
-                    sys = getSystemFromSat(closerSatellite_Sorted[i], time = t)                     # reference system
-                    x, y, z = sys.position.km                                                       # Position in km of the cartesian coordinates (x, y, z)
-                    vector_Sat_Topology.append((closerSatellite_Sorted[i].name, (x, y, z), proximity)) 
-    sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[2])
-    #print("Finale Vector:\n\n", vector_Sat_Topology,"\n\n\n")
-    return sat_vector_Topology_sorted
-
-
-
-
-def are_satellites_equal(sat1, sat2):
-    # Confronta per nome e numero satnum
-    return (
-        sat1.name == sat2.name and
-        sat1.model.satnum == sat2.model.satnum
-    )
-
-def getLatency(distance:float):
-    lightSpeed = 299792458  #m/s
-    # converto in m la distance
-    dist_m = distance * 1000
-
-    return dist_m/lightSpeed
-
-
 
 # ---------------------------------------------------------------------------- #
 def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point = config["access_point"]):    
@@ -460,12 +143,14 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point
             if alt.degrees > Phi_max:
                 satellites_dome.append((satellite, distance.km))
             else:
-                satellites_buffer.append((satellite, distance.km))
+                # Controllo che stia venendo nella mia direzione
+                if filterSatellitesInView(satellite):
+                    satellites_buffer.append((satellite, distance.km))
 
     #Ordino i satelliti in base alla posizione rispetto all'utente
     sat_sort_dome, sat_sort_buff = sorted(satellites_dome, key=lambda x: x[1]), sorted(satellites_buffer, key=lambda x: x[1])
     
-    #Capisco quali stanno venendo nella mia direzione e prendo gli 'num_access_point' migliori Access Point
+    #Determino Access Points
     counter, acc_points, dome = 0, [], []
     for s in sat_sort_dome:
         if counter < Num_Access_point and filterSatellitesInView(s[0]):
@@ -477,207 +162,29 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point
     return acc_points, dome, sat_sort_buff
 
 
+def classifySat_BufferZone(buffer_satellites, time = time_now):
+    time_end = ts.utc(time.utc_datetime() + timedelta(minutes=40))
+    selected_satellites = []
 
+    min_elev_cone = 90 - config["Phi_max"]   # Quantità di gradi al di sotto della soglia dove osservo.
+    buffer_Phi = config["Phi_max"] - config["Phi_buffer"]             # Angle of a Buffer Zone
 
+    for s in buffer_satellites:
+        # Calcolo eventi di passaggio
+        t, events = s[0].find_events(getObserverObj(), time, time_end, altitude_degrees=buffer_Phi)
+        max_elevation = 0                   # ? Masimo punto di elevazione del satellite
 
-def getSatOnMe(Phi_max = config["Phi_max"], time = time_now):
-    """
-    :param Phi_max: The listening angle (maximum angle for satellite visibility).
-    :param time: A specific moment within an interval.
+        for ti, event in zip(t, events):
+            if event == 1:  # Max Alt
 
-    :returns:
-    - satellites: An ordered list of satellites within the listening dome. [(obj Satellite, obj distance), ...]
-    - animation_satellite_list: A list of satellites and their corresponding positions in 3D space. [(sat name, (x, y, z)), ....]
+                syst = getSystemFromSat(s[0], time = time)      # reference system 
+                alt, az, distance = syst.altaz() 
 
-    """
-
-    satellites, animation_satellite_list = [], []
-    tle_data = TLE_DATA
-
-    for i in range(0, len(tle_data), 3):
-        name = tle_data[i].strip()
-        line1 = tle_data[i + 1].strip()
-        line2 = tle_data[i + 2].strip()
-
-        satellite = EarthSatellite(line1, line2, name, ts)  # Converting tle Data in SGP4 Satellite Object
-        sys = getSystemFromSat(satellite, time = time)      # reference system 
-        
-        alt, az, distance = sys.altaz()                     # alt : Altitude in degrees relative to the observer
-                                                            # az : Sat Azimuth Angle relative to the observer
-                                                            # distance: distance Sat - Observer
-        if alt.degrees > Phi_max:
-            x, y, z = sys.position.km                          # Position in km
-            animation_satellite_list.append((name, (x, y, z)))  # Save coordinate for animation
-
-            satellites.append((satellite, distance))
-            #print(f"{name} - {distance.km} - POS: {position}\n")
+                max_elevation = alt.degrees  # Elevazione in gradi
+                break
+        print(f"SAT: {s[0].name} - Elevation: {max_elevation} >= {min_elev_cone}") 
+        # Verifica se il satellite raggiunge almeno la soglia del cono di osservazione
+        if max_elevation >= min_elev_cone :
+            selected_satellites.append((s[0], s[1], max_elevation))
     
-    return sorted(satellites, key=lambda x: x[1].km), animation_satellite_list
-
-
-def buildTopology(sat_ordered):
-    """
-    :param sat_ordered: A list of tuples, where each tuple contains:
-        - An `EarthSatellite` object (Skyfield satellite).
-        - A float representing the distance to the observer.
-        - A float representing the distance to the "Access Point" satellite.
-    :type sat_ordered: list[tuple[EarthSatellite, float, float]]
-
-    :returns: 
-        - (list): A bidimensional topology containing tuples of satellite information (EarthSatellite) and their distance from the "Access Point," limited by the laser communication range.
-    """
-
-    biDim_Topology = []                                 # Bidimensional Topology
-    for s in sat_ordered:
-        if s[2] <= config["Laser_Comunication_Range"] : # Check laser distance 
-            biDim_Topology.append((s[0], s[2]))         # (Sat info, Sat distance from Access Point)
-        else:
-            break
-    return biDim_Topology
-
-
-def makeTopology(time = time_now):
-    """
-    :param t: The specific moment in time for which the topology is constructed.
-    :type t: skyfield.api.Time
-
-    :returns: 
-        - sat_distance_vector_sorted_from_access_point (list): Satellites sorted by their distance to the "Access Point."
-        - biDim_Topology_Animation (list): Satellites' positions in 3D space at time `t`.
-
-    Constructs a bidimensional topology of satellites at a specific time `t`, provided as input.
-    """
-    #satellites = getAllSatOnMe(time = time)
-    closerSatellite_Sorted, biDim_Topology_Animation = getSatOnMe(time = time)
-    sat_distance_vector_sorted_from_access_point = get_distance_from_Access_Point(closerSatellite_Sorted, time)
-
-    #topologyFromAP = compute_distances_from_target_satellite(closerSatellite_Sorted[0][0], [elem[0] for elem in closerSatellite_Sorted], t = time)
-
-    #[print(element) for element in satellites]
-
-    #[print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in sat_distance_vector_sorted_from_access_point]
-    #print("-------------------------------------------------------------------------------------------------------\n")
-    #[print("    SAT:"+str(element[0])+"      Dist from Acc_Point: "+str(element[2])) for element in topologyFromAP]
-
-
-    #plot_satellites_3d(closerSatellite_Sorted, time_now)                                       # ! Plot SAT in the Sky
-    #plot_satellites_3d_with_point(closerSatellite_Sorted, time_now)                            # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing"
-    #plot_satellites_with_distances(sat_distance_vector_sorted_from_access_point, time_now)      # ! Plot Sat in the Sky, Rome, line between all Sat and the "Access poing" and line between all Sat and Location
-
-    return buildTopology(sat_distance_vector_sorted_from_access_point), biDim_Topology_Animation   # Bidimensional Topology
-
-
-def generate_topology_over_time(delta_minutes):
-    """
-    From t=0 to delta_t minutes in the future,
-    Calling up the makeTopology every second.
-
-    :param delta_minutes: Time interval in minutes.
-    """
-    ts = load.timescale()
-    time_now = ts.now()
-    triDim_Topology, triDim_Topology_Animation = [], [] 
-    
-    # Calcola il tempo finale (tempo attuale + delta_minutes)
-    future_time = ts.utc(
-        time_now.utc.year, time_now.utc.month, time_now.utc.day,
-        time_now.utc.hour, time_now.utc.minute + delta_minutes, time_now.utc.second
-    )
-    
-    # Scorrere tutti i secondi da t=0 fino a future_time
-    current_time = time_now
-    while current_time < future_time:
-        #print(f"Current time: {current_time.utc_datetime()}")  # Debug
-        biDim_Top, biDim_Top_Anim = makeTopology(time=current_time)
-        triDim_Topology.append(biDim_Top)
-        triDim_Topology_Animation.append(biDim_Top_Anim)
-        
-        # Incrementa di 1 secondo
-        current_time = ts.utc(
-            current_time.utc.year, current_time.utc.month, current_time.utc.day,
-            current_time.utc.hour, current_time.utc.minute, current_time.utc.second + 1
-        )
-    #print(triDim_Topology)
-    #print("----------------------------------------------------------------------------------------------\n\n")
-    #print(triDim_Topology_Animation)
-    animate_satellites_from_tuples(triDim_Topology_Animation)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def getAllSat_plot(percentage = 15):
-    """
-    :param percentge: (int) [0,9]
-
-    Questa funzione ritorna una percentuale di satelliti, equamente distribuiti nel globo.
-
-    """
-    satellites = []
-    tle_data = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
-
-    for i in range(0, len(tle_data), 3):
-        name = tle_data[i].strip()
-        line1 = tle_data[i + 1].strip()
-        line2 = tle_data[i + 2].strip()
-        val = random.randint(0, 99)
-
-        if val <= percentage:
-            satellite = EarthSatellite(line1, line2, name, ts)
-            geocentric = satellite.at(time_now)
-            position = geocentric.position.km  # Ottieni la posizione in km
-        
-            satellites.append({
-                "name": name,
-                "x": position[0],
-                "y": position[1],
-                "z": position[2]
-            })
-    return satellites
-
-
-
-
-def getAllSat(percentage = 15):
-    """
-    :param percentge: (int) [0,99]
-
-    Questa funzione ritorna una percentuale di satelliti, equamente distribuiti nel globo.
-
-    """
-    satellites = []
-    tle_data = TLE_DATA
-
-    for i in range(0, len(tle_data), 3):
-        name = tle_data[i].strip()
-        line1 = tle_data[i + 1].strip()
-        line2 = tle_data[i + 2].strip()
-        val = random.randint(0, 99)
-
-        if val <= percentage:
-            satellite = EarthSatellite(line1, line2, name, ts)        
-            satellites.append(satellite)
-    
-    return satellites
-
-
-
-# ---------------------------------------------------------------------------- #
-#                                     TEST                                     #
-# ---------------------------------------------------------------------------- #
-#makeTopology()
-#generate_topology_over_time(1)  # ! 1 minuti di simulazione
-#satellites = getAllSat_plot()
-#plot_globe(satellites)
+    return selected_satellites

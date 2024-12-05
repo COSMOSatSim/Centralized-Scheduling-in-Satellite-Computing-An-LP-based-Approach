@@ -78,6 +78,7 @@
     },
     "LEO_orbit": 300,
     "Phi_max": 40,
-    "Phi_buffer": 10,
+    "Phi_buffer": 15,
+    "topology_sleeping_time": 2,
     "Laser_Comunication_Range": 659
 }

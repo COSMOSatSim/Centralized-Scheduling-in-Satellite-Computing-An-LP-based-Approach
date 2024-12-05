@@ -3,12 +3,13 @@ import math
 import simpy
 import time
 import logging
+import threading
 from numpy import random
 from skyfield.api import EarthSatellite
 
 import experiments
 from SaveCurrentSATOnFile import saveTLEOnFile
-from user_based_topology import getAllSat, get_orbit_proximity, time_now, getLatency, are_satellites_equal, getAllSatOnMe
+from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, classifySat_BufferZone, printSatList
 
 
 
@@ -208,8 +209,7 @@ def generate_random_numbers(n, num_server):
         random_number = random.randint(0, num_server)
         if random_number not in random_numbers:
             random_numbers.append(random_number)
-def generate_tasks(env, edge_servers):
-    edge_servers = create_topology_dome()
+def generate_tasks(env):
     # funzione per generare 5 access point random in base al numero totale di server
     generate_random_numbers(config["access_point"], config["topology"])
 
@@ -262,7 +262,9 @@ def generate_tasks(env, edge_servers):
 
 
 
-def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t = time_now):
+
+
+def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted, t):
     vector_Sat_Topology = []
     for i in range(0, len(closerSatellite_Sorted)):
         if are_satellites_equal(accessPoint.satellite, closerSatellite_Sorted[i].satellite):
@@ -275,26 +277,20 @@ def compute_distances_from_target_satellite(accessPoint, closerSatellite_Sorted,
     sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
     return sat_vector_Topology_sorted
 
-
+def periodic_Recall():
+    time.sleep(config["topology_sleeping_time"] * 60)
+    edge_servers = create_topology_dome()
 
 def create_topology_dome():
+    time = get_current_time()
+
     edge_servers = []
-    acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe()
+    acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe(time = time)
     num_sat_dome, num_sat_buffer, num_AP = len(satellites_dome), len(satellites_buffer), len(acc_point)
 
     print(f"Satelliti Considerati TOT: {num_sat_buffer + num_sat_dome + num_AP} AP: {num_AP} DOME: {num_sat_dome} BUFF: {num_sat_buffer} \n")
     tmp_sat = satellites_dome + satellites_buffer
-
-    print("-"*20)
-    print("\n ACCESS POINT: \n")
-    [print(f"SATELLITE: {s[0].name} Distance: {s[1]}") for s in acc_point]
-    print("-"*20)
-    print("\nDOME: \n")
-    [print(f"SATELLITE: {s[0].name} Distance: {s[1]}") for s in satellites_dome]
-    print("-"*20)
-    print("\nBUFFER:\n")
-    [print(f"SATELLITE: {s[0].name} Distance: {s[1]}") for s in satellites_buffer]
-
+    
     for k in range(0, num_AP):
         server_id = f"{acc_point[k][0].name}"
         edge_server = EdgeServer(env, server_id, acc_point[k][0])
@@ -313,49 +309,27 @@ def create_topology_dome():
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-        print(current_server.name)
+    
     return edge_servers
-
-
-def create_topology_globe():
-    edge_servers = []
-
-    satellites = getAllSat()            #Prendiamo il 15% di tutti i Satelliti mondiali di Starlink
-    num_servers = len(satellites)
-    print(f"Satelliti Considerati TOT: {num_servers}")
-
-    for i in range(num_servers):
-        server_id = f"{satellites[i].name}"
-        edge_server = EdgeServer(env, server_id, satellites[i])
-        edge_servers.append(edge_server)
-
-    for j in range(0, num_servers):
-        current_server = edge_servers[j]
-        neighbor = compute_distances_from_target_satellite(current_server, edge_servers)
-        for n in neighbor:
-            current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
-                                        random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-        print(current_server)
-    return edge_servers
-
 
 if __name__ == "__main__":
+    
+    global edge_servers
 
     # Setup and start the simulation
     random.seed(config["seed"])
-
+    
     env = simpy.Environment()
     
-    start_time = time.time()  # Tempo iniziale  
-    #edge_servers = create_topology_globe()
-
     edge_servers = create_topology_dome()
 
-    env.process(generate_tasks(env, edge_servers))
+    thread = threading.Thread(target=periodic_Recall)
+    thread.daemon = True 
+    thread.start()
+
+    env.process(generate_tasks(env))
     env.run(config['simulation_duration'])
 
     end_time = time.time()    # Tempo finale
 
-    execution_time = end_time - start_time
-    print(f"Tempo di esecuzione: {execution_time:.5f} secondi")
     
