@@ -1,12 +1,11 @@
+import csv
 import json
-import math
+import os
 import random
-
 import simpy
 import time
 import logging
 import threading
-#from numpy import random
 from skyfield.api import EarthSatellite
 
 import experiments
@@ -201,6 +200,24 @@ class EdgeServer:
 
 def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, required_disk, task_priority,
                    arrival_time_system, utilization_CPU, num_hops, transfer_time, original_TaskPriority):
+    '''
+        Assign a task to a selected server and process it.
+
+        :param env: The simulation environment.
+        :param selected_server: The server to which the task will be assigned.
+        :param task_id: The ID of the task.
+        :param required_cpu: CPU requirement for the task.
+        :param required_ram: RAM requirement for the task.
+        :param required_disk: Disk space requirement for the task.
+        :param task_priority: Priority of the task.
+        :param arrival_time_system: Arrival time of the task in the system.
+        :param utilization_CPU: CPU utilization for the task.
+        :param num_hops: Number of hops to reach the selected server.
+        :param transfer_time: Time required to transfer data.
+        :param original_TaskPriority: Original task priority.
+
+        :return: None
+        '''
     global hop
     other_server_counter = 0
     if initial_server_counter == 0 and different_server_counter == 0:
@@ -242,13 +259,13 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
                       f"execution time {execution_time}, "
                       f"Service time: {service_time:.2f}")
 
-        print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
+        '''print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
               f"Arrival Time in System: {arrival_time_system:.2f}, "
               f"start time: {start_time:.2f}, "
               f"rimasto in coda: {time_in_queue:.2f}, "
               f"lascia il sistema in {env.now:.2f}, "
               f"execution time {execution_time}, "
-              f"Service time: {service_time:.2f}")
+              f"Service time: {service_time:.2f}")'''
 
         priority_mapping = {100: "low", 1: "high"}
         task_p = priority_mapping.get(task_priority, "NaN")
@@ -272,10 +289,6 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
             selected_server.server_queue.pop(0)
 
 
-initial_server_counter = [0] * config["topology"]
-different_server_counter = [0] * config["topology"]
-other_server_counter = [0] * config["topology"]
-
 Tmax_H = config["Tmax_H"]
 Tmax_L = config["Tmax_H"]
 
@@ -283,15 +296,46 @@ Tmax_L = config["Tmax_H"]
 def SearchNode(env, server_selected, task_id, required_cpu, required_ram, required_disk, image_size, Volume_size,
                restart_time, download_time, task_priority, arrival_time_system, utilization_CPU, Tmax_high, Tmax_Low,
                Tmax_latency):
+    '''
+        Search for the most suitable server to assign a task, considering utility values, latency, and task priorities.
+
+        This function evaluates the available servers based on their utility value and selects the best one
+        based on the highest priority task and the given constraints (such as Tmax latency).
+
+        It updates the counters for each server (initial, different, and other) and assigns the task to the selected server.
+
+        :param env: The simulation environment.
+        :param server_selected: The initially selected server for the task.
+        :param task_id: The ID of the task to be assigned.
+        :param required_cpu: CPU requirement for the task.
+        :param required_ram: RAM requirement for the task.
+        :param required_disk: Disk space requirement for the task.
+        :param image_size: Size of the image associated with the task.
+        :param Volume_size: Size of the volume associated with the task.
+        :param restart_time: Time needed to restart the task.
+        :param download_time: Time required for downloading the task's image.
+        :param task_priority: Priority of the task (high or low).
+        :param arrival_time_system: The time when the task arrives in the system.
+        :param utilization_CPU: The CPU utilization required for the task.
+        :param Tmax_high: High threshold for utility value.
+        :param Tmax_Low: Low threshold for utility value.
+        :param Tmax_latency: Latency threshold for the server selection.
+
+        :return: None
+
+        This function will either:
+        - Assign the task to the most suitable server based on its utility value and priority,
+        - Or recursively select another server if no suitable server is available within the latency threshold.
+        '''
     global sorted_servers, initial_server_selected, different_server_counter, other_server_counter, transfer_time, hop
 
-    print(f'SearchNode, Server selezionato --> {server_selected.name}')
+    #print(f'SearchNode, Server selezionato --> {server_selected.name}')
     logging.debug(f'SearchNode, Server selezionato --> {server_selected.name}')
 
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
 
-    print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
+    #print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
     logging.debug(
         f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
 
@@ -304,8 +348,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         else:
             transfer_time = 0
 
-        print(
-            f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
+        #print(f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
         logging.debug(
             f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
 
@@ -323,25 +366,24 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     sorted_servers = [server for server in sorted_servers if server.utility_value < Tmax_high]
 
     for server in sorted_servers:
-        print(f"Server {server.name}: Utility Value = {server.utility_value}")
+        #print(f"Server {server.name}: Utility Value = {server.utility_value}")
         logging.debug(f"Server {server.name}: Utility Value = {server.utility_value}")
 
-    print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     for server in sorted_servers:
-        print(f"Server {server.name}: Utility Value = {server.utility_value} ")
+        #print(f"Server {server.name}: Utility Value = {server.utility_value} ")
         logging.debug(f"Server {server.name}: Utility Value = {server.utility_value} ")
     print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     logging.debug(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
 
-    #initial_server_counter[int(server_selected.name) - 1] += 1
+    initial_server_counter[server_selected.name] += 1
 
     if len(sorted_servers) > 0:
         server = sorted_servers.pop(0)
 
         if server != server_selected:
-            #different_server_counter[int(server_selected.name) - 1] += 1
-            #other_server_counter[int(server.name) - 1] += 1
+            different_server_counter[server_selected.name] += 1
+            other_server_counter[server.name] += 1
             hop += 1
 
         logging.debug(f'Seleziono il server con utility più bassa: {server.name}')
@@ -475,7 +517,7 @@ def generate_tasks(env):
         priority_combination = experiments.priority_combination(*priority_combination_values)
 
         task_priority = priority_combination
-        print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
+        #print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
 
         env.process(task(env, task_id, selected_server, task_priority))
         task_id += 1
@@ -508,7 +550,6 @@ def periodic_Recall():
     global edge_servers
     time.sleep(config["topology_sleeping_time"] * 60)
     edge_servers = create_topology_dome()
-
 
 def create_topology_dome():
     
@@ -543,19 +584,23 @@ def create_topology_dome():
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-        print(current_server)
+        #print(current_server.name)
     return edge_servers
 
 if __name__ == "__main__":
-    
-    #global edge_servers
 
     # Setup and start the simulation
     random.seed(config["seed"])
     
     env = simpy.Environment()
     hop = 0  # Inizializza la variabile hop a zero
+    MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
+    total_time = 0  # Imposta il valore iniziale di total_time
     edge_servers = create_topology_dome()
+
+    initial_server_counter = {server.name: 0 for server in edge_servers}
+    different_server_counter = {server.name: 0 for server in edge_servers}
+    other_server_counter = {server.name: 0 for server in edge_servers}
 
     #Gestione del Thread per la creazione della topologia Periodicamente
     thread = threading.Thread(target=periodic_Recall)
@@ -563,8 +608,113 @@ if __name__ == "__main__":
     thread.start()
 
     env.process(generate_tasks(env))
-    env.run(config['simulation_duration'])
 
     end_time = time.time()    # Tempo finale
 
+    network_type = config["network_type"]["type"]  # open / close
+    
+    # Costruisce il nome del file CSV
+    # Ottiene i valori di priority_combination e generate_tasks
+    priority_distribution = config["priority_combination"]["distribution"]
+    generate_tasks_distribution = config["generate_tasks"]["distribution"]
+    config_seed = config["seed"]
+    config_arrival_time = config["arrival_time_exponential"]
+    distribution_string = config["request_distribution"]["distribution"]
+    if distribution_string == "0_0_0":
+        distribution_string = "RR"
+    latency = config["latency"]["min"]
+    access_point = config["access_point"]
+
+    # Specifica il percorso della directory che vuoi creare
+    # percorso_directory = f"simulation result_{distribution_string}_request_distribution_latency_{latency}_distribuited/{config_seed}"
+    percorso_directory = f"simulation result-{network_type}-System_AP{access_point}/simulation result_{distribution_string}_request_distribution_latency_{latency}_distribuited/{config_seed}"
+    os.makedirs(percorso_directory, exist_ok=True)
+
+    csv_name = f"{percorso_directory}/simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_{config_arrival_time}.csv"
+    csv_name_server = f"{percorso_directory}/server_name_migration_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_{config_arrival_time}.csv"
+    # Crea un file CSV per registrare i risultati
+    csv_file = config["csv_name"]["name"] = csv_name
+    log_name = f"simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_{config_arrival_time}.log"
+
+    print(
+        f"Start simulation for seed {config_seed}, priority distribution {priority_distribution}, arrival time {config_arrival_time}")
+
+    log_file_path = os.path.join(os.path.dirname(csv_file), log_name)
+
+    # setup_logging(log_file_path) #abilita la scrittura dei log
+
+    env.run(config['simulation_duration'])
+
+    # Scrive i dati dei task nel file CSV
+    with open(csv_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(
+            ["Task ID", "Task Priority", "Arrival time in system", "arrival_time_task_queue", "Start Time", "End Time",
+             "Execution time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Queue length",
+             "original_TaskPriority", "TMAX_exceeded"])
+
+        for server in edge_servers:
+            for task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time, execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda, original_TaskPriority, TMAX_exceeded in server.completed_tasks:
+                if original_TaskPriority == 1:
+                    original_TaskPriority = 'high'
+                else:
+                    original_TaskPriority = 'low'
+                writer.writerow(
+                    [task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
+                     execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
+                     original_TaskPriority, TMAX_exceeded])
+            for task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority in server.server_queue:
+                TMAX_exceeded = False
+                if task_priority == 1 or original_TaskPriority == 1:
+                    writer.writerow(
+                        [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, utilization_CPU,
+                         (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
+                         num_hops, len(list(server.server_queue)), 'high', TMAX_exceeded])
+                else:
+                    writer.writerow(
+                        [task_id, 'low', arrival_time_system, arrival_time_task_queue, 0, 0, utilization_CPU,
+                         (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
+                         num_hops, len(list(server.server_queue)), 'low', TMAX_exceeded])
+                # il task salvato in coda ha i seguenti parametri nel seguente ordine:
+                # task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops
+
+    print(f"Simulation results saved to: {csv_file}")
+    print('R_j user', initial_server_counter, 'F_j other', different_server_counter, 'R_j other', other_server_counter)
+    I_j = []
+    F_j = []
+
+    # Loop over the keys of the dictionaries
+    for server_name in other_server_counter:
+        numerator = other_server_counter[server_name]
+        denominator = sum(different_server_counter.values())
+        I_j.append(numerator / denominator if denominator > 0 else 0)
+
+    for server_name in different_server_counter:
+        numerator = different_server_counter[server_name]
+        denominator = initial_server_counter[server_name] + other_server_counter[server_name]
+        F_j.append(numerator / denominator if denominator > 0 else 0)
+
+    # Print results
+    print("I_j:", I_j)
+    print("F_j:", F_j)
+
+    # Write data to CSV file
+    with open(csv_name_server, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['Server', 'R_j_user', 'F_j_other', 'R_j_other', 'I_j', 'F_j'])
+        for server_name in initial_server_counter:
+            writer.writerow([
+                server_name,
+                initial_server_counter[server_name],
+                different_server_counter[server_name],
+                other_server_counter[server_name],
+                I_j.pop(0),
+                F_j.pop(0)
+            ])
+
+    print(f"Data of migration server saved to {csv_name_server} ")
+
+    logging.info(f"Simulation results saved to: {csv_file}")
+    print(f"Simulation LOG saved to: {log_name}")
+    logging.info("Simulation completed")
     

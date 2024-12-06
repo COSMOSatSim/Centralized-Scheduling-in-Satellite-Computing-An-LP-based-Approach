@@ -3,7 +3,6 @@
   "max_try": 5,
   "search_node": 1,
   "seed": 42,
-  "topology": 25,
   "access_point": 5,
   "arrival_time_exponential": 0.0029,
   "Tmax_H": 0.5,
