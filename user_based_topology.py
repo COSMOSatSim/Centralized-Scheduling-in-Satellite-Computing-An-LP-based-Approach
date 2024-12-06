@@ -3,7 +3,7 @@ from math import sqrt
 import numpy as np
 import sys
 from datetime import timedelta
-from skyfield.api import load, EarthSatellite, Topos, wgs84
+from skyfield.api import load, EarthSatellite, wgs84
 
 
 with open('config.json') as config_file:
@@ -54,6 +54,19 @@ def get_current_time():
     ts = load.timescale()  # Carica la scala temporale di Skyfield
     return ts.now()   
 
+# Getter Topos 'Observer' object 
+def getObserverObj(location = config["simulation_location"]):
+    if location in config["locations"]:
+        lat = config["locations"][location]["lat"]
+        lon = config["locations"][location]["lon"]
+        print(f"User Location: {location} ({lat},{lon}) ")
+
+        return wgs84.latlon( lat, lon)
+    else:
+        sys.exit(f"Errore: The User Position '{location}' not found in the config file.") 
+
+OBSERVER = getObserverObj()
+
 # Getter reference system from a Satellite 
 def getSystemFromSat(satellite, Geocentric = False, time = time_now):
     """
@@ -70,14 +83,9 @@ def getSystemFromSat(satellite, Geocentric = False, time = time_now):
     if Geocentric : # Satellite Position from the Center of Earth
         return satellite.at(time)                   # return geocentric system  
     else:           # Satellite Position from the Observer Position
-        difference = satellite - getObserverObj()   # Calculate the difference between the satellite's position and the observer's position to get the topocentric reference system
+        difference = satellite - OBSERVER   # Calculate the difference between the satellite's position and the observer's position to get the topocentric reference system
         return difference.at(time)                  # return topocentric system
     
-
-# Getter Topos 'Observer' object 
-def getObserverObj(lat = config["location"]["Roma"]["lat"], lon = config["location"]["Roma"]["lat"]):
-    return Topos( lat, lon)  
-
 
 def get_orbit_proximity(sat1 , sat2, t):
     """
@@ -174,8 +182,11 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point
     #Ordino i satelliti in base alla posizione rispetto all'utente
     sat_sort_dome, sat_sort_buff = sorted(satellites_dome, key=lambda x: x[1]), sorted(satellites_buffer, key=lambda x: x[1])
     
-    #Determino Access Points
     counter, acc_points, dome = 0, [], []
+    if Num_Access_point > len(sat_sort_dome):
+        Num_Access_point = len(sat_sort_dome) // 2   # Non ci sono abbastanza satelliti da soddisfare la richiesta di Access_point 
+    
+    #Determino Access Points
     for s in sat_sort_dome:
         if counter < Num_Access_point and filterSatellitesInView(s[0]):
             acc_points.append((s[0], s[1]))
@@ -195,7 +206,7 @@ def classifySat_BufferZone(buffer_satellites, time = time_now):
 
     for s in buffer_satellites:
         # Calcolo eventi di passaggio
-        t, events = s[0].find_events(getObserverObj(), time, time_end, altitude_degrees=buffer_Phi)
+        t, events = s[0].find_events(OBSERVER, time, time_end, altitude_degrees=buffer_Phi)
         max_elevation = 0                   # ? Masimo punto di elevazione del satellite
 
         for ti, event in zip(t, events):

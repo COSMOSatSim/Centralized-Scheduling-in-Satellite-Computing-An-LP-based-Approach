@@ -11,7 +11,7 @@ from skyfield.api import EarthSatellite
 
 import experiments
 from SaveCurrentSATOnFile import saveTLEOnFile
-from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, classifySat_BufferZone, printSatList
+from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, printSatList
 
 
 
@@ -543,7 +543,7 @@ def create_topology_dome():
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-    
+        print(current_server)
     return edge_servers
 
 if __name__ == "__main__":
