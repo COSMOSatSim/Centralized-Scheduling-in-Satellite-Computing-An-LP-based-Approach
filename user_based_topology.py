@@ -4,7 +4,7 @@ import numpy as np
 import sys
 from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
-
+import sys
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -54,6 +54,31 @@ def get_current_time():
     ts = load.timescale()  # Carica la scala temporale di Skyfield
     return ts.now()   
 
+def advance_time(current_time, minutes_to_add):
+    """
+    Advance the given Skyfield Time object by a specified number of minutes.
+
+    Args:
+        current_time (skyfield.timelib.Time): The current time from ts.now().
+        minutes_to_add (int): The number of minutes to add to the current time.
+
+    Returns:
+        skyfield.timelib.Time: The new time advanced by the specified number of minutes.
+    """
+    # Convert the Skyfield Time object to a datetime object
+    current_datetime = current_time.utc_datetime()
+    
+    # Add the specified number of minutes
+    new_datetime = current_datetime + timedelta(minutes=minutes_to_add)
+    
+    # Convert the new datetime object back to a Skyfield Time object
+    ts = load.timescale()
+    new_time = ts.from_datetime(new_datetime)
+    
+    return new_time
+
+
+
 # Getter Topos 'Observer' object 
 def getObserverObj(location = config["simulation_location"]):
     if location in config["locations"]:
@@ -68,7 +93,7 @@ def getObserverObj(location = config["simulation_location"]):
 OBSERVER = getObserverObj()
 
 # Getter reference system from a Satellite 
-def getSystemFromSat(satellite, Geocentric = False, time = time_now):
+def getSystemFromSat(satellite, time ,Geocentric = False ):
     """
     Get the reference system from a satellite.
 
@@ -99,8 +124,8 @@ def get_orbit_proximity(sat1 , sat2, t):
     Returns: The distance between the two satellites in kilometers.
     """
     # Get geocentric positions in km
-    pos_sat1 = getSystemFromSat(sat1, True, t).position.km
-    pos_sat2 = getSystemFromSat(sat2, True, t).position.km
+    pos_sat1 = getSystemFromSat(sat1, t, True).position.km
+    pos_sat2 = getSystemFromSat(sat2, t, True).position.km
 
     # Extraction of coordinate components
     x1, y1, z1 = pos_sat1
@@ -136,13 +161,13 @@ def getLatency(distance:float):
 #                                    Filter                                    #
 # ---------------------------------------------------------------------------- #
 
-def filterSatellitesInView(satellite):
+def filterSatellitesInView(satellite, t):
     """
     Input: Satellites
     Output: Boolean value | True : sat is coming in our direction
                           | False : sat is not coming in our direction
     """
-    sys = getSystemFromSat(satellite) 
+    sys = getSystemFromSat(satellite, t) 
     
     velocity = sys.velocity    
 
@@ -153,7 +178,7 @@ def filterSatellitesInView(satellite):
     return True if v_rel < 0 else False
 
 # ---------------------------------------------------------------------------- #
-def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point = config["access_point"]):    
+def getAllSatOnMe(t, serializable = False, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):    
     
     buffer_Phi = Phi_max - config["Phi_buffer"]             # Angle of a Buffer Zone
     satellites_dome, satellites_buffer = [], []             
@@ -166,18 +191,24 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point
         line2 = tle_data[i + 2].strip()
 
         satellite = EarthSatellite(line1, line2, name, ts)  # Converting tle Data in SGP4 Satellite Object
-        sys = getSystemFromSat(satellite, time = time)      # reference system 
+        syst = getSystemFromSat(satellite, t)        # reference system 
         
-        alt, az, distance = sys.altaz()                     # alt : Altitude in degrees relative to the observer
+        alt, az, distance = syst.altaz()                     # alt : Altitude in degrees relative to the observer
                                                             # az : Sat Azimuth Angle relative to the observer
                                                             # distance: distance Sat - Observer
         if alt.degrees > buffer_Phi:
             if alt.degrees > Phi_max:
-                satellites_dome.append((satellite, distance.km))
+                # Satellite in the Dome
+                if not serializable:
+                    satellites_dome.append((satellite, distance.km))
+                else:
+                    satellites_dome.append((satellite, distance.km, (name, line1, line2)))
             else:
-                # Controllo che stia venendo nella mia direzione
-                if filterSatellitesInView(satellite):
+                # Satellite in the Buffer Zone
+                if not serializable:
                     satellites_buffer.append((satellite, distance.km))
+                else:
+                    satellites_buffer.append((satellite, distance.km, (name, line1, line2)))
 
     #Ordino i satelliti in base alla posizione rispetto all'utente
     sat_sort_dome, sat_sort_buff = sorted(satellites_dome, key=lambda x: x[1]), sorted(satellites_buffer, key=lambda x: x[1])
@@ -185,17 +216,75 @@ def getAllSatOnMe(Phi_max = config["Phi_max"], time = time_now, Num_Access_point
     counter, acc_points, dome = 0, [], []
     if Num_Access_point > len(sat_sort_dome):
         Num_Access_point = len(sat_sort_dome) // 2   # Non ci sono abbastanza satelliti da soddisfare la richiesta di Access_point 
-    
-    #Determino Access Points
+        print(f"WARNING: Not enough satellites to satisfy the request. The number of access points has been set to {Num_Access_point}.")
+
+    #Determino Access Points    
     for s in sat_sort_dome:
-        if counter < Num_Access_point and filterSatellitesInView(s[0]):
-            acc_points.append((s[0], s[1]))
+        if counter < Num_Access_point and filterSatellitesInView(s[0], t):
+            if not serializable:
+                acc_points.append((s[0], s[1]))
+            else:
+                acc_points.append((s[0], s[1], s[2]))
             counter+=1
         else:
-            dome.append((s[0], s[1]))
+            if not serializable:
+                dome.append((s[0], s[1]))
+            else:
+                dome.append((s[0], s[1], s[2]))
+
     
+
     return acc_points, dome, sat_sort_buff
 
+
+
+
+
+
+def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
+    """
+    Compute the distances from the target satellite to other satellites.
+
+    :param sat: The target satellite.
+    :param closerSatellite_Sorted: List of satellites sorted by proximity.
+    :param t: Current time.
+
+    :return: List of tuples containing satellites and their distances from the target satellite.
+    """
+    
+    vector_Sat_Topology = []
+    for i in range(0, len(closerSatellite_Sorted)):
+        if are_satellites_equal(sat[0], closerSatellite_Sorted[i][0]):
+            pass
+        else:
+            proximity = get_orbit_proximity(sat[0] , closerSatellite_Sorted[i][0], t)         
+            if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
+                latency = getLatency(proximity)                                                  # Calculate latency
+                vector_Sat_Topology.append((closerSatellite_Sorted[i][0].name, proximity, latency)) 
+
+    sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
+    return sat_vector_Topology_sorted
+
+
+def create_satellite_neighbors_dict(satellite_name, neighbors_info, access_points = False):
+    """
+    Crea un dizionario che rappresenta un satellite e i suoi vicini.
+
+    :param satellite_name: Nome del satellite principale (str).
+    :param neighbors_info: Lista di tuple con (nome_del_vicino, distanza) (list of tuples).
+    :return: Dizionario che rappresenta il satellite e i suoi vicini (dict).
+    """
+    satellite_data = {
+        "satellite": satellite_name[0].name,
+        "distance_from_user": satellite_name[1],
+        "is_access_point": access_points,
+        "TLE-DATA": [{"name": satellite_name[2][0], "line1": satellite_name[2][1], "line2": satellite_name[2][2]}],
+        "neighbors": [
+            {"name": neighbor_name, "distance": distance, "latency": latency}
+            for neighbor_name, distance, latency in neighbors_info
+        ]
+    }
+    return satellite_data
 
 def classifySat_BufferZone(buffer_satellites, time = time_now):
     time_end = ts.utc(time.utc_datetime() + timedelta(minutes=40))

@@ -6,11 +6,12 @@ import simpy
 import time
 import logging
 import threading
-from skyfield.api import EarthSatellite
+import sys
+from skyfield.api import EarthSatellite, load
 
 import experiments
 from SaveCurrentSATOnFile import saveTLEOnFile
-from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, printSatList
+from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time
 
 
 
@@ -18,6 +19,7 @@ def setup_logging(log_file_path):
     logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
 
 simulation_results = []
+config_index = 0 # This parameters allows to iterate over the configurations
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -482,6 +484,8 @@ def task(env, task_id, server, task_priority):
     yield from LocalScheduler(task_id, required_cpu, required_ram, required_disk, server, image_size, Volume_size, restart_time, download_time, task_priority, arrival_time_system, utilization_CPU)
 
 
+
+
 # Dichiarazione di una variabile globale per tenere traccia del prossimo server da selezionare
 next_server_index = 0
 def generate_tasks(env):
@@ -522,7 +526,9 @@ def generate_tasks(env):
         env.process(task(env, task_id, selected_server, task_priority))
         task_id += 1
 
-def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
+
+
+def compute_distances_from_target_sw(sat, closerServer_Sorted, t):
     """
     Compute the distances from the target satellite to other satellites.
 
@@ -534,30 +540,30 @@ def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
     """
     
     vector_Sat_Topology = []
-    for i in range(0, len(closerSatellite_Sorted)):
-        if are_satellites_equal(sat.satellite, closerSatellite_Sorted[i].satellite):
+    for i in range(0, len(closerServer_Sorted)):
+        if are_satellites_equal(sat.satellite, closerServer_Sorted[i].satellite):
             pass
         else:
-            proximity = get_orbit_proximity(sat.get_satellite() , closerSatellite_Sorted[i].get_satellite(), t)         
+            proximity = get_orbit_proximity(sat.get_satellite() , closerServer_Sorted[i].get_satellite(), t)         
             if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
-                vector_Sat_Topology.append((closerSatellite_Sorted[i], proximity)) 
+                vector_Sat_Topology.append((closerServer_Sorted[i], proximity)) 
 
     sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
     return sat_vector_Topology_sorted
 
 #Richiamiamo questa funzione periodicamente per aggiornare la topologia
 def periodic_Recall():
-    global edge_servers
     time.sleep(config["topology_sleeping_time"] * 60)
     edge_servers = create_topology_dome()
 
-def create_topology_dome():
+global_access_point = []
+
+def create_topology_dome(time = get_current_time()):
     
     global global_access_point
-    time = get_current_time()
 
     edge_servers = []
-    acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe(time = time)
+    acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe(time)
     num_sat_dome, num_sat_buffer, num_AP = len(satellites_dome), len(satellites_buffer), len(acc_point)
 
     print(f"Satelliti Considerati TOT: {num_sat_buffer + num_sat_dome + num_AP} AP: {num_AP} DOME: {num_sat_dome} BUFF: {num_sat_buffer} \n")
@@ -580,12 +586,170 @@ def create_topology_dome():
     # Calcola i vicini di ogni server
     for i in range(len(edge_servers)):
         current_server = edge_servers[i]
-        neighbor = compute_distances_from_target_satellite(current_server, edge_servers, time)
+        neighbor = compute_distances_from_target_sw(current_server, edge_servers, time)
         for n in neighbor:
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
         #print(current_server.name)
     return edge_servers
+
+
+
+def createTopology_serializzable_dome( time_top, serializable):
+    """
+        Creates a topology of satellites and access points based on the given time and serializable object.
+
+        Args:
+            time_top (datetime): The time at which to get the satellites and access points.
+            serializable (object): An object that can be serialized to obtain satellite data.
+
+        Returns:
+            list: A combined list of access points, satellites in the dome, and satellites in the buffer.
+
+        Prints:
+            A formatted string showing the time, the number of access points, satellites in the dome, 
+            satellites in the buffer, and the total count of these elements.
+    """
+    acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe(time_top, serializable = serializable)                          #Ottengo i satelliti 
+    print(f"({time_top.utc_datetime().isoformat()}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
+
+    return acc_point + satellites_dome + satellites_buffer
+
+
+
+
+def genConfigs(t0, interval, totSecs):
+    """
+    Generates a list of configurations over a specified time period.
+    Args:
+        t0 (datetime, optional): The initial time for generating configurations. Defaults to the current time.
+        interval (int, optional): The time interval (in seconds) between each configuration. Defaults to 2 minutes.
+        totSecs (int, optional): The total duration (in seconds) for which configurations are generated. Defaults to 21600 seconds (6 hours).
+
+    Returns:
+        list: A list of configurations generated over the specified time period.
+    """
+    t, configs = t0, []                                     # Initialize time and configuration list
+    num_configs = int((totSecs / 60) / (interval / 60))     # Calculate the number of configurations
+    num_access_point = config["access_point"]               # Number of access points
+
+    for elapsed_time in range(0, totSecs, interval):
+        configuration = []
+        topology = createTopology_serializzable_dome( t, True)             # Create the topology
+
+        for i in range(len(topology)):
+            current_server = topology[i]
+            neighbor = compute_distances_from_target_satellite(current_server, topology, t)     # Compute distances to neighbors
+
+            if i < num_access_point:
+                info_sat = create_satellite_neighbors_dict(current_server, neighbor, True)      # Create neighbor info for access points
+            else:
+                info_sat = create_satellite_neighbors_dict(current_server, neighbor, False)     # Create neighbor info for other satellites
+
+            configuration.append(info_sat)  # Save this satellite's configuration
+
+        print(f"Configuration ({elapsed_time // interval}/{num_configs})")
+        print("#" * 70)
+
+        data = {
+            "time": t.utc_datetime().isoformat(),   # Current time in ISO format
+            "configuration": configuration         # List of satellite configurations
+        }
+        configs.append(data)                        # Append the configuration to the list
+        t = advance_time(t, interval / 60)          # Advance time by the interval
+
+    output = {
+        "t0": t0.utc_datetime().isoformat(),        # Initial time in ISO format
+        "interval": interval,                       # Time interval between configurations
+        "total_seconds": totSecs,                   # Total duration for configurations
+        "observer_position": config["simulation_location"],     # Observer's position
+        "configurations": configs                   # List of all configurations
+    }
+
+    # Save the JSON file
+    with open("data/configurations.json", "w") as f:
+        json.dump(output, f, indent=4)
+            
+def loadConfiguration():
+    """
+    Load all configurations from the configurations.json file.
+
+    Returns:
+        list: A list of all configurations loaded from the file.
+    """
+    global config_index, edge_servers, global_access_point
+
+    with open("data/configurations.json", "r") as f:
+        print("Configuration file loaded.")
+        data = json.load(f)
+
+    tot_index_iteration = data["total_seconds"] // data["interval"]
+
+    if config_index > 0:
+        print(f"Loading configuration... {config_index}")
+        # Fai qualcosa
+
+        # Gestione delle iterazioni per le configurazioni
+        if config_index == tot_index_iteration-1:
+            config_index = 0    # ! ATTENZIONE QUI: NON FAI L'INTERSEZIONE MA Ricominci da capo
+            sys.exit("HAI FINITO TUTTE LE CONFIGURAZIONI")
+        else:
+            config_index += 1
+    else:
+        # Prima iterazione
+        configuration = data["configurations"][config_index]
+        print(f"Conf: {config_index} | time : {configuration["time"]}")
+        
+        neighbors_SAT = {}
+        for sat_info in configuration["configuration"]:
+            
+            if sat_info["is_access_point"]:   # Access Point
+                server_id = f"{sat_info["satellite"]}"
+                name = sat_info["TLE-DATA"][0]["name"]
+                line1 = sat_info["TLE-DATA"][0]["line1"]
+                line2 = sat_info["TLE-DATA"][0]["line2"]
+
+                neighbors_SAT[server_id] = sat_info["neighbors"]
+                edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
+                edge_servers.append(edge_server)
+
+                global_access_point.append(edge_server)
+
+            else:                             # Satellite
+                server_id = f"{sat_info["satellite"]}"
+                name = sat_info["TLE-DATA"][0]["name"]
+                line1 = sat_info["TLE-DATA"][0]["line1"]
+                line2 = sat_info["TLE-DATA"][0]["line2"]
+
+                neighbors_SAT[server_id] = sat_info["neighbors"]
+                edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
+                edge_servers.append(edge_server)
+
+        # Crea un dizionario per mappare i nomi dei server agli oggetti EdgeServer
+        server_dict = {server.name: server for server in edge_servers}
+
+        #Aggiungiamo i vicini per ogni elemento
+        for server in edge_servers:
+
+            current_server = server
+            neighbors = neighbors_SAT[current_server.name]
+            for n in neighbors:
+                neighbor_server = server_dict.get(n["name"])
+                current_server.add_neighbor(neighbor_server, 1, n["latency"],
+                                            random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
+    
+        config_index += 1
+
+
+    
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
 
@@ -596,16 +760,30 @@ if __name__ == "__main__":
     hop = 0  # Inizializza la variabile hop a zero
     MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
     total_time = 0  # Imposta il valore iniziale di total_time
-    edge_servers = create_topology_dome()
+    
+    global edge_servers
+    edge_servers = []
+
+    #genConfigs(get_current_time(), 120, 1800)
+    loadConfiguration()
+    #loadConfiguration()
+
+
+
+    #edge_servers = create_topology_dome()
+
+    #sys.exit("STOP")
+
+    # #Gestione del Thread per la creazione della topologia Periodicamente
+    # thread = threading.Thread(target=periodic_Recall)
+    # thread.daemon = True 
+    # thread.start()
 
     initial_server_counter = {server.name: 0 for server in edge_servers}
     different_server_counter = {server.name: 0 for server in edge_servers}
     other_server_counter = {server.name: 0 for server in edge_servers}
 
-    #Gestione del Thread per la creazione della topologia Periodicamente
-    thread = threading.Thread(target=periodic_Recall)
-    thread.daemon = True 
-    thread.start()
+
 
     env.process(generate_tasks(env))
 
