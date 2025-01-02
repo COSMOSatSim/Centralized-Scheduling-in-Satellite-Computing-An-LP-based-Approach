@@ -762,7 +762,7 @@ if __name__ == "__main__":
     total_time = 0  # Imposta il valore iniziale di total_time
     
     global edge_servers
-    edge_servers = []
+    edge_servers = [] ##errore con la variabile globale
 
     #genConfigs(get_current_time(), 120, 1800)
     loadConfiguration()
