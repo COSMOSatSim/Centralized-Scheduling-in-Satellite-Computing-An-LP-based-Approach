@@ -595,7 +595,7 @@ def create_topology_dome(time = get_current_time()):
 
 
 
-def createTopology_serializzable_dome( time_top, serializable):
+def createTopology_serializzable_dome(time_top, serializable):
     """
         Creates a topology of satellites and access points based on the given time and serializable object.
 
@@ -611,8 +611,7 @@ def createTopology_serializzable_dome( time_top, serializable):
             satellites in the buffer, and the total count of these elements.
     """
     acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe(time_top, serializable = serializable)                          #Ottengo i satelliti 
-    print(f"({time_top.utc_datetime().isoformat()}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
-    ###errore utc_datetime()
+    print(f"({time_top}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
     return acc_point + satellites_dome + satellites_buffer
 
 
@@ -635,7 +634,7 @@ def genConfigs(t0, interval, totSecs):
 
     for elapsed_time in range(0, totSecs, interval):
         configuration = []
-        topology = createTopology_serializzable_dome( t, True)             # Create the topology
+        topology = createTopology_serializzable_dome(t, True)             # Create the topology
 
         for i in range(len(topology)):
             current_server = topology[i]
@@ -666,11 +665,43 @@ def genConfigs(t0, interval, totSecs):
         "configurations": configs                   # List of all configurations
     }
 
-    # Save the JSON file
-    with open("data/configurations.json", "w") as f:
-        json.dump(output, f, indent=4)
-        ###errore f
+    # Salva il file JSON
+    try:
+        with open("data/configurations.json", "w") as f:
+            json.dump(output, f, indent=4)
+        print("File salvato correttamente.")
+    except IOError as e:
+        print(f"Errore durante il salvataggio del file: {e}")
             
+
+def build_EdgeServer_from_config(configuration):
+
+    neighbors_SAT, tmp_ES = {}, []
+    for sat_info in configuration["configuration"]:
+
+            if sat_info["is_access_point"]:   # Access Point
+                server_id = f"{sat_info["satellite"]}"
+                name = sat_info["TLE-DATA"][0]["name"]
+                line1 = sat_info["TLE-DATA"][0]["line1"]
+                line2 = sat_info["TLE-DATA"][0]["line2"]
+
+                neighbors_SAT[server_id] = sat_info["neighbors"]
+                edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
+                tmp_ES.append(edge_server)
+
+                global_access_point.append(edge_server)
+            else:                             # Satellite
+                server_id = f"{sat_info["satellite"]}"
+                name = sat_info["TLE-DATA"][0]["name"]
+                line1 = sat_info["TLE-DATA"][0]["line1"]
+                line2 = sat_info["TLE-DATA"][0]["line2"]
+
+                neighbors_SAT[server_id] = sat_info["neighbors"]
+                edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
+                tmp_ES.append(edge_server)
+
+    return tmp_ES, neighbors_SAT
+
 def loadConfiguration():
     """
     Load all configurations from the configurations.json file.
@@ -687,8 +718,13 @@ def loadConfiguration():
     tot_index_iteration = data["total_seconds"] // data["interval"]
 
     if config_index > 0:
-        print(f"Loading configuration... {config_index}")
-        # Fai qualcosa
+
+        configuration = data["configurations"][config_index]
+        B_edge_servers, B_neighbors_SAT = build_EdgeServer_from_config(configuration)
+        
+        
+        B_server_dict = {server.name: server for server in edge_servers} # Crea un dizionario per mappare i nomi dei server agli oggetti EdgeServer
+        # TODO ! Continua qui 
 
         # Gestione delle iterazioni per le configurazioni
         if config_index == tot_index_iteration-1:
@@ -697,39 +733,15 @@ def loadConfiguration():
         else:
             config_index += 1
     else:
-        # Prima iterazione
         configuration = data["configurations"][config_index]
-        print(f"Conf: {config_index} | time : {configuration["time"]}")
-        ###errore SyntaxError: f-string: unmatched '['
+        print(f'Conf: {config_index} | time : {configuration["time"]}')
 
         
-        neighbors_SAT = {}
-        for sat_info in configuration["configuration"]:
-            
-            if sat_info["is_access_point"]:   # Access Point
-                server_id = f"{sat_info["satellite"]}"
-                name = sat_info["TLE-DATA"][0]["name"]
-                line1 = sat_info["TLE-DATA"][0]["line1"]
-                line2 = sat_info["TLE-DATA"][0]["line2"]
-
-                neighbors_SAT[server_id] = sat_info["neighbors"]
-                edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
-                edge_servers.append(edge_server)
-
-                global_access_point.append(edge_server)
-
-            else:                             # Satellite
-                server_id = f"{sat_info["satellite"]}"
-                name = sat_info["TLE-DATA"][0]["name"]
-                line1 = sat_info["TLE-DATA"][0]["line1"]
-                line2 = sat_info["TLE-DATA"][0]["line2"]
-
-                neighbors_SAT[server_id] = sat_info["neighbors"]
-                edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
-                edge_servers.append(edge_server)
-
-        # Crea un dizionario per mappare i nomi dei server agli oggetti EdgeServer
-        server_dict = {server.name: server for server in edge_servers}
+        # TODO | Attenzione devi ricontrollare questa sezione, dato che hai modificato è spostato
+        # TODO | il codice in una funzione esterna. 
+        edge_servers, neighbors_SAT = build_EdgeServer_from_config(configuration)
+        
+        server_dict = {server.name: server for server in edge_servers} # Crea un dizionario per mappare i nomi dei server agli oggetti EdgeServer
 
         #Aggiungiamo i vicini per ogni elemento
         for server in edge_servers:
@@ -764,14 +776,11 @@ if __name__ == "__main__":
     MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
     total_time = 0  # Imposta il valore iniziale di total_time
     
-    global edge_servers
-    edge_servers = [] ##errore con la variabile globale
 
-    #genConfigs(get_current_time(), 120, 1800)
+    #genConfigs(get_current_time(), 120, 1800) # DECOMMENTA QUESTA ISTRUZIONE PER CREARE LE CONFIGURAZIONI E SALVARLE NEL FILE 'configurations.json'
+    
     loadConfiguration()
     #loadConfiguration()
-
-
 
     #edge_servers = create_topology_dome()
 

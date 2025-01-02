@@ -232,8 +232,6 @@ def getAllSatOnMe(t, serializable = False, Phi_max = config["Phi_max"], Num_Acce
             else:
                 dome.append((s[0], s[1], s[2]))
 
-    
-
     return acc_points, dome, sat_sort_buff
 
 
