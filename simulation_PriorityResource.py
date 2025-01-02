@@ -612,7 +612,7 @@ def createTopology_serializzable_dome( time_top, serializable):
     """
     acc_point ,satellites_dome, satellites_buffer = getAllSatOnMe(time_top, serializable = serializable)                          #Ottengo i satelliti 
     print(f"({time_top.utc_datetime().isoformat()}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
-
+    ###errore utc_datetime()
     return acc_point + satellites_dome + satellites_buffer
 
 
@@ -669,6 +669,7 @@ def genConfigs(t0, interval, totSecs):
     # Save the JSON file
     with open("data/configurations.json", "w") as f:
         json.dump(output, f, indent=4)
+        ###errore f
             
 def loadConfiguration():
     """
@@ -699,6 +700,8 @@ def loadConfiguration():
         # Prima iterazione
         configuration = data["configurations"][config_index]
         print(f"Conf: {config_index} | time : {configuration["time"]}")
+        ###errore SyntaxError: f-string: unmatched '['
+
         
         neighbors_SAT = {}
         for sat_info in configuration["configuration"]:
