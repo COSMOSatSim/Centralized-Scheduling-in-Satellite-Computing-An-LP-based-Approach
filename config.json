@@ -1,12 +1,13 @@
 {
-  "simulation_duration": 29,
+   "simulation_duration": 1800,
   "max_try": 5,
   "search_node": 1,
   "seed": 42,
   "access_point": 5,
-  "arrival_time_exponential": 0.0029,
-  "Tmax_H": 0.5,
+  "arrival_time_exponential": 6,
+  "Tmax_H": 5.5,
   "Tmax_L": 0.05,
+
   "CPU_timeout": 0.03,
   "MI": {
     "min": 5000,

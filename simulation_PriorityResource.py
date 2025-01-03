@@ -680,7 +680,7 @@ def build_EdgeServer_from_config(configuration):
     for sat_info in configuration["configuration"]:
 
             if sat_info["is_access_point"]:   # Access Point
-                server_id = f"{sat_info["satellite"]}"
+                server_id = f"{sat_info['satellite']}"
                 name = sat_info["TLE-DATA"][0]["name"]
                 line1 = sat_info["TLE-DATA"][0]["line1"]
                 line2 = sat_info["TLE-DATA"][0]["line2"]
@@ -691,7 +691,7 @@ def build_EdgeServer_from_config(configuration):
 
                 global_access_point.append(edge_server)
             else:                             # Satellite
-                server_id = f"{sat_info["satellite"]}"
+                server_id = f"{sat_info['satellite']}"
                 name = sat_info["TLE-DATA"][0]["name"]
                 line1 = sat_info["TLE-DATA"][0]["line1"]
                 line2 = sat_info["TLE-DATA"][0]["line2"]
