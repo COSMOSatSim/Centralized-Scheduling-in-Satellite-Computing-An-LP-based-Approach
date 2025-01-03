@@ -1,5 +1,5 @@
 {
-   "simulation_duration": 1800,
+  "simulation_duration": 1800,
   "max_try": 5,
   "search_node": 1,
   "seed": 42,
@@ -7,7 +7,6 @@
   "arrival_time_exponential": 6,
   "Tmax_H": 5.5,
   "Tmax_L": 0.05,
-
   "CPU_timeout": {"min": 600, "mean": 900, "max": 1500},
   "MI": {
     "min": 5000,

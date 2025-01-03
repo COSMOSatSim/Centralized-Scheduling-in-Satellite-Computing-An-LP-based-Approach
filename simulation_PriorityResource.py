@@ -225,7 +225,7 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
     if initial_server_counter == 0 and different_server_counter == 0:
         other_server_counter += 1
     logging.debug('Task Assignment')
-    # print('Task Assignment')
+    print('Task Assignment')
     # Azzera il numero di hop
     hop = 0
     lunghezza_coda = len(list(selected_server.server_queue))
@@ -233,56 +233,59 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
     low_priority_tasks = [task for task in list(selected_server.server_queue) if task[4] == 100]
     yield env.timeout(transfer_time)
 
-
     arrival_time_task_queue = env.now
     task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority
 
     selected_server.server_queue.append(task)
 
     with selected_server.process_queue.request(priority=task[4]) as request:
-        # print(f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
+        print(f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
         logging.debug(
             f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
-
-        #print_stats(selected_server)
 
         yield request
         start_time = env.now
         time_in_queue = start_time - arrival_time_task_queue
         # yield env.timeout(utilization_CPU) #deprecated
-        #yield env.timeout(config["CPU_timeout"])  # msec
+
+        #esponenziale con media 15 per CPU timeout
+
         # Valori presi dal file di configurazione (già in secondi)
         mean_seconds = config["CPU_timeout"]["mean"]  # Ad esempio, 900
         min_seconds = config["CPU_timeout"]["min"]  # Ad esempio, 600
         max_seconds = config["CPU_timeout"]["max"]  # Ad esempio, 1500
 
         yield env.timeout(experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds))
+
+        ####da generare 10 task al minuto############
+
+        #yield env.timeout(config["CPU_timeout"])  # msec
+        #yield env.timeout(10)  # msec
+
         end_time = env.now
         execution_time = (end_time - start_time)
         service_time = execution_time + time_in_queue + transfer_time
-        logging.debug(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
-                      f"Arrival Time in System: {arrival_time_system:.2f}, "
-                      f"start time: {start_time:.2f}, "
-                      f"rimasto in coda: {time_in_queue:.2f}, "
-                      f"lascia il sistema in {env.now:.2f}, "
-                      f"execution time {execution_time}, "
-                      f"Service time: {service_time:.2f}")
 
-        '''print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
+        print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
               f"Arrival Time in System: {arrival_time_system:.2f}, "
               f"start time: {start_time:.2f}, "
               f"rimasto in coda: {time_in_queue:.2f}, "
               f"lascia il sistema in {env.now:.2f}, "
               f"execution time {execution_time}, "
-              f"Service time: {service_time:.2f}")'''
+              f"Service time: {service_time:.2f}")
 
         priority_mapping = {100: "low", 1: "high"}
         task_p = priority_mapping.get(task_priority, "NaN")
+        print(task_p)
         if task_p == "low":
+            print(f"Prima aver aggiunto Task {task_id} a completed_tasks")
+
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(low_priority_tasks),
                                            original_TaskPriority, TMAX_exceeded=False)
+            print(f"Dopo aver aggiunto Task {task_id} a completed_tasks")
+
         elif task_p == "high":
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
