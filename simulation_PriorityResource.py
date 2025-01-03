@@ -233,6 +233,7 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
     low_priority_tasks = [task for task in list(selected_server.server_queue) if task[4] == 100]
     yield env.timeout(transfer_time)
 
+
     arrival_time_task_queue = env.now
     task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority
 
@@ -249,7 +250,13 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         start_time = env.now
         time_in_queue = start_time - arrival_time_task_queue
         # yield env.timeout(utilization_CPU) #deprecated
-        yield env.timeout(config["CPU_timeout"])  # msec
+        #yield env.timeout(config["CPU_timeout"])  # msec
+        # Valori presi dal file di configurazione (già in secondi)
+        mean_seconds = config["CPU_timeout"]["mean"]  # Ad esempio, 900
+        min_seconds = config["CPU_timeout"]["min"]  # Ad esempio, 600
+        max_seconds = config["CPU_timeout"]["max"]  # Ad esempio, 1500
+
+        yield env.timeout(experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds))
         end_time = env.now
         execution_time = (end_time - start_time)
         service_time = execution_time + time_in_queue + transfer_time
@@ -782,7 +789,7 @@ if __name__ == "__main__":
     loadConfiguration()
     #loadConfiguration()
 
-    #edge_servers = create_topology_dome()
+    edge_servers = create_topology_dome()
 
     #sys.exit("STOP")
 

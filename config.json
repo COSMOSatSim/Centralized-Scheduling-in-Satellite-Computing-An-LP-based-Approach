@@ -8,7 +8,7 @@
   "Tmax_H": 5.5,
   "Tmax_L": 0.05,
 
-  "CPU_timeout": 0.03,
+  "CPU_timeout": {"min": 600, "mean": 900, "max": 1500},
   "MI": {
     "min": 5000,
     "max": 8000

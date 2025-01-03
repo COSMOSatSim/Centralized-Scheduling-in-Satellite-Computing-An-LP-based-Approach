@@ -111,3 +111,11 @@ def weibull(description):
 
     # print(f'{description} arrival rate distribution: Weibull')
     return arrival_time
+
+
+# Genera un numero con distribuzione esponenziale troncata tra 10 e 25 minuti
+def truncated_exponential(mean, lower, upper):
+    while True:
+        value = np.random.exponential(scale=mean)
+        if lower <= value <= upper:
+            return value
