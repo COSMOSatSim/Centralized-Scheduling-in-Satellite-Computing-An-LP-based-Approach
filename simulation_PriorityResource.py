@@ -18,7 +18,11 @@ from user_based_topology import get_orbit_proximity, get_current_time, getLatenc
 def setup_logging(log_file_path):
     logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
 
+# Gestione thread
 lock = threading.Lock() # Meccanismo di lock
+edge_servers_ready = threading.Event() # Aggiungi un evento per la sincronizzazione
+
+
 simulation_results = []
 config_index = 0 # This parameters allows to iterate over the configurations
 
@@ -740,10 +744,13 @@ def build_EdgeServer_from_config(configuration):
 def periodic_Recall():
     while True:
         print("\nMODIFICA CONFIGURAZIONE IN CORSO...\n")
-        loadConfiguration() #Carica la configurazione
+
+        loadConfiguration() # Carica la configurazione
+        edge_servers_ready.set() # Notifica che la variabile è pronta
+
         print("MODIFICA CONFIGURAZIONE COMPLETATA\n\n")
         #time.sleep(config["topology_sleeping_time"] * 60)
-        time.sleep(4)
+        time.sleep(2)
     
 
 
@@ -888,13 +895,11 @@ if __name__ == "__main__":
     thread.daemon = True 
     thread.start()
 
-    time.sleep(1)
-
+    edge_servers_ready.wait()   # Aspetta che i server siano pronti
 
     initial_server_counter = {server.name: 0 for server in edge_servers}
     different_server_counter = {server.name: 0 for server in edge_servers}
     other_server_counter = {server.name: 0 for server in edge_servers}
-
 
 
     env.process(generate_tasks(env))
