@@ -18,12 +18,14 @@ from user_based_topology import get_orbit_proximity, get_current_time, getLatenc
 def setup_logging(log_file_path):
     logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
 
+lock = threading.Lock() # Meccanismo di lock
 simulation_results = []
 config_index = 0 # This parameters allows to iterate over the configurations
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
     config = json.load(config_file)
+
 
 class EdgeServer:
     def __init__(self, env, name, satellite : EarthSatellite):
@@ -78,6 +80,21 @@ class EdgeServer:
         self.neighbors[neighbor_server] = hop_count
         self.latency[neighbor_server] = latency
         self.bandwidth[neighbor_server] = bandwidth
+    
+    def update_neighbors(self, new_neighbors, new_latency, new_bandwidth):
+        """
+        Update the neighbors, latency, and bandwidth of the edge server.
+
+        :param new_neighbors: Dictionary of new neighbors and their hop counts.
+        :param new_latency: Dictionary of new latencies to the neighbors.
+        :param new_bandwidth: Dictionary of new bandwidths to the neighbors.
+
+        :return: None
+        """
+        self.neighbors = new_neighbors
+        self.latency = new_latency
+        self.bandwidth = new_bandwidth
+
 
     def get_neighbors(self):
         '''
@@ -561,10 +578,7 @@ def compute_distances_from_target_sw(sat, closerServer_Sorted, t):
     sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
     return sat_vector_Topology_sorted
 
-#Richiamiamo questa funzione periodicamente per aggiornare la topologia
-def periodic_Recall():
-    time.sleep(config["topology_sleeping_time"] * 60)
-    edge_servers = create_topology_dome()
+
 
 global_access_point = []
 
@@ -598,6 +612,7 @@ def create_topology_dome(time = get_current_time()):
         current_server = edge_servers[i]
         neighbor = compute_distances_from_target_sw(current_server, edge_servers, time)
         for n in neighbor:
+            print(type(n[0]), " n -> ", n[0])
             current_server.add_neighbor(n[0], 1, getLatency(n[1]), 
                                         random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
         #print(current_server.name)
@@ -685,10 +700,11 @@ def genConfigs(t0, interval, totSecs):
             
 
 def build_EdgeServer_from_config(configuration):
-
+    global global_access_point, ne
+    
     neighbors_SAT, tmp_ES = {}, []
-    for sat_info in configuration["configuration"]:
-
+    
+    for sat_info in configuration["configuration"]: 
             if sat_info["is_access_point"]:   # Access Point
                 server_id = f"{sat_info['satellite']}"
                 name = sat_info["TLE-DATA"][0]["name"]
@@ -698,8 +714,14 @@ def build_EdgeServer_from_config(configuration):
                 neighbors_SAT[server_id] = sat_info["neighbors"]
                 edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
                 tmp_ES.append(edge_server)
+                
 
-                global_access_point.append(edge_server)
+                if config_index == 0:
+                    global_access_point.append(edge_server)
+                else:
+                    with lock:
+                        global_access_point[next_server_index] = edge_server
+                
             else:                             # Satellite
                 server_id = f"{sat_info['satellite']}"
                 name = sat_info["TLE-DATA"][0]["name"]
@@ -712,6 +734,19 @@ def build_EdgeServer_from_config(configuration):
 
     return tmp_ES, neighbors_SAT
 
+
+
+#Richiamiamo questa funzione periodicamente per aggiornare la topologia
+def periodic_Recall():
+    while True:
+        print("\nMODIFICA CONFIGURAZIONE IN CORSO...\n")
+        loadConfiguration() #Carica la configurazione
+        print("MODIFICA CONFIGURAZIONE COMPLETATA\n\n")
+        #time.sleep(config["topology_sleeping_time"] * 60)
+        time.sleep(4)
+    
+
+
 def loadConfiguration():
     """
     Load all configurations from the configurations.json file.
@@ -719,38 +754,95 @@ def loadConfiguration():
     Returns:
         list: A list of all configurations loaded from the file.
     """
-    global config_index, edge_servers, global_access_point
+    global config_index, global_access_point, server_dict, edge_servers
 
+    #Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
     with open("data/configurations.json", "r") as f:
-        print("Configuration file loaded.")
-        data = json.load(f)
+        print("Configuration file loaded.\n")
+        data_configurations = json.load(f)
 
-    tot_index_iteration = data["total_seconds"] // data["interval"]
+    tot_index_iteration = data_configurations["total_seconds"] // data_configurations["interval"]
 
-    if config_index > 0:
+    if config_index > 0:        
+        configuration = data_configurations["configurations"][config_index]
+        print(f'Conf: {config_index} | time : {configuration["time"]} \n')
 
-        configuration = data["configurations"][config_index]
-        B_edge_servers, B_neighbors_SAT = build_EdgeServer_from_config(configuration)
+        C_edge_server = []
         
+        B_edge_servers, B_neighbors_SAT = build_EdgeServer_from_config(configuration) 
+
+        B_edge_servers_dict = {server.name: server for server in B_edge_servers}    # Dizionario dei server di B
+        A_server_dict = {server.name: server for server in edge_servers}            # Dizionario dei server di A
+
+        count_server, intersection = 0, 0
+        for b_server in B_edge_servers:
+            if count_server < config["access_point"]:                       # Se il server è un access point
+                if b_server.name in A_server_dict:                          # Controllo che questo Access_point sia anche in A
+                    C_edge_server.append(A_server_dict[b_server.name])      # Prendo il Server nello stato in cui è salvato in A
+                    intersection += 1
+                    #print(f"GROUP A : {A_server_dict[b_server.name].name} - Access Point")
+                else:
+                    C_edge_server.append(b_server)                          # Prendo il Server nello stato in cui è salvato in B 
+                    #print(f"GROUP B : {b_server} - Access Point")
+                count_server += 1
+            else:                                                           # Se non è un Access Point
+                if b_server.name in A_server_dict:                          # Controllo che questo Satellite sia anche in A
+                    C_edge_server.append(A_server_dict[b_server.name])      # Prendo il Server nello stato in cui è salvato in A
+                    intersection += 1
+                    #print("GROUP A : ", A_server_dict[b_server.name].name)
+                else:
+                    C_edge_server.append(b_server)                          # Prendo il Server nello stato in cui è salvato in B
+                    #print("GROUP B : ", b_server.name)
         
-        B_server_dict = {server.name: server for server in edge_servers} # Crea un dizionario per mappare i nomi dei server agli oggetti EdgeServer
-        # TODO ! Continua qui 
+        print(f'Numero Server Configurazioni (old)->(new):\n\t (old)Edge_Server: {len(edge_servers)} | (new)Edge_Server: {len(B_edge_servers)} | Intersection: {intersection}\n')
+        
+        # ? Costruzione del dizionario per salvare le informazioni dei server e dei loro vicini
+        diz_info_C_edge_server = {}
+        for elem in C_edge_server:   
+            neighbor, neighbors = {}, []
+            for neighbor in B_neighbors_SAT[elem.name]:
+                neighbor = { 
+                    'server': B_edge_servers_dict[neighbor['name']],
+                    'latency': neighbor['latency'] 
+                }
+                neighbors.append(neighbor)
+
+            diz_info_C_edge_server[elem.name] = {
+                "obj":elem,
+                "neighbors": neighbors
+            }
+        
+        # ? Inserisco i vicini per ogni Edge_server
+        for server in C_edge_server:
+            hop_neighbors, latency, bandwidth = {}, {}, {}
+            info = diz_info_C_edge_server[server.name]
+            for neighbor in info["neighbors"]:
+                hop_neighbors[neighbor['server']] =  1                  # hop
+                latency[neighbor['server']] = neighbor['latency']       # latency
+                bandwidth[neighbor['server']] = random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"])  # bandwidth
+
+            # ? Aggiungo i dizionari riguardanti i vicini ai rispettivi server
+            server.update_neighbors(hop_neighbors, latency, bandwidth)
+
+        #[print(f"Server: {server}\n") for server in C_edge_server]
+
+        # ! Meccanismo di Lock
+        with lock:
+            edge_servers = C_edge_server
 
         # Gestione delle iterazioni per le configurazioni
         if config_index == tot_index_iteration-1:
             config_index = 0    # ! ATTENZIONE QUI: NON FAI L'INTERSEZIONE MA Ricominci da capo
-            sys.exit("HAI FINITO TUTTE LE CONFIGURAZIONI")
+            #sys.exit("HAI FINITO TUTTE LE CONFIGURAZIONI")
         else:
             config_index += 1
     else:
-        configuration = data["configurations"][config_index]
-        print(f'Conf: {config_index} | time : {configuration["time"]}')
+        configuration = data_configurations["configurations"][config_index]
+        print(f'Conf: {config_index} | time : {configuration["time"]}\n')
 
         
-        # TODO | Attenzione devi ricontrollare questa sezione, dato che hai modificato è spostato
-        # TODO | il codice in una funzione esterna. 
         edge_servers, neighbors_SAT = build_EdgeServer_from_config(configuration)
-        
+            
         server_dict = {server.name: server for server in edge_servers} # Crea un dizionario per mappare i nomi dei server agli oggetti EdgeServer
 
         #Aggiungiamo i vicini per ogni elemento
@@ -761,8 +853,8 @@ def loadConfiguration():
             for n in neighbors:
                 neighbor_server = server_dict.get(n["name"])
                 current_server.add_neighbor(neighbor_server, 1, n["latency"],
-                                            random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-    
+                                                random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
+        
         config_index += 1
 
 
@@ -786,20 +878,18 @@ if __name__ == "__main__":
     MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
     total_time = 0  # Imposta il valore iniziale di total_time
     
-
-    #genConfigs(get_current_time(), 120, 1800) # DECOMMENTA QUESTA ISTRUZIONE PER CREARE LE CONFIGURAZIONI E SALVARLE NEL FILE 'configurations.json'
-    
-    loadConfiguration()
-    #loadConfiguration()
-
-    edge_servers = create_topology_dome()
+    # DECOMMENTA QUESTA ISTRUZIONE PER CREARE LE CONFIGURAZIONI E SALVARLE NEL FILE 'configurations.json'
+    #genConfigs(get_current_time(), 120, 1800) 
 
     #sys.exit("STOP")
 
-    # #Gestione del Thread per la creazione della topologia Periodicamente
-    # thread = threading.Thread(target=periodic_Recall)
-    # thread.daemon = True 
-    # thread.start()
+    #Gestione del Thread per la creazione della topologia Periodicamente
+    thread = threading.Thread(target=periodic_Recall)
+    thread.daemon = True 
+    thread.start()
+
+    time.sleep(1)
+
 
     initial_server_counter = {server.name: 0 for server in edge_servers}
     different_server_counter = {server.name: 0 for server in edge_servers}
