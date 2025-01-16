@@ -8,10 +8,8 @@ import logging
 import threading
 import sys
 from skyfield.api import EarthSatellite, load
-
 import experiments
 from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time
-
 
 
 def setup_logging(log_file_path):
@@ -19,7 +17,6 @@ def setup_logging(log_file_path):
 
 # Gestione thread
 lock = threading.Lock() # Meccanismo di lock
-
 
 simulation_results = []
 config_index = 0 # This parameters allows to iterate over the configurations
@@ -74,6 +71,8 @@ class EdgeServer:
 
                 :return: None
                 '''
+        print(f"Completamento Task {task_id}: Start {start_time}, End {end_time}")
+
         self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time, execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda, original_TaskPriority, TMAX_exceeded))
 
     def add_neighbor(self, neighbor_server, hop_count, latency, bandwidth):
@@ -289,7 +288,11 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         #yield env.timeout(10)  # msec
 
         end_time = env.now
-        execution_time = (end_time - start_time)
+        execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
+        print("execution time task assignment",execution_time, 'task', task_id)
+
+
+        #execution_time = (end_time - start_time)
         service_time = execution_time + time_in_queue + transfer_time
 
         print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
@@ -302,16 +305,12 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
 
         priority_mapping = {100: "low", 1: "high"}
         task_p = priority_mapping.get(task_priority, "NaN")
-        print(task_p)
         if task_p == "low":
-            print(f"Prima aver aggiunto Task {task_id} a completed_tasks")
 
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(low_priority_tasks),
                                            original_TaskPriority, TMAX_exceeded=False)
-            print(f"Dopo aver aggiunto Task {task_id} a completed_tasks")
-
         elif task_p == "high":
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
@@ -520,8 +519,6 @@ def task(env, task_id, server, task_priority):
     yield from LocalScheduler(task_id, required_cpu, required_ram, required_disk, server, image_size, Volume_size, restart_time, download_time, task_priority, arrival_time_system, utilization_CPU)
 
 
-
-
 # Dichiarazione di una variabile globale per tenere traccia del prossimo server da selezionare
 next_server_index = 0
 def generate_tasks(env):
@@ -557,12 +554,10 @@ def generate_tasks(env):
         priority_combination = experiments.priority_combination(*priority_combination_values)
 
         task_priority = priority_combination
-        #print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
+        print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
 
         env.process(task(env, task_id, selected_server, task_priority))
         task_id += 1
-
-
 
 def compute_distances_from_target_sw(sat, closerServer_Sorted, t):
     """
@@ -586,8 +581,6 @@ def compute_distances_from_target_sw(sat, closerServer_Sorted, t):
 
     sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
     return sat_vector_Topology_sorted
-
-
 
 global_access_point = []
 
@@ -649,9 +642,6 @@ def createTopology_serializzable_dome(time_top, serializable):
     print(f"({time_top.utc_strftime('%Y-%m-%d %H:%M:%S')}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
     return acc_point + satellites_dome + satellites_buffer
 
-
-
-
 def genConfigs(t0, interval, num_configs):
     """
     Generates a list of configurations over a specified time period.
@@ -712,7 +702,6 @@ def genConfigs(t0, interval, num_configs):
 def build_EdgeServer_from_config(configuration):
     global global_access_point, ne
     neighbors_SAT, tmp_ES = {}, []
-
     
     for sat_info in configuration["configuration"]: 
             server_id = f"{sat_info['satellite']}"
@@ -732,7 +721,6 @@ def build_EdgeServer_from_config(configuration):
     print("####################")
     return tmp_ES, neighbors_SAT
 
-
 def periodic_recall_monitor(env):
     while True:
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
@@ -743,133 +731,97 @@ def periodic_recall_monitor(env):
         loadConfiguration() # Carica la configurazione
         print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
 
+def update_counters_dictionary(edge_servers, initial_server_counter, different_server_counter, other_server_counter):
+    """
+    Aggiunge nuovi server ai dizionari dei contatori o li inizializza.
 
+    Args:
+        edge_servers (list): Lista attuale di server.
+        initial_server_counter (dict): Dizionario per il contatore iniziale dei server.
+        different_server_counter (dict): Dizionario per il contatore dei server diversi.
+        other_server_counter (dict): Dizionario per il contatore degli altri server.
 
-def update_counters_dictionary(edge_server):
-    global initial_server_counter, different_server_counter, other_server_counter
-    print(f"(+) Adding {edge_server.name} to the counters dictionary")
+    Returns:
+        None: Aggiorna i dizionari in-place.
+    """
+    for server in edge_servers:
+        if server.name not in initial_server_counter:
+            initial_server_counter[server.name] = 0
+        if server.name not in different_server_counter:
+            different_server_counter[server.name] = 0
+        if server.name not in other_server_counter:
+            other_server_counter[server.name] = 0
 
-    initial_server_counter[edge_server.name] = 0
-    different_server_counter[edge_server.name] = 0
-    other_server_counter[edge_server.name] = 0
+def update_servers(edge_servers, new_servers):
+    """
+    Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
+
+    Args:
+        edge_servers (list): Lista di server esistenti (da mantenere).
+        new_servers (list): Lista di nuovi server dalla nuova configurazione.
+
+    Returns:
+        None: La funzione aggiorna la lista edge_servers in-place.
+    """
+    # Crea un dizionario per i server esistenti basato sul nome
+    existing_servers = {server.name: server for server in edge_servers}
+
+    for new_server in new_servers:
+        if new_server.name in existing_servers:
+            # Aggiorna i dati dell'istanza esistente
+            existing_server = existing_servers[new_server.name]
+            existing_server.update_neighbors(
+                new_server.neighbors, new_server.latency, new_server.bandwidth
+            )
+        else:
+            # Aggiungi il nuovo server
+            edge_servers.append(new_server)
 
 def loadConfiguration():
     """
-    Load all configurations from the configurations.json file.
+    Carica una configurazione dal file e aggiorna la lista edge_servers senza sostituirla completamente.
 
     Returns:
-        list: A list of all configurations loaded from the file.
+        None
     """
-    global config_index, global_access_point, server_dict, edge_servers
+    global config_index, global_access_point, edge_servers
 
+    #tot_index_iteration = data_configurations["total_seconds"] // data_configurations["interval"]
 
-    tot_index_iteration = data_configurations["total_seconds"] // data_configurations["interval"]
-
-    if config_index > 0:        
-        print("#"*30)
+    if config_index > 0:
+        print("#" * 30)
         configuration = data_configurations["configurations"][config_index]
         print(f'Conf: {config_index} | time : {configuration["time"]}')
 
-        C_edge_server = []
-        
-        B_edge_servers, B_neighbors_SAT = build_EdgeServer_from_config(configuration) 
+        # Costruisci i nuovi server dalla configurazione
+        new_servers, new_neighbors = build_EdgeServer_from_config(configuration)
 
-        B_edge_servers_dict = {server.name: server for server in B_edge_servers}    # Dizionario dei server di B
-        A_server_dict = {server.name: server for server in edge_servers}            # Dizionario dei server di A
+        # Aggiorna i server esistenti invece di sostituirli
+        update_servers(edge_servers, new_servers)
+        update_counters_dictionary(edge_servers, initial_server_counter, different_server_counter, other_server_counter)
 
-        count_server, intersection = 0, 0
-        for b_server in B_edge_servers:
-            if count_server < config["access_point"]:                       # Se il server è un access point
-                if b_server.name in A_server_dict:                          # Controllo che questo Access_point sia anche in A
-                    C_edge_server.append(A_server_dict[b_server.name])      # Prendo il Server nello stato in cui è salvato in A
-                    intersection += 1
-                    #print(f"GROUP A : {A_server_dict[b_server.name].name} - Access Point")
-                else:
-                    C_edge_server.append(b_server)                          # Prendo il Server nello stato in cui è salvato in B 
-                    update_counters_dictionary(b_server)                    # Aggiorno i Dizionari
-                    #print(f"GROUP B : {b_server} - Access Point")
-                count_server += 1
-            else:                                                           # Se non è un Access Point
-                if b_server.name in A_server_dict:                          # Controllo che questo Satellite sia anche in A
-                    C_edge_server.append(A_server_dict[b_server.name])      # Prendo il Server nello stato in cui è salvato in A
-                    intersection += 1
-                    #print("GROUP A : ", A_server_dict[b_server.name].name)
-                else:
-                    C_edge_server.append(b_server)                          # Prendo il Server nello stato in cui è salvato in B
-                    update_counters_dictionary(b_server)                    # Aggiorno i Dizionari
-                    #print("GROUP B : ", b_server.name)
-        
-        print(f'\t(old)Edge_Server: {len(edge_servers)} | (new)Edge_Server: {len(B_edge_servers)} | Intersection: {intersection}\n')
-        
-        # Costruzione del dizionario per salvare le informazioni dei server e dei loro vicini
-        diz_info_C_edge_server = {}
-        for elem in C_edge_server:   
-            neighbor, neighbors = {}, []
-            for neighbor in B_neighbors_SAT[elem.name]:
-                neighbor = { 
-                    'server': B_edge_servers_dict[neighbor['name']],
-                    'latency': neighbor['latency'] 
-                }
-                neighbors.append(neighbor)
+        # Stampa per debug
+        print(f"Configurazione aggiornata. Totale server: {len(edge_servers)}")
+        print(f"Server aggiornati: {[server.name for server in edge_servers]}")
 
-            diz_info_C_edge_server[elem.name] = {
-                "obj":elem,
-                "neighbors": neighbors
-            }
-        
-        # Inserisco i vicini per ogni Edge_server
-        for server in C_edge_server:
-            hop_neighbors, latency, bandwidth = {}, {}, {}
-            info = diz_info_C_edge_server[server.name]
-            for neighbor in info["neighbors"]:
-                hop_neighbors[neighbor['server']] =  1                  
-                latency[neighbor['server']] = neighbor['latency']       
-                bandwidth[neighbor['server']] = random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]) 
-
-            # Aggiungo i dizionari riguardanti i vicini ai rispettivi server
-            server.update_neighbors(hop_neighbors, latency, bandwidth)
-
-        
-        with lock: # ! Meccanismo di Lock
-            edge_servers = C_edge_server
-
-        # Gestione delle iterazioni per le configurazioni
-        if config_index == config["Number_of_Configurations"]-1:
+        # Incrementa l'indice di configurazione
+        if config_index == config["Number_of_Configurations"] - 1:
             print("(!) Hai finito le configurazioni")
-            #sys.exit("HAI FINITO TUTTE LE CONFIGURAZIONI")
         else:
             config_index += 1
     else:
+        # Caricamento iniziale della configurazione
         configuration = data_configurations["configurations"][config_index]
-        print(f'Conf: {config_index} | time : {configuration["time"]}\n')
+        print(f'Conf: {config_index} | time : {configuration["time"]}')
 
-         
-        edge_servers, neighbors_SAT = build_EdgeServer_from_config(configuration) # Costruisco la prima configurazione  
-            
-        server_dict = {server.name: server for server in edge_servers} # Crea un dizionario per mappare i nomi dei server agli oggetti EdgeServer
+        # Costruisci i server iniziali
+        edge_servers, neighbors_SAT = build_EdgeServer_from_config(configuration)
 
-        #Aggiungiamo i vicini per ogni elemento
-        for server in edge_servers:
+        # Stampa per debug
+        print(f"Configurazione iniziale caricata. Totale server: {len(edge_servers)}")
 
-            current_server = server
-            neighbors = neighbors_SAT[current_server.name]
-            for n in neighbors:
-                neighbor_server = server_dict.get(n["name"])
-                current_server.add_neighbor(neighbor_server, 1, n["latency"],
-                                                random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
-            
+        # Incrementa l'indice di configurazione
         config_index += 1
-
-
-    
-
-
-
-
-
-
-
-
 
 if __name__ == "__main__":
 
@@ -877,22 +829,24 @@ if __name__ == "__main__":
 
     # Setup and start the simulation
     random.seed(config["seed"])
-    
+
     env = simpy.Environment()
     hop = 0  # Inizializza la variabile hop a zero
     MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
     total_time = 0  # Imposta il valore iniziale di total_time
-    
-    
+
     if config["Build_Configurations"]:  # Gestione costruizione configurazioni
-        genConfigs(get_current_time(), config["Interval_between_Configurations_in_seconds"], config["Number_of_Configurations"]) 
-        config["Build_Configurations"] = False  
-        with open('config.json', 'w') as f:     
-            json.dump(config, f, indent = 1)
+        genConfigs(get_current_time(), config["Interval_between_Configurations_in_seconds"], config["Number_of_Configurations"])
+        config["Build_Configurations"] = False
+        try:
+            with open('config.json', 'w') as f:
+                json.dump(config, f, indent=1)
+        except IOError as e:
+            print(f"Errore nella scrittura del file di configurazione: {e}")
+            sys.exit(1)  # Termina lo script
 
         sys.exit("File of configurations created")
 
-    
     if config["Load_Configuration"]:
         print("Carico le configurazioni dal File")
         loadConfiguration() # Carico la prima configurazione
@@ -904,14 +858,13 @@ if __name__ == "__main__":
     initial_server_counter = {server.name: 0 for server in edge_servers}
     different_server_counter = {server.name: 0 for server in edge_servers}
     other_server_counter = {server.name: 0 for server in edge_servers}
-    
+
     env.process(generate_tasks(env))
-    
 
     end_time = time.time()    # Tempo finale
 
     network_type = config["network_type"]["type"]  # open / close
-    
+
     # Costruisce il nome del file CSV
     # Ottiene i valori di priority_combination e generate_tasks
     priority_distribution = config["priority_combination"]["distribution"]
@@ -958,6 +911,7 @@ if __name__ == "__main__":
                     original_TaskPriority = 'high'
                 else:
                     original_TaskPriority = 'low'
+
                 writer.writerow(
                     [task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                      execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
@@ -965,13 +919,14 @@ if __name__ == "__main__":
             for task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority in server.server_queue:
                 TMAX_exceeded = False
                 if task_priority == 1 or original_TaskPriority == 1:
+                    print('executiontime', execution_time, 'task id', task_id, 'utilization', utilization_CPU)
                     writer.writerow(
-                        [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, utilization_CPU,
+                        [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
                          num_hops, len(list(server.server_queue)), 'high', TMAX_exceeded])
                 else:
                     writer.writerow(
-                        [task_id, 'low', arrival_time_system, arrival_time_task_queue, 0, 0, utilization_CPU,
+                        [task_id, 'low', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
                          num_hops, len(list(server.server_queue)), 'low', TMAX_exceeded])
                 # il task salvato in coda ha i seguenti parametri nel seguente ordine:
@@ -979,37 +934,38 @@ if __name__ == "__main__":
 
     print(f"Simulation results saved to: {csv_file}")
     print('R_j user', initial_server_counter, 'F_j other', different_server_counter, 'R_j other', other_server_counter)
-    I_j = []
-    F_j = []
 
-    # Loop over the keys of the dictionaries
-    for server_name in other_server_counter:
-        numerator = other_server_counter[server_name]
-        denominator = sum(different_server_counter.values())
-        I_j.append(numerator / denominator if denominator > 0 else 0)
+    # Compute statistics for the results
+    I_j = {}
+    for server_key in other_server_counter.keys():  # Iterate over dictionary keys
+        numerator = other_server_counter[server_key]
+        denominator = sum(different_server_counter.values())  # Sum all values
+        if denominator != 0:
+            I_j[server_key] = numerator / denominator
+        else:
+            I_j[server_key] = 0  # Avoid division by zero
 
-    for server_name in different_server_counter:
-        numerator = different_server_counter[server_name]
-        denominator = initial_server_counter[server_name] + other_server_counter[server_name]
-        F_j.append(numerator / denominator if denominator > 0 else 0)
+    F_j = {}
+    for server_key in other_server_counter.keys():  # Iterate over dictionary keys
+        numerator = different_server_counter[server_key]
+        denominator = initial_server_counter[server_key] + other_server_counter[server_key]
+        if denominator != 0:
+            F_j[server_key] = numerator / denominator
+        else:
+            F_j[server_key] = 0  # Avoid division by zero
 
     # Print results
     print("I_j:", I_j)
     print("F_j:", F_j)
-
     # Write data to CSV file
     with open(csv_name_server, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Server', 'R_j_user', 'F_j_other', 'R_j_other', 'I_j', 'F_j'])
-        for server_name in initial_server_counter:
-            writer.writerow([
-                server_name,
-                initial_server_counter[server_name],
-                different_server_counter[server_name],
-                other_server_counter[server_name],
-                I_j.pop(0),
-                F_j.pop(0)
-            ])
+        for server_key in initial_server_counter.keys():
+            writer.writerow(
+                [server_key, initial_server_counter[server_key], different_server_counter[server_key],
+                 other_server_counter[server_key], I_j.get(server_key, 0), F_j.get(server_key, 0)]
+            )
 
     print(f"Data of migration server saved to {csv_name_server} ")
 
