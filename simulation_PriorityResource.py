@@ -719,6 +719,7 @@ def build_EdgeServer_from_config(configuration):
         global_access_point = tmp_ES[:config["access_point"]]  
     [print(f"({i})-{global_access_point[i].name}") for i in range(config["access_point"])]         
     print("####################")
+
     return tmp_ES, neighbors_SAT
 
 def periodic_recall_monitor(env):
@@ -731,7 +732,7 @@ def periodic_recall_monitor(env):
         loadConfiguration() # Carica la configurazione
         print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
 
-def update_counters_dictionary(edge_servers, initial_server_counter, different_server_counter, other_server_counter):
+def update_counters_dictionary(all_server, initial_server_counter, different_server_counter, other_server_counter):
     """
     Aggiunge nuovi server ai dizionari dei contatori o li inizializza.
 
@@ -744,13 +745,13 @@ def update_counters_dictionary(edge_servers, initial_server_counter, different_s
     Returns:
         None: Aggiorna i dizionari in-place.
     """
-    for server in edge_servers:
-        if server.name not in initial_server_counter:
-            initial_server_counter[server.name] = 0
-        if server.name not in different_server_counter:
-            different_server_counter[server.name] = 0
-        if server.name not in other_server_counter:
-            other_server_counter[server.name] = 0
+    for server_name in all_server:
+        if server_name not in initial_server_counter:
+            initial_server_counter[server_name] = 0
+        if server_name not in different_server_counter:
+            different_server_counter[server_name] = 0
+        if server_name not in other_server_counter:
+            other_server_counter[server_name] = 0
 
 def update_servers(edge_servers, new_servers):
     """
@@ -761,21 +762,65 @@ def update_servers(edge_servers, new_servers):
         new_servers (list): Lista di nuovi server dalla nuova configurazione.
 
     Returns:
-        None: La funzione aggiorna la lista edge_servers in-place.
+        dict: Dizionario aggiornato dei server.
     """
     # Crea un dizionario per i server esistenti basato sul nome
-    existing_servers = {server.name: server for server in edge_servers}
+    old_servers = {server.name: server for server in edge_servers}
+    new_servers = {server.name: server for server in new_servers}
 
-    for new_server in new_servers:
-        if new_server.name in existing_servers:
-            # Aggiorna i dati dell'istanza esistente
-            existing_server = existing_servers[new_server.name]
-            existing_server.update_neighbors(
-                new_server.neighbors, new_server.latency, new_server.bandwidth
-            )
-        else:
-            # Aggiungi il nuovo server
-            edge_servers.append(new_server)
+    # Dizionari per i risultati
+    intersection = {name: server for name, server in new_servers.items() if name in old_servers}    # Servers nell'intersezione
+    A = {name: server for name, server in old_servers.items() if name not in new_servers}           # Server che sono tramontati
+    B = {name: server for name, server in new_servers.items() if name not in old_servers}           # Server che non sono sorti
+
+    return intersection, A, B
+
+def update_servers_neighbors(servers_dict, neighbors_SAT):
+    """
+    Updates the neighbors of each server in the servers_dict based on the provided neighbors_SAT information.
+    Args:
+        servers_dict (dict): A dictionary where keys are server names and values are server objects.
+        neighbors_SAT (dict): A dictionary where keys are server names and values are lists of dictionaries 
+                              containing neighbor information with 'name' and 'latency' keys.
+    Returns:
+        dict: The updated servers_dict with neighbors information added to each server.
+    The function performs the following steps:
+    1. Constructs a dictionary (servers_updated_neighbors) to store updated neighbor information for each server.
+    2. Iterates through each server in servers_dict and updates its neighbors based on neighbors_SAT.
+    3. For each server, it creates dictionaries for hop_neighbors, latency, and bandwidth.
+    4. Updates each server's neighbors using the update_neighbors method with the constructed dictionaries.
+    """
+    servers_updated_neighbors = {}  # Dizionario per i server con i vicini aggiornati
+
+    # Costruzione del dizionario per salvare le informazioni dei server e dei loro vicini
+    for k, v in servers_dict.items():   
+        neighbor, neighbors = {}, []
+        for neighbor in neighbors_SAT[k]:
+            neighbor = { 
+                'server': servers_dict[neighbor['name']],
+                'latency': neighbor['latency'] 
+            }
+            neighbors.append(neighbor)
+
+        servers_updated_neighbors[k] = {
+            "obj":v,
+            "neighbors": neighbors
+        }
+
+    # Inserisco i vicini per ogni Edge_server
+    for name, server in servers_dict.items():
+        hop_neighbors, latency, bandwidth = {}, {}, {}
+        info = servers_updated_neighbors[name]
+        
+        for neighbor in info["neighbors"]:
+            hop_neighbors[neighbor['server']] =  1                  
+            latency[neighbor['server']] = neighbor['latency']       
+            bandwidth[neighbor['server']] = random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]) 
+
+        # Aggiungo i dizionari riguardanti i vicini ai rispettivi server
+        server.update_neighbors(hop_neighbors, latency, bandwidth)
+
+    return servers_dict
 
 def loadConfiguration():
     """
@@ -786,23 +831,28 @@ def loadConfiguration():
     """
     global config_index, global_access_point, edge_servers
 
-    #tot_index_iteration = data_configurations["total_seconds"] // data_configurations["interval"]
-
     if config_index > 0:
         print("#" * 30)
         configuration = data_configurations["configurations"][config_index]
         print(f'Conf: {config_index} | time : {configuration["time"]}')
+        print(f"In Aggiornamento edge_servers. Totale server: {len(edge_servers)}")
 
         # Costruisci i nuovi server dalla configurazione
         new_servers, new_neighbors = build_EdgeServer_from_config(configuration)
 
-        # Aggiorna i server esistenti invece di sostituirli
-        update_servers(edge_servers, new_servers)
-        update_counters_dictionary(edge_servers, initial_server_counter, different_server_counter, other_server_counter)
+        # Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
+        intersection, old_edge_servers, new_edge_servers = update_servers(edge_servers, new_servers)
+        update_counters_dictionary({**intersection, **new_edge_servers}, initial_server_counter, different_server_counter, other_server_counter)    # Aggiorno i dizionari dei nuovi aggiunti
 
         # Stampa per debug
-        print(f"Configurazione aggiornata. Totale server: {len(edge_servers)}")
-        print(f"Server aggiornati: {[server.name for server in edge_servers]}")
+        print(f"Configurazione aggiornata. Totale server: {len({**intersection, **new_edge_servers, **old_edge_servers})}")
+        
+        #Aggiorno i vicini
+        servers_in_dome_updated = update_servers_neighbors({**intersection, **new_edge_servers}, new_neighbors) # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
+        [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]   # Pulisco i dizionari che riguardano i vicini dei server tramontati
+        
+        with lock: # ! Meccanismo di Lock
+            edge_servers = list(servers_in_dome_updated.values()) + list(old_edge_servers.values())
 
         # Incrementa l'indice di configurazione
         if config_index == config["Number_of_Configurations"] - 1:
@@ -819,8 +869,17 @@ def loadConfiguration():
 
         # Stampa per debug
         print(f"Configurazione iniziale caricata. Totale server: {len(edge_servers)}")
+        server_dict = {server.name: server for server in edge_servers}
+        
+        #Aggiungiamo i vicini per ogni elemento
+        for server in edge_servers:
+            neighbors = neighbors_SAT[server.name]
 
-        # Incrementa l'indice di configurazione
+            for n in neighbors:
+                neighbor_server = server_dict.get(n["name"])
+                server.add_neighbor(neighbor_server, 1, n["latency"],
+                                                random.uniform(config["available_bandwidth"]["min"], config["available_bandwidth"]["max"]))
+        
         config_index += 1
 
 if __name__ == "__main__":
