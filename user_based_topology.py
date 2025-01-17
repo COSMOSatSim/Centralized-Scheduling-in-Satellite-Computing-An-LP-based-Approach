@@ -52,6 +52,7 @@ def get_current_time():
         skyfield.timelib.Time: The current time according to Skyfield's timescale.
     """
     ts = load.timescale()  # Carica la scala temporale di Skyfield
+    print(f"Current time (UTC): {ts.now().utc_iso()}")
     return ts.now()   
 
 def advance_time(current_time, minutes_to_add):
@@ -256,7 +257,7 @@ def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
             pass
         else:
             proximity = get_orbit_proximity(sat[0] , closerSatellite_Sorted[i][0], t)         
-            if  proximity < config["Laser_Comunication_Range"] :                                # Check laser distance
+            if  proximity < config["Laser_Communication_Range"] :                                # Check laser distance
                 latency = getLatency(proximity)                                                  # Calculate latency
                 vector_Sat_Topology.append((closerSatellite_Sorted[i][0].name, proximity, latency)) 
 
