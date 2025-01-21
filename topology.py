@@ -2,7 +2,7 @@ import json
 import random
 import threading
 from skyfield.api import EarthSatellite, load
-from EdgeServer import EdgeServer, update_counters_dictionary
+from EdgeServer import EdgeServer
 from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time
 from datetime import datetime, timezone
 from globals import initial_server_counter, other_server_counter, different_server_counter
@@ -233,9 +233,6 @@ def update_counters_dictionary(all_server, initial_server_counter, different_ser
             initial_server_counter[server_name] = 0
         if server_name not in different_server_counter:
             different_server_counter[server_name] = 0
-        if 'other_server_counter' not in globals():
-
-            other_server_counter = {}
         if server_name not in other_server_counter:
             other_server_counter[server_name] = 0
 
@@ -333,9 +330,11 @@ def loadConfiguration(env):
 
         # Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
         intersection, old_edge_servers, new_edge_servers = update_servers(edge_servers, new_servers)
-        update_counters_dictionary({**intersection, **new_edge_servers}, initial_server_counter,
-                                   different_server_counter,
-                                   other_server_counter)  # Aggiorno i dizionari dei nuovi aggiunti
+
+        server = {**intersection, **new_edge_servers}
+
+        update_counters_dictionary(server, initial_server_counter,
+                                   different_server_counter, other_server_counter)  # Aggiorno i dizionari dei nuovi aggiunti
 
         # Stampa per debug
         print(

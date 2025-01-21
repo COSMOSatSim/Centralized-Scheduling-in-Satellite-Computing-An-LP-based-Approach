@@ -2,7 +2,8 @@ import json
 import random
 import logging
 import experiments
-from globals import initial_server_counter, different_server_counter, other_server_counter
+import globals
+from topology import update_counters_dictionary
 
 hop = 0  # Inizializza la variabile hop a zero
 
@@ -23,8 +24,9 @@ try:
 except Exception as e:
     print(f"Error loading configuration file: {e}")
 
+
 def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, required_disk, task_priority,
-                   arrival_time_system, utilization_CPU, num_hops, transfer_time, original_TaskPriority):
+                   arrival_time_system, utilization_CPU, num_hops, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter):
     '''
         Assign a task to a selected server and process it.
 
@@ -44,10 +46,9 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         :return: None
         '''
 
-    global other_server_counter, hop
+    global hop
     if initial_server_counter == 0 and different_server_counter == 0:
         other_server_counter += 1
-    logging.debug('Task Assignment')
     print('Task Assignment')
     # Azzera il numero di hop
     hop = 0
@@ -63,8 +64,6 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
 
     with selected_server.process_queue.request(priority=task[4]) as request:
         print(
-            f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
-        logging.debug(
             f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
 
         yield request
@@ -121,7 +120,7 @@ Tmax_L = config["Tmax_H"]
 
 def SearchNode(env, server_selected, task_id, required_cpu, required_ram, required_disk, image_size, Volume_size,
                restart_time, download_time, task_priority, arrival_time_system, utilization_CPU, Tmax_high, Tmax_Low,
-               Tmax_latency):
+               Tmax_latency, initial_server_counter, different_server_counter, other_server_counter):
     '''
         Search for the most suitable server to assign a task, considering utility values, latency, and task priorities.
 
@@ -153,16 +152,13 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         - Assign the task to the most suitable server based on its utility value and priority,
         - Or recursively select another server if no suitable server is available within the latency threshold.
         '''
-    global sorted_servers, different_server_counter, other_server_counter, transfer_time, hop
+    global sorted_servers, transfer_time, hop
     print(f'SearchNode, Server selezionato --> {server_selected.name}')
-    logging.debug(f'SearchNode, Server selezionato --> {server_selected.name}')
 
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
 
     print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
-    logging.debug(
-        f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
@@ -179,10 +175,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         else:
             neighbor.UpdateUtilityValue(env, required_cpu, transfer_time, restart_time, download_time, neighbor,
                                         task_priority)
-        print(
-            f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
-        logging.debug(
-            f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
+        #print(f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
 
     sorted_servers = sorted(neighbors_at_distance_one, key=lambda server: server.utility_value)
 
@@ -191,24 +184,9 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     sorted_servers = [server for server in sorted_servers if server.utility_value < Tmax_high]
 
     for server in sorted_servers:
-        # print(f"Server {server.name}: Utility Value = {server.utility_value}")
-        logging.debug(f"Server {server.name}: Utility Value = {server.utility_value}")
-
-    for server in sorted_servers:
         print(f"Server {server.name}: Utility Value = {server.utility_value} ")
-        logging.debug(f"Server {server.name}: Utility Value = {server.utility_value} ")
     print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
-    logging.debug(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
-
-    # Inizializza dinamicamente il contatore
-    if server_selected.name not in initial_server_counter:
-        print(f"Aggiungo {server_selected.name} a initial_server_counter")
-        initial_server_counter[server_selected.name] = 0
-    if server_selected.name not in different_server_counter:
-        print(f"Aggiungo {server_selected.name} a different_server_counter")
-        different_server_counter[server_selected.name] = 0
-
 
     initial_server_counter[server_selected.name] += 1
 
@@ -217,13 +195,9 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
 
         if server != server_selected:
             different_server_counter[server_selected.name] += 1
-            if server.name not in other_server_counter:
-                print(f"Aggiungo {server.name} a other_server_counter")
-                other_server_counter[server.name] = 0
             other_server_counter[server.name] += 1
             hop += 1
 
-        logging.debug(f'Seleziono il server con utility più bassa: {server.name}')
         print(f'Seleziono il server con utility più bassa: {server.name}')
 
         AVG_service_time = server.AVG_service_time
@@ -233,18 +207,15 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
 
         if waiting_time <= AVG_service_time:
             task_priority = 1
-            logging.debug(f"Task {task_id} assegnato alla coda ad alta priorità")
             print(f"Task {task_id} assegnato alla coda ad alta priorità")
         elif Th_ij <= waiting_time <= Tl_ij:
-            logging.debug(f"Task {task_id} mantenuto nella sua coda di priorità {task_priority}")
             print(f"Task {task_id} mantenuto nella sua coda di priorità {task_priority}")
         else:
             task_priority = 100
-            logging.debug(f"Task {task_id} assegnato alla coda a bassa priorità")
             print(f"Task {task_id} assegnato alla coda a bassa priorità")
 
         yield from TaskAssignment(env, server, task_id, required_cpu, required_ram, required_disk, task_priority,
-                                  arrival_time_system, utilization_CPU, hop, transfer_time, original_TaskPriority)
+                                  arrival_time_system, utilization_CPU, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter)
 
     else:
         if Tmax_high <= 0:
@@ -262,18 +233,16 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
             random_server = random.choice(available_servers)
             Tmax_latency = random_server.get_latency(server_selected)
             hop += 1
-            logging.debug(
-                f'Nessun server disponibile con utilità inferiore a Tmax. Selezionato server casuale: {random_server.name}')
+
             yield env.process(
                 SearchNode(env, random_server, task_id, required_cpu, required_ram, required_disk, image_size,
                            Volume_size, restart_time, download_time, task_priority, arrival_time_system,
-                           utilization_CPU, Tmax_high, Tmax_Low, Tmax_latency))
+                           utilization_CPU, Tmax_high, Tmax_Low, Tmax_latency, initial_server_counter, different_server_counter, other_server_counter))
 
 
 def LocalScheduler(env, task_id, required_cpu, required_ram, required_disk, server, image_size, Volume_size, restart_time,
-                   download_time, task_priority, arrival_time_system, utilization_CPU):
+                   download_time, task_priority, arrival_time_system, utilization_CPU, initial_server_counter, different_server_counter, other_server_counter):
     # print('Local Scheduler')
-    logging.debug('Local Scheduler')
     global hop  # Indica che la variabile hop è globale e non locale
     hop += 1  # Incrementa hop ogni volta che la funzione viene richiamata
 
@@ -281,19 +250,17 @@ def LocalScheduler(env, task_id, required_cpu, required_ram, required_disk, serv
     # se la search_node è esclusa, i server vengono scelti tramite roud-robin e non viene utilizzata l'utility.
     if config["search_node"] == 0:
         # print("Without search_node")
-        logging.debug("Without search_node")
         yield from TaskAssignment(env, server, task_id, required_cpu, required_ram, required_disk, task_priority,
                                   arrival_time_system, utilization_CPU, hop)
     else:
         # print("With search_node")
-        logging.debug("With search_node")
         Tmax_latency = int(0)
         yield from SearchNode(env, server, task_id, required_cpu, required_ram, required_disk, image_size, Volume_size,
                               restart_time, download_time, task_priority, arrival_time_system, utilization_CPU, Tmax_H,
-                              Tmax_L, Tmax_latency)
+                              Tmax_L, Tmax_latency, initial_server_counter, different_server_counter, other_server_counter)
 
 
-def task(env, task_id, server, task_priority):
+def task(env, task_id, server, task_priority, initial_server_counter, different_server_counter, other_server_counter):
     # Calcola la media della distribuzione esponenziale
     mean = (config["MI"]["min"] + config["MI"]["max"]) / 2
 
@@ -322,21 +289,18 @@ def task(env, task_id, server, task_priority):
     download_time = 0  # image_size / available_bandwidth
     arrival_time_system = env.now
     print(f"---> Task {task_id} (Priority: {task_priority}) arriva in {arrival_time_system:.2f}")
-    logging.debug(f"---> Task {task_id} (Priority: {task_priority}) arriva in {arrival_time_system:.2f}")
 
     yield from LocalScheduler(env, task_id, required_cpu, required_ram, required_disk, server, image_size, Volume_size,
-                              restart_time, download_time, task_priority, arrival_time_system, utilization_CPU)
+                              restart_time, download_time, task_priority, arrival_time_system, utilization_CPU, initial_server_counter, different_server_counter, other_server_counter)
 
 
 # Dichiarazione di una variabile globale per tenere traccia del prossimo server da selezionare
 next_server_index = 0
 
-def generate_tasks(env, global_access_point):
+def generate_tasks(env, global_access_point, initial_server_counter, different_server_counter, other_server_counter):
 
-    global next_server_index, priority_combination, arrival_time, selected_server, next_index, next_number
+    global next_server_index, priority_combination, arrival_time, selected_server
     print('Genero i task')
-    print('GAP', len(global_access_point))
-    logging.info('Genero i task')
 
     task_id = 1
 
@@ -367,9 +331,5 @@ def generate_tasks(env, global_access_point):
         task_priority = priority_combination
         print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
 
-        env.process(task(env, task_id, selected_server, task_priority))
+        env.process(task(env, task_id, selected_server, task_priority, initial_server_counter, different_server_counter, other_server_counter))
         task_id += 1
-
-
-
-

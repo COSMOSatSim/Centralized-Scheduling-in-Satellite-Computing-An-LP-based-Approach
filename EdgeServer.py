@@ -203,12 +203,3 @@ class EdgeServer:
             self.utility_value = self.Th_ij + (required_cpu / C_i_MAX) + total_time
         else:  # Task a bassa priorità
             self.utility_value = self.Th_ij + self.Tl_ij + (required_cpu / C_i_MAX) + total_time
-
-def update_counters_dictionary(edge_servers, initial_server_counter, different_server_counter, other_server_counter):
-    for server in edge_servers:
-        if server.name not in initial_server_counter:
-            initial_server_counter[server.name] = 0
-        if server.name not in different_server_counter:
-            different_server_counter[server.name] = 0
-        if server.name not in other_server_counter:
-            other_server_counter[server.name] = 0

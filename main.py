@@ -50,7 +50,7 @@ if __name__ == "__main__":
     different_server_counter = {server.name: 0 for server in edge_servers}
     other_server_counter = {server.name: 0 for server in edge_servers}
 
-    env.process(generate_tasks(env, global_access_point))
+    env.process(generate_tasks(env, global_access_point, initial_server_counter, different_server_counter, other_server_counter))
 
     end_time = time.time()  # Tempo finale
 
