@@ -1,19 +1,15 @@
 import json
 import random
 import logging
-import threading
 import experiments
-from topology import  global_access_point
+from globals import initial_server_counter, different_server_counter, other_server_counter
 
+hop = 0  # Inizializza la variabile hop a zero
 
 def setup_logging(log_file_path):
     logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
 
-# Gestione thread
-lock = threading.Lock()  # Meccanismo di lock
-
 simulation_results = []
-config_index = 0  # This parameters allows to iterate over the configurations
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -47,11 +43,6 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
 
         :return: None
         '''
-    global hop
-    other_server_counter = 0
-    global initial_server_counter, different_server_counter
-    initial_server_counter = 0
-    different_server_counter = 0
 
     if initial_server_counter == 0 and different_server_counter == 0:
         other_server_counter += 1
@@ -170,8 +161,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         - Assign the task to the most suitable server based on its utility value and priority,
         - Or recursively select another server if no suitable server is available within the latency threshold.
         '''
-    global sorted_servers, initial_server_selected, different_server_counter, other_server_counter, transfer_time, hop
-
+    global sorted_servers, different_server_counter, other_server_counter, transfer_time, hop
     print(f'SearchNode, Server selezionato --> {server_selected.name}')
     logging.debug(f'SearchNode, Server selezionato --> {server_selected.name}')
 
@@ -192,10 +182,10 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
             transfer_time = 0
 
         if neighbor == server_selected:
-            server_selected.UpdateUtilityValue(required_cpu, transfer_time, 0, download_time, server_selected,
+            server_selected.UpdateUtilityValue(env, required_cpu, transfer_time, 0, download_time, server_selected,
                                                task_priority)
         else:
-            neighbor.UpdateUtilityValue(required_cpu, transfer_time, restart_time, download_time, neighbor,
+            neighbor.UpdateUtilityValue(env, required_cpu, transfer_time, restart_time, download_time, neighbor,
                                         task_priority)
         print(
             f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
@@ -219,6 +209,15 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     logging.debug(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
 
+    # Inizializza dinamicamente il contatore
+    if server_selected.name not in initial_server_counter:
+        print(f"Aggiungo {server_selected.name} a initial_server_counter")
+        initial_server_counter[server_selected.name] = 0
+    if server_selected.name not in different_server_counter:
+        print(f"Aggiungo {server_selected.name} a different_server_counter")
+        different_server_counter[server_selected.name] = 0
+
+
     initial_server_counter[server_selected.name] += 1
 
     if len(sorted_servers) > 0:
@@ -226,6 +225,9 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
 
         if server != server_selected:
             different_server_counter[server_selected.name] += 1
+            if server.name not in other_server_counter:
+                print(f"Aggiungo {server.name} a other_server_counter")
+                other_server_counter[server.name] = 0
             other_server_counter[server.name] += 1
             hop += 1
 
@@ -330,17 +332,18 @@ def task(env, task_id, server, task_priority):
     print(f"---> Task {task_id} (Priority: {task_priority}) arriva in {arrival_time_system:.2f}")
     logging.debug(f"---> Task {task_id} (Priority: {task_priority}) arriva in {arrival_time_system:.2f}")
 
-    yield from LocalScheduler(task_id, required_cpu, required_ram, required_disk, server, image_size, Volume_size,
+    yield from LocalScheduler(env, task_id, required_cpu, required_ram, required_disk, server, image_size, Volume_size,
                               restart_time, download_time, task_priority, arrival_time_system, utilization_CPU)
 
 
 # Dichiarazione di una variabile globale per tenere traccia del prossimo server da selezionare
 next_server_index = 0
 
-def generate_tasks(env):
+def generate_tasks(env, global_access_point):
 
-    global next_server_index
+    global next_server_index, priority_combination, arrival_time, selected_server, next_index, next_number
     print('Genero i task')
+    print('GAP', len(global_access_point))
     logging.info('Genero i task')
 
     task_id = 1

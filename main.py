@@ -7,7 +7,7 @@ import time
 import random
 import simpy
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs
+from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs, global_access_point
 from user_based_topology import get_current_time
 
 # Leggi il file di configurazione JSON
@@ -21,11 +21,6 @@ if __name__ == "__main__":
     # Setup and start the simulation
     random.seed(config["seed"])
 
-    env = simpy.Environment()
-    hop = 0  # Inizializza la variabile hop a zero
-    MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
-    total_time = 0  # Imposta il valore iniziale di total_time
-
     if config["Build_Configurations"]:  # Gestione costruizione configurazioni
         genConfigs(get_current_time(), config["Interval_between_Configurations_in_seconds"],
                    config["Number_of_Configurations"])
@@ -38,10 +33,14 @@ if __name__ == "__main__":
             sys.exit(1)  # Termina lo script
 
         sys.exit("File of configurations created")
+    env = simpy.Environment()
+    hop = 0  # Inizializza la variabile hop a zero
+    MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
+    total_time = 0  # Imposta il valore iniziale di total_time
 
     if config["Load_Configuration"]:
         print("Carico le configurazioni dal File")
-        edge_servers = loadConfiguration(env)  # Carico la configurazione e assegno a edge_servers
+        edge_servers, global_access_point = loadConfiguration(env)  # Carico la configurazione e assegno a edge_servers
         env.process(periodic_recall_monitor(env))  # Faccio partire il thread per cambiare configurazione
     else:
         print("Creo la topologia")
@@ -51,7 +50,7 @@ if __name__ == "__main__":
     different_server_counter = {server.name: 0 for server in edge_servers}
     other_server_counter = {server.name: 0 for server in edge_servers}
 
-    env.process(generate_tasks(env))
+    env.process(generate_tasks(env, global_access_point))
 
     end_time = time.time()  # Tempo finale
 

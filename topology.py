@@ -5,6 +5,7 @@ from skyfield.api import EarthSatellite, load
 from EdgeServer import EdgeServer, update_counters_dictionary
 from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time
 from datetime import datetime, timezone
+from globals import initial_server_counter, other_server_counter, different_server_counter
 
 # Converti il tempo in UTC e formatta
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
@@ -14,6 +15,11 @@ formatted_time = time_top.strftime('%Y-%m-%d %H:%M:%S')
 with open('config.json') as config_file:
     config = json.load(config_file)
 
+# Gestione thread
+lock = threading.Lock()  # Meccanismo di lock
+simulation_results = []
+config_index = 0  # This parameters allows to iterate over the configurations
+
 # Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
 try:
     with open("data/configurations.json", "r") as f:
@@ -21,12 +27,6 @@ try:
         data_configurations = json.load(f)
 except Exception as e:
     print(f"Error loading configuration file: {e}")
-
-# Gestione thread
-lock = threading.Lock() # Meccanismo di lock
-
-simulation_results = []
-config_index = 0 # This parameters allows to iterate over the configurations
 
 
 def compute_distances_from_target_sw(sat, closerServer_Sorted, t):
@@ -54,7 +54,6 @@ def compute_distances_from_target_sw(sat, closerServer_Sorted, t):
 
 
 global_access_point = []
-
 
 def create_topology_dome(env, time=get_current_time()):
     global global_access_point
@@ -202,7 +201,8 @@ def build_EdgeServer_from_config(env, configuration):
     [print(f"({i})-{global_access_point[i].name}") for i in range(config["access_point"])]
     print("####################")
 
-    return tmp_ES, neighbors_SAT
+
+    return tmp_ES, neighbors_SAT, global_access_point
 
 
 def periodic_recall_monitor(env):
@@ -321,16 +321,16 @@ def loadConfiguration(env):
     Returns:
         None
     """
-    global config_index, edge_servers, other_server_counter, initial_server_counter, different_server_counter
-
+    global config_index, edge_servers, global_access_point, other_server_counter, initial_server_counter, different_server_counter
     if config_index > 0:
         print("#" * 30)
         configuration = data_configurations["configurations"][config_index]
+
         print(f'Conf: {config_index} | time : {configuration["time"]}')
         print(f"In Aggiornamento edge_servers. Totale server: {len(edge_servers)}")
 
         # Costruisci i nuovi server dalla configurazione
-        new_servers, new_neighbors = build_EdgeServer_from_config(env,configuration)
+        new_servers, new_neighbors, global_access_point = build_EdgeServer_from_config(env,configuration)
 
         # Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
         intersection, old_edge_servers, new_edge_servers = update_servers(edge_servers, new_servers)
@@ -374,8 +374,9 @@ def loadConfiguration(env):
         configuration = data_configurations["configurations"][config_index]
         print(f'Conf: {config_index} | time : {configuration["time"]}')
 
+
         # Costruisci i server iniziali
-        edge_servers, neighbors_SAT = build_EdgeServer_from_config(env, configuration)
+        edge_servers, neighbors_SAT, global_access_point = build_EdgeServer_from_config(env, configuration)
 
         # Stampa per debug
         print(f"Configurazione iniziale caricata. Totale server: {len(edge_servers)}")
@@ -392,4 +393,4 @@ def loadConfiguration(env):
                                                    config["available_bandwidth"]["max"]))
 
         config_index += 1
-        return edge_servers
+        return edge_servers, global_access_point
