@@ -44,6 +44,7 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         :return: None
         '''
 
+    global other_server_counter, hop
     if initial_server_counter == 0 and different_server_counter == 0:
         other_server_counter += 1
     logging.debug('Task Assignment')
@@ -69,9 +70,6 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         yield request
         start_time = env.now
         time_in_queue = start_time - arrival_time_task_queue
-        # yield env.timeout(utilization_CPU) #deprecated
-
-        # esponenziale con media 15 per CPU timeout
 
         # Valori presi dal file di configurazione (già in secondi)
         mean_seconds = config["CPU_timeout"]["mean"]  # Ad esempio, 900
@@ -80,16 +78,10 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
 
         yield env.timeout(experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds))
 
-        ####da generare 10 task al minuto############
-
-        # yield env.timeout(config["CPU_timeout"])  # msec
-        # yield env.timeout(10)  # msec
-
         end_time = env.now
         execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
         print("execution time task assignment", execution_time, 'task', task_id)
 
-        # execution_time = (end_time - start_time)
         service_time = execution_time + time_in_queue + transfer_time
 
         print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "

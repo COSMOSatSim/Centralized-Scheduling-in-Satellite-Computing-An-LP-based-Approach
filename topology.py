@@ -75,7 +75,6 @@ def create_topology_dome(env, time=get_current_time()):
 
     global_access_point = edge_servers.copy()  # Salvo i nuovi access point globali
 
-
     # Tutti i satelliti nella cupola
     for i in range(0, num_sat_dome + num_sat_buffer):
         server_id = f"{tmp_sat[i][0].name}"

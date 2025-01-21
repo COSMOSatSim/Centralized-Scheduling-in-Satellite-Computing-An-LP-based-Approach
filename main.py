@@ -21,6 +21,9 @@ if __name__ == "__main__":
     # Setup and start the simulation
     random.seed(config["seed"])
 
+    env = simpy.Environment()
+    MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
+
     if config["Build_Configurations"]:  # Gestione costruizione configurazioni
         genConfigs(get_current_time(), config["Interval_between_Configurations_in_seconds"],
                    config["Number_of_Configurations"])
@@ -33,10 +36,7 @@ if __name__ == "__main__":
             sys.exit(1)  # Termina lo script
 
         sys.exit("File of configurations created")
-    env = simpy.Environment()
-    hop = 0  # Inizializza la variabile hop a zero
-    MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
-    total_time = 0  # Imposta il valore iniziale di total_time
+
 
     if config["Load_Configuration"]:
         print("Carico le configurazioni dal File")

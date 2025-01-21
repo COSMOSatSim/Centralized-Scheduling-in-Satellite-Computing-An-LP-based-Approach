@@ -1,6 +1,5 @@
 import json
 import logging
-
 import simpy
 from skyfield.api import EarthSatellite
 
@@ -11,6 +10,7 @@ with open('config.json') as config_file:
 def setup_logging(log_file_path):
     logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
 
+total_time = 0  # Imposta il valore iniziale di total_time
 
 class EdgeServer:
     def __init__(self, env, name, satellite: EarthSatellite):
