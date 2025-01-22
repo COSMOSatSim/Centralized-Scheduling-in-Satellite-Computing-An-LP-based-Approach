@@ -158,7 +158,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
 
-    print(f'I server vicini al server {server_selected.name} sono: {[print(f"\t {n.name}") for n in neighbors_at_distance_one]}')
+    print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
