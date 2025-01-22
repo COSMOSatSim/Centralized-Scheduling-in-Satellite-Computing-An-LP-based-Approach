@@ -295,11 +295,11 @@ def task(env, task_id, server, task_priority, initial_server_counter, different_
 
 
 # Dichiarazione di una variabile globale per tenere traccia del prossimo server da selezionare
-next_server_index = 0
 
-def generate_tasks(env, global_access_point, initial_server_counter, different_server_counter, other_server_counter):
 
-    global next_server_index, priority_combination, arrival_time, selected_server
+def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):
+
+    global next_server_index, priority_combination, arrival_time, selected_server, global_access_point
     print('Genero i task')
 
     task_id = 1
@@ -319,10 +319,12 @@ def generate_tasks(env, global_access_point, initial_server_counter, different_s
             raise ValueError("Unrecognized distribution type")
 
         yield env.timeout(arrival_time)
-
+        
+        print(f"[Generate Task] index: {globals.next_server_index}")
+        [print(f"\tAccPoints: {acc.name}") for acc in globals.global_access_point]
         # ! Prendo il prossimo server in base al round robin dalla lista di access point
-        next_server_index = (next_server_index + 1) % len(global_access_point)
-        selected_server = global_access_point[next_server_index]  # ho cambiato il nome
+        globals.next_server_index = (globals.next_server_index + 1) % len(globals.global_access_point)
+        selected_server = globals.global_access_point[globals.next_server_index]  # ho cambiato il nome
 
         priority_combination_string = config["priority_combination"]["distribution"]
         priority_combination_values = list(map(int, priority_combination_string.split("_")))

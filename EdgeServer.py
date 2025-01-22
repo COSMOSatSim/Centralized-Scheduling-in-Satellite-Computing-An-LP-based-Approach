@@ -52,7 +52,7 @@ class EdgeServer:
 
                 :return: None
                 '''
-        print(f"Completamento Task {task_id}: Start {start_time}, End {end_time}")
+        print(f"Completamento Task {task_id}: Start {start_time}, End {end_time}, {self.name}")
 
         self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time,
                                      end_time, execution_time, service_time, time_in_queue, selected_server, num_hops,

@@ -7,17 +7,15 @@ import time
 import random
 import simpy
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs, global_access_point
+from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs
 from user_based_topology import get_current_time
-
+import globals 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
     config = json.load(config_file)
 
+
 if __name__ == "__main__":
-
-    global edge_servers, initial_server_counter, different_server_counter, other_server_counter
-
     # Setup and start the simulation
     random.seed(config["seed"])
 
@@ -40,17 +38,19 @@ if __name__ == "__main__":
 
     if config["Load_Configuration"]:
         print("Carico le configurazioni dal File")
-        edge_servers, global_access_point = loadConfiguration(env)  # Carico la configurazione e assegno a edge_servers
+        globals.edge_servers, globals.global_access_point = loadConfiguration(env)  # Carico la configurazione e assegno a edge_servers
         env.process(periodic_recall_monitor(env))  # Faccio partire il thread per cambiare configurazione
     else:
         print("Creo la topologia")
-        edge_servers = create_topology_dome(env)
+        globals.edge_servers = create_topology_dome(env)
 
-    initial_server_counter = {server.name: 0 for server in edge_servers}
-    different_server_counter = {server.name: 0 for server in edge_servers}
-    other_server_counter = {server.name: 0 for server in edge_servers}
+    print(f"INIZIALIZZAZIONE GLOBAL ACCESS POINT: {globals.global_access_point}")
 
-    env.process(generate_tasks(env, global_access_point, initial_server_counter, different_server_counter, other_server_counter))
+    globals.initial_server_counter = {server.name: 0 for server in globals.edge_servers}
+    globals.different_server_counter = {server.name: 0 for server in globals.edge_servers}
+    globals.other_server_counter = {server.name: 0 for server in globals.edge_servers}
+
+    env.process(generate_tasks(env, globals.initial_server_counter, globals.different_server_counter, globals.other_server_counter))
 
     end_time = time.time()  # Tempo finale
 
@@ -96,7 +96,7 @@ if __name__ == "__main__":
              "Execution time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Queue length",
              "original_TaskPriority", "TMAX_exceeded"])
 
-        for server in edge_servers:
+        for server in globals.edge_servers:
             for task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time, execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda, original_TaskPriority, TMAX_exceeded in server.completed_tasks:
                 if original_TaskPriority == 1:
                     original_TaskPriority = 'high'
@@ -124,22 +124,22 @@ if __name__ == "__main__":
                 # task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops
 
     print(f"Simulation results saved to: {csv_file}")
-    print('R_j user', initial_server_counter, 'F_j other', different_server_counter, 'R_j other', other_server_counter)
+    print('R_j user', globals.initial_server_counter, 'F_j other', globals.different_server_counter, 'R_j other', globals.other_server_counter)
 
     # Compute statistics for the results
     I_j = {}
-    for server_key in other_server_counter.keys():  # Iterate over dictionary keys
-        numerator = other_server_counter[server_key]
-        denominator = sum(different_server_counter.values())  # Sum all values
+    for server_key in globals.other_server_counter.keys():  # Iterate over dictionary keys
+        numerator = globals.other_server_counter[server_key]
+        denominator = sum(globals.different_server_counter.values())  # Sum all values
         if denominator != 0:
             I_j[server_key] = numerator / denominator
         else:
             I_j[server_key] = 0  # Avoid division by zero
 
     F_j = {}
-    for server_key in other_server_counter.keys():  # Iterate over dictionary keys
-        numerator = different_server_counter[server_key]
-        denominator = initial_server_counter[server_key] + other_server_counter[server_key]
+    for server_key in globals.other_server_counter.keys():  # Iterate over dictionary keys
+        numerator = globals.different_server_counter[server_key]
+        denominator = globals.initial_server_counter[server_key] + globals.other_server_counter[server_key]
         if denominator != 0:
             F_j[server_key] = numerator / denominator
         else:
@@ -152,10 +152,10 @@ if __name__ == "__main__":
     with open(csv_name_server, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(['Server', 'R_j_user', 'F_j_other', 'R_j_other', 'I_j', 'F_j'])
-        for server_key in initial_server_counter.keys():
+        for server_key in globals.initial_server_counter.keys():
             writer.writerow(
-                [server_key, initial_server_counter[server_key], different_server_counter[server_key],
-                 other_server_counter[server_key], I_j.get(server_key, 0), F_j.get(server_key, 0)]
+                [server_key, globals.initial_server_counter[server_key], globals.different_server_counter[server_key],
+                 globals.other_server_counter[server_key], I_j.get(server_key, 0), F_j.get(server_key, 0)]
             )
 
     print(f"Data of migration server saved to {csv_name_server} ")
