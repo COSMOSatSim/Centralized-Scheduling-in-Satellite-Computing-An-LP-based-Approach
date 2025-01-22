@@ -158,7 +158,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
 
-    print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
+    print(f'I server vicini al server {server_selected.name} sono: {[print(f"\t {n.name}") for n in neighbors_at_distance_one]}')
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
@@ -183,8 +183,8 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
 
     sorted_servers = [server for server in sorted_servers if server.utility_value < Tmax_high]
 
-    for server in sorted_servers:
-        print(f"Server {server.name}: Utility Value = {server.utility_value} ")
+    # for server in sorted_servers:
+    #     print(f"Server {server.name}: Utility Value = {server.utility_value} ")
     print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
 
@@ -299,7 +299,7 @@ def task(env, task_id, server, task_priority, initial_server_counter, different_
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):
 
-    global next_server_index, priority_combination, arrival_time, selected_server, global_access_point
+    global  priority_combination, arrival_time, selected_server
     print('Genero i task')
 
     task_id = 1
@@ -320,8 +320,8 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
 
         yield env.timeout(arrival_time)
         
-        print(f"[Generate Task] index: {globals.next_server_index}")
-        [print(f"\tAccPoints: {acc.name}") for acc in globals.global_access_point]
+        # print(f"[Generate Task] index: {globals.next_server_index}")
+        # [print(f"\tAccPoints: {acc.name}") for acc in globals.global_access_point]
         # ! Prendo il prossimo server in base al round robin dalla lista di access point
         globals.next_server_index = (globals.next_server_index + 1) % len(globals.global_access_point)
         selected_server = globals.global_access_point[globals.next_server_index]  # ho cambiato il nome

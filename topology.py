@@ -6,6 +6,7 @@ from EdgeServer import EdgeServer
 from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time
 from datetime import datetime, timezone
 import globals 
+import sys
 
 # Converti il tempo in UTC e formatta
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
@@ -212,7 +213,8 @@ def periodic_recall_monitor(env):
         with lock:
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
-
+        
+        print(f"Edge_servers aggiornati: {len(globals.edge_servers)}")
         print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
 
 
@@ -238,7 +240,7 @@ def update_counters_dictionary(all_server, initial_server_counter, different_ser
             other_server_counter[server_name] = 0
 
 
-def update_servers(edge_servers, new_servers):
+def update_servers(new_servers):
     """
     Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
 
@@ -249,13 +251,16 @@ def update_servers(edge_servers, new_servers):
     Returns:
         dict: Dizionario aggiornato dei server.
     """
+
     # Crea un dizionario per i server esistenti basato sul nome
-    old_servers = {server.name: server for server in edge_servers}
+    old_servers = {server.name: server for server in globals.edge_servers}
     new_servers = {server.name: server for server in new_servers}
 
+
     # Dizionari per i risultati
-    intersection = {name: server for name, server in new_servers.items() if
-                    name in old_servers}  # Servers nell'intersezione
+    intersection = {name: server for name, server in old_servers.items() if
+                    name in new_servers}  # Servers nell'intersezione
+    
     A = {name: server for name, server in old_servers.items() if name not in new_servers}  # Server che sono tramontati
     B = {name: server for name, server in new_servers.items() if name not in old_servers}  # Server che non sono sorti
 
@@ -329,22 +334,30 @@ def loadConfiguration(env):
         new_servers, new_neighbors, global_access_point = build_EdgeServer_from_config(env,configuration)
 
         # Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
-        intersection, old_edge_servers, new_edge_servers = update_servers(globals.edge_servers, new_servers)
+        intersection, old_edge_servers, new_edge_servers = update_servers(new_servers)
 
         server = {**intersection, **new_edge_servers}
+        
+        # # Itera sul dizionario intersection e stampa la lunghezza della coda del server
+        # print("CHECK EDGE SERVER QUEUE TASK")
+        # for server in globals.edge_servers:
+        #     print(f"Server: {server.name}, Queue Length: {len(server.server_queue)}")
+
+        # print("CHECK INTERSECTION QUEUE TASK")
+        # for server_name, server in intersection.items():
+        #     print(f"Server: {server_name}, Queue Length: {len(server.server_queue)}")
+        # sys.exit("Controlla la queue")
 
         update_counters_dictionary(server, globals.initial_server_counter,
                                    globals.different_server_counter, globals.other_server_counter)  # Aggiorno i dizionari dei nuovi aggiunti
 
         # Stampa per debug
-        print(
-            f"Configurazione aggiornata. Totale server: {len({**intersection, **new_edge_servers, **old_edge_servers})}")
+        print(f"Configurazione aggiornata. Totale server: {len({**intersection, **new_edge_servers, **old_edge_servers})}")
 
         # Aggiorno i vicini
         servers_in_dome_updated = update_servers_neighbors({**intersection, **new_edge_servers},
                                                            new_neighbors)  # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
-        [server.update_neighbors({}, {}, {}) for server in
-         old_edge_servers.values()]  # Pulisco i dizionari che riguardano i vicini dei server tramontati
+        [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  # Pulisco i dizionari che riguardano i vicini dei server tramontati
 
         # Stampa per debug
         # print("-"*20," CHECK QUEUE TASK ","-"*20)

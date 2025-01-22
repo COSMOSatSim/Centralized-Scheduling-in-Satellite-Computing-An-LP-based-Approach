@@ -44,8 +44,6 @@ if __name__ == "__main__":
         print("Creo la topologia")
         globals.edge_servers = create_topology_dome(env)
 
-    print(f"INIZIALIZZAZIONE GLOBAL ACCESS POINT: {globals.global_access_point}")
-
     globals.initial_server_counter = {server.name: 0 for server in globals.edge_servers}
     globals.different_server_counter = {server.name: 0 for server in globals.edge_servers}
     globals.other_server_counter = {server.name: 0 for server in globals.edge_servers}
@@ -87,6 +85,10 @@ if __name__ == "__main__":
     # setup_logging(log_file_path) #abilita la scrittura dei log
 
     env.run(config['simulation_duration'])
+
+    #debug
+    server_dict = {server.name: server for server in globals.edge_servers}
+    print(f"\nServer: STARLINK-31338 completed task: {server_dict['STARLINK-31338'].completed_tasks}\n\n")
 
     # Scrive i dati dei task nel file CSV
     with open(csv_file, mode='w', newline='') as file:
