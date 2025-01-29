@@ -9,7 +9,8 @@ import simpy
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs
 from user_based_topology import get_current_time
-import globals 
+import globals
+
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
     config = json.load(config_file)

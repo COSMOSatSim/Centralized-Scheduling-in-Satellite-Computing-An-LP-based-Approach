@@ -6,7 +6,7 @@ from EdgeServer import EdgeServer
 from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time
 from datetime import datetime, timezone
 import globals 
-import sys
+
 
 # Converti il tempo in UTC e formatta
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime

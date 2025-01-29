@@ -26,7 +26,7 @@ except Exception as e:
 
 
 def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, required_disk, task_priority,
-                   arrival_time_system, utilization_CPU, num_hops, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter):
+                   arrival_time_system, utilization_CPU, num_hops, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time):
     '''
         Assign a task to a selected server and process it.
 
@@ -70,12 +70,7 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         start_time = env.now
         time_in_queue = start_time - arrival_time_task_queue
 
-        # Valori presi dal file di configurazione (già in secondi)
-        mean_seconds = config["CPU_timeout"]["mean"]  # Ad esempio, 900
-        min_seconds = config["CPU_timeout"]["min"]  # Ad esempio, 600
-        max_seconds = config["CPU_timeout"]["max"]  # Ad esempio, 1500
-
-        yield env.timeout(experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds))
+        yield env.timeout(estimated_execution_time)
 
         end_time = env.now
         execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
@@ -113,10 +108,18 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         if len(selected_server.server_queue) > 0:
             selected_server.server_queue.pop(0)
 
-
 Tmax_H = config["Tmax_H"]
 Tmax_L = config["Tmax_H"]
 
+def estimate_execution_time():
+    # Valori presi dal file di configurazione (già in secondi)
+    mean_seconds = config["CPU_timeout"]["mean"]
+    min_seconds = config["CPU_timeout"]["min"]
+    max_seconds = config["CPU_timeout"]["max"]
+
+    estimated_time = experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds)
+    print(f"Tempo di esecuzione stimato: {estimated_time:.2f} secondi")
+    return estimated_time
 
 def SearchNode(env, server_selected, task_id, required_cpu, required_ram, required_disk, image_size, Volume_size,
                restart_time, download_time, task_priority, arrival_time_system, utilization_CPU, Tmax_high, Tmax_Low,
@@ -155,10 +158,15 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     global sorted_servers, transfer_time, hop
     print(f'SearchNode, Server selezionato --> {server_selected.name}')
 
+    # Stima il tempo di esecuzione del task
+    estimated_execution_time = estimate_execution_time()
+
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
 
     print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
+
+    server_metrics = []
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
@@ -172,19 +180,47 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         if neighbor == server_selected:
             server_selected.UpdateUtilityValue(env, required_cpu, transfer_time, 0, download_time, server_selected,
                                                task_priority)
+            total_estimated_time = estimated_execution_time + transfer_time
         else:
             neighbor.UpdateUtilityValue(env, required_cpu, transfer_time, restart_time, download_time, neighbor,
                                         task_priority)
-        #print(f'server {neighbor.name}, latenza {latency_to_server}, banda {bandwidth_to_server}, Transfer time {transfer_time}')
+            total_estimated_time = estimated_execution_time + transfer_time + restart_time
 
-    sorted_servers = sorted(neighbors_at_distance_one, key=lambda server: server.utility_value)
+        # Aggiungi le metriche del server alla lista
+        server_metrics.append({
+                'server': neighbor,
+                'utility_value': neighbor.utility_value,
+                'estimated_total_time': total_estimated_time,
+                'queue_length': len(neighbor.server_queue)
+            })
 
+    '''Modifica del criterio di ordinamento dei server per considerare:
+        Prima il valore di utility (come prima)
+        Poi il tempo totale stimato (tra 10 e 25 minuti esponenziale con media 15 minuti)
+        Infine la lunghezza della coda
+        In questo modo, a parità di utility value, verrà selezionato il server che dovrebbe completare il task più velocemente e con la coda più corta.'''
+
+    # Ordina i server considerando sia l'utility value che il tempo stimato
+    sorted_servers = sorted(server_metrics,
+                                key=lambda x: (x['utility_value'],
+                                               x['estimated_total_time'],
+                                               x['queue_length']))
     Tmax_high -= 2 * Tmax_latency
 
-    sorted_servers = [server for server in sorted_servers if server.utility_value < Tmax_high]
+    print("\nServer ordinati per metriche:")
+    for metrics in sorted_servers:
+            print(f"Server {metrics['server'].name}:")
+            print(f"- Utility: {metrics['utility_value']:.2f}")
+            print(f"- Tempo stimato: {metrics['estimated_total_time']:.2f}")
+            print(f"- Lunghezza coda: {metrics['queue_length']}")
 
-    # for server in sorted_servers:
+    # Converti la lista di dizionari in lista di server
+    sorted_servers = [metrics['server'] for metrics in sorted_servers
+                          if metrics['utility_value'] < Tmax_high]
+
+    #for server in sorted_servers:
     #     print(f"Server {server.name}: Utility Value = {server.utility_value} ")
+
     print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
 
@@ -215,7 +251,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
             print(f"Task {task_id} assegnato alla coda a bassa priorità")
 
         yield from TaskAssignment(env, server, task_id, required_cpu, required_ram, required_disk, task_priority,
-                                  arrival_time_system, utilization_CPU, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter)
+                                  arrival_time_system, utilization_CPU, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time)
 
     else:
         if Tmax_high <= 0:

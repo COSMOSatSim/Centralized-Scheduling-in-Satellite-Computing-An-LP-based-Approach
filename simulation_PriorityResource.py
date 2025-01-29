@@ -271,7 +271,6 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         yield request
         start_time = env.now
         time_in_queue = start_time - arrival_time_task_queue
-        # yield env.timeout(utilization_CPU) #deprecated
 
         #esponenziale con media 15 per CPU timeout
 
@@ -282,15 +281,9 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
 
         yield env.timeout(experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds))
 
-        ####da generare 10 task al minuto############
-
-        #yield env.timeout(config["CPU_timeout"])  # msec
-        #yield env.timeout(10)  # msec
-
         end_time = env.now
         execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
         print("execution time task assignment",execution_time, 'task', task_id)
-
 
         #execution_time = (end_time - start_time)
         service_time = execution_time + time_in_queue + transfer_time
@@ -364,15 +357,15 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         - Assign the task to the most suitable server based on its utility value and priority,
         - Or recursively select another server if no suitable server is available within the latency threshold.
         '''
-    global sorted_servers, initial_server_selected, different_server_counter, other_server_counter, transfer_time, hop
+    global sorted_servers, different_server_counter, other_server_counter, transfer_time, hop
 
-    #print(f'SearchNode, Server selezionato --> {server_selected.name}')
+    print(f'SearchNode, Server selezionato --> {server_selected.name}')
     logging.debug(f'SearchNode, Server selezionato --> {server_selected.name}')
 
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
 
-    #print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
+    print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
     logging.debug(
         f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
 
@@ -403,11 +396,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     sorted_servers = [server for server in sorted_servers if server.utility_value < Tmax_high]
 
     for server in sorted_servers:
-        #print(f"Server {server.name}: Utility Value = {server.utility_value}")
-        logging.debug(f"Server {server.name}: Utility Value = {server.utility_value}")
-
-    for server in sorted_servers:
-        #print(f"Server {server.name}: Utility Value = {server.utility_value} ")
+        print(f"Server {server.name}: Utility Value = {server.utility_value} ")
         logging.debug(f"Server {server.name}: Utility Value = {server.utility_value} ")
     print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     logging.debug(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
@@ -621,8 +610,6 @@ def create_topology_dome(time = get_current_time()):
         #print(current_server.name)
     return edge_servers
 
-
-
 def createTopology_serializzable_dome(time_top, serializable):
     """
         Creates a topology of satellites and access points based on the given time and serializable object.
@@ -697,7 +684,6 @@ def genConfigs(t0, interval, num_configs):
         print("File saved successfully!")
     except IOError as e:
         print(f"Error saving configuration file: {e}")
-            
 
 def build_EdgeServer_from_config(configuration):
     global global_access_point, ne
@@ -851,17 +837,17 @@ def loadConfiguration():
         servers_in_dome_updated = update_servers_neighbors({**intersection, **new_edge_servers}, new_neighbors) # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
         [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]   # Pulisco i dizionari che riguardano i vicini dei server tramontati
         
-        # Stampa per debug
-        # print("-"*20," CHECK QUEUE TASK ","-"*20)
-        # for server in edge_servers:
-        #     print(f"\t{server.name} : ")
-        #     for task in server.server_queue:
-        #         print(f"\t\t{task[0]}")
-        # print("-"*20," CHECK COMPLETED TASK ","-"*20)
-        # for server in edge_servers:
-        #     print(f"\t{server.name} : completed({len(server.completed_tasks)})")
-        #     for task in server.completed_tasks:
-        #         print(f"\t\t{task[0]}")
+        '''# Stampa per debug
+        print("-"*20," CHECK QUEUE TASK ","-"*20)
+        for server in edge_servers:
+             print(f"\t{server.name} : ")
+             for task in server.server_queue:
+                 print(f"\t\t{task[0]}")
+        print("-"*20," CHECK COMPLETED TASK ","-"*20)
+        for server in edge_servers:
+             print(f"\t{server.name} : completed({len(server.completed_tasks)})")
+             for task in server.completed_tasks:
+                 print(f"\t\t{task[0]}")'''
 
         with lock: # ! Meccanismo di Lock
             edge_servers = list(servers_in_dome_updated.values()) + list(old_edge_servers.values())
