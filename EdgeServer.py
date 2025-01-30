@@ -26,7 +26,7 @@ class EdgeServer:
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
-        self.process_queue = simpy.PriorityResource(env, capacity=1)  # Initialize a PriorityResource for the task queue
+        self.process_queue = simpy.PriorityResource(env, capacity=5)  # Initialize a PriorityResource for the task queue
         self.server_queue = []
         self.utility_value = 0  # Valore iniziale di utilità del server
         self.completed_tasks = []
