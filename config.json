@@ -4,13 +4,13 @@
  "search_node": 1,
  "seed": 42,
  "access_point": 5,
- "arrival_time_exponential": 6,
+ "arrival_time_exponential": 0.2,
  "Tmax_H": 5.5,
  "Tmax_L": 0.05,
  "CPU_timeout": {
-  "min": 600,
-  "mean": 900,
-  "max": 1500
+  "min": 10,
+  "mean": 137.20754716981133,
+  "max": 177
  },
  "MI": {
   "min": 5000,
@@ -92,5 +92,7 @@
  "Build_Configurations": false,
  "Load_Configuration": true,
  "Interval_between_Configurations_in_seconds": 120,
- "Number_of_Configurations": 15
+ "Number_of_Configurations": 15,
+ "Interval_future_event_prediction": 15,
+ "Interval_past_event_prediction": 10
 }

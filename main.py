@@ -7,7 +7,7 @@ import time
 import random
 import simpy
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs
+from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs, updateTaskValue
 from user_based_topology import get_current_time
 import globals
 
@@ -26,7 +26,13 @@ if __name__ == "__main__":
     if config["Build_Configurations"]:  # Gestione costruizione configurazioni
         genConfigs(get_current_time(), config["Interval_between_Configurations_in_seconds"],
                    config["Number_of_Configurations"])
+        
+        T_min, T_max, T_avg = updateTaskValue()     # Aggiorna i valori dei task
         config["Build_Configurations"] = False
+        config["CPU_timeout"]["min"] = T_min
+        config["CPU_timeout"]["max"] = T_max
+        config["CPU_timeout"]["mean"] = T_avg + 2.0 
+        
         try:
             with open('config.json', 'w') as f:
                 json.dump(config, f, indent=1)
@@ -89,8 +95,7 @@ if __name__ == "__main__":
 
     #debug
     server_dict = {server.name: server for server in globals.edge_servers}
-    print(f"\nServer: STARLINK-31338 completed task: {server_dict['STARLINK-31338'].completed_tasks}\n\n")
-
+    
     # Scrive i dati dei task nel file CSV
     with open(csv_file, mode='w', newline='') as file:
         writer = csv.writer(file)

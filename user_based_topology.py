@@ -265,7 +265,7 @@ def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
     return sat_vector_Topology_sorted
 
 
-def create_satellite_neighbors_dict(satellite_name, neighbors_info, access_points = False):
+def create_satellite_neighbors_dict(satellite_name, life, neighbors_info, access_points = False):
     """
     Crea un dizionario che rappresenta un satellite e i suoi vicini.
 
@@ -278,6 +278,7 @@ def create_satellite_neighbors_dict(satellite_name, neighbors_info, access_point
         "distance_from_user": satellite_name[1],
         "is_access_point": access_points,
         "TLE-DATA": [{"name": satellite_name[2][0], "line1": satellite_name[2][1], "line2": satellite_name[2][2]}],
+        "life": life,
         "neighbors": [
             {"name": neighbor_name, "distance": distance, "latency": latency}
             for neighbor_name, distance, latency in neighbors_info

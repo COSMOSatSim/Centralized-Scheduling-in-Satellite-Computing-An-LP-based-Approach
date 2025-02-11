@@ -13,7 +13,7 @@ def setup_logging(log_file_path):
 total_time = 0  # Imposta il valore iniziale di total_time
 
 class EdgeServer:
-    def __init__(self, env, name, satellite: EarthSatellite):
+    def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset):
         '''
                 Initialize an EdgeServer instance.
 
@@ -23,6 +23,7 @@ class EdgeServer:
         self.env = env
         self.name = name
         self.satellite = satellite
+        self.orbitalSunset = orbitalSunset
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}

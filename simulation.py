@@ -191,7 +191,8 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
                 'server': neighbor,
                 'utility_value': neighbor.utility_value,
                 'estimated_total_time': total_estimated_time,
-                'queue_length': len(neighbor.server_queue)
+                'queue_length': len(neighbor.server_queue),
+                'orbitalSunset': neighbor.orbitalSunset
             })
 
     '''Modifica del criterio di ordinamento dei server per considerare:
@@ -204,15 +205,17 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     sorted_servers = sorted(server_metrics,
                                 key=lambda x: (x['utility_value'],
                                                x['estimated_total_time'],
-                                               x['queue_length']))
+                                               x['queue_length'],
+                                               x['orbitalSunset']))
     Tmax_high -= 2 * Tmax_latency
 
-    print("\nServer ordinati per metriche:")
-    for metrics in sorted_servers:
-            print(f"Server {metrics['server'].name}:")
-            print(f"- Utility: {metrics['utility_value']:.2f}")
-            print(f"- Tempo stimato: {metrics['estimated_total_time']:.2f}")
-            print(f"- Lunghezza coda: {metrics['queue_length']}")
+    # print("\nServer ordinati per metriche:")
+    # for metrics in sorted_servers:
+    #         print(f"Server {metrics['server'].name}:")
+    #         print(f"- Utility: {metrics['utility_value']:.2f}")
+    #         print(f"- Tempo stimato: {metrics['estimated_total_time']:.2f}")
+    #         print(f"- Lunghezza coda: {metrics['queue_length']}")
+    #         print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
 
     # Converti la lista di dizionari in lista di server
     sorted_servers = [metrics['server'] for metrics in sorted_servers
@@ -329,8 +332,6 @@ def task(env, task_id, server, task_priority, initial_server_counter, different_
     yield from LocalScheduler(env, task_id, required_cpu, required_ram, required_disk, server, image_size, Volume_size,
                               restart_time, download_time, task_priority, arrival_time_system, utilization_CPU, initial_server_counter, different_server_counter, other_server_counter)
 
-
-# Dichiarazione di una variabile globale per tenere traccia del prossimo server da selezionare
 
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):

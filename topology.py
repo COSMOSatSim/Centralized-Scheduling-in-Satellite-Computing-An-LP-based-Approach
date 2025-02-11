@@ -3,14 +3,13 @@ import random
 import threading
 from skyfield.api import EarthSatellite, load
 from EdgeServer import EdgeServer
-from user_based_topology import get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time
-from datetime import datetime, timezone
+from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time, ts
+from datetime import datetime, timedelta, timezone
 import globals 
 
 
 # Converti il tempo in UTC e formatta
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
-formatted_time = time_top.strftime('%Y-%m-%d %H:%M:%S')
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -109,12 +108,58 @@ def createTopology_serializzable_dome(time_top, serializable):
                                                                   serializable=serializable)  # Ottengo i satelliti
     # print(f"({time_top.utc_strftime('%Y-%m-%d %H:%M:%S')}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
     print(
-        f"({formatted_time}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
+        f"(no time for now) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
 
     return acc_point + satellites_dome + satellites_buffer
 
 
-def genConfigs(t0, interval, num_configs):
+def find_satellite_events(satellite, t0):
+    """
+    Finds the events for a satellite between two times.
+    Args:
+        satellite (EarthSatellite): The satellite for which to find events.
+        t0 (datetime): Reference time of start.
+        t1 (datetime): The end time for finding events.
+
+    Returns:
+        dict : info about life of the satellite
+    """
+    t_end = ts.utc(t0.utc_datetime() + timedelta(minutes=config["Interval_future_event_prediction"]))    # End time for finding events
+    t_start = ts.utc(t0.utc_datetime() - timedelta(minutes=config["Interval_past_event_prediction"]))    # Start time for finding events
+    
+    life = {}
+
+    time, events = satellite.find_events(OBSERVER, t_start, t_end, altitude_degrees=config["Phi_max"])    # Find events for the satellite
+    
+
+    if len(time) == 0:
+        life = {
+            "AOS": None,
+            "Max-El": None,
+            "LOS": None,
+            "life_seconds": None,
+            "time_until_set_seconds": None,
+        }
+    else:
+        time_until_set = 0      
+        if not time[2] < t0:    # If the satellite has just went down
+            time_until_set = timedelta(seconds = (time[2] - t0) * 86400).seconds
+        life = {
+            "AOS": time[0].utc_strftime(),          # Acquisition of the Satellite (AOS)
+            "Max-El": time[1].utc_strftime(),       # Maximum Elevation            (Max-El)
+            "LOS": time[2].utc_strftime(),          # Loss of Signal               (LOS)
+            "life_seconds": timedelta(seconds = (time[2] - time[0]) * 86400).seconds,       # Life of the satellite in Dome
+            "time_until_set_seconds": time_until_set   # Time until the satellite sets 
+        }
+        print("Porco",time_until_set)
+        if time_until_set > 1000:
+            print("ATTENZIONE")
+
+
+    return life
+
+
+def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"):
     """
     Generates a list of configurations over a specified time period.
     Args:
@@ -137,12 +182,13 @@ def genConfigs(t0, interval, num_configs):
             current_server = topology[i]
             neighbor = compute_distances_from_target_satellite(current_server, topology,
                                                                t)  # Compute distances to neighbors
+            life = find_satellite_events(current_server[0], t)  # Find events for the satellite
 
             if i < num_access_point:
-                info_sat = create_satellite_neighbors_dict(current_server, neighbor,
+                info_sat = create_satellite_neighbors_dict(current_server, life, neighbor,
                                                            True)  # Create neighbor info for access points
             else:
-                info_sat = create_satellite_neighbors_dict(current_server, neighbor,
+                info_sat = create_satellite_neighbors_dict(current_server, life, neighbor,
                                                            False)  # Create neighbor info for other satellites
 
             configuration.append(info_sat)  # Save this satellite's configuration
@@ -167,7 +213,7 @@ def genConfigs(t0, interval, num_configs):
 
     # Salva il file JSON
     try:
-        with open("data/configurations.json", "w") as f:
+        with open(json_path, "w") as f:
             # noinspection PyTypeChecker
             json.dump(output, f, indent=4)
         print("File saved successfully!")
@@ -183,9 +229,11 @@ def build_EdgeServer_from_config(env, configuration):
         name = sat_info["TLE-DATA"][0]["name"]
         line1 = sat_info["TLE-DATA"][0]["line1"]
         line2 = sat_info["TLE-DATA"][0]["line2"]
+        life = sat_info["life"]["time_until_set_seconds"]
+
 
         neighbors_SAT[server_id] = sat_info["neighbors"]
-        edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()))
+        edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life)
         tmp_ES.append(edge_server)
     
     if globals.config_index > 0:
@@ -208,12 +256,19 @@ def periodic_recall_monitor(env):
         print("-" * 70)
         print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
+        
         new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
+        
         # ! Aggiorno le Globali
         with lock:
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
         
+        for sw in globals.edge_servers:
+            print(f"Server: {sw.name} :")
+            for t in sw.completed_tasks:
+                print(f"\t| Task: {t[0]}")
+
         print(f"Edge_servers aggiornati: {len(globals.edge_servers)}")
         print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
 
@@ -404,3 +459,34 @@ def loadConfiguration(env):
 
         globals.config_index += 1
         return edge_servers, global_access_point
+
+
+def updateTaskValue():
+    index_config = 0
+    lifes = []  # Lista per salvare le vite dei satelliti
+    configurations = data_configurations["configurations"]   
+    print(f"Analisi {len(configurations)} configurazioni :")
+    for i in range(len(configurations)):
+        conf =  data_configurations["configurations"][index_config]
+        print(f"[{i}] Configuration time: {conf["time"]} sat:({len(conf["configuration"])})")
+        
+        for satellite in conf["configuration"]:
+            if satellite["life"]["life_seconds"] == None:
+                pass
+            else:
+                if not any(satellite["satellite"] == sat["satellite"] for sat in lifes):
+                    lifes.append(
+                            {"satellite" : satellite["satellite"],
+                            "life": satellite["life"]["life_seconds"]}
+                        )
+                    print(f"satellite: { satellite["satellite"]}\t|  life :{satellite["life"]["life_seconds"]}")
+        print(f"Incremento lifes: {len(lifes)}")
+        index_config += 1
+    print("#" * 50)
+    
+    lifes_value = [sat["life"] for sat in lifes]
+    print(f"Average life: {sum(lifes_value) / len(lifes_value)}")
+    print(f"Max life: {max(lifes_value)}")
+    print(f"Min life: {min(lifes_value)}")
+    
+    return min(lifes_value), max(lifes_value), sum(lifes_value) / len(lifes_value)
