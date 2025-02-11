@@ -1,5 +1,5 @@
 {
- "simulation_duration": 1800,
+ "simulation_duration": 600,
  "max_try": 5,
  "search_node": 1,
  "seed": 42,

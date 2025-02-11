@@ -468,7 +468,7 @@ def updateTaskValue():
     print(f"Analisi {len(configurations)} configurazioni :")
     for i in range(len(configurations)):
         conf =  data_configurations["configurations"][index_config]
-        print(f"[{i}] Configuration time: {conf["time"]} sat:({len(conf["configuration"])})")
+        print(f"[{i}] Configuration time: {conf['time']} sat:({len(conf['configuration'])})")
         
         for satellite in conf["configuration"]:
             if satellite["life"]["life_seconds"] == None:
@@ -479,7 +479,7 @@ def updateTaskValue():
                             {"satellite" : satellite["satellite"],
                             "life": satellite["life"]["life_seconds"]}
                         )
-                    print(f"satellite: { satellite["satellite"]}\t|  life :{satellite["life"]["life_seconds"]}")
+                    print(f"satellite: { satellite['satellite']}\t|  life :{satellite['life']['life_seconds']}")
         print(f"Incremento lifes: {len(lifes)}")
         index_config += 1
     print("#" * 50)
