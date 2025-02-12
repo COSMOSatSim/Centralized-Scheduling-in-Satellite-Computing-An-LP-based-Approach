@@ -5,6 +5,7 @@ import sys
 from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
 import sys
+from datetime import datetime
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -265,7 +266,34 @@ def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
     return sat_vector_Topology_sorted
 
 
-def create_satellite_neighbors_dict(satellite_name, life, neighbors_info, access_points = False):
+def satellite_gone_down(t, time_set):
+    """
+    Check if a satellite has gone down based on its altitude.
+
+    :param satellite: The satellite to check.
+    :param t: Current time.
+
+    :return: True if the satellite has gone down, False otherwise.
+    """
+
+    if time_set is not None:
+        # Rimuove "UTC" e converte in oggetto datetime
+        dt = datetime.strptime(time_set.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
+
+        # Converte in oggetto Time di Skyfield
+        time_obj = ts.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+
+        if not time_obj < t: 
+            return False
+        else:
+            return True
+    else:
+        return True
+    
+    
+
+
+def create_satellite_Identity_card(satellite_name, life, neighbors_info, t, access_points = False):
     """
     Crea un dizionario che rappresenta un satellite e i suoi vicini.
 
@@ -273,10 +301,13 @@ def create_satellite_neighbors_dict(satellite_name, life, neighbors_info, access
     :param neighbors_info: Lista di tuple con (nome_del_vicino, distanza) (list of tuples).
     :return: Dizionario che rappresenta il satellite e i suoi vicini (dict).
     """
+    sat_gone_down = satellite_gone_down(t, life["LOS"])  # Controllo che il satellite non sia tramontato ora
+
     satellite_data = {
         "satellite": satellite_name[0].name,
         "distance_from_user": satellite_name[1],
         "is_access_point": access_points,
+        "is_gone_down": sat_gone_down,
         "TLE-DATA": [{"name": satellite_name[2][0], "line1": satellite_name[2][1], "line2": satellite_name[2][2]}],
         "life": life,
         "neighbors": [

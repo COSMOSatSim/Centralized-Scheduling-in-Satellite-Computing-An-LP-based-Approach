@@ -10,17 +10,6 @@ Questo script fa una richiesta al NOMAD per avere tutti i  dati TLE dei satellit
 In seguito li salva in un File: ./Data/tle_data.txt
 """
 
-
-# Posizione di riferimento in latitudine e longitudine (es. Roma)
-reference_lat = 41.8967 # latitudine in gradi
-reference_lon = 12.4822 # longitudine in gradi
-reference_alt = 0       # altitudine in km, considerando l'altitudine del suolo
-LEO_ORB = 300           # km
-ROMA = (reference_lat, reference_lon, reference_alt)
-
-# Raggio di ricerca in km
-radius_km = 300
-
 #Funzione che ritorna i satelliti attivi in formato tle 
 def get_active_satellites():
     url = starlink_url
@@ -49,4 +38,3 @@ def saveTLEOnFile():
     else:
         print("Nessun dato TLE disponibile per il salvataggio.")
 
-#saveTLEOnFile()

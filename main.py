@@ -9,7 +9,9 @@ import simpy
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs, updateTaskValue
 from user_based_topology import get_current_time
+from SaveCurrentSATOnFile import saveTLEOnFile
 import globals
+
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -24,8 +26,9 @@ if __name__ == "__main__":
     MaxTry = config["max_try"]  # Imposta il valore massimo di MaxTry
 
     if config["Build_Configurations"]:  # Gestione costruizione configurazioni
+        saveTLEOnFile()  # Salva i dati TLE dei satelliti in un file
         genConfigs(get_current_time(), config["Interval_between_Configurations_in_seconds"],
-                   config["Number_of_Configurations"])
+                   config["Number_of_Configurations"]) # Costruisco le configurazioni a partire dai TLE
         
         T_min, T_max, T_avg = updateTaskValue()     # Aggiorna i valori dei task
         config["Build_Configurations"] = False
@@ -92,9 +95,14 @@ if __name__ == "__main__":
     # setup_logging(log_file_path) #abilita la scrittura dei log
 
     env.run(config['simulation_duration'])
-
-    #debug
-    server_dict = {server.name: server for server in globals.edge_servers}
+    
+    print("SIMULATION COMPLETED, check RAM :")
+    for server in globals.edge_servers:
+        print(f"{server.name} queue task :")
+        [print(f"\t\t{task[0]}") for task in server.server_queue]
+        print(f"{server.name} completed task :")
+        [print(f"\t\t{task[0]}") for task in server.completed_tasks]
+        print("@"*10)
     
     # Scrive i dati dei task nel file CSV
     with open(csv_file, mode='w', newline='') as file:

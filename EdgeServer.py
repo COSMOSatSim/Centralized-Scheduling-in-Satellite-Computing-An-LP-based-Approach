@@ -24,6 +24,7 @@ class EdgeServer:
         self.name = name
         self.satellite = satellite
         self.orbitalSunset = orbitalSunset
+        #self.gone_down = gone_down
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}

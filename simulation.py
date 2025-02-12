@@ -66,6 +66,11 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
         print(
             f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
 
+        print("-" * 10)
+        print(f"\t Server {selected_server.name} task_queue:")
+        [print(f"\t\t {task_in_queue[0]}") for task_in_queue in selected_server.server_queue]
+        print("-" * 10)
+
         yield request
         start_time = env.now
         time_in_queue = start_time - arrival_time_task_queue

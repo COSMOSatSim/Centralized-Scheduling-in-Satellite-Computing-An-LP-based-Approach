@@ -3,7 +3,7 @@ import random
 import threading
 from skyfield.api import EarthSatellite, load
 from EdgeServer import EdgeServer
-from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_neighbors_dict, advance_time, ts
+from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
 import globals 
 
@@ -108,7 +108,7 @@ def createTopology_serializzable_dome(time_top, serializable):
                                                                   serializable=serializable)  # Ottengo i satelliti
     # print(f"({time_top.utc_strftime('%Y-%m-%d %H:%M:%S')}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
     print(
-        f"(no time for now) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
+        f"({time_top.utc_strftime('%Y-%m-%d %H:%M:%S')}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
 
     return acc_point + satellites_dome + satellites_buffer
 
@@ -151,7 +151,6 @@ def find_satellite_events(satellite, t0):
             "life_seconds": timedelta(seconds = (time[2] - time[0]) * 86400).seconds,       # Life of the satellite in Dome
             "time_until_set_seconds": time_until_set   # Time until the satellite sets 
         }
-        print("Porco",time_until_set)
         if time_until_set > 1000:
             print("ATTENZIONE")
 
@@ -185,10 +184,10 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
             life = find_satellite_events(current_server[0], t)  # Find events for the satellite
 
             if i < num_access_point:
-                info_sat = create_satellite_neighbors_dict(current_server, life, neighbor,
+                info_sat = create_satellite_Identity_card(current_server, life, neighbor, t,
                                                            True)  # Create neighbor info for access points
             else:
-                info_sat = create_satellite_neighbors_dict(current_server, life, neighbor,
+                info_sat = create_satellite_Identity_card(current_server, life, neighbor, t,
                                                            False)  # Create neighbor info for other satellites
 
             configuration.append(info_sat)  # Save this satellite's configuration
@@ -266,7 +265,7 @@ def periodic_recall_monitor(env):
         
         for sw in globals.edge_servers:
             print(f"Server: {sw.name} :")
-            for t in sw.completed_tasks:
+            for t in sw.server_queue:
                 print(f"\t| Task: {t[0]}")
 
         print(f"Edge_servers aggiornati: {len(globals.edge_servers)}")
