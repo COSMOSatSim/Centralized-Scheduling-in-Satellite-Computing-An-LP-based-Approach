@@ -221,7 +221,7 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
 
 def build_EdgeServer_from_config(env, configuration):
-    neighbors_SAT, tmp_ES = {}, []
+    neighbors_SAT, tmp_ES, list_acc_point = {}, [], []
 
     for sat_info in configuration["configuration"]:
         server_id = f"{sat_info['satellite']}"
@@ -229,23 +229,19 @@ def build_EdgeServer_from_config(env, configuration):
         line1 = sat_info["TLE-DATA"][0]["line1"]
         line2 = sat_info["TLE-DATA"][0]["line2"]
         life = sat_info["life"]["time_until_set_seconds"]
+        acc_point = sat_info["is_access_point"]
+        
+        if acc_point:
+            neighbors_SAT[server_id] = sat_info["neighbors"]
+            edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point)
+            tmp_ES.append(edge_server)
+            list_acc_point.append(edge_server.name)
+        else:
+            neighbors_SAT[server_id] = sat_info["neighbors"]
+            edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point)
+            tmp_ES.append(edge_server)
 
-
-        neighbors_SAT[server_id] = sat_info["neighbors"]
-        edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life)
-        tmp_ES.append(edge_server)
-    
-    if globals.config_index > 0:
-        print("### OLD ACCESS POINT ###")
-        [print(f"({i})-{globals.global_access_point[i].name}") for i in range(config["access_point"])]
-
-    # Salvo gli Access_point globali
-    print("### NEW ACCESS POINT ###")
-    new_global_access_point = tmp_ES[:config["access_point"]]
-    [print(f"({i})-{new_global_access_point[i].name}") for i in range(config["access_point"])]
-    print("####################")
-
-    return tmp_ES, neighbors_SAT, new_global_access_point
+    return tmp_ES, neighbors_SAT, list_acc_point
 
 
 def periodic_recall_monitor(env):
@@ -258,17 +254,19 @@ def periodic_recall_monitor(env):
         
         new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
         
+        print("--- OLD ACCESS POINT ---")
+        for ap in globals.global_access_point:
+            print(f"{ap.name}")
+
         # ! Aggiorno le Globali
         with lock:
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
         
-        for sw in globals.edge_servers:
-            print(f"Server: {sw.name} :")
-            for t in sw.server_queue:
-                print(f"\t| Task: {t[0]}")
+        print("--- NEW ACCESS POINT ---")
+        for ap in globals.global_access_point:
+            print(f"{ap.name}")
 
-        print(f"Edge_servers aggiornati: {len(globals.edge_servers)}")
         print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
 
 
@@ -294,7 +292,7 @@ def update_counters_dictionary(all_server, initial_server_counter, different_ser
             other_server_counter[server_name] = 0
 
 
-def update_servers(new_servers):
+def update_servers(new_servers, acc_point):
     """
     Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
 
@@ -309,14 +307,20 @@ def update_servers(new_servers):
     # Crea un dizionario per i server esistenti basato sul nome
     old_servers = {server.name: server for server in globals.edge_servers}
     new_servers = {server.name: server for server in new_servers}
-
-
+    
     # Dizionari per i risultati
     intersection = {name: server for name, server in old_servers.items() if
                     name in new_servers}  # Servers nell'intersezione
-    
+
+    # Aggiorno i riferimenti degli acc_point flags
+    for name, server in intersection.items():
+        if server.name in acc_point:
+            server.is_acc_point = True
+        else:
+            server.is_acc_point = False
+
     A = {name: server for name, server in old_servers.items() if name not in new_servers}  # Server che sono tramontati
-    B = {name: server for name, server in new_servers.items() if name not in old_servers}  # Server che non sono sorti
+    B = {name: server for name, server in new_servers.items() if name not in old_servers}  # Server che sono appena sorti
 
     return intersection, A, B
 
@@ -377,31 +381,21 @@ def loadConfiguration(env):
     Returns:
         None
     """
+    global_access_point = []    # futuri acc_points
     if globals.config_index > 0:
         print("#" * 30)
         configuration = data_configurations["configurations"][globals.config_index]
 
         print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
-        print(f"In Aggiornamento edge_servers. Totale server: {len(globals.edge_servers)}")
 
         # Costruisci i nuovi server dalla configurazione
-        new_servers, new_neighbors, global_access_point = build_EdgeServer_from_config(env,configuration)
+        new_servers, new_neighbors, acc_point = build_EdgeServer_from_config(env,configuration)
 
         # Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
-        intersection, old_edge_servers, new_edge_servers = update_servers(new_servers)
+        intersection, old_edge_servers, new_edge_servers = update_servers(new_servers, acc_point)
 
         server = {**intersection, **new_edge_servers}
         
-        # # Itera sul dizionario intersection e stampa la lunghezza della coda del server
-        # print("CHECK EDGE SERVER QUEUE TASK")
-        # for server in globals.edge_servers:
-        #     print(f"Server: {server.name}, Queue Length: {len(server.server_queue)}")
-
-        # print("CHECK INTERSECTION QUEUE TASK")
-        # for server_name, server in intersection.items():
-        #     print(f"Server: {server_name}, Queue Length: {len(server.server_queue)}")
-        # sys.exit("Controlla la queue")
-
         update_counters_dictionary(server, globals.initial_server_counter,
                                    globals.different_server_counter, globals.other_server_counter)  # Aggiorno i dizionari dei nuovi aggiunti
 
@@ -411,21 +405,21 @@ def loadConfiguration(env):
         # Aggiorno i vicini
         servers_in_dome_updated = update_servers_neighbors({**intersection, **new_edge_servers},
                                                            new_neighbors)  # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
-        [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  # Pulisco i dizionari che riguardano i vicini dei server tramontati
-
-        # Stampa per debug
-        # print("-"*20," CHECK QUEUE TASK ","-"*20)
-        # for server in edge_servers:
-        #     print(f"\t{server.name} : ")
-        #     for task in server.server_queue:
-        #         print(f"\t\t{task[0]}")
-        # print("-"*20," CHECK COMPLETED TASK ","-"*20)
-        # for server in edge_servers:
-        #     print(f"\t{server.name} : completed({len(server.completed_tasks)})")
-        #     for task in server.completed_tasks:
-        #         print(f"\t\t{task[0]}")
+        # Pulisco i dizionari che riguardano i vicini dei server tramontati
+        [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  
 
         new_edge_servers = list(servers_in_dome_updated.values()) + list(old_edge_servers.values())
+
+        #Trovo i nuovi acc_points
+        counter_acc_found = 0
+        for server in new_edge_servers:
+            if counter_acc_found < config["access_point"]:
+                if server.is_acc_point:
+                    print()
+                    global_access_point.append(server)
+                    counter_acc_found += 1
+            else:
+                break
 
         # Incrementa l'indice di configurazione
         if globals.config_index == config["Number_of_Configurations"] - 1:
@@ -440,7 +434,7 @@ def loadConfiguration(env):
 
 
         # Costruisci i server iniziali
-        edge_servers, neighbors_SAT, global_access_point = build_EdgeServer_from_config(env, configuration)
+        edge_servers, neighbors_SAT, list_acc_point = build_EdgeServer_from_config(env, configuration)
 
         # Stampa per debug
         print(f"Configurazione iniziale caricata. Totale server: {len(edge_servers)}")
@@ -455,6 +449,16 @@ def loadConfiguration(env):
                 server.add_neighbor(neighbor_server, 1, n["latency"],
                                     random.uniform(config["available_bandwidth"]["min"],
                                                    config["available_bandwidth"]["max"]))
+
+        #Trovo i nuovi acc_points
+        counter_acc_found = 0
+        for server in edge_servers:
+            if counter_acc_found < config["access_point"]:
+                if server.is_acc_point:
+                    global_access_point.append(server)
+                    counter_acc_found += 1
+            else:
+                break
 
         globals.config_index += 1
         return edge_servers, global_access_point
