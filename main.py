@@ -96,7 +96,7 @@ if __name__ == "__main__":
 
     env.run(config['simulation_duration'])
     
-    print("SIMULATION COMPLETED, check RAM :")
+    #task_queueprint("SIMULATION COMPLETED, check RAM :")
     for server in globals.edge_servers:
         print(f"{server.name} queue task :")
         [print(f"\t\t{task[0]}") for task in server.server_queue]
@@ -126,7 +126,7 @@ if __name__ == "__main__":
             for task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority in server.server_queue:
                 TMAX_exceeded = False
                 if task_priority == 1 or original_TaskPriority == 1:
-                    # print('executiontime', execution_time, 'task id', task_id, 'utilization', utilization_CPU)
+                    print('executiontime', execution_time, 'task id', task_id, 'utilization', utilization_CPU)
                     writer.writerow(
                         [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
@@ -140,7 +140,7 @@ if __name__ == "__main__":
                 # task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops
 
     print(f"Simulation results saved to: {csv_file}")
-    print('R_j user', globals.initial_server_counter, 'F_j other', globals.different_server_counter, 'R_j other', globals.other_server_counter)
+    #print('R_j user', globals.initial_server_counter, 'F_j other', globals.different_server_counter, 'R_j other', globals.other_server_counter)
 
     # Compute statistics for the results
     I_j = {}
@@ -162,8 +162,8 @@ if __name__ == "__main__":
             F_j[server_key] = 0  # Avoid division by zero
 
     # Print results
-    print("I_j:", I_j)
-    print("F_j:", F_j)
+    #print("I_j:", I_j)
+    #print("F_j:", F_j)
     # Write data to CSV file
     with open(csv_name_server, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
@@ -175,7 +175,5 @@ if __name__ == "__main__":
             )
 
     print(f"Data of migration server saved to {csv_name_server} ")
-
-    logging.info(f"Simulation results saved to: {csv_file}")
     print(f"Simulation LOG saved to: {log_name}")
-    logging.info("Simulation completed")
+

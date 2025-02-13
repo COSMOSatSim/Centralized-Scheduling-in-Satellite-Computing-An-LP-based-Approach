@@ -415,7 +415,7 @@ def loadConfiguration(env):
         for server in new_edge_servers:
             if counter_acc_found < config["access_point"]:
                 if server.is_acc_point:
-                    print()
+                    #print()
                     global_access_point.append(server)
                     counter_acc_found += 1
             else:

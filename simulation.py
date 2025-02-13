@@ -3,7 +3,6 @@ import random
 import logging
 import experiments
 import globals
-from topology import update_counters_dictionary
 
 hop = 0  # Inizializza la variabile hop a zero
 
@@ -19,7 +18,7 @@ with open('config.json') as config_file:
 # Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
 try:
     with open("data/configurations.json", "r") as f:
-        print("Configuration file loaded.\n")
+        #print("Configuration file loaded.\n")
         data_configurations = json.load(f)
 except Exception as e:
     print(f"Error loading configuration file: {e}")
@@ -63,13 +62,12 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
     selected_server.server_queue.append(task)
 
     with selected_server.process_queue.request(priority=task[4]) as request:
-        print(
-            f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
+        print(f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
 
-        print("-" * 10)
-        print(f"\t Server {selected_server.name} task_queue:")
-        [print(f"\t\t {task_in_queue[0]}") for task_in_queue in selected_server.server_queue]
-        print("-" * 10)
+        #print("-" * 10)
+        #print(f"\t Server {selected_server.name} task_queue:")
+        #[print(f"\t\t {task_in_queue[0]}") for task_in_queue in selected_server.server_queue]
+        #print("-" * 10)
 
         yield request
         start_time = env.now
@@ -79,17 +77,17 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
 
         end_time = env.now
         execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
-        print("execution time task assignment", execution_time, 'task', task_id)
+        #print("execution time task assignment", execution_time, 'task', task_id)
 
         service_time = execution_time + time_in_queue + transfer_time
-
+        '''
         print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
               f"Arrival Time in System: {arrival_time_system:.2f}, "
               f"start time: {start_time:.2f}, "
               f"rimasto in coda: {time_in_queue:.2f}, "
               f"lascia il sistema in {env.now:.2f}, "
               f"execution time {execution_time}, "
-              f"Service time: {service_time:.2f}")
+              f"Service time: {service_time:.2f}")'''
 
         priority_mapping = {100: "low", 1: "high"}
         task_p = priority_mapping.get(task_priority, "NaN")
@@ -109,9 +107,11 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, lunghezza_coda, original_TaskPriority,
                                            TMAX_exceeded=False)
-
-        if len(selected_server.server_queue) > 0:
-            selected_server.server_queue.pop(0)
+        # Rimuovi il task completato dalla coda
+        if task in selected_server.server_queue:
+             selected_server.server_queue.remove(task)
+        #if len(selected_server.server_queue) > 0:
+        #    selected_server.server_queue.pop(0)
 
 Tmax_H = config["Tmax_H"]
 Tmax_L = config["Tmax_H"]
@@ -123,7 +123,7 @@ def estimate_execution_time():
     max_seconds = config["CPU_timeout"]["max"]
 
     estimated_time = experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds)
-    print(f"Tempo di esecuzione stimato: {estimated_time:.2f} secondi")
+    #print(f"Tempo di esecuzione stimato: {estimated_time:.2f} secondi")
     return estimated_time
 
 def SearchNode(env, server_selected, task_id, required_cpu, required_ram, required_disk, image_size, Volume_size,
@@ -161,7 +161,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         - Or recursively select another server if no suitable server is available within the latency threshold.
         '''
     global sorted_servers, transfer_time, hop
-    print(f'SearchNode, Server selezionato --> {server_selected.name}')
+    #print(f'SearchNode, Server selezionato --> {server_selected.name}')
 
     # Stima il tempo di esecuzione del task
     estimated_execution_time = estimate_execution_time()
@@ -169,7 +169,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
 
-    print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
+    #print(f'I server vicini al server {server_selected.name} sono: {[n.name for n in neighbors_at_distance_one]}')
 
     server_metrics = []
 
@@ -229,7 +229,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     #for server in sorted_servers:
     #     print(f"Server {server.name}: Utility Value = {server.utility_value} ")
 
-    print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
+    #print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
 
     initial_server_counter[server_selected.name] += 1
@@ -373,7 +373,7 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         priority_combination = experiments.priority_combination(*priority_combination_values)
 
         task_priority = priority_combination
-        print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
+        #print(f"Access Point Selezionato: {selected_server.satellite.name} task priority: {task_priority}")
 
         env.process(task(env, task_id, selected_server, task_priority, initial_server_counter, different_server_counter, other_server_counter))
         task_id += 1
