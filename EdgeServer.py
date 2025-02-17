@@ -13,7 +13,7 @@ def setup_logging(log_file_path):
 total_time = 0  # Imposta il valore iniziale di total_time
 
 class EdgeServer:
-    def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point):
+    def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point, elev_angle):
         '''
                 Initialize an EdgeServer instance.
 
@@ -25,7 +25,7 @@ class EdgeServer:
         self.satellite = satellite
         self.orbitalSunset = orbitalSunset
         self.is_acc_point = is_acc_point
-        #self.gone_down = gone_down
+        self.elev_angle = elev_angle
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
@@ -55,11 +55,16 @@ class EdgeServer:
 
                 :return: None
                 '''
-        print(f"Completamento Task {task_id}: Start {start_time}, End {end_time}, {self.name}")
+        
+        exec_after_set = False  # booleano che indica se il task è stato eseguito quando il satellite è tramontato
+        if self.elev_angle < config["Phi_max"]:
+            exec_after_set = True
+
+        print(f"Completamento Task {task_id}: Start {start_time}, End {end_time}, {self.name} Tramontato: {exec_after_set}")
 
         self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time,
                                      end_time, execution_time, service_time, time_in_queue, selected_server, num_hops,
-                                     lunghezza_coda, original_TaskPriority, TMAX_exceeded))
+                                     lunghezza_coda, original_TaskPriority, TMAX_exceeded, exec_after_set))
 
     def add_neighbor(self, neighbor_server, hop_count, latency, bandwidth):
         '''

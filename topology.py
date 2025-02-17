@@ -230,15 +230,16 @@ def build_EdgeServer_from_config(env, configuration):
         line2 = sat_info["TLE-DATA"][0]["line2"]
         life = sat_info["life"]["time_until_set_seconds"]
         acc_point = sat_info["is_access_point"]
-        
+        satellite_angle = sat_info["elev_angle"]
+
         if acc_point:
             neighbors_SAT[server_id] = sat_info["neighbors"]
-            edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point)
+            edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
             tmp_ES.append(edge_server)
             list_acc_point.append(edge_server.name)
         else:
             neighbors_SAT[server_id] = sat_info["neighbors"]
-            edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point)
+            edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
             tmp_ES.append(edge_server)
 
     return tmp_ES, neighbors_SAT, list_acc_point
@@ -311,6 +312,8 @@ def update_servers(new_servers, acc_point):
     # Dizionari per i risultati
     intersection = {name: server for name, server in old_servers.items() if
                     name in new_servers}  # Servers nell'intersezione
+    for name, server in intersection.items():
+        server.elev_angle = new_servers[name].elev_angle
 
     # Aggiorno i riferimenti degli acc_point flags
     for name, server in intersection.items():
@@ -321,6 +324,18 @@ def update_servers(new_servers, acc_point):
 
     A = {name: server for name, server in old_servers.items() if name not in new_servers}  # Server che sono tramontati
     B = {name: server for name, server in new_servers.items() if name not in old_servers}  # Server che sono appena sorti
+
+    # Stampa i server che sono tramontati
+    for name, server in A.items():
+        print(f"Server tramontato: {name}, Angolo di elevazione: {server.elev_angle}")
+
+    # Stampa i server che sono appena sorti
+    for name, server in B.items():
+        print(f"Server appena sorto: {name}, Angolo di elevazione: {server.elev_angle}")
+
+    # Stampa i server nell'intersezione
+    for name, server in intersection.items():
+        print(f"Server aggiornato: {name}, Angolo di elevazione: {server.elev_angle}")
 
     return intersection, A, B
 

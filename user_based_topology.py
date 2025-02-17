@@ -266,49 +266,44 @@ def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
     return sat_vector_Topology_sorted
 
 
-def satellite_gone_down(t, time_set):
+def find_angle(t, satellite):
     """
-    Check if a satellite has gone down based on its altitude.
+    Find the elevation angle of a satellite relative to the observer at a given time.
 
-    :param satellite: The satellite to check.
-    :param t: Current time.
+    Args:
+        t (skyfield.timelib.Time): The time at which to find the elevation angle.
+        satellite (EarthSatellite): The satellite object.
 
-    :return: True if the satellite has gone down, False otherwise.
+    Returns:
+        float: The elevation angle in degrees.
     """
-
-    if time_set is not None:
-        # Rimuove "UTC" e converte in oggetto datetime
-        dt = datetime.strptime(time_set.replace(" UTC", ""), "%Y-%m-%d %H:%M:%S")
-
-        # Converte in oggetto Time di Skyfield
-        time_obj = ts.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-
-        if not time_obj < t: 
-            return False
-        else:
-            return True
-    else:
-        return True
-    
+    sys = getSystemFromSat(satellite, t)
+    alt, az, distance = sys.altaz()
+    return alt.degrees
     
 
-
-def create_satellite_Identity_card(satellite_name, life, neighbors_info, t, access_points = False):
+def create_satellite_Identity_card(satellite, life, neighbors_info, t, access_points = False):
     """
-    Crea un dizionario che rappresenta un satellite e i suoi vicini.
+    Create a dictionary representing a satellite and its neighbors.
 
-    :param satellite_name: Nome del satellite principale (str).
-    :param neighbors_info: Lista di tuple con (nome_del_vicino, distanza) (list of tuples).
-    :return: Dizionario che rappresenta il satellite e i suoi vicini (dict).
+    Args:
+        satellite (tuple): A tuple containing the satellite object and its distance from the user.
+        life (dict): A dictionary with information about the satellite's life.
+        neighbors_info (list of tuples): A list of tuples with (neighbor_name, distance, latency).
+        t (skyfield.timelib.Time): The current time.
+        access_points (bool): Whether the satellite is an access point.
+
+    Returns:
+        dict: A dictionary representing the satellite and its neighbors.
     """
-    sat_gone_down = satellite_gone_down(t, life["LOS"])  # Controllo che il satellite non sia tramontato ora
+    elevation_angle = find_angle(t, satellite[0])  # Mi trovo l'angolo di elevazione del satellite rispetto l'obverver
 
     satellite_data = {
-        "satellite": satellite_name[0].name,
-        "distance_from_user": satellite_name[1],
+        "satellite": satellite[0].name,
+        "distance_from_user": satellite[1],
         "is_access_point": access_points,
-        "is_gone_down": sat_gone_down,
-        "TLE-DATA": [{"name": satellite_name[2][0], "line1": satellite_name[2][1], "line2": satellite_name[2][2]}],
+        "elev_angle": elevation_angle,
+        "TLE-DATA": [{"name": satellite[2][0], "line1": satellite[2][1], "line2": satellite[2][2]}],
         "life": life,
         "neighbors": [
             {"name": neighbor_name, "distance": distance, "latency": latency}
