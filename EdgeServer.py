@@ -149,7 +149,6 @@ class EdgeServer:
         '''
         # Ottiene la lista di task attualmente in coda nel server
         tasks_in_queue = list(server.server_queue)
-        logging.debug(f'Server: {server.name} Task in coda: {tasks_in_queue}')
 
         # Se ci sono task in coda, calcola i parametri di utilità
         if len(tasks_in_queue) > 0:
@@ -158,29 +157,23 @@ class EdgeServer:
 
             # Calcola il tempo di attesa totale dei task (waiting_time)
             self.waiting_time = sum([r[6] for r in tasks_in_queue if r[5] < env.now])
-            logging.debug(f'waiting_time {self.waiting_time}')
 
             # Calcola il tempo medio di servizio (AVG_service_time)
             self.AVG_service_time = self.waiting_time / total_priority_in_queue if total_priority_in_queue > 0 else 0
-            logging.debug(f'AVG_service_time {self.AVG_service_time}')
 
             # Conta il numero di task ad alta priorità nella coda
             num_high_priority = sum(1 for r in tasks_in_queue if r[4] == 1 and (env.now - 1) < r[5] <= (env.now))
-            logging.debug(f'num_high_priority {num_high_priority}')
 
             # Conta il numero di task a bassa priorità nella coda
             num_low_priority = sum(1 for r in tasks_in_queue if r[4] == 100 and (env.now - 1) < r[5] <= (env.now))
-            logging.debug(f'num_low_priority {num_low_priority}')
 
             # Calcola rho_l_ij (carico della bassa priorità)
             rho_l_ij = num_low_priority * self.AVG_service_time
-            logging.debug(f'Server: {server.name} RHO l ij: {rho_l_ij}')
 
             # Calcola rho_h_ij (carico dell'alta priorità)
             rho_h_ij = num_high_priority * self.AVG_service_time
             if rho_h_ij > 1:
                 rho_h_ij = 0.99  # Se rho_h_ij è maggiore di 1, lo limitiamo a 0.99
-            logging.debug(f'Server: {server.name} RHO h ij: {rho_h_ij}')
 
             # Calcola il tempo di attesa per i task ad alta priorità (Th_ij)
             self.Th_ij = ((1 + rho_l_ij) * self.AVG_service_time) / (1 - rho_h_ij)

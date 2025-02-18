@@ -182,6 +182,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         else:
             transfer_time = 0
 
+        # Aggiorna il valore di utilità e i parametri relativi alla coda
         if neighbor == server_selected:
             server_selected.UpdateUtilityValue(env, required_cpu, transfer_time, 0, download_time, server_selected,
                                                task_priority)
@@ -191,15 +192,26 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
                                         task_priority)
             total_estimated_time = estimated_execution_time + transfer_time + restart_time
 
+        # Calcola il tempo atteso in coda usando Th_ij e Tl_ij
+        if task_priority == 1:
+            # Per task ad alta priorità, consideriamo solo Th_ij
+            waiting_time_adjusted = neighbor.Th_ij
+        else:
+            # Per task a bassa priorità, consideriamo sia Th_ij che Tl_ij
+            waiting_time_adjusted = neighbor.Th_ij + neighbor.Tl_ij
+
+        expected_completion_time = total_estimated_time + waiting_time_adjusted
+
         # Aggiungi le metriche del server alla lista
         server_metrics.append({
-                'server': neighbor,
-                'utility_value': neighbor.utility_value,
-                'estimated_total_time': total_estimated_time,
-                'queue_length': len(neighbor.server_queue),
-                'orbitalSunset': neighbor.orbitalSunset,
-                'Sunset': neighbor.elev_angle
-            })
+            'server': neighbor,
+            'utility_value': neighbor.utility_value,
+            'estimated_total_time': total_estimated_time,
+            'queue_length': len(neighbor.server_queue),
+            'orbitalSunset': neighbor.orbitalSunset,
+            'Sunset': neighbor.elev_angle,
+            'expected_completion_time': expected_completion_time
+        })
 
     '''Modifica del criterio di ordinamento dei server per considerare:
         Prima il valore di utility (come prima)
@@ -207,33 +219,41 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         Infine la lunghezza della coda
         In questo modo, a parità di utility value, verrà selezionato il server che dovrebbe completare il task più velocemente e con la coda più corta.'''
 
-    # Ordina i server considerando sia l'utility value che il tempo stimato
+    # Filtra i server: esclude i server con orbitalSunset non valido e quelli che non riescono a completare il task in tempo
+    server_metrics = [
+        metrics for metrics in server_metrics
+        if metrics['orbitalSunset'] is not None
+           and metrics['orbitalSunset'] != 0
+           and metrics['expected_completion_time'] <= metrics['orbitalSunset']
+    ]
+
+    # Ordina i server in base ai criteri scelti (utility, tempo stimato, lunghezza della coda, ecc.)
     sorted_servers = sorted(server_metrics,
-                                key=lambda x: (x['utility_value'],
-                                               x['estimated_total_time'],
-                                               x['queue_length'],
-                                               x['orbitalSunset'],
-                                               x['Sunset']))
+                            key=lambda x: (x['utility_value'],
+                                           x['queue_length'],
+                                           x['estimated_total_time'],
+                                           x['orbitalSunset'],
+                                           x['Sunset']))
     Tmax_high -= 2 * Tmax_latency
 
     print("\nServer ordinati per metriche:")
     for metrics in sorted_servers:
             print(f"Server {metrics['server'].name}:")
             print(f"- Utility: {metrics['utility_value']:.2f}")
-            print(f"- Tempo stimato: {metrics['estimated_total_time']:.2f}")
+            print(f"- Tempo stimato esecuzione task: {metrics['estimated_total_time']:.2f}")
+            print(f"- Tempo di completamento in base alla coda: {metrics['expected_completion_time']:.2f}")
             print(f"- Lunghezza coda: {metrics['queue_length']}")
             print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
             if metrics['Sunset'] < config["Phi_max"]:
                 print('Tramontato = true')
 
-    # Converti la lista di dizionari in lista di server
-    sorted_servers = [metrics['server'] for metrics in sorted_servers
-                          if metrics['utility_value'] < Tmax_high]
+    # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
+    sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
 
     #for server in sorted_servers:
     #     print(f"Server {server.name}: Utility Value = {server.utility_value} ")
 
-    #print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
+    print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
 
     initial_server_counter[server_selected.name] += 1
@@ -248,12 +268,28 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
 
         print(f'Seleziono il server con utility più bassa: {server.name}')
 
+        '''Ogni volta che vengono cercati possibili vicini, se ci sono vicini che hanno un  Orbital Sunset inferiore ad un certo threshold devo essere cambiate le priorità in coda da bassa in alta (se ci sono). 
+        spostare questo controllo in una funzione separata
+        # Se il server sta per uscire dall'orbita, promuoviamo i task a bassa priorità
+        if server.orbitalSunset <= threshold and task_priority == 100:
+            task_priority = 1
+            print(f"⚠️ Task {task_id} promosso ad alta priorità perché il server {server.name} sta per tramontare! Time to sunset {server.orbitalSunset} sec, threshold {threshold} sec.")'''
+
+        # Parametri utili per la gestione della coda
         AVG_service_time = server.AVG_service_time
         Th_ij = server.Th_ij
         Tl_ij = server.Th_ij + server.Tl_ij
         waiting_time = server.waiting_time
 
-        if waiting_time <= AVG_service_time:
+        # Soglia per promuovere la priorità se il server sta per tramontare
+        threshold = 2 * AVG_service_time
+
+        # Se il server sta per uscire dall'orbita, promuoviamo i task a bassa priorità
+        if server.orbitalSunset <= threshold and task_priority == 100:
+            task_priority = 1
+            print(f"⚠️ Task {task_id} promosso ad alta priorità perché il server {server.name} sta per tramontare! Time to sunset {server.orbitalSunset} sec, threshold {threshold} sec.")
+
+        elif waiting_time <= AVG_service_time:
             task_priority = 1
             print(f"Task {task_id} assegnato alla coda ad alta priorità")
         elif Th_ij <= waiting_time <= Tl_ij:
