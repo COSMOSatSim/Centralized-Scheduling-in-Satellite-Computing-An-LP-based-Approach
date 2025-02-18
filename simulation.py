@@ -197,7 +197,8 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
                 'utility_value': neighbor.utility_value,
                 'estimated_total_time': total_estimated_time,
                 'queue_length': len(neighbor.server_queue),
-                'orbitalSunset': neighbor.orbitalSunset
+                'orbitalSunset': neighbor.orbitalSunset,
+                'Sunset': neighbor.elev_angle
             })
 
     '''Modifica del criterio di ordinamento dei server per considerare:
@@ -211,16 +212,19 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
                                 key=lambda x: (x['utility_value'],
                                                x['estimated_total_time'],
                                                x['queue_length'],
-                                               x['orbitalSunset']))
+                                               x['orbitalSunset'],
+                                               x['Sunset']))
     Tmax_high -= 2 * Tmax_latency
 
-    # print("\nServer ordinati per metriche:")
-    # for metrics in sorted_servers:
-    #         print(f"Server {metrics['server'].name}:")
-    #         print(f"- Utility: {metrics['utility_value']:.2f}")
-    #         print(f"- Tempo stimato: {metrics['estimated_total_time']:.2f}")
-    #         print(f"- Lunghezza coda: {metrics['queue_length']}")
-    #         print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
+    print("\nServer ordinati per metriche:")
+    for metrics in sorted_servers:
+            print(f"Server {metrics['server'].name}:")
+            print(f"- Utility: {metrics['utility_value']:.2f}")
+            print(f"- Tempo stimato: {metrics['estimated_total_time']:.2f}")
+            print(f"- Lunghezza coda: {metrics['queue_length']}")
+            print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
+            if metrics['Sunset'] < config["Phi_max"]:
+                print('Tramontato = true')
 
     # Converti la lista di dizionari in lista di server
     sorted_servers = [metrics['server'] for metrics in sorted_servers
