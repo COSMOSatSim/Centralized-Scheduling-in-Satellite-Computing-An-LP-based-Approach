@@ -312,8 +312,11 @@ def update_servers(new_servers, acc_point):
     # Dizionari per i risultati
     intersection = {name: server for name, server in old_servers.items() if
                     name in new_servers}  # Servers nell'intersezione
+    
+    #Aggiorno gli attributi dell'intersezione
     for name, server in intersection.items():
         server.elev_angle = new_servers[name].elev_angle
+        server.orbitalSunset = new_servers[name].orbitalSunset
 
     # Aggiorno i riferimenti degli acc_point flags
     for name, server in intersection.items():
@@ -327,15 +330,15 @@ def update_servers(new_servers, acc_point):
 
     # Stampa i server che sono tramontati
     for name, server in A.items():
-        print(f"Server tramontato: {name}, Angolo di elevazione: {server.elev_angle}")
+        print(f"Server tramontato: {name}, Orbital Sunset: {server.orbitalSunset}")
 
     # Stampa i server che sono appena sorti
     for name, server in B.items():
-        print(f"Server appena sorto: {name}, Angolo di elevazione: {server.elev_angle}")
+        print(f"Server appena sorto: {name}, Orbital Sunset: {server.orbitalSunset}")
 
     # Stampa i server nell'intersezione
     for name, server in intersection.items():
-        print(f"Server aggiornato: {name}, Angolo di elevazione: {server.elev_angle}")
+        print(f"Server aggiornato: {name}, Orbital Sunset: {server.orbitalSunset}")
 
     return intersection, A, B
 
