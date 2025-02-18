@@ -141,8 +141,11 @@ def find_satellite_events(satellite, t0):
             "time_until_set_seconds": None,
         }
     else:
-        time_until_set = 0      
-        if not time[2] < t0:    # If the satellite has just went down
+
+        if not time[0] < t0 < time[2]:  # If the satellite is not in the dome then its life is not defined
+            time_until_set = 0
+        else: # The satellite is in the dome
+            
             time_until_set = timedelta(seconds = (time[2] - t0) * 86400).seconds
         life = {
             "AOS": time[0].utc_strftime(),          # Acquisition of the Satellite (AOS)
@@ -151,6 +154,7 @@ def find_satellite_events(satellite, t0):
             "life_seconds": timedelta(seconds = (time[2] - time[0]) * 86400).seconds,       # Life of the satellite in Dome
             "time_until_set_seconds": time_until_set   # Time until the satellite sets 
         }
+
         if time_until_set > 1000:
             print("ATTENZIONE")
 
@@ -330,15 +334,15 @@ def update_servers(new_servers, acc_point):
 
     # Stampa i server che sono tramontati
     for name, server in A.items():
-        print(f"Server tramontato: {name}, Orbital Sunset: {server.orbitalSunset}")
+        print(f"Server tramontato: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset} (sec)")
 
     # Stampa i server che sono appena sorti
     for name, server in B.items():
-        print(f"Server appena sorto: {name}, Orbital Sunset: {server.orbitalSunset}")
+        print(f"Server appena sorto: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset}")
 
     # Stampa i server nell'intersezione
     for name, server in intersection.items():
-        print(f"Server aggiornato: {name}, Orbital Sunset: {server.orbitalSunset}")
+        print(f"Server aggiornato: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset}")
 
     return intersection, A, B
 
