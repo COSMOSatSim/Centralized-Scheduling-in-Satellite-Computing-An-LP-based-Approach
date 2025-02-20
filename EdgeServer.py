@@ -60,7 +60,7 @@ class EdgeServer:
         if self.elev_angle < config["Phi_max"]:
             exec_after_set = True
 
-        print(f"Completamento Task {task_id}: Start {start_time}, End {end_time}, {self.name} Tramontato: {exec_after_set}")
+        print(f"Completamento Task {task_id}: Priority {task_priority}, Start {start_time}, End {end_time}, {self.name} Tramontato: {exec_after_set}")
 
         self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time,
                                      end_time, execution_time, service_time, time_in_queue, selected_server, num_hops,
@@ -153,13 +153,13 @@ class EdgeServer:
         # Se ci sono task in coda, calcola i parametri di utilità
         if len(tasks_in_queue) > 0:
             # Calcola il numero di task che sono arrivati prima del tempo attuale (env.now)
-            total_priority_in_queue = sum([1 for r in tasks_in_queue if r[5] < env.now])
+            self.total_priority_in_queue = sum([1 for r in tasks_in_queue if r[5] < env.now])
 
             # Calcola il tempo di attesa totale dei task (waiting_time)
             self.waiting_time = sum([r[6] for r in tasks_in_queue if r[5] < env.now])
 
             # Calcola il tempo medio di servizio (AVG_service_time)
-            self.AVG_service_time = self.waiting_time / total_priority_in_queue if total_priority_in_queue > 0 else 0
+            self.AVG_service_time = self.waiting_time / self.total_priority_in_queue if self.total_priority_in_queue > 0 else 0
 
             # Conta il numero di task ad alta priorità nella coda
             num_high_priority = sum(1 for r in tasks_in_queue if r[4] == 1 and (env.now - 1) < r[5] <= (env.now))
@@ -172,6 +172,7 @@ class EdgeServer:
 
             # Calcola rho_h_ij (carico dell'alta priorità)
             rho_h_ij = num_high_priority * self.AVG_service_time
+
             if rho_h_ij > 1:
                 rho_h_ij = 0.99  # Se rho_h_ij è maggiore di 1, lo limitiamo a 0.99
 
@@ -196,11 +197,17 @@ class EdgeServer:
         # Calcola il tempo totale per trasferimento, riavvio e download
         total_time = transfer_time + restart_time + download_time
 
+        # Penalizzazione per il tramonto del server
+        if server.orbitalSunset is not None and server.orbitalSunset > 0:
+            sunset_penalty = 1 / server.orbitalSunset  # Più è vicino al tramonto, più alto è il valore
+        else:
+            sunset_penalty = float('inf')  # Penalizzazione massima se il tramonto è imminente
+
         # Massima capacità della CPU
         C_i_MAX = config['cpu_capacity']
 
         # Aggiorna il valore di utilità del server in base alla priorità del task
         if task_priority == 1:  # Task ad alta priorità
-            self.utility_value = self.Th_ij + (required_cpu / C_i_MAX) + total_time
+            self.utility_value = self.Th_ij + (required_cpu / C_i_MAX) + total_time + sunset_penalty
         else:  # Task a bassa priorità
-            self.utility_value = self.Th_ij + self.Tl_ij + (required_cpu / C_i_MAX) + total_time
+            self.utility_value = self.Th_ij + self.Tl_ij + (required_cpu / C_i_MAX) + total_time + sunset_penalty

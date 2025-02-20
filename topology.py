@@ -196,8 +196,8 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
             configuration.append(info_sat)  # Save this satellite's configuration
 
-        print(f"Configuration ({elapsed_time // interval}/{num_configs - 1})")
-        print("#" * 70)
+        #print(f"Configuration ({elapsed_time // interval}/{num_configs - 1})")
+        #print("#" * 70)
 
         data = {
             "time": t.utc_datetime().isoformat(),  # Current time in ISO format
@@ -253,26 +253,26 @@ def periodic_recall_monitor(env):
     while True:
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
 
-        print("-" * 70)
-        print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
-        print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
+        #print("-" * 70)
+        #print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
+        #print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
         
         new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
         
-        print("--- OLD ACCESS POINT ---")
-        for ap in globals.global_access_point:
-            print(f"{ap.name}")
+        #print("--- OLD ACCESS POINT ---")
+        #for ap in globals.global_access_point:
+        #    print(f"{ap.name}")
 
         # ! Aggiorno le Globali
         with lock:
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
         
-        print("--- NEW ACCESS POINT ---")
-        for ap in globals.global_access_point:
-            print(f"{ap.name}")
+        #print("--- NEW ACCESS POINT ---")
+        #for ap in globals.global_access_point:
+        #    print(f"{ap.name}")
 
-        print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
+        #print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
 
 
 def update_counters_dictionary(all_server, initial_server_counter, different_server_counter, other_server_counter):
@@ -333,16 +333,16 @@ def update_servers(new_servers, acc_point):
     B = {name: server for name, server in new_servers.items() if name not in old_servers}  # Server che sono appena sorti
 
     # Stampa i server che sono tramontati
-    for name, server in A.items():
-        print(f"Server tramontato: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset} (sec)")
+    #for name, server in A.items():
+        #print(f"Server tramontato: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset} (sec)")
 
     # Stampa i server che sono appena sorti
-    for name, server in B.items():
-        print(f"Server appena sorto: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset}")
+    #for name, server in B.items():
+        #print(f"Server appena sorto: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset}")
 
     # Stampa i server nell'intersezione
-    for name, server in intersection.items():
-        print(f"Server aggiornato: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset}")
+    #for name, server in intersection.items():
+        #print(f"Server aggiornato: {name}, angle:{server.elev_angle} ,Orbital Sunset: {server.orbitalSunset}")
 
     return intersection, A, B
 
@@ -405,10 +405,10 @@ def loadConfiguration(env):
     """
     global_access_point = []    # futuri acc_points
     if globals.config_index > 0:
-        print("#" * 30)
+        #print("#" * 30)
         configuration = data_configurations["configurations"][globals.config_index]
 
-        print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
+        #print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
 
         # Costruisci i nuovi server dalla configurazione
         new_servers, new_neighbors, acc_point = build_EdgeServer_from_config(env,configuration)
@@ -422,7 +422,7 @@ def loadConfiguration(env):
                                    globals.different_server_counter, globals.other_server_counter)  # Aggiorno i dizionari dei nuovi aggiunti
 
         # Stampa per debug
-        print(f"Configurazione aggiornata. Totale server: {len({**intersection, **new_edge_servers, **old_edge_servers})}")
+        #print(f"Configurazione aggiornata. Totale server: {len({**intersection, **new_edge_servers, **old_edge_servers})}")
 
         # Aggiorno i vicini
         servers_in_dome_updated = update_servers_neighbors({**intersection, **new_edge_servers},
@@ -452,14 +452,14 @@ def loadConfiguration(env):
     else:
         # Caricamento iniziale della configurazione
         configuration = data_configurations["configurations"][globals.config_index]
-        print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
+        #print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
 
 
         # Costruisci i server iniziali
         edge_servers, neighbors_SAT, list_acc_point = build_EdgeServer_from_config(env, configuration)
 
         # Stampa per debug
-        print(f"Configurazione iniziale caricata. Totale server: {len(edge_servers)}")
+        #print(f"Configurazione iniziale caricata. Totale server: {len(edge_servers)}")
         server_dict = {server.name: server for server in edge_servers}
 
         # Aggiungiamo i vicini per ogni elemento
@@ -490,10 +490,10 @@ def updateTaskValue():
     index_config = 0
     lifes = []  # Lista per salvare le vite dei satelliti
     configurations = data_configurations["configurations"]   
-    print(f"Analisi {len(configurations)} configurazioni :")
+    #print(f"Analisi {len(configurations)} configurazioni :")
     for i in range(len(configurations)):
         conf =  data_configurations["configurations"][index_config]
-        print(f"[{i}] Configuration time: {conf['time']} sat:({len(conf['configuration'])})")
+        #print(f"[{i}] Configuration time: {conf['time']} sat:({len(conf['configuration'])})")
         
         for satellite in conf["configuration"]:
             if satellite["life"]["life_seconds"] == None:
@@ -504,16 +504,14 @@ def updateTaskValue():
                             {"satellite" : satellite["satellite"],
                             "life": satellite["life"]["life_seconds"]}
                         )
-                    print(f"satellite: { satellite['satellite']}\t|  life :{satellite['life']['life_seconds']}")
-        print(f"Incremento lifes: {len(lifes)}")
+                    #print(f"satellite: { satellite['satellite']}\t|  life :{satellite['life']['life_seconds']}")
+        #print(f"Incremento lifes: {len(lifes)}")
         index_config += 1
-    print("#" * 50)
+    #print("#" * 50)
     
     lifes_value = [sat["life"] for sat in lifes]
-
-    avg = sum(lifes_value) / len(lifes_value) // 2
-    print(f"Average life: {avg}")
-    print(f"Max life: {avg + 20}")
-    print(f"Min life: {avg - 20}")
+    #print(f"Average life: {sum(lifes_value) / len(lifes_value)}")
+    #print(f"Max life: {max(lifes_value)}")
+    #print(f"Min life: {min(lifes_value)}")
     
-    return avg - 20, avg + 20, avg 
+    return min(lifes_value), max(lifes_value), sum(lifes_value) / len(lifes_value)

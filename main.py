@@ -97,12 +97,13 @@ if __name__ == "__main__":
     env.run(config['simulation_duration'])
     
     #task_queueprint("SIMULATION COMPLETED, check RAM :")
+    '''
     for server in globals.edge_servers:
         print(f"{server.name} queue task :")
         [print(f"\t\t{task[0]}") for task in server.server_queue]
         print(f"{server.name} completed task :")
         [print(f"\t\t{task[0]}") for task in server.completed_tasks]
-        print("@"*10)
+        print("@"*10)'''
     
     # Scrive i dati dei task nel file CSV
     with open(csv_file, mode='w', newline='') as file:
@@ -126,7 +127,7 @@ if __name__ == "__main__":
             for task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority in server.server_queue:
                 TMAX_exceeded = False
                 if task_priority == 1 or original_TaskPriority == 1:
-                    print('executiontime', execution_time, 'task id', task_id, 'utilization', utilization_CPU)
+                    #print('executiontime', execution_time, 'task id', task_id, 'utilization', utilization_CPU)
                     writer.writerow(
                         [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,

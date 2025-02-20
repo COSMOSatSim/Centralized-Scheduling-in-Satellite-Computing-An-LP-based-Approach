@@ -57,7 +57,7 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
     yield env.timeout(transfer_time)
 
     arrival_time_task_queue = env.now
-    task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority
+    task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, num_hops, arrival_time_task_queue, original_TaskPriority
 
     selected_server.server_queue.append(task)
 
@@ -160,7 +160,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         - Assign the task to the most suitable server based on its utility value and priority,
         - Or recursively select another server if no suitable server is available within the latency threshold.
         '''
-    global sorted_servers, transfer_time, hop
+    global sorted_servers, transfer_time, hop, total_estimated_time
     #print(f'SearchNode, Server selezionato --> {server_selected.name}')
 
     # Stima il tempo di esecuzione del task
@@ -195,12 +195,14 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         # Calcola il tempo atteso in coda usando Th_ij e Tl_ij
         if task_priority == 1:
             # Per task ad alta priorità, consideriamo solo Th_ij
-            waiting_time_adjusted = neighbor.Th_ij
+            waiting_time_adjusted = neighbor.Th_ij + neighbor.waiting_time
         else:
             # Per task a bassa priorità, consideriamo sia Th_ij che Tl_ij
-            waiting_time_adjusted = neighbor.Th_ij + neighbor.Tl_ij
+            waiting_time_adjusted = neighbor.Th_ij + neighbor.Tl_ij + neighbor.waiting_time
 
         expected_completion_time = total_estimated_time + waiting_time_adjusted
+        wt = neighbor.waiting_time
+
 
         # Aggiungi le metriche del server alla lista
         server_metrics.append({
@@ -208,6 +210,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
             'utility_value': neighbor.utility_value,
             'estimated_total_time': total_estimated_time,
             'queue_length': len(neighbor.server_queue),
+            'waiting_time': wt,
             'orbitalSunset': neighbor.orbitalSunset,
             'Sunset': neighbor.elev_angle,
             'expected_completion_time': expected_completion_time
@@ -231,21 +234,19 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     sorted_servers = sorted(server_metrics,
                             key=lambda x: (x['utility_value'],
                                            x['queue_length'],
-                                           x['estimated_total_time'],
-                                           x['orbitalSunset'],
-                                           x['Sunset']))
+                                           ))
     Tmax_high -= 2 * Tmax_latency
 
-    print("\nServer ordinati per metriche:")
+    #print("\nServer ordinati per metriche:")
+    '''
     for metrics in sorted_servers:
             print(f"Server {metrics['server'].name}:")
             print(f"- Utility: {metrics['utility_value']:.2f}")
             print(f"- Tempo stimato esecuzione task: {metrics['estimated_total_time']:.2f}")
+            print(f"- waiting_time: {metrics['waiting_time']:.2f}")
             print(f"- Tempo di completamento in base alla coda: {metrics['expected_completion_time']:.2f}")
             print(f"- Lunghezza coda: {metrics['queue_length']}")
-            print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
-            if metrics['Sunset'] < config["Phi_max"]:
-                print('Tramontato = true')
+            print(f"- Orbital Sunset: {metrics['orbitalSunset']}")'''
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
     sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
@@ -253,7 +254,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
     #for server in sorted_servers:
     #     print(f"Server {server.name}: Utility Value = {server.utility_value} ")
 
-    print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
+    #print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
 
     initial_server_counter[server_selected.name] += 1
@@ -266,14 +267,8 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
             other_server_counter[server.name] += 1
             hop += 1
 
-        print(f'Seleziono il server con utility più bassa: {server.name}')
-
-        '''Ogni volta che vengono cercati possibili vicini, se ci sono vicini che hanno un  Orbital Sunset inferiore ad un certo threshold devo essere cambiate le priorità in coda da bassa in alta (se ci sono). 
-        spostare questo controllo in una funzione separata
-        # Se il server sta per uscire dall'orbita, promuoviamo i task a bassa priorità
-        if server.orbitalSunset <= threshold and task_priority == 100:
-            task_priority = 1
-            print(f"⚠️ Task {task_id} promosso ad alta priorità perché il server {server.name} sta per tramontare! Time to sunset {server.orbitalSunset} sec, threshold {threshold} sec.")'''
+        #print(f'Seleziono il server con utility più bassa: {server.name}, priorità {task_priority}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}')
+        #print(server.waiting_time, 'tempo di attesa wt')
 
         # Parametri utili per la gestione della coda
         AVG_service_time = server.AVG_service_time
@@ -281,15 +276,7 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
         Tl_ij = server.Th_ij + server.Tl_ij
         waiting_time = server.waiting_time
 
-        # Soglia per promuovere la priorità se il server sta per tramontare
-        threshold = 2 * AVG_service_time
-
-        # Se il server sta per uscire dall'orbita, promuoviamo i task a bassa priorità
-        if server.orbitalSunset <= threshold and task_priority == 100:
-            task_priority = 1
-            print(f"⚠️ Task {task_id} promosso ad alta priorità perché il server {server.name} sta per tramontare! Time to sunset {server.orbitalSunset} sec, threshold {threshold} sec.")
-
-        elif waiting_time <= AVG_service_time:
+        if waiting_time <= AVG_service_time:
             task_priority = 1
             print(f"Task {task_id} assegnato alla coda ad alta priorità")
         elif Th_ij <= waiting_time <= Tl_ij:
@@ -298,12 +285,16 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
             task_priority = 100
             print(f"Task {task_id} assegnato alla coda a bassa priorità")
 
+
+        print(
+            f'server: {server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}, orbitalSunset: {server.orbitalSunset}, Sunset: {server.elev_angle}')
+
         yield from TaskAssignment(env, server, task_id, required_cpu, required_ram, required_disk, task_priority,
                                   arrival_time_system, utilization_CPU, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time)
 
     else:
         if Tmax_high <= 0:
-            logging.debug("Tmax è arrivato a zero, termina la ricorsione.")
+            print("Tmax è arrivato a zero, termina la ricorsione.")
             priority_mapping = {100: "low", 1: "high"}
             task_p = priority_mapping.get(task_priority, "NaN")
             server_selected.task_completed(task_id, task_p, arrival_time_system, 0,
