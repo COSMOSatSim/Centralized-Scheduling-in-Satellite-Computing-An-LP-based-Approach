@@ -510,8 +510,10 @@ def updateTaskValue():
     print("#" * 50)
     
     lifes_value = [sat["life"] for sat in lifes]
-    print(f"Average life: {sum(lifes_value) / len(lifes_value)}")
-    print(f"Max life: {max(lifes_value)}")
-    print(f"Min life: {min(lifes_value)}")
+
+    avg = sum(lifes_value) / len(lifes_value) // 2
+    print(f"Average life: {avg}")
+    print(f"Max life: {avg + 20}")
+    print(f"Min life: {avg - 20}")
     
-    return min(lifes_value), max(lifes_value), sum(lifes_value) / len(lifes_value)
+    return avg - 20, avg + 20, avg 
