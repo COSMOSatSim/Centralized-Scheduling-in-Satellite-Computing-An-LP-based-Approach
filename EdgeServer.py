@@ -60,7 +60,7 @@ class EdgeServer:
         if self.elev_angle < config["Phi_max"]:
             exec_after_set = True
 
-        print(f"Completamento Task {task_id}: Priority {task_priority}, Start {start_time}, End {end_time}, {self.name} Tramontato: {exec_after_set}")
+        #print(f"Completamento Task {task_id}: Priority {task_priority}, Start {start_time}, End {end_time}, {self.name} Tramontato: {exec_after_set}")
 
         self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time,
                                      end_time, execution_time, service_time, time_in_queue, selected_server, num_hops,

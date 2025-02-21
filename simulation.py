@@ -48,7 +48,7 @@ def TaskAssignment(env, selected_server, task_id, required_cpu, required_ram, re
     global hop
     if initial_server_counter == 0 and different_server_counter == 0:
         other_server_counter += 1
-    print('Task Assignment')
+    #print('Task Assignment')
     # Azzera il numero di hop
     hop = 0
     lunghezza_coda = len(list(selected_server.server_queue))
@@ -286,15 +286,15 @@ def SearchNode(env, server_selected, task_id, required_cpu, required_ram, requir
             print(f"Task {task_id} assegnato alla coda a bassa priorità")
 
 
-        print(
-            f'server: {server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}, orbitalSunset: {server.orbitalSunset}, Sunset: {server.elev_angle}')
+        #print(
+         #   f'server: {server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}, orbitalSunset: {server.orbitalSunset}, Sunset: {server.elev_angle}')
 
         yield from TaskAssignment(env, server, task_id, required_cpu, required_ram, required_disk, task_priority,
                                   arrival_time_system, utilization_CPU, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time)
 
     else:
         if Tmax_high <= 0:
-            print("Tmax è arrivato a zero, termina la ricorsione.")
+            #print("Tmax è arrivato a zero, termina la ricorsione.")
             priority_mapping = {100: "low", 1: "high"}
             task_p = priority_mapping.get(task_priority, "NaN")
             server_selected.task_completed(task_id, task_p, arrival_time_system, 0,
@@ -388,7 +388,6 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         if distribution_function is not None and callable(distribution_function):
             arrival_time = distribution_function('Task')  # Inter arrival time, tempo tra l'arrivo di 2 task.
         else:
-            logging.debug(f"Unrecognized or invalid distribution type: {distribution_type}")
             raise ValueError("Unrecognized distribution type")
 
         yield env.timeout(arrival_time)

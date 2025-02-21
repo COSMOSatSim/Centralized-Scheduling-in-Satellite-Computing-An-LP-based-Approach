@@ -70,6 +70,7 @@ if __name__ == "__main__":
     generate_tasks_distribution = config["generate_tasks"]["distribution"]
     config_seed = config["seed"]
     config_arrival_time = config["arrival_time_exponential"]
+    config_CPU_Timeout = config["CPU_timeout"]["mean"]
     distribution_string = config["request_distribution"]["distribution"]
     if distribution_string == "0_0_0":
         distribution_string = "RR"
@@ -81,8 +82,8 @@ if __name__ == "__main__":
     percorso_directory = f"simulation result-{network_type}-System_AP{access_point}/simulation result_{distribution_string}_request_distribution_latency_{latency}_distribuited/{config_seed}"
     os.makedirs(percorso_directory, exist_ok=True)
 
-    csv_name = f"{percorso_directory}/simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_{config_arrival_time}.csv"
-    csv_name_server = f"{percorso_directory}/server_name_migration_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_{config_arrival_time}.csv"
+    csv_name = f"{percorso_directory}/simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_AT_{config_arrival_time}_CPU_{config_CPU_Timeout}.csv"
+    csv_name_server = f"{percorso_directory}/server_name_migration_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_AT_{config_arrival_time}_CPU_{config_CPU_Timeout}.csv"
     # Crea un file CSV per registrare i risultati
     csv_file = config["csv_name"]["name"] = csv_name
     log_name = f"simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_{config_arrival_time}.log"
@@ -176,5 +177,4 @@ if __name__ == "__main__":
             )
 
     print(f"Data of migration server saved to {csv_name_server} ")
-    print(f"Simulation LOG saved to: {log_name}")
 
