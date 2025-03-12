@@ -74,12 +74,11 @@ if __name__ == "__main__":
     distribution_string = config["request_distribution"]["distribution"]
     if distribution_string == "0_0_0":
         distribution_string = "RR"
-    latency = config["latency"]["min"]
     access_point = config["access_point"]
 
     # Specifica il percorso della directory che vuoi creare
     # percorso_directory = f"simulation result_{distribution_string}_request_distribution_latency_{latency}_distribuited/{config_seed}"
-    percorso_directory = f"simulation result-{network_type}-System_AP{access_point}/simulation result_{distribution_string}_request_distribution_latency_{latency}_distribuited/{config_seed}"
+    percorso_directory = f"simulation result-{network_type}-System_AP{access_point}/simulation result_{distribution_string}_request_distribution_distribuited/{config_seed}"
     os.makedirs(percorso_directory, exist_ok=True)
 
     csv_name = f"{percorso_directory}/simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_AT_{config_arrival_time}_CPU_{config_CPU_Timeout}.csv"
@@ -125,10 +124,10 @@ if __name__ == "__main__":
                     [task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                      execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
                      original_TaskPriority, TMAX_exceeded, exec_after_set])
-            for task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops, arrival_time_task_queue, original_TaskPriority in server.server_queue:
+            for task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, num_hops, arrival_time_task_queue, original_TaskPriority in server.server_queue:
                 TMAX_exceeded = False
                 if task_priority == 1 or original_TaskPriority == 1:
-                    #print('executiontime', execution_time, 'task id', task_id, 'utilization', utilization_CPU)
+                    #print('executiontime', execution_time, 'task id', task_id, 'utilization')
                     writer.writerow(
                         [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
@@ -139,7 +138,6 @@ if __name__ == "__main__":
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
                          num_hops, len(list(server.server_queue)), 'low', TMAX_exceeded])
                 # il task salvato in coda ha i seguenti parametri nel seguente ordine:
-                # task = task_id, required_cpu, required_ram, required_disk, task_priority, arrival_time_system, utilization_CPU, num_hops
 
     print(f"Simulation results saved to: {csv_file}")
     #print('R_j user', globals.initial_server_counter, 'F_j other', globals.different_server_counter, 'R_j other', globals.other_server_counter)

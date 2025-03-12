@@ -53,7 +53,7 @@ def process_csv(file_path):
     if not righe_da_salvare.empty:
         df = df[df['TMAX_exceeded'] == False]
         # Sovrascrivi il file originale con le righe rimosse
-        df.to_csv(file_path, index=False)
+        #df.to_csv(file_path, index=False)
     else:
         print(f"Nessuna riga da salvare trovata per il file {file_path}")
 

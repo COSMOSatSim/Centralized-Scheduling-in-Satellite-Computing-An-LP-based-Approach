@@ -3,13 +3,13 @@
   "max_try": 5,
   "search_node": 1,
   "seed": 42,
-  "access_point": 20,
-  "arrival_time_exponential": 0.5,
+  "access_point": 5,
+  "arrival_time_exponential": 2,
   "Tmax_H": 5.5,
   "Tmax_L": 0.05,
   "CPU_timeout": {
     "min": 9,
-    "mean": 40,
+    "mean": 110,
     "max": 176
   },
   "MI": {
@@ -24,10 +24,6 @@
   "disk_capacity": {
     "min": 64000,
     "max": 64000
-  },
-  "required_cpu": {
-    "min": 1,
-    "max": 1
   },
   "required_ram": {
     "min": 50,
@@ -48,10 +44,6 @@
   "available_bandwidth": {
     "min": 10000,
     "max": 10000
-  },
-  "latency": {
-    "min": 0.007,
-    "max": 0.007
   },
   "restart_time": {
     "min": 0.1,

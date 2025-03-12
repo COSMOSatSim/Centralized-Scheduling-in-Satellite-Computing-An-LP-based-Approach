@@ -36,7 +36,7 @@ class EdgeServer:
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
-                       original_TaskPriority, TMAX_exceeded):
+                       original_TaskPriority, TMAX_exceeded, exec_after_set):
         '''
                 Record completed tasks.
 
@@ -56,7 +56,7 @@ class EdgeServer:
                 :return: None
                 '''
         
-        exec_after_set = False  # booleano che indica se il task è stato eseguito quando il satellite è tramontato
+        #exec_after_set = False  # booleano che indica se il task è stato eseguito quando il satellite è tramontato
         if self.elev_angle < config["Phi_max"]:
             exec_after_set = True
 
@@ -134,11 +134,11 @@ class EdgeServer:
     def __str__(self):
         return f"Satellite :{self.name} neighbor:({len(self.neighbors)})\n"
 
-    def UpdateUtilityValue(self, env, required_cpu, transfer_time, restart_time, download_time, server, task_priority):
+    def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
         '''
         Aggiorna il valore di utilità del server in base ai task attualmente in coda e al carico richiesto.
 
-        :param required_cpu: CPU richiesta dal task.
+        :param estimated_execution_time: CPU richiesta dal task.
         :param transfer_time: Tempo di trasferimento del contesto.
         :param restart_time: Tempo di riavvio del task.
         :param download_time: Tempo di download dell'immagine.
@@ -149,23 +149,23 @@ class EdgeServer:
         '''
         # Ottiene la lista di task attualmente in coda nel server
         tasks_in_queue = list(server.server_queue)
-
+        ## task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, num_hops, arrival_time_task_queue, original_TaskPriority
         # Se ci sono task in coda, calcola i parametri di utilità
         if len(tasks_in_queue) > 0:
             # Calcola il numero di task che sono arrivati prima del tempo attuale (env.now)
-            self.total_priority_in_queue = sum([1 for r in tasks_in_queue if r[5] < env.now])
+            self.total_priority_in_queue = sum([1 for r in tasks_in_queue if r[4] < env.now])
 
             # Calcola il tempo di attesa totale dei task (waiting_time)
-            self.waiting_time = sum([r[6] for r in tasks_in_queue if r[5] < env.now])
+            self.waiting_time = sum([r[7] for r in tasks_in_queue if r[5] < env.now])
 
             # Calcola il tempo medio di servizio (AVG_service_time)
             self.AVG_service_time = self.waiting_time / self.total_priority_in_queue if self.total_priority_in_queue > 0 else 0
 
             # Conta il numero di task ad alta priorità nella coda
-            num_high_priority = sum(1 for r in tasks_in_queue if r[4] == 1 and (env.now - 1) < r[5] <= (env.now))
+            num_high_priority = sum(1 for r in tasks_in_queue if r[3] == 1 and (env.now - 1) < r[5] <= (env.now))
 
             # Conta il numero di task a bassa priorità nella coda
-            num_low_priority = sum(1 for r in tasks_in_queue if r[4] == 100 and (env.now - 1) < r[5] <= (env.now))
+            num_low_priority = sum(1 for r in tasks_in_queue if r[3] == 100 and (env.now - 1) < r[5] <= (env.now))
 
             # Calcola rho_l_ij (carico della bassa priorità)
             rho_l_ij = num_low_priority * self.AVG_service_time
@@ -201,13 +201,13 @@ class EdgeServer:
         if server.orbitalSunset is not None and server.orbitalSunset > 0:
             sunset_penalty = 1 / server.orbitalSunset  # Più è vicino al tramonto, più alto è il valore
         else:
-            sunset_penalty = float('inf')  # Penalizzazione massima se il tramonto è imminente
+            sunset_penalty = float('inf')  # Penalizzazione massima se il tramonto è imminente'''
 
         # Massima capacità della CPU
         C_i_MAX = config['cpu_capacity']
 
         # Aggiorna il valore di utilità del server in base alla priorità del task
         if task_priority == 1:  # Task ad alta priorità
-            self.utility_value = self.Th_ij + (required_cpu / C_i_MAX) + total_time + sunset_penalty
+            self.utility_value = self.Th_ij + (estimated_execution_time / C_i_MAX) + total_time #+ sunset_penalty
         else:  # Task a bassa priorità
-            self.utility_value = self.Th_ij + self.Tl_ij + (required_cpu / C_i_MAX) + total_time + sunset_penalty
+            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time / C_i_MAX) + total_time #+ sunset_penalty
