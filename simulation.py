@@ -190,7 +190,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         # Calcola il tempo atteso in coda usando Th_ij e Tl_ij
         if task_priority == 1:
             # Per task ad alta priorità, consideriamo solo Th_ij
-            waiting_time_adjusted = neighbor.Th_ij + neighbor.waiting_time + neighbor.Tl_ij
+            waiting_time_adjusted = neighbor.Th_ij + neighbor.waiting_time
             expected_completion_time = total_estimated_time + waiting_time_adjusted
 
         else:
@@ -291,30 +291,22 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
                                   arrival_time_system, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time)
 
     else:
-        if Tmax_high <= 0:
+        if Tmax_high <= 0 or hop > MaxTry:
             #print("Tmax è arrivato a zero, termina la ricorsione.")
             priority_mapping = {100: "low", 1: "high"}
             task_p = priority_mapping.get(task_priority, "NaN")
             server_selected.task_completed(task_id, task_p, arrival_time_system, 0,
                                            0, 0, 0, 0, 0,
                                            server_selected.name, hop, 0, original_TaskPriority, TMAX_exceeded=True, exec_after_set = False)
-            print(f'Termina ricorsione, task {task_id} scartato')
+            if hop >= MaxTry:
+                print(f'Termina ricorsione, superato il MaxTry, task {task_id} scartato')
+            else: print(f'Termina ricorsione, task {task_id} scartato')
             hop = 0
             return
         else:
             available_servers = [neighbor for neighbor in neighbors_at_distance_one if neighbor != server_selected]
             random_server = random.choice(available_servers)
             Tmax_latency = random_server.get_latency(server_selected)
-            if hop == MaxTry:
-                priority_mapping = {100: "low", 1: "high"}
-                task_p = priority_mapping.get(task_priority, "NaN")
-                server_selected.task_completed(task_id, task_p, arrival_time_system, 0,
-                                               0, 0, 0, 0, 0,
-                                               server_selected.name, hop, 0, original_TaskPriority, TMAX_exceeded=True,
-                                               exec_after_set=False)
-                print(f'Termina ricorsione, superato il numero di hop, task {task_id} scartato')
-                hop = 0
-                return
             hop += 1
 
             yield env.process(
