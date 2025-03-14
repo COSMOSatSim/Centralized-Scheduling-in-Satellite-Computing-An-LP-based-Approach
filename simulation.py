@@ -243,11 +243,15 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
-    sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
-    '''sorted_servers = [metrics['server'] for metrics in sorted_servers
-                      if metrics['utility_value'] < Tmax_high
+
+    #Versione originale con penelità aggiunta nell'utility
+    #sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
+
+    #versione mod, con penalità aggiunta qui invece che nell'utility
+    sorted_servers = [metrics['server'] for metrics in sorted_servers
+                      if metrics['expected_completion_time'] < Tmax_high
                       and metrics['expected_completion_time'] < metrics['orbitalSunset']
-                      and metrics['orbitalSunset'] not in (0, None)]'''
+                      and metrics['orbitalSunset'] not in (0, None)]
 
     for server in sorted_servers:
          print(f"Server {server.name}: Utility Value = {server.utility_value} ")

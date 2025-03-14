@@ -156,16 +156,16 @@ class EdgeServer:
             self.total_priority_in_queue = sum([1 for r in tasks_in_queue if r[4] < env.now])
 
             # Calcola il tempo di attesa totale dei task (waiting_time)
-            self.waiting_time = sum([r[7] for r in tasks_in_queue if r[5] < env.now])
+            self.waiting_time = sum([r[5] for r in tasks_in_queue if r[7] < env.now])
 
             # Calcola il tempo medio di servizio (AVG_service_time)
             self.AVG_service_time = self.waiting_time / self.total_priority_in_queue if self.total_priority_in_queue > 0 else 0
 
             # Conta il numero di task ad alta priorità nella coda
-            num_high_priority = sum(1 for r in tasks_in_queue if r[3] == 1 and (env.now - 1) < r[5] <= (env.now))
+            num_high_priority = sum(1 for r in tasks_in_queue if r[3] == 1 and (env.now - 1) < r[7] <= (env.now))
 
             # Conta il numero di task a bassa priorità nella coda
-            num_low_priority = sum(1 for r in tasks_in_queue if r[3] == 100 and (env.now - 1) < r[5] <= (env.now))
+            num_low_priority = sum(1 for r in tasks_in_queue if r[3] == 100 and (env.now - 1) < r[7] <= (env.now))
 
             # Calcola rho_l_ij (carico della bassa priorità)
             rho_l_ij = num_low_priority * self.AVG_service_time
@@ -198,16 +198,14 @@ class EdgeServer:
         total_time = transfer_time + restart_time + download_time
 
         # Penalizzazione per il tramonto del server
-        if server.orbitalSunset is not None and server.orbitalSunset > 0:
+        '''if server.orbitalSunset is not None and server.orbitalSunset > 0:
             sunset_penalty = 1 / server.orbitalSunset  # Più è vicino al tramonto, più alto è il valore
         else:
             sunset_penalty = float('inf')  # Penalizzazione massima se il tramonto è imminente'''
 
-        # Massima capacità della CPU
-        C_i_MAX = config['cpu_capacity']
 
         # Aggiorna il valore di utilità del server in base alla priorità del task
         if task_priority == 1:  # Task ad alta priorità
-            self.utility_value = self.Th_ij + (estimated_execution_time / C_i_MAX) + total_time #+ sunset_penalty
+            self.utility_value = self.Th_ij + (estimated_execution_time) + total_time #+ sunset_penalty
         else:  # Task a bassa priorità
-            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time / C_i_MAX) + total_time #+ sunset_penalty
+            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time #+ sunset_penalty
