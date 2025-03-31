@@ -111,10 +111,10 @@ if __name__ == "__main__":
         writer.writerow(
             ["Task ID", "Task Priority", "Arrival time in system", "arrival_time_task_queue", "Start Time", "End Time",
              "Execution time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Queue length",
-             "original_TaskPriority", "TMAX_exceeded", "Exec_after_set"])
+             "original_TaskPriority", "estimated_execution_time", "transfer_time", "TMAX_exceeded", "Exec_after_set"])
 
         for server in globals.edge_servers:
-            for task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time, execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda, original_TaskPriority, TMAX_exceeded, exec_after_set in server.completed_tasks:
+            for task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time, execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded, exec_after_set in server.completed_tasks:
                 if original_TaskPriority == 1:
                     original_TaskPriority = 'high'
                 else:
@@ -123,20 +123,20 @@ if __name__ == "__main__":
                 writer.writerow(
                     [task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                      execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
-                     original_TaskPriority, TMAX_exceeded, exec_after_set])
-            for task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, num_hops, arrival_time_task_queue, original_TaskPriority in server.server_queue:
+                     original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded, exec_after_set])
+            for task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, num_hops, arrival_time_task_queue, original_TaskPriority,  in server.server_queue:
                 TMAX_exceeded = False
                 if task_priority == 1 or original_TaskPriority == 1:
                     #print('executiontime', execution_time, 'task id', task_id, 'utilization')
                     writer.writerow(
                         [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
-                         num_hops, len(list(server.server_queue)), 'high', TMAX_exceeded])
+                         num_hops, len(list(server.server_queue)), 'high', estimated_execution_time, transfer_time, TMAX_exceeded])
                 else:
                     writer.writerow(
                         [task_id, 'low', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
                          (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
-                         num_hops, len(list(server.server_queue)), 'low', TMAX_exceeded])
+                         num_hops, len(list(server.server_queue)), 'low', estimated_execution_time, transfer_time, TMAX_exceeded])
                 # il task salvato in coda ha i seguenti parametri nel seguente ordine:
 
     print(f"Simulation results saved to: {csv_file}")

@@ -36,7 +36,7 @@ class EdgeServer:
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
-                       original_TaskPriority, TMAX_exceeded, exec_after_set):
+                       original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded, exec_after_set):
         '''
                 Record completed tasks.
 
@@ -64,7 +64,7 @@ class EdgeServer:
 
         self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time,
                                      end_time, execution_time, service_time, time_in_queue, selected_server, num_hops,
-                                     lunghezza_coda, original_TaskPriority, TMAX_exceeded, exec_after_set))
+                                     lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded, exec_after_set))
 
     def add_neighbor(self, neighbor_server, hop_count, latency, bandwidth):
         '''
@@ -149,23 +149,25 @@ class EdgeServer:
         '''
         # Ottiene la lista di task attualmente in coda nel server
         tasks_in_queue = list(server.server_queue)
-        ## task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, num_hops, arrival_time_task_queue, original_TaskPriority
+        #  task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, num_hops, arrival_time_task_queue, original_TaskPriority
+        #     0            1          2           3               4                    5                        6              7             8                    9
+
         # Se ci sono task in coda, calcola i parametri di utilità
         if len(tasks_in_queue) > 0:
             # Calcola il numero di task che sono arrivati prima del tempo attuale (env.now)
             self.total_priority_in_queue = sum([1 for r in tasks_in_queue if r[4] < env.now])
 
             # Calcola il tempo di attesa totale dei task (waiting_time)
-            self.waiting_time = sum([r[5] for r in tasks_in_queue if r[7] < env.now])
+            self.waiting_time = sum([r[5] for r in tasks_in_queue if r[8] < env.now])
 
             # Calcola il tempo medio di servizio (AVG_service_time)
             self.AVG_service_time = self.waiting_time / self.total_priority_in_queue if self.total_priority_in_queue > 0 else 0
 
             # Conta il numero di task ad alta priorità nella coda
-            num_high_priority = sum(1 for r in tasks_in_queue if r[3] == 1 and (env.now - 1) < r[7] <= (env.now))
+            num_high_priority = sum(1 for r in tasks_in_queue if r[3] == 1 and (env.now - 1) < r[8] <= (env.now))
 
             # Conta il numero di task a bassa priorità nella coda
-            num_low_priority = sum(1 for r in tasks_in_queue if r[3] == 100 and (env.now - 1) < r[7] <= (env.now))
+            num_low_priority = sum(1 for r in tasks_in_queue if r[3] == 100 and (env.now - 1) < r[8] <= (env.now))
 
             # Calcola rho_l_ij (carico della bassa priorità)
             rho_l_ij = num_low_priority * self.AVG_service_time
@@ -198,14 +200,14 @@ class EdgeServer:
         total_time = transfer_time + restart_time + download_time
 
         # Penalizzazione per il tramonto del server
-        '''if server.orbitalSunset is not None and server.orbitalSunset > 0:
+        if server.orbitalSunset is not None and server.orbitalSunset > 0:
             sunset_penalty = 1 / server.orbitalSunset  # Più è vicino al tramonto, più alto è il valore
         else:
-            sunset_penalty = float('inf')  # Penalizzazione massima se il tramonto è imminente'''
+            sunset_penalty = float('inf')  # Penalizzazione massima se il tramonto è imminente
 
 
         # Aggiorna il valore di utilità del server in base alla priorità del task
         if task_priority == 1:  # Task ad alta priorità
-            self.utility_value = self.Th_ij + (estimated_execution_time) + total_time #+ sunset_penalty
+            self.utility_value = self.Th_ij + (estimated_execution_time) + total_time + sunset_penalty
         else:  # Task a bassa priorità
-            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time #+ sunset_penalty
+            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time + sunset_penalty

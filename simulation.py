@@ -56,12 +56,13 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
     yield env.timeout(transfer_time)
 
     arrival_time_task_queue = env.now
-    task = task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, num_hops, arrival_time_task_queue, original_TaskPriority
+    task = task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, num_hops, arrival_time_task_queue, original_TaskPriority
 
     selected_server.server_queue.append(task)
 
     with selected_server.process_queue.request(priority=task[3]) as request:
-        print(f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}")
+        print(f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}. Tranfer Time = {transfer_time}")
+
 
         #print("-" * 10)
         #print(f"\t Server {selected_server.name} task_queue:")
@@ -76,11 +77,12 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
 
         end_time = env.now
         execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
+        execution_time = execution_time - time_in_queue
         #print("execution time task assignment", execution_time, 'task', task_id)
 
         service_time = execution_time + time_in_queue + transfer_time
-        '''
-        print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
+
+        '''print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
               f"Arrival Time in System: {arrival_time_system:.2f}, "
               f"start time: {start_time:.2f}, "
               f"rimasto in coda: {time_in_queue:.2f}, "
@@ -95,16 +97,16 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(low_priority_tasks),
-                                           original_TaskPriority, TMAX_exceeded=False, exec_after_set = False )
+                                           original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded=False, exec_after_set = False )
         elif task_p == "high":
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(higher_priority_tasks),
-                                           original_TaskPriority, TMAX_exceeded=False, exec_after_set = False)
+                                           original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded=False, exec_after_set = False)
         else:
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
-                                           selected_server.name, num_hops, lunghezza_coda, original_TaskPriority,
+                                           selected_server.name, num_hops, lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time,
                                            TMAX_exceeded=False, exec_after_set = False )
         # Rimuovi il task completato dalla coda
         if task in selected_server.server_queue:
@@ -176,7 +178,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
         if bandwidth_to_server and latency_to_server is not None:
             transfer_time = ((image_size + Volume_size) / bandwidth_to_server) + latency_to_server
-        else:
+        if bandwidth_to_server and latency_to_server is None:
             transfer_time = 0
 
         # Aggiorna il valore di utilità e i parametri relativi alla coda
@@ -198,12 +200,12 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             waiting_time_adjusted = neighbor.Th_ij + neighbor.Tl_ij + neighbor.waiting_time
             expected_completion_time = total_estimated_time + waiting_time_adjusted
 
-
         # Aggiungi le metriche del server alla lista
         server_metrics.append({
             'server': neighbor,
             'utility_value': neighbor.utility_value,
             'estimated_total_time': total_estimated_time,
+            'transfer_time': transfer_time,
             'queue_length': len(neighbor.server_queue),
             'waiting_time': waiting_time_adjusted,
             'orbitalSunset': neighbor.orbitalSunset,
@@ -240,21 +242,21 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             print(f"- Tempo di completamento totale in base alla coda: {metrics['expected_completion_time']:.2f}")
             print(f"- Lunghezza coda: {metrics['queue_length']}")
             print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
-
+            print(f"- Transfer time: {metrics['transfer_time']}")
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
 
-    #Versione originale con penelità aggiunta nell'utility
-    #sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
+    #Versione originale con penalità aggiunta nell'utility
+    sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
 
     #versione mod, con penalità aggiunta qui invece che nell'utility
-    sorted_servers = [metrics['server'] for metrics in sorted_servers
+    '''sorted_servers = [metrics['server'] for metrics in sorted_servers
                       if metrics['expected_completion_time'] < Tmax_high
                       and metrics['expected_completion_time'] < metrics['orbitalSunset']
-                      and metrics['orbitalSunset'] not in (0, None)]
+                      and metrics['orbitalSunset'] not in (0, None)]'''
 
-    for server in sorted_servers:
-         print(f"Server {server.name}: Utility Value = {server.utility_value} ")
+    '''for server in sorted_servers:
+         print(f"Server {server.name}: Utility Value = {server.utility_value} ")'''
 
     #print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
     original_TaskPriority = task_priority
@@ -287,7 +289,6 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             task_priority = 100
             print(f"Task {task_id} assegnato alla coda a bassa priorità")
 
-
         #print(
          #   f'server: {server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}, orbitalSunset: {server.orbitalSunset}, Sunset: {server.elev_angle}')
 
@@ -301,7 +302,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             task_p = priority_mapping.get(task_priority, "NaN")
             server_selected.task_completed(task_id, task_p, arrival_time_system, 0,
                                            0, 0, 0, 0, 0,
-                                           server_selected.name, hop, 0, original_TaskPriority, TMAX_exceeded=True, exec_after_set = False)
+                                           server_selected.name, hop, 0, original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded=True, exec_after_set = False)
             if hop >= MaxTry:
                 print(f'Termina ricorsione, superato il MaxTry, task {task_id} scartato')
             else: print(f'Termina ricorsione, task {task_id} scartato')
