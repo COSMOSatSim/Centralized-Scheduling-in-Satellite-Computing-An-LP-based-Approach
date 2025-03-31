@@ -208,6 +208,6 @@ class EdgeServer:
 
         # Aggiorna il valore di utilità del server in base alla priorità del task
         if task_priority == 1:  # Task ad alta priorità
-            self.utility_value = self.Th_ij + (estimated_execution_time) + total_time + sunset_penalty
+            self.utility_value = self.Th_ij + (estimated_execution_time) + total_time #+ sunset_penalty
         else:  # Task a bassa priorità
-            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time + sunset_penalty
+            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) #+ total_time + sunset_penalty
