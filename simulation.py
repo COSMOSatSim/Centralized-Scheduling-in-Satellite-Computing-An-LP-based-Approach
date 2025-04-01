@@ -25,7 +25,7 @@ except Exception as e:
 
 
 def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, task_priority,
-                   arrival_time_system, num_hops, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time):
+                   arrival_time_system, num_hops, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time, random_server):
     '''
         Assign a task to a selected server and process it.
 
@@ -97,16 +97,16 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(low_priority_tasks),
-                                           original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded=False, exec_after_set = False )
+                                           original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,  TMAX_exceeded=False, exec_after_set = False )
         elif task_p == "high":
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(higher_priority_tasks),
-                                           original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded=False, exec_after_set = False)
+                                           original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value, TMAX_exceeded=False, exec_after_set = False)
         else:
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
-                                           selected_server.name, num_hops, lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time,
+                                           selected_server.name, num_hops, lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,
                                            TMAX_exceeded=False, exec_after_set = False )
         # Rimuovi il task completato dalla coda
         if task in selected_server.server_queue:
@@ -234,7 +234,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
     #print("\nServer ordinati per metriche:")
 
-    for metrics in sorted_servers:
+    '''for metrics in sorted_servers:
             print(f"Server {metrics['server'].name}:")
             print(f"- Utility: {metrics['utility_value']:.2f}")
             print(f"- Tempo stimato esecuzione task: {metrics['estimated_total_time']:.2f}")
@@ -242,7 +242,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             print(f"- Tempo di completamento totale in base alla coda: {metrics['expected_completion_time']:.2f}")
             print(f"- Lunghezza coda: {metrics['queue_length']}")
             print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
-            print(f"- Transfer time: {metrics['transfer_time']}")
+            print(f"- Transfer time: {metrics['transfer_time']}")'''
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
 
@@ -294,7 +294,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
          #   f'server: {server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}, orbitalSunset: {server.orbitalSunset}, Sunset: {server.elev_angle}')
 
         yield from TaskAssignment(env, server, task_id, required_ram, required_disk, task_priority,
-                                  arrival_time_system, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time)
+                                  arrival_time_system, hop, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time, server.utility_value)
 
     else:
         if Tmax_high <= 0 or hop > MaxTry:
@@ -313,7 +313,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             available_servers = [neighbor for neighbor in neighbors_at_distance_one if neighbor != server_selected]
             random_server = random.choice(available_servers)
             Tmax_latency = random_server.get_latency(server_selected)
-            transfer_time = transfer_time + server.transfer_time
+            transfer_time = transfer_time + random_server.transfer_time
             hop += 1
 
             yield env.process(

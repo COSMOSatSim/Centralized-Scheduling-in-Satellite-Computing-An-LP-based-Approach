@@ -36,7 +36,7 @@ class EdgeServer:
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
-                       original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded, exec_after_set):
+                       original_TaskPriority, estimated_execution_time, transfer_time, utility, TMAX_exceeded, exec_after_set):
         '''
                 Record completed tasks.
 
@@ -64,7 +64,7 @@ class EdgeServer:
 
         self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time,
                                      end_time, execution_time, service_time, time_in_queue, selected_server, num_hops,
-                                     lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded, exec_after_set))
+                                     lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, utility, TMAX_exceeded, exec_after_set))
 
     def add_neighbor(self, neighbor_server, hop_count, latency, bandwidth):
         '''
