@@ -77,7 +77,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
 
         end_time = env.now
         execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
-        execution_time = execution_time - time_in_queue
+        #execution_time = execution_time - time_in_queue
         #print("execution time task assignment", execution_time, 'task', task_id)
 
         service_time = execution_time + time_in_queue + transfer_time
@@ -247,13 +247,13 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
 
     #Versione originale con penalità aggiunta nell'utility
-    #sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
+    sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
 
     #versione mod, con penalità aggiunta qui invece che nell'utility
-    sorted_servers = [metrics['server'] for metrics in sorted_servers
+    '''sorted_servers = [metrics['server'] for metrics in sorted_servers
                       if metrics['expected_completion_time'] < Tmax_high
                       and metrics['expected_completion_time'] < metrics['orbitalSunset']
-                      and metrics['orbitalSunset'] not in (0, None)]
+                      and metrics['orbitalSunset'] not in (0, None)]'''
 
     '''for server in sorted_servers:
          print(f"Server {server.name}: Utility Value = {server.utility_value} ")'''
@@ -269,6 +269,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         if server != server_selected:
             different_server_counter[server_selected.name] += 1
             other_server_counter[server.name] += 1
+            transfer_time = transfer_time + server.transfer_time
             hop += 1
 
         #print(f'Seleziono il server con utility più bassa: {server.name}, priorità {task_priority}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}')
@@ -312,6 +313,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             available_servers = [neighbor for neighbor in neighbors_at_distance_one if neighbor != server_selected]
             random_server = random.choice(available_servers)
             Tmax_latency = random_server.get_latency(server_selected)
+            transfer_time = transfer_time + server.transfer_time
             hop += 1
 
             yield env.process(
