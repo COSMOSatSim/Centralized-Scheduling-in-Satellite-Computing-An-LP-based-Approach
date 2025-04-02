@@ -25,7 +25,7 @@ except Exception as e:
 
 
 def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, task_priority,
-                   arrival_time_system, num_hops, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time, random_server):
+                   arrival_time_system, num_hops, transfer_time, original_TaskPriority, initial_server_counter, different_server_counter, other_server_counter, estimated_execution_time, utility):
     '''
         Assign a task to a selected server and process it.
 
@@ -56,18 +56,12 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
     yield env.timeout(transfer_time)
 
     arrival_time_task_queue = env.now
-    task = task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, num_hops, arrival_time_task_queue, original_TaskPriority
+    task = task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, utility, num_hops, arrival_time_task_queue, original_TaskPriority
 
     selected_server.server_queue.append(task)
 
     with selected_server.process_queue.request(priority=task[3]) as request:
         print(f"Task {task_id} messo in coda sul server {selected_server.name} in {env.now:.2f} con priorità = {task_priority}. Tranfer Time = {transfer_time}")
-
-
-        #print("-" * 10)
-        #print(f"\t Server {selected_server.name} task_queue:")
-        #[print(f"\t\t {task_in_queue[0]}") for task_in_queue in selected_server.server_queue]
-        #print("-" * 10)
 
         yield request
         start_time = env.now
@@ -76,11 +70,10 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
         yield env.timeout(estimated_execution_time)
 
         end_time = env.now
-        execution_time = end_time - start_time if start_time > 0 and end_time > 0 else 0
-        #execution_time = execution_time - time_in_queue
+        execution_time = estimated_execution_time #end_time - start_time if start_time > 0 and end_time > 0 else 0
         #print("execution time task assignment", execution_time, 'task', task_id)
 
-        service_time = execution_time + time_in_queue + transfer_time
+        service_time = estimated_execution_time + time_in_queue + transfer_time
 
         '''print(f"Task ID {task_id} eseguito sul server {selected_server.name}, Priorità: {task_priority} "
               f"Arrival Time in System: {arrival_time_system:.2f}, "
@@ -269,7 +262,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         if server != server_selected:
             different_server_counter[server_selected.name] += 1
             other_server_counter[server.name] += 1
-            transfer_time = transfer_time + server.transfer_time
+            transfer_time = transfer_time + server.get_latency(server_selected)
             hop += 1
 
         #print(f'Seleziono il server con utility più bassa: {server.name}, priorità {task_priority}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}')
@@ -303,7 +296,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             task_p = priority_mapping.get(task_priority, "NaN")
             server_selected.task_completed(task_id, task_p, arrival_time_system, 0,
                                            0, 0, 0, 0, 0,
-                                           server_selected.name, hop, 0, original_TaskPriority, estimated_execution_time, transfer_time, TMAX_exceeded=True, exec_after_set = False)
+                                           server_selected.name, hop, 0, original_TaskPriority, estimated_execution_time, transfer_time, server_selected.utility_value, TMAX_exceeded=True, exec_after_set = False)
             if hop >= MaxTry:
                 print(f'Termina ricorsione, superato il MaxTry, task {task_id} scartato')
             else: print(f'Termina ricorsione, task {task_id} scartato')
@@ -373,7 +366,6 @@ def task(env, task_id, server, task_priority, initial_server_counter, different_
 
     yield from LocalScheduler(env, task_id, required_ram, required_disk, server, image_size, Volume_size,
                               restart_time, download_time, task_priority, arrival_time_system, initial_server_counter, different_server_counter, other_server_counter)
-
 
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):

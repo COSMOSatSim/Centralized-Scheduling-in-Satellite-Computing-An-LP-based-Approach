@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
 # Percorsi delle due versioni (assicurati che i file siano con questi nomi)
-csv_v1 = os.path.join(current_directory, "combined_data_AVG_Orbit.csv")
-csv_v2 = os.path.join(current_directory, "combined_data_AVG_NoOrbit.csv")
+csv_v1 = os.path.join(current_directory, "combined_data_AVG_penalità.csv")
+csv_v2 = os.path.join(current_directory, "combined_data_AVG_confronto.csv")
 
 try:
     df_v1 = pd.read_csv(csv_v1)
@@ -60,13 +60,13 @@ plt.style.use("default")
 df_rr = df[df["CPU_Timeout"] == 10].copy()
 
 # Raggruppa per Arrival Rate, Priority e Versione e calcola la media del Response Time
-df_grouped = df_rr.groupby(["InvArrivalRate", "Priority", "Versione"])["Response Time"].mean().reset_index()
+df_grouped = df_rr.groupby(["InvArrivalRate", "Priority", "Versione"])["Execution time"].mean().reset_index()
 #df_grouped["Label"] = df_grouped["Priority"] + " " + df_grouped["Versione"]
 df_grouped["Label"] = df_grouped.apply(lambda row: ("DTS-TMAX Orbit-aware" if row["Versione"]=="V1" else "DTS-TMAX")
                                        + " - " + row["Priority"], axis=1)
 
 # Crea una tabella pivot: righe = Arrival Rate, colonne = Label, valori = average Response Time
-pivot_rt = df_grouped.pivot(index="InvArrivalRate", columns="Label", values="Response Time")
+pivot_rt = df_grouped.pivot(index="InvArrivalRate", columns="Label", values="Execution time")
 
 # Per ottenere tick equidistanti, creiamo una mappatura categorica
 inv_rates = sorted(df_rr["InvArrivalRate"].unique())

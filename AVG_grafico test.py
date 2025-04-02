@@ -40,7 +40,7 @@ else:
 ###############################################
 # STEP 2: Leggi il file combinato e prepara i dati
 ###############################################
-combined_csv = os.path.join(current_directory, "combined_data_AVG_v1.csv")
+combined_csv = os.path.join(current_directory, "combined_data_AVG_NoOrbit.csv")
 try:
     df = pd.read_csv(combined_csv)
     print(f"File {combined_csv} letto correttamente.")
@@ -50,7 +50,6 @@ except Exception as e:
 
 # Converti Exec_after_set in percentuale
 df["Exec_after_set"] = df["Exec_after_set"] * 100
-
 
 # Aggiungi una nuova colonna: l'inverso di Arrival Rate
 # (Assumiamo che Arrival Rate sia > 0; arrotondiamo a 2 decimali)
@@ -67,18 +66,18 @@ df_rr = df[df["CPU_Timeout"] == 10].copy()
 
 # Raggruppa per Arrival Rate e Priority e calcola la media del Response Time
 df_grouped = df_rr.groupby(["Arrival Rate", "Priority"])["Response Time"].mean().reset_index()
-
+print(df_grouped)
 # Crea una tabella pivot: righe = Arrival Rate, colonne = Priority, valori = average response time
 pivot_rt = df_grouped.pivot(index="Arrival Rate", columns="Priority", values="Response Time")
 
 plt.figure(figsize=(10, 6))
 
 # Traccia la linea per High Priority (se presente)
-if "High" in pivot_rt.columns:
-    plt.plot(pivot_rt.index, pivot_rt["High"], marker="o", linestyle="-", label="High Priority")
+if "high" in pivot_rt.columns:
+    plt.plot(pivot_rt.index, pivot_rt["high"], marker="o", linestyle="-", label="High Priority")
 # Traccia la linea per Low Priority (se presente)
-if "Low" in pivot_rt.columns:
-    plt.plot(pivot_rt.index, pivot_rt["Low"], marker="o", linestyle="-", label="Low Priority")
+if "how" in pivot_rt.columns:
+    plt.plot(pivot_rt.index, pivot_rt["low"], marker="o", linestyle="-", label="Low Priority")
 
 plt.xlabel("Arrival Rate (task/sec)", fontsize=14)
 plt.ylabel("Response Time (sec)", fontsize=14)
@@ -133,14 +132,11 @@ plt.xticks(range(len(inv_rates_dr)), inv_rates_dr)
 plt.savefig(os.path.join(output_dir, "dropped_requests_vs_arrival_rate_avg.png"), dpi=300, bbox_inches='tight')
 plt.show()
 
-
-
 ###############################################
 # STEP 4: Funzione di plotting per gli altri grafici (Grafici 2-6)
 ###############################################
 def plot_graph(x, y, xlabel, ylabel, filename, filter_dict=None):
     plt.figure(figsize=(10, 6))
-
 
     # Filtra i dati se necessario
     df_filtered = df.copy()
@@ -158,7 +154,7 @@ def plot_graph(x, y, xlabel, ylabel, filename, filter_dict=None):
     if x == "CPU_Timeout":
         df_filtered = df_filtered.sort_values(by=x)
     # Plot per ciascuna priorità e per ogni Arrival Rate
-    for priority in ["High", "Low"]:
+    for priority in ["high", "low"]:
         df_priority = df_filtered[df_filtered["Priority"] == priority]
         print(df_priority)
         for rate in sorted(df_priority["Arrival Rate"].unique()):
@@ -173,8 +169,8 @@ def plot_graph(x, y, xlabel, ylabel, filename, filter_dict=None):
     plt.xlabel(xlabel, fontsize=14)
     if ylabel == "Response Time (sec)":
         plt.yticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
-    else:
-        plt.yticks([0, 0.10, 0.20, 0.30, 0.40, 0.50])
+    '''else:
+        plt.yticks([0, 0.10, 0.20, 0.30, 0.40, 0.50])'''
     plt.ylabel(ylabel, fontsize=14)
     #plt.title(title, fontsize=16)
 
@@ -202,7 +198,7 @@ plot_graph(
     x="AP", y="Response Time",
     xlabel="AP", ylabel="Response Time (sec)",
     filename="response_time_vs_AP.png",
-    filter_dict={"CPU_Timeout": 10, "Arrival Rate": 0.5, "AP": [5, 10, 15, 20]}
+    filter_dict={"CPU_Timeout": 10, "Arrival Rate": 2, "AP": [5, 10, 15, 20]}
 )
 
 # Grafico 3: Response Time vs CPU_Timeout (Task/sec = 1, AP = 5)
@@ -210,7 +206,7 @@ plot_graph(
     x="CPU_Timeout", y="Response Time",
     xlabel="Service Time", ylabel="Response Time (sec)",
     filename="response_time_vs_service_time.png",
-    filter_dict={"AP": 5, "Arrival Rate": 0.5, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
+    filter_dict={"AP": 5, "Arrival Rate": 2, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
 )
 
 
@@ -219,7 +215,7 @@ plot_graph(
     x="AP", y="Exec_after_set",
     xlabel="AP", ylabel="% Dropped Requests",
     filename="dropped_requests_vs_AP.png",
-    filter_dict={"CPU_Timeout": 10, "Arrival Rate": 0.5, "AP": [5, 10, 15, 20]}
+    filter_dict={"CPU_Timeout": 10, "Arrival Rate": 2, "AP": [5, 10, 15, 20]}
 )
 
 # Grafico 6: % Dropped Requests vs CPU_Timeout (Task/sec = 1, AP = 5)
@@ -227,5 +223,5 @@ plot_graph(
     x="CPU_Timeout", y="Exec_after_set",
     xlabel="Service Time", ylabel="% Dropped Requests",
     filename="dropped_requests_vs_service_time.png",
-    filter_dict={"AP": 5, "Arrival Rate": 0.5, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
+    filter_dict={"AP": 5, "Arrival Rate": 2, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
 )
