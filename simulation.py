@@ -306,7 +306,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             available_servers = [neighbor for neighbor in neighbors_at_distance_one if neighbor != server_selected]
             random_server = random.choice(available_servers)
             Tmax_latency = random_server.get_latency(server_selected)
-            transfer_time = transfer_time + random_server.transfer_time
+            transfer_time = transfer_time + random_server.get_latency(server_selected)
             hop += 1
 
             yield env.process(
