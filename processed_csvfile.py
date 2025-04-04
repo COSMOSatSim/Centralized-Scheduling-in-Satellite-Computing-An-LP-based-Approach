@@ -127,20 +127,33 @@ exec("csv_filter")
 
 def inverti_colonne_csv(file_input, colonna_1, colonna_2, file_output):
     """
-    Funzione per invertire due colonne in un file CSV. Non elabora il file se la seconda colonna non esiste.
+    Inverte due colonne in un file CSV solo la prima volta.
+    Aggiunge un flag 'columns_swapped' per evitare inversioni multiple.
     """
     try:
         df = pd.read_csv(file_input)
 
+        # Controllo esistenza colonne
         if colonna_1 not in df.columns:
             raise ValueError(f"La colonna '{colonna_1}' non esiste nel file CSV.")
         if colonna_2 not in df.columns:
             print(f"Colonna '{colonna_2}' non trovata. Il file non verrà elaborato.")
             return
 
+        # Se esiste già la colonna 'columns_swapped' e il valore è True, salta
+        if 'columns_swapped' in df.columns and df['columns_swapped'].iloc[0] == True:
+            print(f"Inversione già eseguita in precedenza su '{file_input}'. Salto.")
+            return
+
+        # Inversione delle colonne
         df[[colonna_1, colonna_2]] = df[[colonna_2, colonna_1]]
+
+        # Aggiungi la colonna di flag
+        df['columns_swapped'] = True
+
+        # Salva
         df.to_csv(file_output, index=False)
-        print(f"Invertite le colonne '{colonna_1}' e '{colonna_2}' e salvato in '{file_output}'.")
+        print(f"Invertite le colonne '{colonna_1}' e '{colonna_2}' in '{file_output}'. Flag aggiunto.")
 
     except Exception as e:
         print(f"Errore: {e}")
