@@ -8,16 +8,17 @@ cpu_timeout_value = 110
 Arrival_Rate_value = 3
 AP = 5
 
-
 ###############################################
 # STEP 1: Combina i file CSV in "combined_data_AVG.csv"
 ###############################################
 
 # Imposta la directory corrente
 current_directory = os.path.dirname(os.path.abspath(__file__))
+
 # Salva il grafico
 output_dir = os.path.join(current_directory, "single_plot")
 os.makedirs(output_dir, exist_ok=True)
+
 # Percorsi dei file di input
 high_csv = os.path.join(current_directory, "data_High_priority.csv")
 low_csv = os.path.join(current_directory, "data_Low_priority.csv")
@@ -62,7 +63,6 @@ except Exception as e:
 df["Exec_after_set"] = df["Exec_after_set"] * 100
 
 # Aggiungi una nuova colonna: l'inverso di Arrival Rate
-# (Assumiamo che Arrival Rate sia > 0; arrotondiamo a 2 decimali)
 df["InvArrivalRate"] = df["Arrival Rate"].apply(lambda x: round(1/x, 2) if x != 0 else None)
 
 # Imposta lo stile (usa "default" per evitare errori)
@@ -83,12 +83,11 @@ print(inv_rates_dr)
 mapping_dr = {val: i for i, val in enumerate(inv_rates_dr)}
 
 # Tabella pivot per response time
-#pivot_rt = df_dr.pivot_table(index="Arrival Rate", columns="Priority", values="Response Time", aggfunc="mean")
 pivot_rt = df_dr.pivot_table(index="InvArrivalRate", columns="Priority", values="Response Time", aggfunc="mean")
 
 plt.figure(figsize=(10, 6))
 
-# Mappa le posizioni X in base al mapping come nello step 3b
+# Mappa le posizioni X in base al mapping
 x_positions = [mapping_dr[val] for val in pivot_rt.index]
 
 # Traccia la linea per High Priority (se presente)
@@ -112,7 +111,7 @@ plt.xticks(range(len(inv_rates_dr)), inv_rates_dr)
 plt.savefig(os.path.join(output_dir, f"response_time_vs_arrival_rate_avg_CPU_{cpu_timeout_value}_AR_{Arrival_Rate_value}.png"), dpi=300, bbox_inches='tight')
 plt.show()
 ###############################################
-# STEP 3b: Grafico - Average % Dropped Requests vs Arrival Rate (CPU_Timeout = 10)
+# STEP 3b: Grafico - Average % Dropped Requests vs Arrival Rate
 ###############################################
 
 plt.figure(figsize=(10, 6))
@@ -148,7 +147,7 @@ def plot_graph(x, y, xlabel, ylabel, filename, filter_dict=None):
             else:
                 df_filtered = df_filtered[df_filtered[key] == value]
 
-    # Se x è "AP", assicurati di avere solo i valori 5,10,15,20
+    # Se x è "AP", assicura di avere solo i valori 5,10,15,20
     if x == "AP":
         df_filtered[x] = pd.to_numeric(df_filtered[x], errors='coerce')
         df_filtered = df_filtered[df_filtered[x].isin([5, 10, 15, 20])]
@@ -200,7 +199,7 @@ pivot_exec = agg_df.pivot(index="InvArrivalRate", columns="Priority", values="es
 pivot_drop = agg_df.pivot(index="InvArrivalRate", columns="Priority", values="estimated_execution_time_dropped")
 
 plt.figure(figsize=(10, 6))
-# Mappa le posizioni X in base al mapping già definito (usato negli altri plot)
+# Mappa le posizioni X in base al mapping
 x_positions = [mapping_dr[val] for val in pivot_exec.index]
 
 # Per priorità high e low, se esistono, traccia le linee
@@ -227,7 +226,7 @@ plt.show()
 # STEP 8: Grafico 6a - Estimated Execution Time vs Service Time
 # (Service Time = CPU_Timeout)
 ###############################################
-# Filtra i dati in base ai requisiti desiderati
+# Filtra i dati in base ai requisiti
 df_service = df[(df["Arrival Rate"] == Arrival_Rate_value) & (df["AP"] == AP)].copy()
 if not df_service.empty:
     # Raggruppa per CPU_Timeout e Priority calcolando la media degli estimated_execution_time
