@@ -19,6 +19,7 @@ def process_subdirectory(subdirectory, global_output_directory):
 
             try:
                 AP = file_path.split('\\')[5].split("_")[-1][2:]
+                print(AP)
             except IndexError:
                 AP = "NA"
             arrival_time = file_path.split("_")[-3].replace('.csv', '')
@@ -30,12 +31,11 @@ def process_subdirectory(subdirectory, global_output_directory):
             save_aggregated_data(dati, "low", file_path, global_output_directory, AP, arrival_time, CPU_Timeout)
 
 
-def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout):
-    dati_priority = dati[dati['Task Priority'] == priority].copy()  # Copia per evitare SettingWithCopyWarning
+'''def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout):
+    dati_priority = dati[dati['Task Priority'] == priority].copy()
     if dati_priority.empty:
         return
 
-    # Assicuriamoci che "Time in system" sia sempre >= "Execution time"
     dati_priority["Time in system"] = np.maximum(dati_priority["Time in system"], dati_priority["Execution time"])
 
     nonzero_times = dati_priority["Execution time"][dati_priority["Execution time"] > 0]
@@ -59,7 +59,52 @@ def save_aggregated_data(dati, priority, file_path, output_directory, AP, arriva
     })
 
     base_name = os.path.splitext(os.path.basename(file_path))[0]
-    output_file = os.path.join(output_directory, f"aggregated_data_{priority}_priority_{base_name}.csv")
+    # Includiamo AP nel nome per renderlo univoco
+    output_file = os.path.join(output_directory, f"aggregated_data_{priority}_priority_{base_name}_AP_{AP}.csv")
+    aggregated_data.to_csv(output_file, index=False)
+    print(f"Dati aggregati salvati in: {output_file}")
+'''
+def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout):
+    dati_priority = dati[dati['Task Priority'] == priority].copy()
+    if dati_priority.empty:
+        return
+
+    # Calcolo tempo medio di risposta
+    dati_priority["Time in system"] = np.maximum(dati_priority["Time in system"], dati_priority["Execution time"])
+    nonzero_times_system = dati_priority["Time in system"][dati_priority["Time in system"] > 0]
+    mean_time_in_system = nonzero_times_system.mean()
+
+    # Calcolo percentuali
+    percent_tmax_exceeded = (dati_priority['TMAX_exceeded'].sum() / len(dati_priority) * 100) if len(dati_priority) > 0 else 0
+    percent_exec_after_set = (dati_priority['Exec_after_set'].sum() / len(dati_priority) * 100) if len(dati_priority) > 0 else 0
+
+    # Calcolo delle medie richieste sulla colonna 'estimated_execution_time'
+    executed_tasks = dati_priority[dati_priority["Execution time"] > 0]
+    dropped_tasks = dati_priority[dati_priority["Execution time"] == 0]
+
+    mean_est_exec_executed = executed_tasks["estimated_execution_time"].mean() if not executed_tasks.empty else 0
+    mean_est_exec_dropped = dropped_tasks["estimated_execution_time"].mean() if not dropped_tasks.empty else 0
+
+    # Calcolo tempo medio reale di esecuzione (Execution time > 0)
+    nonzero_exec_times = executed_tasks["Execution time"]
+    mean_exec_time = nonzero_exec_times.mean() if not nonzero_exec_times.empty else 0
+
+    # Output finale
+    aggregated_data = pd.DataFrame({
+        "Priority": [priority],
+        "AP": [AP],
+        "CPU_Timeout": [CPU_Timeout],
+        "Arrival Rate": [arrival_time],
+        "Execution time": [mean_exec_time],
+        "estimated_execution_time_executed": [mean_est_exec_executed],
+        "estimated_execution_time_dropped": [mean_est_exec_dropped],
+        "Response Time": [mean_time_in_system],
+        "TMAX_exceeded": [percent_tmax_exceeded],
+        "Exec_after_set": [percent_exec_after_set]
+    })
+
+    base_name = os.path.splitext(os.path.basename(file_path))[0]
+    output_file = os.path.join(output_directory, f"aggregated_data_{priority}_priority_{base_name}_AP_{AP}.csv")
     aggregated_data.to_csv(output_file, index=False)
     print(f"Dati aggregati salvati in: {output_file}")
 

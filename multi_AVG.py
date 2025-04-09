@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
 # Percorsi delle due versioni (assicurati che i file siano con questi nomi)
-csv_v1 = os.path.join(current_directory, "combined_data_AVG_penalità.csv")
-csv_v2 = os.path.join(current_directory, "combined_data_AVG_confronto.csv")
+csv_v1 = os.path.join(current_directory, "combined_data_AVG_penality.csv")
+csv_v2 = os.path.join(current_directory, "combined_data_AVG_penality_utility_prima versione funzionante.csv")
 
 try:
     df_v1 = pd.read_csv(csv_v1)
@@ -62,7 +62,7 @@ df_rr = df[df["CPU_Timeout"] == 10].copy()
 # Raggruppa per Arrival Rate, Priority e Versione e calcola la media del Response Time
 df_grouped = df_rr.groupby(["InvArrivalRate", "Priority", "Versione"])["Execution time"].mean().reset_index()
 #df_grouped["Label"] = df_grouped["Priority"] + " " + df_grouped["Versione"]
-df_grouped["Label"] = df_grouped.apply(lambda row: ("DTS-TMAX Orbit-aware" if row["Versione"]=="V1" else "DTS-TMAX")
+df_grouped["Label"] = df_grouped.apply(lambda row: ("DTS-TMAX Orbit-aware penality" if row["Versione"]=="V1" else "DTS-TMAX penality_utility")
                                        + " - " + row["Priority"], axis=1)
 
 # Crea una tabella pivot: righe = Arrival Rate, colonne = Label, valori = average Response Time
@@ -77,13 +77,13 @@ for col in pivot_rt.columns:
     #plt.plot(pivot_rt.index, pivot_rt[col], marker="o", linestyle="-", label=col)
     # Sostituisci i valori dell'indice con le posizioni equidistanti
     x_positions = [mapping[val] for val in pivot_rt.index]
-    if col == "DTS-TMAX Orbit-aware - High":
+    if col == "DTS-TMAX Orbit-aware penality - high":
         plt.plot(x_positions, pivot_rt[col], marker="o", linestyle="-", label=col, color='#1f77b4')
-    if col == "DTS-TMAX Orbit-aware - Low":
+    if col == "DTS-TMAX Orbit-aware penality - low":
         plt.plot(x_positions, pivot_rt[col], marker="o", linestyle="-", label=col, color='#ff7f0e')
-    if col == "DTS-TMAX - High":
+    if col == "DTS-TMAX penality_utility - high":
         plt.plot(x_positions, pivot_rt[col], marker="o", linestyle="-", label=col, color='#2ca02c')
-    if col == "DTS-TMAX - Low":
+    if col == "DTS-TMAX penality_utility - low":
         plt.plot(x_positions, pivot_rt[col], marker="o", linestyle="-", label=col, color='#d62728')
     #plt.plot(x_positions, pivot_rt[col], marker="o", linestyle="-", label=col)
 
@@ -106,9 +106,9 @@ plt.show()
 ###############################################
 # STEP 3b: Grafico - Average % Dropped Requests vs Arrival Rate (CPU_Timeout = 10)
 ###############################################
-'''df_dr = df[df["CPU_Timeout"] == 10].copy()
+df_dr = df[df["CPU_Timeout"] == 10].copy()
 df_grouped_dr = df_dr.groupby(["InvArrivalRate", "Priority", "Versione"])["Exec_after_set"].mean().reset_index()
-df_grouped_dr["Label"] = df_grouped_dr.apply(lambda row: ("DTS-TMAX Orbit-aware" if row["Versione"]=="V1" else "DTS-TMAX")
+df_grouped_dr["Label"] = df_grouped_dr.apply(lambda row: ("DTS-TMAX Orbit-aware penality" if row["Versione"]=="V1" else "DTS-TMAX penality_utility")
                                             + " - " + row["Priority"], axis=1)
 pivot_dr = df_grouped_dr.pivot(index="InvArrivalRate", columns="Label", values="Exec_after_set")
 
@@ -120,13 +120,13 @@ for col in pivot_dr.columns:
     #plt.plot(pivot_dr.index, pivot_dr[col], marker="o", linestyle="-", label=col)
     x_positions = [mapping_dr[val] for val in pivot_dr.index]
     print(col)
-    if col == "DTS-TMAX Orbit-aware - High":
+    if col == "DTS-TMAX Orbit-aware penality - high":
         plt.plot(x_positions, pivot_dr[col], marker="o", linestyle="-", label=col, color='#1f77b4')
-    if col == "DTS-TMAX Orbit-aware - Low":
+    if col == "DTS-TMAX Orbit-aware penality - low":
         plt.plot(x_positions, pivot_dr[col], marker="o", linestyle="-", label=col, color='#ff7f0e')
-    if col == "DTS-TMAX - High":
+    if col == "DTS-TMAX penality_utility - high":
         plt.plot(x_positions, pivot_dr[col], marker="o", linestyle="-", label=col, color='#2ca02c')
-    if col == "DTS-TMAX - Low":
+    if col == "DTS-TMAX penality_utility - low":
         plt.plot(x_positions, pivot_dr[col], marker="o", linestyle="-", label=col, color='#d62728')
 
 
@@ -142,7 +142,7 @@ plt.xticks(range(len(inv_rates_dr)), inv_rates_dr)
 
 plt.savefig(os.path.join(output_dir, "dropped_requests_vs_arrival_rate_avg.png"), dpi=300, bbox_inches='tight')
 plt.show()
-'''
+
 pd.set_option('display.max_columns', None)  # Show all columns
 pd.set_option('display.expand_frame_repr', False)  # Do not wrap rows
 ###############################################
@@ -176,7 +176,7 @@ def plot_graph(x, y, xlabel, ylabel, title, filename, filter_dict=None):
     for versione in sorted(df_filtered["Versione"].unique()):
         df_version = df_filtered[df_filtered["Versione"] == versione]
         print(df_version)
-        for priority in ["High", "Low"]:
+        for priority in ["high", "low"]:
             df_priority = df_version[df_version["Priority"] == priority]
             for rate in sorted(df_priority["InvArrivalRate"].unique()):
                 subset = df_priority[df_priority["InvArrivalRate"] == rate]
@@ -184,16 +184,16 @@ def plot_graph(x, y, xlabel, ylabel, title, filename, filter_dict=None):
                     subset = subset.sort_values(by=x)
                 # Imposta la label in base alla versione e alla priorità
                 if versione == "V1":
-                    label = f"DTS-TMAX Orbit-aware - {priority} (AR {rate})"
-                    if priority == "High":
+                    label = f"DTS-TMAX Orbit-aware penality- {priority} (AR {rate})"
+                    if priority == "high":
                         plt.plot(subset[x], subset[y], marker="o", linestyle="-", label=label, color= '#1f77b4')
-                    if priority == "Low":
+                    if priority == "low":
                         plt.plot(subset[x], subset[y], marker="o", linestyle="-", label=label, color='#ff7f0e')
                 else:
-                    label = f"DTS-TMAX - {priority} (AR {rate})"
-                    if priority == "High":
+                    label = f"DTS-TMAX Orbit-aware penality_utility - {priority} (AR {rate})"
+                    if priority == "high":
                         plt.plot(subset[x], subset[y], marker="o", linestyle="-", label=label, color= '#2ca02c')
-                    if priority == "Low":
+                    if priority == "low":
                         plt.plot(subset[x], subset[y], marker="o", linestyle="-", label=label, color='#d62728')
 
 
