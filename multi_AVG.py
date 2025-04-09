@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 ###############################################
 # STEP 1: Carica le due versioni di combined_data_AVG e combinane i dati
 ###############################################
+cpu_timeout_value = 110
+Arrival_Rate_value = 3
+AP = 5
 
 # Imposta la directory corrente
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -49,15 +52,15 @@ df["Exec_after_set"] = df["Exec_after_set"] * 100
 # (Assumiamo che Arrival Rate sia > 0; arrotondiamo a 2 decimali)
 df["InvArrivalRate"] = df["Arrival Rate"].apply(lambda x: round(1/x, 2) if x != 0 else None)
 
-
 # Imposta lo stile (usa "default" per evitare errori)
 plt.style.use("default")
 
 ###############################################
-# STEP 3: Grafico 1 - Average Response Time vs Arrival Rate (CPU_Timeout = 10)
+# STEP 3: Grafico 1 - Average Response Time vs Arrival Rate
 ###############################################
-# Filtra i dati per CPU_Timeout = 10
-df_rr = df[df["CPU_Timeout"] == 10].copy()
+# Filtra i dati per CPU_Timeout
+
+df_rr = df[df["CPU_Timeout"] == cpu_timeout_value].copy()
 
 # Raggruppa per Arrival Rate, Priority e Versione e calcola la media del Response Time
 df_grouped = df_rr.groupby(["InvArrivalRate", "Priority", "Versione"])["Execution time"].mean().reset_index()
@@ -92,8 +95,6 @@ plt.ylabel("Response Time (sec)", fontsize=14)
 plt.yticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
 plt.legend()
 plt.grid(False)
-#arrival_rates = sorted(df_rr["InvArrivalRate"].unique())
-#plt.xticks(arrival_rates)
 
 # Imposta i tick equidistanti e usa le etichette reali
 plt.xticks(range(len(inv_rates)), inv_rates)
@@ -106,7 +107,8 @@ plt.show()
 ###############################################
 # STEP 3b: Grafico - Average % Dropped Requests vs Arrival Rate (CPU_Timeout = 10)
 ###############################################
-df_dr = df[df["CPU_Timeout"] == 10].copy()
+
+df_dr = df[df["CPU_Timeout"] == cpu_timeout_value].copy()
 df_grouped_dr = df_dr.groupby(["InvArrivalRate", "Priority", "Versione"])["Exec_after_set"].mean().reset_index()
 df_grouped_dr["Label"] = df_grouped_dr.apply(lambda row: ("DTS-TMAX Orbit-aware penality" if row["Versione"]=="V1" else "DTS-TMAX penality_utility")
                                             + " - " + row["Priority"], axis=1)
@@ -117,9 +119,7 @@ mapping_dr = {val: i for i, val in enumerate(inv_rates_dr)}
 
 plt.figure(figsize=(10, 6))
 for col in pivot_dr.columns:
-    #plt.plot(pivot_dr.index, pivot_dr[col], marker="o", linestyle="-", label=col)
     x_positions = [mapping_dr[val] for val in pivot_dr.index]
-    print(col)
     if col == "DTS-TMAX Orbit-aware penality - high":
         plt.plot(x_positions, pivot_dr[col], marker="o", linestyle="-", label=col, color='#1f77b4')
     if col == "DTS-TMAX Orbit-aware penality - low":
@@ -136,8 +136,6 @@ plt.ylabel("% Dropped Requests", fontsize=14)
 plt.yticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
 plt.legend()
 plt.grid(False)
-#arrival_rates_dr = sorted(df_dr["InvArrivalRate"].unique())
-#plt.xticks(arrival_rates_dr)
 plt.xticks(range(len(inv_rates_dr)), inv_rates_dr)
 
 plt.savefig(os.path.join(output_dir, "dropped_requests_vs_arrival_rate_avg.png"), dpi=300, bbox_inches='tight')
@@ -153,7 +151,6 @@ def plot_graph(x, y, xlabel, ylabel, title, filename, filter_dict=None):
 
     # Filtra i dati se necessario
     df_filtered = df.copy()
-    #print(df_filtered)
     if filter_dict:
         for key, value in filter_dict.items():
             if isinstance(value, list):
@@ -162,11 +159,8 @@ def plot_graph(x, y, xlabel, ylabel, title, filename, filter_dict=None):
                 df_filtered = df_filtered[df_filtered[key] == value]
 
     # Se x è "Arrival Rate", usa la colonna trasformata "InvArrivalRate"
-
-
     # Se x è "AP", limita i valori a 5, 10, 15, 20
     if x == "AP":
-        #print(df_filtered[x]  )
         df_filtered[x] = pd.to_numeric(df_filtered[x], errors="coerce")
         df_filtered = df_filtered[df_filtered[x].isin([5, 10, 15, 20])]
     if x == "CPU_Timeout":
@@ -224,12 +218,13 @@ def plot_graph(x, y, xlabel, ylabel, title, filename, filter_dict=None):
 # STEP 5: Grafici 2-6 con confronto tra versioni
 ###############################################
 # Grafico 2: Response Time vs AP (CPU_Timeout = 10, task/sec = 1)
+
 plot_graph(
     x="AP", y="Response Time",
     xlabel="AP", ylabel="Response Time (sec)",
-    title="Response Time vs AP (CPU_Timeout = 10, Task/sec = 1)",
+    title=f"Response Time vs AP (CPU_Timeout = {cpu_timeout_value}, Task/sec = 1)",
     filename="response_time_vs_AP.png",
-    filter_dict={"CPU_Timeout": 10, "Arrival Rate": 0.5, "AP": [5, 10, 15, 20]}
+    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
 )
 
 # Grafico 3: Response Time vs CPU_Timeout (Task/sec = 1, AP = 5)
@@ -238,7 +233,7 @@ plot_graph(
     xlabel="Service Time", ylabel="Response Time (sec)",
     title="Response Time vs Service Time (Task/sec = 1, AP = 5)",
     filename="response_time_vs_service_time.png",
-    filter_dict={"AP": 5, "Arrival Rate": 0.5, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
+    filter_dict={"AP": 5, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
 )
 
 
@@ -246,9 +241,9 @@ plot_graph(
 plot_graph(
     x="AP", y="Exec_after_set",
     xlabel="AP", ylabel="% Dropped Requests",
-    title="% Dropped Requests vs AP (CPU_Timeout = 10, Task/sec = 1)",
+    title=f"% Dropped Requests vs AP (CPU_Timeout = {cpu_timeout_value}, Task/sec = 1)",
     filename="dropped_requests_vs_AP.png",
-    filter_dict={"CPU_Timeout": 10, "Arrival Rate": 0.5, "AP": [5, 10, 15, 20]}
+    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
 )
 
 # Grafico 6: % Dropped Requests vs CPU_Timeout (Task/sec = 1, AP = 5)
@@ -257,5 +252,5 @@ plot_graph(
     xlabel="Service Time", ylabel="% Dropped Requests",
     title="% Dropped Requests vs Service Time (Task/sec = 1, AP = 5)",
     filename="dropped_requests_vs_service_time.png",
-    filter_dict={"AP": 5, "Arrival Rate": 0.5, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
+    filter_dict={"AP": AP, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
 )
