@@ -29,8 +29,8 @@ def modifica_parametri(file_path, nuovi_parametri):
 
 # Set comuni di seed e arrival_time_exponential
 seed_values = [42]#, 142, 242, 342, 442, 542, 642, 742, 842, 942 ]
-arrival_time_values = [0.5, 1, 2, 2.5, 3]
-CPU_timeout = [10,25,30,40,50,60]
+arrival_time_values = [0.5, 1, 1.5, 2, 2.5, 3]
+CPU_timeout = [10,30,50,70,90,110]
 
 # File JSON di input
 file_json = "config.json"
@@ -56,7 +56,7 @@ for seed in seed_values:
                         "request_distribution": {"distribution": "0_0_0"},
                         "seed": seed,
                         "arrival_time_exponential": arrival_time,
-                        "CPU_timeout":{"min":9,"mean": CPU, "max":176}
+                        "CPU_timeout":{"min":0,"mean": CPU, "max":90000}
                     }
                     print('Ci sono quasi... preparo il file json')
 

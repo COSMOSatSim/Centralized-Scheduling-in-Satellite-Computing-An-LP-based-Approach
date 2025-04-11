@@ -180,16 +180,23 @@ def plot_graph(x, y, xlabel, ylabel, filename, filter_dict=None):
 # STEP 6: Grafico a linee - Estimated Execution Time (Executed vs Dropped)
 ###############################################
 print("Elaborazione del Grafico 6: Estimated Execution Time (Executed vs Dropped)")
-df_plot = df[df["CPU_Timeout"] == cpu_timeout_value].copy()
+# Filtra per CPU_Timeout e per un AP specifico (es. AP = 5)
+df_plot = df[(df["CPU_Timeout"] == cpu_timeout_value) & (df["AP"] == AP)].copy()
 
 # Raggruppa per InvArrivalRate e Priority e calcola la media delle colonne di interesse
 agg_df = df_plot.groupby(["InvArrivalRate", "Priority"])[["estimated_execution_time_executed", "estimated_execution_time_dropped"]].mean().reset_index()
+# Ordina in base a InvArrivalRate
+agg_df = agg_df.sort_values(by="InvArrivalRate")
+print("Agg_df ordinato per InvArrivalRate:\n", agg_df.head())
 
 # Crea le pivot table per avere, per ogni InvArrivalRate, i valori per ciascuna Priority
-pivot_exec = agg_df.pivot(index="InvArrivalRate", columns="Priority", values="estimated_execution_time_executed")
-pivot_drop = agg_df.pivot(index="InvArrivalRate", columns="Priority", values="estimated_execution_time_dropped")
+pivot_exec = agg_df.pivot(index="InvArrivalRate", columns="Priority", values="estimated_execution_time_executed").sort_index()
+pivot_drop = agg_df.pivot(index="InvArrivalRate", columns="Priority", values="estimated_execution_time_dropped").sort_index()
 
 plt.figure(figsize=(10, 6))
+# Usa i valori dell'indice ordinato per creare x_positions
+# Se mapping_dr è basato su df_dr definito precedentemente e contiene tutti i possibili valori,
+# qui estraiamo le posizioni corrispondenti a quelli effettivamente presenti nelle pivot.
 x_positions = [mapping_dr[val] for val in pivot_exec.index]
 
 if "high" in pivot_exec.columns:
@@ -201,13 +208,14 @@ if "low" in pivot_exec.columns:
 
 plt.xlabel("Arrival Rate (task/sec)", fontsize=14)
 plt.ylabel("Estimated Execution Time", fontsize=14)
-plt.title(f"Estimated Execution Time (Executed vs Dropped Tasks) - CPU Timeout = {cpu_timeout_value}", fontsize=16)
+plt.title(f"Estimated Execution Time (Executed vs Dropped Tasks) \n CPU Timeout = {cpu_timeout_value} AP = {AP}", fontsize=16)
+# Verifica che i tuoi dati rientrino in questa scala; in caso contrario, modifica i ticks
 plt.yticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
 plt.xticks(range(len(inv_rates_dr)), inv_rates_dr)
 plt.legend()
 plt.grid(False)
 
-plt.savefig(os.path.join(output_dir, f"Estimated execution time VS CPU {cpu_timeout_value} AR {Arrival_Rate_value}.png"), dpi=300, bbox_inches='tight')
+plt.savefig(os.path.join(output_dir, f"Estimated execution time VS CPU {cpu_timeout_value} AP {AP}.png"), dpi=300, bbox_inches='tight')
 plt.show()
 
 ###############################################

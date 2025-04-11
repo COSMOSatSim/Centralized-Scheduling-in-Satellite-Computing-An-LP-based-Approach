@@ -115,7 +115,9 @@ def weibull(description):
 
 # Genera un numero con distribuzione esponenziale troncata tra 10 e 25 minuti
 def truncated_exponential(mean, lower, upper):
-    while True:
+    return np.random.exponential(scale=mean)
+    ''' while True:
         value = np.random.exponential(scale=mean)
         if lower <= value <= upper:
             return value
+'''
