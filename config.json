@@ -9,7 +9,7 @@
   "Tmax_L": 0.05,
   "CPU_timeout": {
     "min": 0,
-    "mean": 50,
+    "mean": 110,
     "max": 90000
   },
   "MI": {

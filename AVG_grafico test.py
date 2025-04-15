@@ -187,7 +187,6 @@ df_plot = df[(df["CPU_Timeout"] == cpu_timeout_value) & (df["AP"] == AP)].copy()
 agg_df = df_plot.groupby(["InvArrivalRate", "Priority"])[["estimated_execution_time_executed", "estimated_execution_time_dropped"]].mean().reset_index()
 # Ordina in base a InvArrivalRate
 agg_df = agg_df.sort_values(by="InvArrivalRate")
-print("Agg_df ordinato per InvArrivalRate:\n", agg_df.head())
 
 # Crea le pivot table per avere, per ogni InvArrivalRate, i valori per ciascuna Priority
 pivot_exec = agg_df.pivot(index="InvArrivalRate", columns="Priority", values="estimated_execution_time_executed").sort_index()
