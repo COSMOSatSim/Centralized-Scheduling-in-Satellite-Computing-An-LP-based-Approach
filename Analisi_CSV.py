@@ -29,85 +29,135 @@ def process_subdirectory(subdirectory, global_output_directory):
 
             save_aggregated_data(dati, "high", file_path, global_output_directory, AP, arrival_time, CPU_Timeout)
             save_aggregated_data(dati, "low", file_path, global_output_directory, AP, arrival_time, CPU_Timeout)
+            save_priority_change_data(dati, "high", file_path, global_output_directory, AP, arrival_time, CPU_Timeout)
+            save_priority_change_data(dati, "low", file_path, global_output_directory, AP, arrival_time, CPU_Timeout)
 
 
-'''def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout):
+def save_priority_change_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout):
     dati_priority = dati[dati['Task Priority'] == priority].copy()
     if dati_priority.empty:
         return
 
+    columns_swapped_applied = False
+
+    # Gestione inversione colonne se necessario
+    if 'columns_swapped' in dati_priority.columns and dati_priority['columns_swapped'].any():
+        print(f"Attenzione: columns_swapped = True in {file_path}, invertiamo temporaneamente i valori.")
+        dati_priority[['Task Priority', 'original_TaskPriority']] = dati_priority[['original_TaskPriority', 'Task Priority']]
+        columns_swapped_applied = True
+
+    # Calcolo Response Time
     dati_priority["Time in system"] = np.maximum(dati_priority["Time in system"], dati_priority["Execution time"])
-
-    nonzero_times = dati_priority["Execution time"][dati_priority["Execution time"] > 0]
-    mean_exec_time = nonzero_times.mean() if not nonzero_times.empty else 0
-
     nonzero_times_system = dati_priority["Time in system"][dati_priority["Time in system"] > 0]
     mean_time_in_system = nonzero_times_system.mean()
 
-    percent_tmax_exceeded = (dati_priority['TMAX_exceeded'].sum() / len(dati_priority) * 100) if len(dati_priority) > 0 else 0
-    percent_exec_after_set = (dati_priority['Exec_after_set'].sum() / len(dati_priority) * 100) if len(dati_priority) > 0 else 0
+    # Calcolo percentuali di cambiamento
+    total_original_high = dati_priority[dati_priority['original_TaskPriority'] == 'high']
+    total_original_low = dati_priority[dati_priority['original_TaskPriority'] == 'low']
 
-    aggregated_data = pd.DataFrame({
-        "Priority": [priority],
+    if not total_original_high.empty:
+        high_changed = (total_original_high['original_TaskPriority'] != total_original_high['Task Priority']).sum()
+        percent_high_changed = (high_changed / len(total_original_high)) * 100
+    else:
+        percent_high_changed = 0
+
+    if not total_original_low.empty:
+        low_changed = (total_original_low['original_TaskPriority'] != total_original_low['Task Priority']).sum()
+        percent_low_changed = (low_changed / len(total_original_low)) * 100
+    else:
+        percent_low_changed = 0
+
+    # Se avevamo invertito i valori, ora li riportiamo come erano
+    if columns_swapped_applied:
+        dati_priority[['Task Priority', 'original_TaskPriority']] = dati_priority[['original_TaskPriority', 'Task Priority']]
+        print(f"Valori ripristinati allo stato originale per {file_path}.")
+
+    # Prepara il DataFrame separato
+    priority_change_data = pd.DataFrame({
+        "Task Priority": [priority],
         "AP": [AP],
         "CPU_Timeout": [CPU_Timeout],
         "Arrival Rate": [arrival_time],
-        "Execution time": [mean_exec_time],
         "Response Time": [mean_time_in_system],
-        "TMAX_exceeded": [percent_tmax_exceeded],
-        "Exec_after_set": [percent_exec_after_set]
+        "Percent_High_Changed": [percent_high_changed],
+        "Percent_Low_Changed": [percent_low_changed]
     })
 
     base_name = os.path.splitext(os.path.basename(file_path))[0]
-    # Includiamo AP nel nome per renderlo univoco
-    output_file = os.path.join(output_directory, f"aggregated_data_{priority}_priority_{base_name}_AP_{AP}.csv")
-    aggregated_data.to_csv(output_file, index=False)
-    print(f"Dati aggregati salvati in: {output_file}")
-'''
-def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout):
+    output_file = os.path.join(output_directory, f"priority_change_data_{priority}_priority_{base_name}_AP_{AP}.csv")
+    priority_change_data.to_csv(output_file, index=False)
+    print(f"Dati sui cambiamenti di priorità salvati in: {output_file}")
+
+
+def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_rate, CPU_Timeout):
     dati_priority = dati[dati['Task Priority'] == priority].copy()
     if dati_priority.empty:
         return
 
-    # Calcolo tempo medio di risposta
-    dati_priority["Time in system"] = np.maximum(dati_priority["Time in system"], dati_priority["Execution time"])
-    nonzero_times_system = dati_priority["Time in system"][dati_priority["Time in system"] > 0]
-    mean_time_in_system = nonzero_times_system.mean()
+    # Calcolo Time in system minimo rispetto a Execution time
+    dati_priority["Time in system"] = np.maximum(
+        dati_priority["Time in system"], dati_priority["Execution time"]
+    )
+
+    # Calcolo metriche di Response Time
+    nonzero_times = dati_priority["Time in system"][dati_priority["Time in system"] > 0]
+    mean_time_in_system = nonzero_times.mean() if not nonzero_times.empty else 0
+    pct95_time_in_system = dati_priority["Time in system"].quantile(0.95)
 
     # Calcolo percentuali
-    percent_tmax_exceeded = (dati_priority['TMAX_exceeded'].sum() / len(dati_priority) * 100) if len(dati_priority) > 0 else 0
-    percent_exec_after_set = (dati_priority['Exec_after_set'].sum() / len(dati_priority) * 100) if len(dati_priority) > 0 else 0
+    total = len(dati_priority)
+    percent_tmax_exceeded = (dati_priority['TMAX_exceeded'].sum() / total * 100) if total > 0 else 0
+    percent_exec_after_set = (dati_priority['Exec_after_set'].sum() / total * 100) if total > 0 else 0
 
-    # Calcolo delle medie richieste sulla colonna 'estimated_execution_time'
+    # Calcolo medie su estimated_execution_time
     executed_tasks = dati_priority[dati_priority["Execution time"] > 0]
     dropped_tasks = dati_priority[dati_priority["Execution time"] == 0]
+    drop_count_executed = len(executed_tasks)
+    drop_count = len(dropped_tasks)
+    drop_rel = drop_count / drop_count_executed if drop_count_executed > 0 else 0
 
     mean_est_exec_executed = executed_tasks["estimated_execution_time"].mean() if not executed_tasks.empty else 0
     mean_est_exec_dropped = dropped_tasks["estimated_execution_time"].mean() if not dropped_tasks.empty else 0
 
-    # Calcolo tempo medio reale di esecuzione (Execution time > 0)
-    nonzero_exec_times = executed_tasks["Execution time"]
-    mean_exec_time = nonzero_exec_times.mean() if not nonzero_exec_times.empty else 0
+    # Calcolo tempo medio di esecuzione reale
+    mean_exec_time = executed_tasks["Execution time"].mean() if not executed_tasks.empty else 0
 
-    # Output finale
+    # Preparo DataFrame aggregato con colonna 95th percentile
     aggregated_data = pd.DataFrame({
         "Priority": [priority],
         "AP": [AP],
         "CPU_Timeout": [CPU_Timeout],
-        "Arrival Rate": [arrival_time],
+        "Arrival Rate": [arrival_rate],
         "Execution time": [mean_exec_time],
         "estimated_execution_time_executed": [mean_est_exec_executed],
         "estimated_execution_time_dropped": [mean_est_exec_dropped],
         "Response Time": [mean_time_in_system],
+        "RT_95th": [pct95_time_in_system],
         "TMAX_exceeded": [percent_tmax_exceeded],
-        "Exec_after_set": [percent_exec_after_set]
+        "Exec_after_set": [percent_exec_after_set],
+        "drop_rel": [drop_rel]
     })
 
+    # Salvataggio
     base_name = os.path.splitext(os.path.basename(file_path))[0]
-    output_file = os.path.join(output_directory, f"aggregated_data_{priority}_priority_{base_name}_AP_{AP}.csv")
+    output_file = os.path.join(
+        output_directory,
+        f"aggregated_data_{priority}_priority_{base_name}_AP_{AP}.csv"
+    )
     aggregated_data.to_csv(output_file, index=False)
     print(f"Dati aggregati salvati in: {output_file}")
 
+
+def merge_priority_change_files(root_directory, output_file):
+    df_list = []
+
+    for filename in os.listdir(root_directory):
+        file_path = os.path.join(root_directory, filename)
+        if filename.startswith("priority_change_data_"):
+            df_list.append(pd.read_csv(file_path))
+
+    if df_list:
+        pd.concat(df_list, ignore_index=True).to_csv(output_file, index=False)
 
 def merge_csv_files(root_directory, output_file_high, output_file_low):
     df_high, df_low = [], []
@@ -138,5 +188,6 @@ if __name__ == "__main__":
 
     process_directory(current_directory, global_output_directory)
     merge_csv_files(global_output_directory, "data_High_priority.csv", "data_Low_priority.csv")
+    merge_priority_change_files(global_output_directory, "priority_change_data.csv")
     remove_aggregated_files(global_output_directory)
-    os.rmdir(global_output_directory)
+    #os.rmdir(global_output_directory)
