@@ -3,17 +3,78 @@ import numpy as np
 import pandas as pd
 
 
-def process_directory(directory, global_output_directory):
+'''def process_directory(directory, global_output_directory):
     for root, dirs, files in os.walk(directory):
+        # escludo le cartelle plots e CSV_Aggregates
         dirs[:] = [d for d in dirs if not d.endswith("plots") and d != "CSV_Aggregates"]
         for dir_name in dirs:
             subdirectory = os.path.join(root, dir_name)
-            process_subdirectory(subdirectory, global_output_directory)
+
+            if dir_name.startswith("DTS-simulation"):
+                versione = "DTS"
+            elif dir_name.startswith("Orbit-simulation"):
+                versione = "Orbit-simulation"
+            else:
+                continue
+
+            print(f"Elaborazione simulazione: {versione} in {subdirectory}")
+            process_subdirectory(subdirectory, global_output_directory, versione)'''
+
+def process_directory(directory, global_output_directory):
+    for root, dirs, files in os.walk(directory):
+        # Escludo le cartelle inutili
+        dirs[:] = [d for d in dirs if not d.endswith("plots") and d != "CSV_Aggregates"]
+        for dir_name in dirs:
+            if dir_name.startswith("DTS-simulation"):
+                versione = "DTS-simulation"
+            elif dir_name.startswith("Orbit-simulation"):
+                versione = "Orbit-simulation"
+            else:
+                continue
+
+            subdirectory = os.path.join(root, dir_name)
+            print(f"Elaborazione simulazione: {versione} in {subdirectory}")
+            # Qui passo la cartella intera: process_subdirectory la camminerà tutta
+            process_subdirectory(subdirectory, global_output_directory, versione)
 
 
-def process_subdirectory(subdirectory, global_output_directory):
+def process_subdirectory(base_dir, global_output_directory, versione):
+    # cammino ricorsivamente TUTTO il sotto-albero di base_dir
+    for root, dirs, files in os.walk(base_dir):
+        # (se vuoi escludere altre sottocartelle, qui puoi filtrare dirs[:] come in process_directory)
+        for filename in files:
+            if filename.startswith("merged_processed_files_") and not filename.endswith("plots"):
+                print(f"  -> file: {os.path.join(root, filename)}")
+                file_path = os.path.join(root, filename)
+
+                # Estrazione variabili dal nome
+                try:
+                    AP = file_path.split(os.sep)[5].split("_")[-1][2:]
+                except Exception:
+                    AP = "NA"
+                arrival_time = filename.split("_")[-3]
+                CPU_Timeout  = filename.split("_")[-1].replace('.csv', '')
+
+                dati = pd.read_csv(file_path)
+
+                # Per ogni priorità faccio le due chiamate
+                for priority in ("high", "low"):
+                    ph, pl = save_priority_change_data(
+                        dati, priority, file_path, global_output_directory,
+                        AP, arrival_time, CPU_Timeout, versione
+                    )
+                    save_aggregated_data(
+                        dati, priority, file_path, global_output_directory,
+                        AP, arrival_time, CPU_Timeout, versione,
+                        ph, pl
+                    )
+'''
+
+def process_subdirectory(subdirectory, global_output_directory, versione):
     for filename in os.listdir(subdirectory):
+        print(filename)
         if filename.startswith("merged_processed_files_") and not filename.endswith("plots"):
+            print('qui')
             print('Elaborazione del file:', filename)
             file_path = os.path.join(subdirectory, filename)
 
@@ -29,16 +90,13 @@ def process_subdirectory(subdirectory, global_output_directory):
             # Per ogni priorità, calcolo le percentuali e salvo i CSV aggregati con queste colonne
             for priority in ("high", "low"):
                 percent_high_changed, percent_low_changed = save_priority_change_data(
-                    dati, priority, file_path, global_output_directory, AP, arrival_time, CPU_Timeout
-                )
-                save_aggregated_data(
-                    dati, priority, file_path, global_output_directory,
-                    AP, arrival_time, CPU_Timeout,
-                    percent_high_changed, percent_low_changed
-                )
+                    dati, priority, file_path, global_output_directory, AP, arrival_time, CPU_Timeout, versione)
+                save_aggregated_data(dati, priority, file_path, global_output_directory,
+                                     AP, arrival_time, CPU_Timeout, versione, percent_high_changed, percent_low_changed)
+'''
 
-
-def save_priority_change_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout):
+def save_priority_change_data(dati, priority, file_path, output_directory, AP, arrival_time, CPU_Timeout, versione):
+    print(versione)
     dati_priority = dati[dati['Task Priority'] == priority].copy()
     if dati_priority.empty:
         return 0.0, 0.0
@@ -76,7 +134,7 @@ def save_priority_change_data(dati, priority, file_path, output_directory, AP, a
     base_name = os.path.splitext(os.path.basename(file_path))[0]
     output_file = os.path.join(
         output_directory,
-        f"priority_change_data_{priority}_priority_{base_name}_AP_{AP}.csv"
+        f"{versione} priority_change_data_{priority}_priority_{base_name}_AP_{AP}.csv"
     )
     pd.DataFrame({
         "Task Priority": [priority],
@@ -91,7 +149,7 @@ def save_priority_change_data(dati, priority, file_path, output_directory, AP, a
     return percent_high_changed, percent_low_changed
 
 
-def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_rate, CPU_Timeout,
+def save_aggregated_data(dati, priority, file_path, output_directory, AP, arrival_rate, CPU_Timeout, versione,
                          percent_high_changed=0.0, percent_low_changed=0.0):
     dati_priority = dati[dati['Task Priority'] == priority].copy()
     if dati_priority.empty:
@@ -144,7 +202,7 @@ def save_aggregated_data(dati, priority, file_path, output_directory, AP, arriva
     base_name = os.path.splitext(os.path.basename(file_path))[0]
     output_file = os.path.join(
         output_directory,
-        f"aggregated_data_{priority}_priority_{base_name}_AP_{AP}.csv"
+        f"{versione} aggregated_data_{priority}_priority_{base_name}_AP_{AP}.csv"
     )
     aggregated_data.to_csv(output_file, index=False)
     print(f"Dati aggregati salvati in: {output_file}")
@@ -159,7 +217,7 @@ def merge_priority_change_files(root_directory, output_file):
         pd.concat(df_list, ignore_index=True).to_csv(output_file, index=False)
 
 
-def merge_csv_files(root_directory, output_file_high, output_file_low):
+'''def merge_csv_files(root_directory, output_file_high, output_file_low):
     df_high, df_low = [], []
     for filename in os.listdir(root_directory):
         if filename.startswith("aggregated_data_high_priority"):
@@ -169,7 +227,42 @@ def merge_csv_files(root_directory, output_file_high, output_file_low):
     if df_high:
         pd.concat(df_high, ignore_index=True).to_csv(output_file_high, index=False)
     if df_low:
-        pd.concat(df_low, ignore_index=True).to_csv(output_file_low, index=False)
+        pd.concat(df_low, ignore_index=True).to_csv(output_file_low, index=False)'''
+
+def merge_csv_files(root_directory, output_file_high, output_file_low):
+    """
+    Unisce in due file (high/low) tutti i `aggregated_data_*` prodotti
+    da DTS-simulation e Orbit-simulation, aggiungendo colonna Simulation.
+    """
+    dfs = {'high': [], 'low': []}
+
+    for fname in os.listdir(root_directory):
+        # match dei file prodotti prima da save_aggregated_data
+        if fname.startswith(("DTS-simulation aggregated_data_", "Orbit-simulation aggregated_data_")):
+            full_path = os.path.join(root_directory, fname)
+            df = pd.read_csv(full_path)
+
+            # ricavo la versione da fname
+            sim = "DTS" if fname.startswith("DTS-simulation") else "Orbit"
+            df['Simulation'] = sim
+
+            # ricavo la priorità
+            if "high_priority" in fname:
+                dfs['high'].append(df)
+            elif "low_priority" in fname:
+                dfs['low'].append(df)
+
+    # concat e salvataggio High
+    if dfs['high']:
+        combined_high = pd.concat(dfs['high'], ignore_index=True)
+        combined_high.to_csv(output_file_high, index=False)
+        print(f"Creato: {output_file_high}")
+
+    # concat e salvataggio Low
+    if dfs['low']:
+        combined_low = pd.concat(dfs['low'], ignore_index=True)
+        combined_low.to_csv(output_file_low, index=False)
+        print(f"Creato: {output_file_low}")
 
 
 def remove_aggregated_files(directory):

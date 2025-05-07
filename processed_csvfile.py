@@ -27,7 +27,7 @@ def process_csv(file_path):
 
     # Estrai la combinazione di priorità e il valore della CPU
     CPU_combination = os.path.splitext(os.path.basename(file_path))[0].split('_')[-1]
-    priority_combination = '20_0_80'
+    #priority_combination = '20_0_80'
 
     # Escludi i file che contengono la dicitura "processed" nel nome
     if "processed" in os.path.basename(file_path):
@@ -67,7 +67,7 @@ def process_csv(file_path):
     df.to_csv(output_path, index=False, mode='w')
     print(f"Processed: {file_path, base_name} -> {new_file_name}")
 
-    return pd.read_csv(output_path), priority_combination, file_suffix, CPU_combination
+    return pd.read_csv(output_path), file_suffix, CPU_combination
 
 
 def process_all_csv_files(folder_path):
@@ -92,12 +92,12 @@ def process_all_csv_files(folder_path):
     for file_path in csv_files:
         inverti_colonne_csv(file_path, "Task Priority", "original_TaskPriority", file_path)
 
-        processed_df, priority_combination, file_suffix, CPU = process_csv(file_path)
+        processed_df, file_suffix, CPU = process_csv(file_path)
         # Rimuovo la stampa del DataFrame: non viene più visualizzato il contenuto
         # print(processed_df, priority_combination, file_suffix, CPU)
 
-        if processed_df is not None and priority_combination is not None and file_suffix is not None:
-            group_key = (priority_combination, file_suffix, CPU)
+        if processed_df is not None  and file_suffix is not None:
+            group_key = (file_suffix, CPU)
             if group_key not in grouped_dataframes:
                 grouped_dataframes[group_key] = pd.DataFrame()
             grouped_dataframes[group_key] = pd.concat([grouped_dataframes[group_key], processed_df])
@@ -107,12 +107,12 @@ def process_all_csv_files(folder_path):
             print(f"Processing CSV Files: {progress_percentage:.2f}% ({processed_files_count}/{total_files} files processed)")
 
     # Salva i DataFrame raggruppati in file CSV separati
-    for (priority_combination, file_suffix, CPU) in grouped_dataframes:
-        priority_folder_path = os.path.join(folder_path, f"Merged_priority_{priority_combination}")
+    for (file_suffix, CPU) in grouped_dataframes:
+        priority_folder_path = os.path.join(folder_path, f"Merged_priority")
         os.makedirs(priority_folder_path, exist_ok=True)
 
-        df = grouped_dataframes[(priority_combination, file_suffix, CPU)]
-        output_file_name = f"merged_processed_files_{priority_combination}_AT_{file_suffix}_CPU_{CPU}.csv"
+        df = grouped_dataframes[(file_suffix, CPU)]
+        output_file_name = f"merged_processed_files_AT_{file_suffix}_CPU_{CPU}.csv"
         merged_file_path = os.path.join(priority_folder_path, output_file_name)
 
         df.to_csv(merged_file_path, index=False, mode='w')

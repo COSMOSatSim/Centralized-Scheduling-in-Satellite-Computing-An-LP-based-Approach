@@ -49,7 +49,7 @@ else:
 ###############################################
 # STEP 2: Leggi il file combinato e prepara i dati
 ###############################################
-combined_csv = os.path.join(current_directory, "combined_data_AVG_NO_penality.csv")
+combined_csv = os.path.join(current_directory, "combined_data_AVG_penality.csv")
 
 filename = os.path.basename(combined_csv)
 if filename == "combined_data_AVG_NO_penality.csv":
