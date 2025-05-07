@@ -35,7 +35,7 @@ except Exception as e:
 # Unisci i due DataFrame
 if not df_v1.empty or not df_v2.empty:
     df = pd.concat([df_v1, df_v2], ignore_index=True)
-    combined_csv = os.path.join(current_directory, "combined_data_AVG_all_versions.csv")
+    combined_csv = os.path.join(current_directory, "combined_data_AVG_all_versions2.csv")
     df.to_csv(combined_csv, index=False)
     print(f"File combinato salvato in: {combined_csv}")
 else:
@@ -67,7 +67,6 @@ df_grouped = df_rr.groupby(["InvArrivalRate", "Priority", "Versione"])["Executio
 #df_grouped["Label"] = df_grouped["Priority"] + " " + df_grouped["Versione"]
 df_grouped["Label"] = df_grouped.apply(lambda row: ("DTS-TMAX Orbit-aware" if row["Versione"]=="V2" else "DTS-TMAX")
                                        + " - " + row["Priority"], axis=1)
-
 # Crea una tabella pivot: righe = Arrival Rate, colonne = Label, valori = average Response Time
 pivot_rt = df_grouped.pivot(index="InvArrivalRate", columns="Label", values="Execution time")
 
