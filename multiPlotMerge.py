@@ -789,10 +789,7 @@ def plot_stacked_drop(df, AP, Arrival_Rate_value, output_dir, version=""):
     plt.show()
     plt.close()
 
-
 plot_stacked_drop(df, AP,Arrival_Rate_value, output_dir,version)
-
-
 
 def main():
 
@@ -904,7 +901,6 @@ def main():
             output_dir=output_dir,
             version=version_prefix
         )
-
 
         # 3d) Dropped vs AP
         plot_drop_vs_AP(
