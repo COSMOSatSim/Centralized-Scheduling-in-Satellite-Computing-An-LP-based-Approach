@@ -101,6 +101,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,
                                            TMAX_exceeded=False, exec_after_set = False )
+
         # Rimuovi il task completato dalla coda
         if task in selected_server.server_queue:
              selected_server.server_queue.remove(task)
@@ -223,11 +224,15 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     # Ordina i server in base ai criteri scelti (utility, tempo stimato, lunghezza della coda, ecc.)
     sorted_servers = sorted(server_metrics,
                             key=lambda x: (x['utility_value']))
+
+    sorted_servers2 = sorted(server_metrics,
+                            key=lambda x: (x['utility_value']/['orbitalSunset']))
+
     Tmax_high -= 2 * Tmax_latency
 
     #print("\nServer ordinati per metriche:")
 
-    '''for metrics in sorted_servers:
+    for metrics in sorted_servers:
             print(f"Server {metrics['server'].name}:")
             print(f"- Utility: {metrics['utility_value']:.2f}")
             print(f"- Tempo stimato esecuzione task: {metrics['estimated_total_time']:.2f}")
@@ -235,23 +240,30 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             print(f"- Tempo di completamento totale in base alla coda: {metrics['expected_completion_time']:.2f}")
             print(f"- Lunghezza coda: {metrics['queue_length']}")
             print(f"- Orbital Sunset: {metrics['orbitalSunset']}")
-            print(f"- Transfer time: {metrics['transfer_time']}")'''
+            print(f"- Transfer time: {metrics['transfer_time']}")
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
 
-    #Versione originale con penalità aggiunta nell'utility
-    sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high and metrics['orbitalSunset'] not in (0, None)]
+    #Versione originale
+    sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high ]
+    sorted_servers_MOD = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high ]
 
-    '''#versione mod, con penalità aggiunta qui invece che nell'utility
-    sorted_servers = [metrics['server'] for metrics in sorted_servers
+    #versione mod, con penalità aggiunta qui invece che nell'utility
+    '''sorted_servers = [metrics['server'] for metrics in sorted_servers
                       if metrics['expected_completion_time'] < Tmax_high
                       and metrics['expected_completion_time'] < metrics['orbitalSunset']
-                      and metrics['orbitalSunset'] not in (0, None)]
-    '''
-    '''for server in sorted_servers:
-         print(f"Server {server.name}: Utility Value = {server.utility_value} ")'''
+                      and metrics['orbitalSunset'] not in (0, None)]'''
 
-    #print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
+    '''sorted_servers2 = [metrics['server'] for metrics in sorted_servers
+                      if metrics['utility_value'] < Tmax_high
+                      and metrics['utility_value'] < metrics['orbitalSunset']
+                      and metrics['orbitalSunset'] not in (0, None)]'''
+
+    '''for server in sorted_servers:
+         print(f"Server {server.name}: Utility Value = {server.utility_value}, orbitalSunset {server.orbitalSunset}")'''
+
+    print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
+
     original_TaskPriority = task_priority
 
     initial_server_counter[server_selected.name] += 1
@@ -304,10 +316,14 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             return
         else:
             available_servers = [neighbor for neighbor in neighbors_at_distance_one if neighbor != server_selected]
+            ####prendere quello con sunset time maggiore
             random_server = random.choice(available_servers)
             Tmax_latency = random_server.get_latency(server_selected)
             transfer_time = transfer_time + random_server.get_latency(server_selected)
             hop += 1
+            print(f"server random scelto {random_server}")
+            print(
+               f'server: {random_server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(random_server.server_queue)}, tempo di attesa {random_server.Th_ij + random_server.Tl_ij + random_server.waiting_time}, AVG {random_server.AVG_service_time}, orbitalSunset: {random_server.orbitalSunset}, Sunset: {random_server.elev_angle}')
 
             yield env.process(
                 SearchNode(env, random_server, task_id, required_ram, required_disk, image_size,

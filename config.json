@@ -4,12 +4,12 @@
   "search_node": 1,
   "seed": 42,
   "access_point": 5,
-  "arrival_time_exponential": 0.5,
-  "Tmax_H": 200,
+  "arrival_time_exponential": 1.5,
+  "Tmax_H": 400,
   "Tmax_L": 0.05,
   "CPU_timeout": {
     "min": 0,
-    "mean": 10,
+    "mean": 50,
     "max": 90000
   },
   "MI": {

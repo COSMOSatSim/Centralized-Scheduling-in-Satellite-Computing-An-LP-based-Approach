@@ -5,12 +5,8 @@ import matplotlib.pyplot as plt
 
 # Filtri
 cpu_timeout_value = 110
-Arrival_Rate_value = 0.5  # scegliere tra 0.5, 1, 1.5, 2, 2.5, 3
+Arrival_Rate_value = 3  # scegliere tra 0.5, 1, 1.5, 2, 2.5, 3
 AP = 5
-
-###############################################
-# STEP 1: Combina i file CSV in "combined_data_AVG.csv"
-###############################################
 
 # Imposta la directory corrente
 current_directory = os.path.dirname(os.path.abspath(__file__))
@@ -47,18 +43,9 @@ if not df_high.empty or not df_low.empty:
 else:
     print("Nessun dato disponibile per la combinazione.")
 
-###############################################
-# STEP 2: Leggi il file combinato e prepara i dati
-###############################################
 combined_csv = os.path.join(current_directory, "combined_data_AVG_penality.csv")
 
-filename = os.path.basename(combined_csv)
-if filename == "combined_data_AVG_NO_penality.csv":
-    version = 'DTS-TMAX '
-elif filename == "combined_data_AVG_penality.csv":
-    version = 'OrbitAware '
-else:
-    version = 'Unknown'
+version = ''
 
 try:
     df = pd.read_csv(combined_csv)
@@ -140,7 +127,6 @@ def plot_rt_vs_arrival(df, cpu_timeout_value, Arrival_Rate_value, output_dir, ve
     plt.savefig(os.path.join(output_dir, fname), dpi=300, bbox_inches='tight')
     plt.show()
     plt.close()
-
 
 def plot_drop_vs_AP(df, cpu_timeout_value, Arrival_Rate_value, output_dir, version=""):
     """
@@ -224,52 +210,6 @@ plt.show()'''
 ###############################################
 # STEP 4: Funzione di plotting per gli altri grafici (Grafici 2-6)
 ###############################################
-'''
-######versione plot singolo
-def plot_graph(x, y, xlabel, ylabel, filename, filter_dict=None):
-    print(f"Elaborazione del grafico: {filename}")
-    plt.figure(figsize=(10, 6))
-
-    df_filtered = df.copy()
-    if filter_dict:
-        for key, value in filter_dict.items():
-            if isinstance(value, list):
-                df_filtered = df_filtered[df_filtered[key].isin(value)]
-            else:
-                df_filtered = df_filtered[df_filtered[key] == value]
-
-    # Se x è "AP", assicura di avere solo i valori 5,10,15,20
-    if x == "AP":
-        df_filtered[x] = pd.to_numeric(df_filtered[x], errors='coerce')
-        df_filtered = df_filtered[df_filtered[x].isin([5, 10, 15, 20])]
-    if x == "CPU_Timeout":
-        df_filtered = df_filtered.sort_values(by=x)
-    # Plot per ciascuna priorità e per ogni InvArrivalRate
-    for priority in ["high", "low"]:
-        df_priority = df_filtered[df_filtered["Priority"] == priority]
-        for rate in sorted(df_priority["InvArrivalRate"].unique()):
-            subset = df_priority[df_priority["InvArrivalRate"] == rate]
-            if x == "AP":
-                subset = subset.sort_values(by=x)
-            plt.plot(subset[x], subset[y], marker="o", linestyle="-",
-                     label=f"{priority.capitalize()} Priority - Arrival Rate {rate}")
-
-    plt.yticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100])
-    plt.xlabel(xlabel, fontsize=14)
-    #r"$95^{\mathrm{th}}$ perc. di Response Time"
-    plt.ylabel(ylabel, fontsize=14)
-    #plt.title(filename.split('.')[0], fontsize=16)
-    plt.legend()
-    plt.grid(True, axis='y', linestyle='--', linewidth=0.7)  # solo linee orizzontali
-    if x == "AP":
-        plt.xticks([5, 10, 15, 20])
-    if x == "CPU_Timeout":
-        plt.xticks([10, 30, 50, 70, 90, 110])
-
-    plt.savefig(os.path.join(output_dir, version + filename), dpi=300, bbox_inches='tight')
-
-    plt.show()
-'''
 def plot_graph(df, x, y, xlabel, ylabel, filename, output_dir,
                filter_dict=None, version_prefix=""):
     """
@@ -442,58 +382,6 @@ else:
     print("Nessun dato per il filtro per il Grafico 6b (vs AP).")
 '''
 ###############################################
-# STEP 8: Grafici 2-6 (chiamate alla funzione plot_graph)
-###############################################
-plot_graph(
-    df, x="AP", y="Response Time",
-    xlabel="AP", ylabel="Response Time (sec)",
-    filename=f"response time vs AP Cpu {cpu_timeout_value} AP{AP}.png", output_dir=output_dir,
-    version_prefix="",
-    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
-)
-plot_graph(
-    df,x="AP", y="RT_95th",
-    xlabel="AP", ylabel=r"$95^{\mathrm{th}}$ % of $\,\mathrm{Response\ Time}$",
-    filename=f"RT_95th vs AP Cpu {cpu_timeout_value} AP{AP}.png",
-    output_dir=output_dir, version_prefix="",
-    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
-)
-
-plot_graph(
-    df,x="CPU_Timeout", y="Response Time",
-    xlabel="Service Time", ylabel="Average Response time (sec)",
-    filename=f"Average Response time vs service time Cpu {cpu_timeout_value} AP{AP}.png", output_dir=output_dir, version_prefix="",
-    filter_dict={"AP": AP, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
-)
-plot_graph(
-    df,x="CPU_Timeout", y="RT_95th",
-    xlabel="Service Time", ylabel=r"$95^{\mathrm{th}}$ % of $\,\mathrm{Response\ Time}$",
-    filename=f"RT_95th vs service time Cpu {cpu_timeout_value} AP{AP}.png",output_dir=output_dir,
-    version_prefix="",
-    filter_dict={"AP": AP, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
-)
-
-plot_graph(
-    df,x="AP", y="drop_rel",
-    xlabel="AP", ylabel="% Dropped Requests",
-    filename=f"dropped requests vs AP Cpu {cpu_timeout_value} AP{AP}.png",output_dir=output_dir,
-    version_prefix="",
-    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
-)
-
-plot_graph(
-    df, x="CPU_Timeout", y="drop_rel",
-    xlabel="Service Time", ylabel="% Dropped Requests",
-    filename=f"dropped requests vs service time AP{AP} Cpu {cpu_timeout_value}.png",output_dir=output_dir,
-    version_prefix="",
-    filter_dict={"AP": AP, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110]}
-)
-
-
-plot_rt_vs_arrival(df,cpu_timeout_value,Arrival_Rate_value,output_dir,version="DTS_Orbit ")
-
-plot_drop_vs_AP(df, cpu_timeout_value,Arrival_Rate_value,output_dir, version="DTS_Orbit")
-
 def plot_priority_changes( df, version, output_dir, cpu_timeout_value, AP, mapping_dr, inv_rates_dr, Arrival_Rate_value):
     # Calcola l’inverso dell’Arrival Rate
     df["InvArrivalRate"] = df["Arrival Rate"].apply(lambda x: round(1/x, 2) if x != 0 else None)
@@ -614,90 +502,7 @@ def plot_priority_changes( df, version, output_dir, cpu_timeout_value, AP, mappi
     fig.savefig(os.path.join(output_dir, fname), dpi=300, bbox_inches="tight")
     plt.show()
     plt.close(fig)
-
-plot_priority_changes(df,version, output_dir,cpu_timeout_value,AP, mapping_dr,inv_rates_dr, Arrival_Rate_value)
-
 ###############################################
-# STEP X: Stacked bar – % Dropped Requests (high, low, total) vs CPU_Timeout
-###############################################
-'''print("Elaborazione dello Stacked Bar: % Dropped (high, low, total) vs Service Time")
-
-# 1) Filtra df su AP e Arrival Rate correnti
-df_stack = df[(df["AP"] == AP) & (df["InvArrivalRate"] == round(1/Arrival_Rate_value, 2))].copy()
-
-# 2) Raggruppa e calcola media drop_rel per Priority e CPU_Timeout
-agg_stack = (
-    df_stack
-    .groupby(["CPU_Timeout", "Priority"])["drop_rel"]
-    .mean()
-    .unstack(fill_value=0)
-)
-
-# 3) Calcola la componente totale
-agg_stack["total"] = agg_stack.get("high", 0) + agg_stack.get("low", 0)
-
-# 4) Plot stacked bar
-cpu_vals = sorted(agg_stack.index)
-high_vals = agg_stack.loc[cpu_vals, "high"] if "high" in agg_stack else [0]*len(cpu_vals)
-low_vals  = agg_stack.loc[cpu_vals, "low"]  if "low"  in agg_stack else [0]*len(cpu_vals)
-tot_vals  = agg_stack.loc[cpu_vals, "total"]
-
-plt.figure(figsize=(10,6))
-
-# prima low, poi high, poi total sopra (o come preferisci l’ordine)
-plt.bar(cpu_vals, low_vals,  label=f"Low Priority - Arrival Rate {round(1/Arrival_Rate_value, 2)}")
-plt.bar(cpu_vals, high_vals, bottom=low_vals, label=f"High Priority - Arrival Rate {round(1/Arrival_Rate_value, 2)}")
-#plt.bar(cpu_vals, tot_vals,  bottom=(low_vals+high_vals), alpha=0.3, label="Total")
-
-plt.xlabel("Service Time", fontsize=14)
-plt.ylabel("% Dropped Requests", fontsize=14)
-plt.xticks(cpu_vals)
-plt.yticks(range(0, 101, 10))
-plt.ylim(0, 100)
-plt.legend()
-
-plt.grid(True, axis='y', linestyle='--', linewidth=0.7)  # solo linee orizzontali
-
-# Salvataggio
-fname = f"stacked_drop_rel_vs_CPU{cpu_timeout_value}_AP{AP}_AR{round(1/Arrival_Rate_value, 2)}.png"
-
-plt.savefig(os.path.join(output_dir, version + fname), dpi=300, bbox_inches='tight')
-
-plt.show()
-
-###############################################
-# STEP Xb: Stacked area plot – % Dropped Requests vs CPU_Timeout
-###############################################
-print("Elaborazione dello Stacked Area Plot: % Dropped Requests vs Service Time")
-
-plt.figure(figsize=(10,6))
-
-# Crea l'area impilata per low e high
-plt.stackplot(
-    cpu_vals,
-    low_vals,
-    high_vals,
-    #tot_vals,
-    labels=[f"Low Priority - Arrival Rate {round(1/Arrival_Rate_value, 2)}", f"High Priority - Arrival Rate {round(1/Arrival_Rate_value, 2)}"],
-    alpha=0.6
-)
-tot = tot_vals+low_vals+high_vals
-plt.plot(cpu_vals, tot_vals, marker="o", linestyle="--", label="Total", color="black")
-plt.xlabel("Service Time", fontsize=14)
-plt.ylabel("% Dropped Requests", fontsize=14)
-#plt.title(f"Stacked Area Plot % Dropped Requests\nAP = {AP}, Arrival Rate = {round(1/Arrival_Rate_value, 2)}", fontsize=16)
-plt.xticks(cpu_vals)
-plt.yticks(range(0, 101, 10))
-plt.ylim(0, 100)
-plt.legend()
-plt.grid(True, axis='y', linestyle='--', linewidth=0.7)  # solo linee orizzontali
-
-# Salvataggio
-fname = f"stacked_area_drop_rel_vs_CPU{cpu_timeout_value}_AP{AP}_AR{round(1/Arrival_Rate_value, 2)}.png"
-plt.savefig(os.path.join(output_dir, version + fname), dpi=300, bbox_inches='tight')
-plt.show()'''
-
-
 def plot_stacked_drop(df, AP, Arrival_Rate_value, output_dir, version=""):
     """
     Genera due grafici:
@@ -789,6 +594,60 @@ def plot_stacked_drop(df, AP, Arrival_Rate_value, output_dir, version=""):
     plt.show()
     plt.close()
 
+###############################################
+# STEP 8: Grafici (chiamate alla funzione )
+###############################################
+plot_graph(
+    df, x="AP", y="Response Time",
+    xlabel="AP", ylabel="Response Time (sec)",
+    filename=f"response time vs AP Cpu {cpu_timeout_value} AP{AP}.png", output_dir=output_dir,
+    version_prefix="",
+    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
+)
+plot_graph(
+    df,x="AP", y="RT_95th",
+    xlabel="AP", ylabel=r"$95^{\mathrm{th}}$ % of $\,\mathrm{Response\ Time}$",
+    filename=f"RT_95th vs AP Cpu {cpu_timeout_value} AP{AP}.png",
+    output_dir=output_dir, version_prefix="",
+    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
+)
+
+plot_graph(
+    df,x="CPU_Timeout", y="Response Time",
+    xlabel="Service Time", ylabel="Average Response time (sec)",
+    filename=f"Average Response time vs service time Cpu {cpu_timeout_value} AP{AP}.png", output_dir=output_dir, version_prefix="",
+    filter_dict={"AP": AP, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110, 130]}
+)
+plot_graph(
+    df,x="CPU_Timeout", y="RT_95th",
+    xlabel="Service Time", ylabel=r"$95^{\mathrm{th}}$ % of $\,\mathrm{Response\ Time}$",
+    filename=f"RT_95th vs service time Cpu {cpu_timeout_value} AP{AP}.png",output_dir=output_dir,
+    version_prefix="",
+    filter_dict={"AP": AP, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110, 130]}
+)
+
+plot_graph(
+    df,x="AP", y="drop_rel",
+    xlabel="AP", ylabel="% Dropped Requests",
+    filename=f"dropped requests vs AP Cpu {cpu_timeout_value} AP{AP}.png",output_dir=output_dir,
+    version_prefix="",
+    filter_dict={"CPU_Timeout": cpu_timeout_value, "Arrival Rate": Arrival_Rate_value, "AP": [5, 10, 15, 20]}
+)
+
+plot_graph(
+    df, x="CPU_Timeout", y="drop_rel",
+    xlabel="Service Time", ylabel="% Dropped Requests",
+    filename=f"dropped requests vs service time AP{AP} Cpu {cpu_timeout_value}.png",output_dir=output_dir,
+    version_prefix="",
+    filter_dict={"AP": AP, "Arrival Rate": Arrival_Rate_value, "CPU_Timeout": [10, 30, 50, 70, 90, 110, 130]}
+)
+
+plot_rt_vs_arrival(df,cpu_timeout_value,Arrival_Rate_value,output_dir,version="DTS_Orbit ")
+
+plot_drop_vs_AP(df, cpu_timeout_value,Arrival_Rate_value,output_dir, version="DTS_Orbit")
+
+plot_priority_changes(df,version, output_dir,cpu_timeout_value,AP, mapping_dr,inv_rates_dr, Arrival_Rate_value)
+
 plot_stacked_drop(df, AP,Arrival_Rate_value, output_dir,version)
 
 def main():
@@ -850,7 +709,7 @@ def main():
             filter_dict={
                 "AP": AP,
                 "Arrival Rate": Arrival_Rate_value,
-                "CPU_Timeout":[10,30,50,70,90,110]
+                "CPU_Timeout":[10,30,50,70,90,110,130]
             }
         )
         plot_graph(
@@ -863,7 +722,7 @@ def main():
             filter_dict={
                 "AP": AP,
                 "Arrival Rate": Arrival_Rate_value,
-                "CPU_Timeout":[10,30,50,70,90,110]
+                "CPU_Timeout":[10,30,50,70,90,110, 130]
             }
         )
         plot_graph(
@@ -889,7 +748,7 @@ def main():
             filter_dict={
                 "AP": AP,
                 "Arrival Rate": Arrival_Rate_value,
-                "CPU_Timeout":[10,30,50,70,90,110]
+                "CPU_Timeout":[10,30,50,70,90,110,130]
             }
         )
 
