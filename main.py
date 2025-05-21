@@ -76,9 +76,12 @@ if __name__ == "__main__":
         distribution_string = "RR"
     access_point = config["access_point"]
 
+
     # Specifica il percorso della directory che vuoi creare
     # percorso_directory = f"simulation result_{distribution_string}_request_distribution_latency_{latency}_distribuited/{config_seed}"
-    percorso_directory = f"simulation result-System_AP{access_point}/simulation result_seed_{config_seed}"
+    if config["DTS"] == True:
+        percorso_directory = f"DTS-simulation result-System_AP{access_point}/simulation result_seed_{config_seed}"
+    else: percorso_directory = f"OrbitAware-simulation result-System_AP{access_point}/simulation result_seed_{config_seed}"
     os.makedirs(percorso_directory, exist_ok=True)
 
     csv_name = f"{percorso_directory}/simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_AT_{config_arrival_time}_CPU_{config_CPU_Timeout}.csv"

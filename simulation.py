@@ -207,11 +207,6 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             'expected_completion_time': expected_completion_time
         })
 
-    '''Modifica del criterio di ordinamento dei server per considerare:
-        Prima il valore di utility (come prima)
-        Poi il tempo totale stimato (tra 10 e 25 minuti esponenziale con media 15 minuti)
-        Infine la lunghezza della coda
-        In questo modo, a parità di utility value, verrà selezionato il server che dovrebbe completare il task più velocemente e con la coda più corta.'''
 
     # Filtra i server: esclude i server con orbitalSunset non valido e quelli che non riescono a completare il task in tempo
     server_metrics = [
@@ -222,11 +217,20 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     ]
 
     # Ordina i server in base ai criteri scelti (utility, tempo stimato, lunghezza della coda, ecc.)
-    sorted_servers = sorted(server_metrics,
+    '''sorted_servers = sorted(server_metrics,
                             key=lambda x: (x['utility_value']))
+    '''
 
-    '''sorted_servers2 = sorted(server_metrics,
-                            key=lambda x: (x['utility_value']/['orbitalSunset']))'''
+    # Ordina secondo nuova politica: rapporto estimated_total_time / orbitalSunset (minimizzare)
+    '''non è scelto direttamente quello con orbitalSunset più alto, ma quello che minimizza il rapporto estimated_total_time / orbitalSunset.'''
+    sorted_servers = sorted(
+        server_metrics,
+        key=lambda x: (
+            x['estimated_total_time'] / x['orbitalSunset'],  # minimizza il rapporto
+            -x['orbitalSunset']  # in caso di pareggio, massimizza orbitalSunset
+        )
+    )
+
 
     Tmax_high -= 2 * Tmax_latency
 
@@ -244,23 +248,21 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
 
-    #Versione originale: DTS-TMAX
-    #sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high ]
-    '''sorted_servers_MOD = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high ]'''
-
-    #versione mod: OrbitAware, con penalità aggiunta qui invece che nell'utility
-    sorted_servers = [metrics['server'] for metrics in sorted_servers
+    if config["DTS"] == True:
+        print('Versione originale: DTS-TMAX')
+        sorted_servers = [metrics['server'] for metrics in sorted_servers if
+                          metrics['expected_completion_time'] < Tmax_high]
+    else:
+        print('versione mod: OrbitAware, con penalità')
+        sorted_servers = [metrics['server'] for metrics in sorted_servers
                       if metrics['expected_completion_time'] < Tmax_high
                       and metrics['expected_completion_time'] < metrics['orbitalSunset']
                       and metrics['orbitalSunset'] not in (0, None)]
 
-    '''sorted_servers2 = [metrics['server'] for metrics in sorted_servers
-                      if metrics['utility_value'] < Tmax_high
-                      and metrics['utility_value'] < metrics['orbitalSunset']
-                      and metrics['orbitalSunset'] not in (0, None)]'''
-
     '''for server in sorted_servers:
          print(f"Server {server.name}: Utility Value = {server.utility_value}, orbitalSunset {server.orbitalSunset}")'''
+
+
 
     print(f'hop eseguiti = {hop}, server totali rimasti con utility = {len(sorted_servers)}')
 
