@@ -78,7 +78,7 @@ if __name__ == "__main__":
 
     # Specifica il percorso della directory che vuoi creare
     # percorso_directory = f"simulation result_{distribution_string}_request_distribution_latency_{latency}_distribuited/{config_seed}"
-    percorso_directory = f"simulation result-{network_type}-System_AP{access_point}/simulation result_{distribution_string}_request_distribution_distribuited/{config_seed}"
+    percorso_directory = f"simulation result-System_AP{access_point}/simulation result_seed_{config_seed}"
     os.makedirs(percorso_directory, exist_ok=True)
 
     csv_name = f"{percorso_directory}/simulation_results_{priority_distribution}_{generate_tasks_distribution}_{config_seed}_AT_{config_arrival_time}_CPU_{config_CPU_Timeout}.csv"
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     print(f"Simulation results saved to: {csv_file}")
     #print('R_j user', globals.initial_server_counter, 'F_j other', globals.different_server_counter, 'R_j other', globals.other_server_counter)
 
-    # Compute statistics for the results
+    '''# Compute statistics for the results
     I_j = {}
     for server_key in globals.other_server_counter.keys():  # Iterate over dictionary keys
         numerator = globals.other_server_counter[server_key]
@@ -159,9 +159,9 @@ if __name__ == "__main__":
         if denominator != 0:
             F_j[server_key] = numerator / denominator
         else:
-            F_j[server_key] = 0  # Avoid division by zero
+            F_j[server_key] = 0  # Avoid division by zero'''
 
-    # Print results
+    '''# Print results
     #print("I_j:", I_j)
     #print("F_j:", F_j)
     # Write data to CSV file
@@ -175,4 +175,4 @@ if __name__ == "__main__":
             )
 
     print(f"Data of migration server saved to {csv_name_server} ")
-
+'''

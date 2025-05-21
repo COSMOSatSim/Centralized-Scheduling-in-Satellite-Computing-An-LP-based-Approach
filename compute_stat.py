@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import re
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, messagebox

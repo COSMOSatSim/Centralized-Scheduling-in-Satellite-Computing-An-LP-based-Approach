@@ -29,7 +29,7 @@ def modifica_parametri(file_path, nuovi_parametri):
 
 # Set comuni di seed e arrival_time_exponential
 seed_values = [42]#, 142, 242, 342, 442, 542, 642, 742, 842, 942 ]
-arrival_time_values = [1/2, 1/1, 1.5] #[1/1, 1/2, 1/3, 1/4] richieste al secondo ####[ 0.5, 1, 1.5, 2, 2.5, 3]
+arrival_time_values = [1/2] #[1/1, 1/2, 1/3, 1/4] richieste al secondo ####[ 0.5, 1, 1.5, 2, 2.5, 3]
 CPU_timeout = [10,20,30,40,50] # [10,30,50,70,90,110]
 
 # File JSON di input
