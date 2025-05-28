@@ -3,13 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # ---- File paths (update as needed) ----
-orbit_failed_file = r'C:\Users\danil\PycharmProjects\SECMotionModel\OrbitAware_simulation result-open-System_AP5_0.5-1.5\simulation result_RR_request_distribution_distribuited\42\OrbitAware-stat-Failed.csv'
-dts_failed_file   = r'C:\Users\danil\PycharmProjects\SECMotionModel\DTS-simulation result-open-System_AP5_05-1.5\simulation result_RR_request_distribution_distribuited\42\DTS-stat-Failed.csv'
-orbit_success_file= r'C:\Users\danil\PycharmProjects\SECMotionModel\OrbitAware_simulation result-open-System_AP5_0.5-1.5\simulation result_RR_request_distribution_distribuited\42\OrbitAware-stat-Success.csv'
-dts_success_file  = r'C:\Users\danil\PycharmProjects\SECMotionModel\DTS-simulation result-open-System_AP5_05-1.5\simulation result_RR_request_distribution_distribuited\42\DTS-stat-Success.csv'
+orbit_failed_file = r'C:\Users\danil\PycharmProjects\SECMotionModel\OrbitAware-simulation result-System_AP5\simulation result_seed_42\Failed-stat.csv'
+dts_failed_file   = r'C:\Users\danil\PycharmProjects\SECMotionModel\DTS-simulation result-System_AP5\simulation result_seed_42\Failed-stat.csv'
+orbit_success_file= r'C:\Users\danil\PycharmProjects\SECMotionModel\OrbitAware-simulation result-System_AP5\simulation result_seed_42\Success-stat.csv'
+dts_success_file  = r'C:\Users\danil\PycharmProjects\SECMotionModel\DTS-simulation result-System_AP5\simulation result_seed_42\Success-stat.csv'
 
 # Output directory for plots
-output_dir = os.path.join(os.getcwd(), 'stat_plots')
+output_dir = os.path.join(os.getcwd(), 'stat_plots_NEWUtility_OrbitBestRandomServer_DTSWorstRandomServer_DTS-AP-NonOptimal')
 os.makedirs(output_dir, exist_ok=True)
 
 # Read failed stats
@@ -72,7 +72,7 @@ def plot_stacked_by_priority_and_simulation(df, at_column, metric_cols, value_la
             plt.xticks(x, fontsize=20)
             plt.yticks(fontsize=20)
 
-            plt.ylim(0, 100)
+            plt.ylim(0, 101)
             plt.grid(axis='y', linestyle='--', alpha=0.6)
             plt.legend(fontsize=20)
             plt.tight_layout()
@@ -177,7 +177,7 @@ def plot_stacked_and_line_per_AT(
             if ylims and lim_key in ylims:
                 plt.ylim(*ylims[lim_key])
             else:
-                plt.ylim(0,100)
+                plt.ylim(0,101)
             plt.grid(axis='y', linestyle='--', alpha=0.6)
             plt.legend(fontsize=20)
             plt.tight_layout()
@@ -186,10 +186,6 @@ def plot_stacked_and_line_per_AT(
             plt.close()
 
 # ---------------------------------------------------------
-# Esempio di utilizzo:
-
-output_dir = os.path.join(os.getcwd(), 'stat_plots')
-os.makedirs(output_dir, exist_ok=True)
 
 # Success
 success_cols = [
@@ -202,7 +198,7 @@ plot_stacked_and_line_per_AT(
     metric_cols=success_cols,
     df_label='Success',
     output_dir=output_dir,
-    ylims={'High':(0,100), 'Low':(0,100)}
+    ylims={'High':(0,101), 'Low':(0,101)}
 )
 
 # Failed (con limiti personalizzati se vuoi)
@@ -216,7 +212,7 @@ plot_stacked_and_line_per_AT(
     metric_cols=failure_cols,
     df_label='Failed',
     output_dir=output_dir,
-    ylims={ 'High':(0,10), 'Low':(0,40)}
+    ylims={ 'High':(0,101), 'Low':(0,101)}
 )
 
 
@@ -237,7 +233,7 @@ for at in sorted(_df_succ['AT'].unique()):
     plt.xticks(x, fontsize=20)
     plt.yticks(fontsize=20)
 
-    plt.ylim(0,40)
+    plt.ylim(0,101)
     plt.grid(axis='y', linestyle='--', alpha=0.6)
     plt.legend(fontsize=20)
     plt.tight_layout()
@@ -258,7 +254,7 @@ for at in sorted(_df_succ['AT'].unique()):
     plt.xticks(x, fontsize=20)
     plt.yticks(fontsize=20)
 
-    plt.ylim(0,100)
+    plt.ylim(0,101)
     plt.grid(axis='y', linestyle='--', alpha=0.6)
     plt.legend(fontsize=20)
     plt.tight_layout()
@@ -279,7 +275,7 @@ for at in sorted(_df_succ['AT'].unique()):
     plt.xticks(x, fontsize=20)
     plt.yticks(fontsize=20)
 
-    plt.ylim(0,100)
+    plt.ylim(0,101)
     plt.grid(axis='y', linestyle='--', alpha=0.6)
     plt.legend(fontsize=20)
     plt.tight_layout()
@@ -307,7 +303,7 @@ for at in sorted(_df_succ['AT'].unique()):
     plt.xticks(ticks, cpus, fontsize=20)
     plt.yticks(fontsize=20)
 
-    plt.ylim(0,100)
+    plt.ylim(0,101)
     plt.grid(axis='y', linestyle='--', alpha=0.6)
     plt.legend(fontsize=20)
     plt.tight_layout()
@@ -328,7 +324,7 @@ for at in sorted(_df_fail['AT'].unique()):
     plt.xticks(x, fontsize=20)
     plt.yticks(fontsize=20)
 
-    plt.ylim(0,20)
+    plt.ylim(0,101)
     plt.grid(axis='y', linestyle='--', alpha=0.6)
     plt.legend(fontsize=20)
     plt.tight_layout()

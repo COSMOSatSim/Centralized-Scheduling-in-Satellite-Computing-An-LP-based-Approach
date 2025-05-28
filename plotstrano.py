@@ -23,7 +23,7 @@ for col in df.columns:
     plt.plot(x, df[col], linestyle='-', label=label, alpha=0.9)
 
 plt.xlabel('Completed Task',fontsize=20)
-plt.ylabel('Response Time (Rᵣ,ᵢ,ⱼ)',fontsize=20)
+plt.ylabel('Service Time (sec.)',fontsize=20)
 
 # Asse X: da 1 a 200 con step di 100
 plt.xticks([i for i in range(1, 1201, 200)],fontsize=20)

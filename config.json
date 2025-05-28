@@ -1,31 +1,23 @@
 {
   "simulation_duration": 600,
   "max_try": 5,
-  "search_node": 1,
   "seed": 42,
   "access_point": 5,
   "arrival_time_exponential": 0.5,
   "Tmax_H": 400,
-  "Tmax_L": 0.05,
   "CPU_timeout": {
     "min": 0,
-    "mean": 110,
+    "mean": 40,
     "max": 90000
   },
-  "DTS": false,
-  "MI": {
-    "min": 5000,
-    "max": 8000
+  "mode_name": "DTS-base",
+  "request_distribution": {
+    "distribution": "OrbitAware Utility"
   },
-  "cpu_capacity": 71120,
-  "ram_capacity": {
-    "min": 4000,
-    "max": 4000
-  },
-  "disk_capacity": {
-    "min": 64000,
-    "max": 64000
-  },
+  "DTS": true,
+  "AP_selection": "optimal",
+  "SearchNode": "ERT",
+  "SEN_selection": "maxSunset",
   "required_ram": {
     "min": 50,
     "max": 500
@@ -56,14 +48,8 @@
   "priority_combination": {
     "distribution": "20_0_80"
   },
-  "request_distribution": {
-    "distribution": "0_0_0"
-  },
-  "network_type": {
-    "type": "open"
-  },
   "csv_name": {
-    "name": "simulation result/simulation_results.csv"
+    "name": "OrbitAware Utility-sim_SystemAP5/seed_42/results_20_0_80_exponential_REQ-OrbitAware Utility_AT0.5_CPU40.csv"
   },
   "simulation_location": "Roma",
   "locations": {
@@ -87,5 +73,6 @@
   "Interval_between_Configurations_in_seconds": 2,
   "Number_of_Configurations": 300,
   "Interval_future_event_prediction": 15,
-  "Interval_past_event_prediction": 10
+  "Interval_past_event_prediction": 10,
+  "SearchNode_method": "ERT/Sunset"
 }
