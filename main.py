@@ -1,9 +1,7 @@
 import csv
 import json
-import logging
 import os
 import sys
-import time
 import random
 import simpy
 from simulation import generate_tasks
@@ -84,7 +82,7 @@ if __name__ == "__main__":
     csv_task = (
         f"{base_dir}/results_{prio_dist}_"
         f"{gen_dist}_REQ-{req_dist}_"
-        f"AT{atime}_CPU{cpu_mean}.csv"
+        f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
     csv_mig = (
         f"{base_dir}/migration_{prio_dist}_"

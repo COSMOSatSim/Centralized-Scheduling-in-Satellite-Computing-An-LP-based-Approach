@@ -120,8 +120,8 @@ def process_file(input_path):
 
 def extract_cpu_and_at(filename):
     cpu = filename.split('_')[-1]
-    at = filename.split('_')[-2]
-    name = filename.split('_')[-3]
+    at = filename.split('_')[-3]
+    name = filename.split('_')[-5]
     return cpu, at, name
 
 def unify_stats(stats_paths):

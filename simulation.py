@@ -248,9 +248,9 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             print(f"- Transfer time: {metrics['transfer_time']}")
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
-    mode = config.get("mode_name", "")
+    distribution = config.get("request_distribution", {}).get("distribution", "")
 
-    if mode in ("DTS-base", "DTS-AP optimal"):
+    if distribution in ("DTS-base", "DTS-AP optimal"):
         print('Versione originale: DTS-TMAX')
         sorted_servers = [metrics['server'] for metrics in sorted_servers if
                           metrics['expected_completion_time'] < Tmax_high]
