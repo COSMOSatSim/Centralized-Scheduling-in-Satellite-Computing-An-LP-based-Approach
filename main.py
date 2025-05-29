@@ -7,9 +7,10 @@ import time
 import random
 import simpy
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs, updateTaskValue
+from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs, updateTaskValue, data_configurations, string_to_skyfield_time
 from user_based_topology import get_current_time
 from SaveCurrentSATOnFile import saveTLEOnFile
+from routing_Manager import manage_ogm, print_dict
 import globals
 
 
@@ -28,14 +29,15 @@ if __name__ == "__main__":
     if config["Build_Configurations"]:  # Gestione costruizione configurazioni
         saveTLEOnFile()  # Salva i dati TLE dei satelliti in un file
         genConfigs(get_current_time(), config["Interval_between_Configurations_in_seconds"],
-                   config["Number_of_Configurations"]) # Costruisco le configurazioni a partire dai TLE
-        
+                   # Costruisco le configurazioni a partire dai TLE
+                   config["Number_of_Configurations"])
+
         T_min, T_max, T_avg = updateTaskValue()     # Aggiorna i valori dei task
         config["Build_Configurations"] = False
         config["CPU_timeout"]["min"] = T_min
         config["CPU_timeout"]["max"] = T_max
-        config["CPU_timeout"]["mean"] = T_avg + 2.0 
-        
+        config["CPU_timeout"]["mean"] = T_avg + 2.0
+
         try:
             with open('config.json', 'w') as f:
                 json.dump(config, f, indent=1)
@@ -45,20 +47,40 @@ if __name__ == "__main__":
 
         sys.exit("File of configurations created")
 
-
     if config["Load_Configuration"]:
         print("Carico le configurazioni dal File")
-        globals.edge_servers, globals.global_access_point = loadConfiguration(env)  # Carico la configurazione e assegno a edge_servers
-        env.process(periodic_recall_monitor(env))  # Faccio partire il thread per cambiare configurazione
+        globals.edge_servers, globals.global_access_point = loadConfiguration(
+            env)  # Carico la configurazione e assegno a edge_servers
+        # Faccio partire il thread per cambiare configurazione
+        env.process(periodic_recall_monitor(env))
     else:
         print("Creo la topologia")
         globals.edge_servers = create_topology_dome(env)
 
-    globals.initial_server_counter = {server.name: 0 for server in globals.edge_servers}
-    globals.different_server_counter = {server.name: 0 for server in globals.edge_servers}
-    globals.other_server_counter = {server.name: 0 for server in globals.edge_servers}
+    skyfield_time = string_to_skyfield_time(data_configurations["t0"])
 
-    env.process(generate_tasks(env, globals.initial_server_counter, globals.different_server_counter, globals.other_server_counter))
+    # ! Riempimento delle OGM Table per satellite
+    for i in range(config["OGMs_EPOCH"]):
+        print(f"Epoch {i}")
+        manage_ogm(globals.edge_servers, skyfield_time)
+
+    print("PRINTING TABLES")
+    for s in globals.edge_servers:
+        print("-"*10)
+        print(f"\t{s.name}:\n")
+        print_dict(s.ogm_table)
+
+    sys.exit("Stop")
+
+    globals.initial_server_counter = {
+        server.name: 0 for server in globals.edge_servers}
+    globals.different_server_counter = {
+        server.name: 0 for server in globals.edge_servers}
+    globals.other_server_counter = {
+        server.name: 0 for server in globals.edge_servers}
+
+    env.process(generate_tasks(env, globals.initial_server_counter,
+                globals.different_server_counter, globals.other_server_counter))
 
     end_time = time.time()  # Tempo finale
 
@@ -95,8 +117,8 @@ if __name__ == "__main__":
     # setup_logging(log_file_path) #abilita la scrittura dei log
 
     env.run(config['simulation_duration'])
-    
-    #task_queueprint("SIMULATION COMPLETED, check RAM :")
+
+    # task_queueprint("SIMULATION COMPLETED, check RAM :")
     '''
     for server in globals.edge_servers:
         print(f"{server.name} queue task :")
@@ -104,7 +126,7 @@ if __name__ == "__main__":
         print(f"{server.name} completed task :")
         [print(f"\t\t{task[0]}") for task in server.completed_tasks]
         print("@"*10)'''
-    
+
     # Scrive i dati dei task nel file CSV
     with open(csv_file, mode='w', newline='') as file:
         writer = csv.writer(file)
@@ -124,29 +146,32 @@ if __name__ == "__main__":
                     [task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                      execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
                      original_TaskPriority, estimated_execution_time, transfer_time, utility, TMAX_exceeded, exec_after_set])
-            for task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, utility, num_hops, arrival_time_task_queue, original_TaskPriority,  in server.server_queue:
+            for task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, utility, num_hops, arrival_time_task_queue, original_TaskPriority, in server.server_queue:
                 TMAX_exceeded = False
                 if task_priority == 1 or original_TaskPriority == 1:
-                    #print('executiontime', execution_time, 'task id', task_id, 'utilization')
+                    # print('executiontime', execution_time, 'task id', task_id, 'utilization')
                     writer.writerow(
                         [task_id, 'high', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
-                         (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
+                         (env.now - arrival_time_task_queue), (env.now -
+                                                               arrival_time_task_queue), server.name,
                          num_hops, len(list(server.server_queue)), 'high', estimated_execution_time, transfer_time, utility, TMAX_exceeded])
                 else:
                     writer.writerow(
                         [task_id, 'low', arrival_time_system, arrival_time_task_queue, 0, 0, 0,
-                         (env.now - arrival_time_task_queue), (env.now - arrival_time_task_queue), server.name,
+                         (env.now - arrival_time_task_queue), (env.now -
+                                                               arrival_time_task_queue), server.name,
                          num_hops, len(list(server.server_queue)), 'low', estimated_execution_time, transfer_time, utility, TMAX_exceeded])
                 # il task salvato in coda ha i seguenti parametri nel seguente ordine:
 
     print(f"Simulation results saved to: {csv_file}")
-    #print('R_j user', globals.initial_server_counter, 'F_j other', globals.different_server_counter, 'R_j other', globals.other_server_counter)
+    # print('R_j user', globals.initial_server_counter, 'F_j other', globals.different_server_counter, 'R_j other', globals.other_server_counter)
 
     # Compute statistics for the results
     I_j = {}
     for server_key in globals.other_server_counter.keys():  # Iterate over dictionary keys
         numerator = globals.other_server_counter[server_key]
-        denominator = sum(globals.different_server_counter.values())  # Sum all values
+        # Sum all values
+        denominator = sum(globals.different_server_counter.values())
         if denominator != 0:
             I_j[server_key] = numerator / denominator
         else:
@@ -155,19 +180,21 @@ if __name__ == "__main__":
     F_j = {}
     for server_key in globals.other_server_counter.keys():  # Iterate over dictionary keys
         numerator = globals.different_server_counter[server_key]
-        denominator = globals.initial_server_counter[server_key] + globals.other_server_counter[server_key]
+        denominator = globals.initial_server_counter[server_key] + \
+            globals.other_server_counter[server_key]
         if denominator != 0:
             F_j[server_key] = numerator / denominator
         else:
             F_j[server_key] = 0  # Avoid division by zero
 
     # Print results
-    #print("I_j:", I_j)
-    #print("F_j:", F_j)
+    # print("I_j:", I_j)
+    # print("F_j:", F_j)
     # Write data to CSV file
     with open(csv_name_server, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['Server', 'R_j_user', 'F_j_other', 'R_j_other', 'I_j', 'F_j'])
+        writer.writerow(['Server', 'R_j_user', 'F_j_other',
+                        'R_j_other', 'I_j', 'F_j'])
         for server_key in globals.initial_server_counter.keys():
             writer.writerow(
                 [server_key, globals.initial_server_counter[server_key], globals.different_server_counter[server_key],
@@ -175,4 +202,3 @@ if __name__ == "__main__":
             )
 
     print(f"Data of migration server saved to {csv_name_server} ")
-

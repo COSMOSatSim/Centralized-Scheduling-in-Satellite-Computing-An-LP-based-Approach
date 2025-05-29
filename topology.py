@@ -515,3 +515,11 @@ def updateTaskValue():
     #print(f"Min life: {min(lifes_value)}")
     
     return min(lifes_value), max(lifes_value), sum(lifes_value) / len(lifes_value)
+
+
+
+def string_to_skyfield_time(time_str):
+    # Converte la stringa in oggetto datetime
+    dt = datetime.fromisoformat(time_str)
+    ts = load.timescale()
+    return ts.from_datetime(dt)

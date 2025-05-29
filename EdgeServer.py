@@ -2,6 +2,7 @@ import json
 import logging
 import simpy
 from skyfield.api import EarthSatellite
+from ogm import Ogm
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -33,6 +34,12 @@ class EdgeServer:
         self.server_queue = []
         self.utility_value = 0  # Valore iniziale di utilità del server
         self.completed_tasks = []
+
+        self.ogm_sequence = 0           # Contatore OGM emessi
+        self.OGMs = []                  # OGM to process
+        self.OGMs_NP = []               # OGM recived and Not-Processed
+        self.ogm_table = {}             # OGMs Table {'originator': [ 'neighbor': 'count']
+        self.OGMs_History = []          # Lista OGM visionati in passato
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
@@ -131,6 +138,26 @@ class EdgeServer:
         '''
         return self.bandwidth.get(neighbor_server, None)
 
+    def create_ogm(self):
+        """
+        Crea e invia un nuovo OGM (Originator Generated Message) ai nodi vicini.
+
+        L'OGM include informazioni come TTL, numero di sequenza e un identificatore unico.
+        Aggiorna il contatore di sequenza e registra l'OGM creato.
+
+        Returns:
+            Ogm: L'istanza del nuovo OGM creato.
+        """
+        ogm = Ogm(
+            originator= self.name,
+            sender=self.name,
+            ttl=10,
+            sequence_number=self.ogm_sequence
+        )
+        self.ogm_sequence += 1          # Aumento la sequence del server
+        self.OGMs.append(ogm)           # Lo inserisco nella lista degli OGM da processare in questo server
+
+    
     def __str__(self):
         return f"Satellite :{self.name} neighbor:({len(self.neighbors)})\n"
 
@@ -211,3 +238,4 @@ class EdgeServer:
             self.utility_value = self.Th_ij + (estimated_execution_time) + total_time #+ sunset_penalty
         else:  # Task a bassa priorità
             self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time #+ sunset_penalty
+    
