@@ -249,7 +249,7 @@ def build_EdgeServer_from_config(env, configuration):
     return tmp_ES, neighbors_SAT, list_acc_point
 
 
-def periodic_recall_monitor(env):
+def periodic_recall_Topology_monitor(env):
     while True:
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
 
@@ -407,7 +407,9 @@ def loadConfiguration(env):
     if globals.config_index > 0:
         #print("#" * 30)
         configuration = data_configurations["configurations"][globals.config_index]
+        globals.instant_in_configuration = string_to_skyfield_time(configuration["time"])
 
+        print("Aggiornato il Tempo Globale: ", globals.instant_in_configuration.utc_strftime('%Y-%m-%d %H:%M:%S'))
         #print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
 
         # Costruisci i nuovi server dalla configurazione

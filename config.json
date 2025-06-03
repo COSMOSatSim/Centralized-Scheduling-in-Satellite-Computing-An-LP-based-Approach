@@ -87,5 +87,6 @@
   "Number_of_Configurations": 300,
   "Interval_future_event_prediction": 15,
   "Interval_past_event_prediction": 10,
-  "OGMs_EPOCH": 60
+  "OGMs_EPOCH": 10,
+  "OGMs_Interval_seconds": 2
 }

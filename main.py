@@ -7,10 +7,11 @@ import time
 import random
 import simpy
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_monitor, create_topology_dome, genConfigs, updateTaskValue, data_configurations, string_to_skyfield_time
-from user_based_topology import get_current_time
+from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, data_configurations, string_to_skyfield_time
+from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
-from routing_Manager import manage_ogm, print_dict
+from routing_Manager import manage_ogm, print_dict, periodic_recall_Routing_monitor
+from  Observer import Observer 
 import globals
 
 
@@ -52,25 +53,33 @@ if __name__ == "__main__":
         globals.edge_servers, globals.global_access_point = loadConfiguration(
             env)  # Carico la configurazione e assegno a edge_servers
         # Faccio partire il thread per cambiare configurazione
-        env.process(periodic_recall_monitor(env))
+        env.process(periodic_recall_Topology_monitor(env))
     else:
         print("Creo la topologia")
         globals.edge_servers = create_topology_dome(env)
 
+    globals.observer = Observer(env, getObserverObj())  # Singleton Observer
+    
     skyfield_time = string_to_skyfield_time(data_configurations["t0"])
+    env.process(periodic_recall_Routing_monitor(env, globals.observer))   # Aggiugno routing Manager 
 
-    # ! Riempimento delle OGM Table per satellite
+
+    
+
+    # # ! Riempimento delle OGM Table per satellite
+    ogm_map = [globals.observer] + globals.edge_servers
+
     for i in range(config["OGMs_EPOCH"]):
         print(f"Epoch {i}")
-        manage_ogm(globals.edge_servers, skyfield_time)
+        manage_ogm(ogm_map, skyfield_time)
 
     print("PRINTING TABLES")
-    for s in globals.edge_servers:
+    for s in ogm_map:
         print("-"*10)
         print(f"\t{s.name}:\n")
         print_dict(s.ogm_table)
 
-    sys.exit("Stop")
+    #sys.exit("Stop")
 
     globals.initial_server_counter = {
         server.name: 0 for server in globals.edge_servers}

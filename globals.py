@@ -9,3 +9,6 @@ next_server_index = 0       # Indice del prossimo server a cui inviare un task
 config_index = 0            # Indice che indica la configurazione corrente
 
 edge_servers = []           # Lista dei server globali
+
+observer = None
+instant_in_configuration = None 

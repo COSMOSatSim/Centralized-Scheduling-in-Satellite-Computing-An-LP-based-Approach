@@ -2,7 +2,6 @@ import json
 import logging
 import simpy
 from skyfield.api import EarthSatellite
-from ogm import Ogm
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -20,7 +19,7 @@ class EdgeServer:
 
                 :param env: Simulation environment.
                 :param name: Name of the edge server.
-                '''
+        '''
         self.env = env
         self.name = name
         self.satellite = satellite
@@ -138,24 +137,6 @@ class EdgeServer:
         '''
         return self.bandwidth.get(neighbor_server, None)
 
-    def create_ogm(self):
-        """
-        Crea e invia un nuovo OGM (Originator Generated Message) ai nodi vicini.
-
-        L'OGM include informazioni come TTL, numero di sequenza e un identificatore unico.
-        Aggiorna il contatore di sequenza e registra l'OGM creato.
-
-        Returns:
-            Ogm: L'istanza del nuovo OGM creato.
-        """
-        ogm = Ogm(
-            originator= self.name,
-            sender=self.name,
-            ttl=10,
-            sequence_number=self.ogm_sequence
-        )
-        self.ogm_sequence += 1          # Aumento la sequence del server
-        self.OGMs.append(ogm)           # Lo inserisco nella lista degli OGM da processare in questo server
 
     
     def __str__(self):

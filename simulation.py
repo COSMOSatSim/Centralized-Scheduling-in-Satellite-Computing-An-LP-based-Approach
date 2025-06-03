@@ -226,7 +226,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
                             key=lambda x: (x['utility_value']))
 
     sorted_servers2 = sorted(server_metrics,
-                            key=lambda x: (x['utility_value']/['orbitalSunset']))
+                            key=lambda x: (x['utility_value']/x['orbitalSunset']))
 
     Tmax_high -= 2 * Tmax_latency
 
@@ -246,7 +246,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
     #Versione originale
     sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high ]
-    sorted_servers_MOD = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high ]
+    #sorted_servers_MOD = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high ]
 
     #versione mod, con penalità aggiunta qui invece che nell'utility
     '''sorted_servers = [metrics['server'] for metrics in sorted_servers
