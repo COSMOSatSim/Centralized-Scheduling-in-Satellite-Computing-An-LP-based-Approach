@@ -37,8 +37,10 @@ class EdgeServer:
         self.ogm_sequence = 0           # Contatore OGM emessi
         self.OGMs = []                  # OGM to process
         self.OGMs_NP = []               # OGM recived and Not-Processed
-        self.ogm_table = {}             # OGMs Table {'originator': [ 'neighbor': 'count']
-        self.OGMs_History = []          # Lista OGM visionati in passato
+        self.ogm_table = {}             # OGMs Table {'originator': { 'neighbor': 'count'
+        
+        self.OGMs_History = []          # Lista OGM visionati in passato (FIFO)
+        self.OGMs_History_dim = 256     # Limite dimensione History OGM 
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,

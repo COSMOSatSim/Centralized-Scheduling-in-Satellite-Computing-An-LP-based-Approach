@@ -23,8 +23,10 @@ def manage_ogm(ogm_map, t):
             # $ BATMAN TABLE
             if ogm.ogm_id in obj.OGMs_History or ogm.ttl == 0:                      # Il pacchetto è stato già visionato o è scaduto
                 continue
-
-            obj.OGMs_History.append(ogm.ogm_id)                                     # Salvo il pacchetto
+            
+            ogm_dict = {"originator":ogm.originator, "sender":ogm.sender}
+            if ogm.originator != obj.name:
+                obj.OGMs_History.append(ogm_dict)                                       # Salviamo le info sul singolo ogm nella history                               # Salvo il pacchetto
 
             # Se l'ORIGINATOR non è nella mia BATMAN Table, lo salvo
             if ogm.originator != obj.name:                                          # Non mi salvo i pacchetti che riguardano questo server
@@ -41,6 +43,7 @@ def manage_ogm(ogm_map, t):
                 #print("Riconosciuto Observer")
                 for ap in globals.global_access_point:
                     # ? Gestione della probabilità di fallimento (??)
+                    # ! Probabilità di failure bassa 99.99%
                     ap.OGMs_NP.append(ogm.clone_for_forwarding(obj.name))
             else:
                 # Mando il messaggio prima a tutti i miei vicini
@@ -50,15 +53,7 @@ def manage_ogm(ogm_map, t):
                     num = round(random.uniform(0, 1), 2)
                     if num > failure_prob:
                         n.OGMs_NP.append(ogm.clone_for_forwarding(obj.name))
-                # Se sono un Access point lo mando anche all'OBSERVER
-                if obj in globals.global_access_point:
-                    #print(f"Ho trovato un access point {obj.name}")
-                    # ? Gestione delle probabilità di fallimento (??)
-                   
-                    #print(f"\t Controllo Observer:")
-                    #print(f"Prima observer OGMs_NP: {len(globals.observer.OGMs_NP)}")
-                    globals.observer.OGMs_NP.append(ogm.clone_for_forwarding(obj.name))
-                    #print(f"DOPO observer OGMs_NP: {len(globals.observer.OGMs_NP)}")
+
         obj.OGMs = []                                                               # Pulizia dei pacchetti processati
 
     # ! Per ogni oggetto OGMs_NP -> OGMs
@@ -66,6 +61,17 @@ def manage_ogm(ogm_map, t):
         if obj.OGMs_NP:                                                             # Se c'è qualcosa nella lista dei Non Processati
             obj.OGMs = obj.OGMs_NP.copy()
             obj.OGMs_NP = []
+
+    # ! Pulizia delle BATMAN TABLE
+    for obj in ogm_map:
+        # Calcolo quanto siamo fuori dimensione nella history ed eliminiamo i primi che sono entrati
+        if type(obj) != Observer:
+            out_dim = len(obj.OGMs_History) - obj.OGMs_History_dim
+            if out_dim > 0:
+                for i in range(out_dim):
+                    ogm_dict = obj.OGMs_History.pop(0)
+                    obj.ogm_table[ogm_dict['originator']][ogm_dict['sender']] -= 1
+    
 
 def periodic_recall_Routing_monitor(env, observer):
     while True:
@@ -81,7 +87,6 @@ def periodic_recall_Routing_monitor(env, observer):
         print("-"*20)
 
         
-
 
 def transmission_failure_probability(distance):
     # Probabilità di fallimento cresce linearmente con la distanza

@@ -63,21 +63,20 @@ if __name__ == "__main__":
     skyfield_time = string_to_skyfield_time(data_configurations["t0"])
     env.process(periodic_recall_Routing_monitor(env, globals.observer))   # Aggiugno routing Manager 
 
-
-    
-
     # # ! Riempimento delle OGM Table per satellite
     ogm_map = [globals.observer] + globals.edge_servers
 
     for i in range(config["OGMs_EPOCH"]):
         print(f"Epoch {i}")
         manage_ogm(ogm_map, skyfield_time)
+        print(f"SAT: {ogm_map[1].name} History: {len(ogm_map[1].OGMs_History)}")
+        #print(f"{ogm_map[1].OGMs_History}")
 
-    print("PRINTING TABLES")
-    for s in ogm_map:
-        print("-"*10)
-        print(f"\t{s.name}:\n")
-        print_dict(s.ogm_table)
+    # print("PRINTING TABLES")
+    # for s in ogm_map:
+    #     print("-"*10)
+    #     print(f"\t{s.name}:\n")
+    #     print_dict(s.ogm_table)
 
     #sys.exit("Stop")
 
