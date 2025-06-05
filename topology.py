@@ -89,30 +89,6 @@ def create_topology_dome(env, time=get_current_time()):
     return edge_servers
 
 
-def createTopology_serializzable_dome(time_top, serializable):
-    """
-        Creates a topology of satellites and access points based on the given time and serializable object.
-
-        Args:
-            time_top (datetime): The time at which to get the satellites and access points.
-            serializable (object): An object that can be serialized to obtain satellite data.
-
-        Returns:
-            list: A combined list of access points, satellites in the dome, and satellites in the buffer.
-
-        Prints:
-            A formatted string showing the time, the number of access points, satellites in the dome,
-            satellites in the buffer, and the total count of these elements.
-    """
-    acc_point, satellites_dome, satellites_buffer = getAllSatOnMe(time_top,
-                                                                  serializable=serializable)  # Ottengo i satelliti
-    # print(f"({time_top.utc_strftime('%Y-%m-%d %H:%M:%S')}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
-    print(
-        f"({time_top.utc_strftime('%Y-%m-%d %H:%M:%S')}) | (A:{len(acc_point)},D:{len(satellites_dome)},B:{len(satellites_buffer)}) | TOT:({len(acc_point) + len(satellites_dome) + len(satellites_buffer)})")
-
-    return acc_point + satellites_dome + satellites_buffer
-
-
 def find_satellite_events(satellite, t0):
     """
     Finds the events for a satellite between two times.
@@ -179,25 +155,29 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
     for elapsed_time in range(0, totSecs, interval):
         configuration = []
-        topology = createTopology_serializzable_dome(t, True)  # Create the topology
 
-        for i in range(len(topology)):
-            current_server = topology[i]
-            neighbor = compute_distances_from_target_satellite(current_server, topology,
+        dome, sat_sort_buff = getAllSatOnMe(t) 
+        topology = dome + sat_sort_buff
+
+        for current_server in topology:
+
+            neighbors = compute_distances_from_target_satellite(current_server, topology,
                                                                t)  # Compute distances to neighbors
-            life = find_satellite_events(current_server[0], t)  # Find events for the satellite
-
-            if i < num_access_point:
-                info_sat = create_satellite_Identity_card(current_server, life, neighbor, t,
+            
+            # ! Aggiungi la sezione vicini per ogni Satellite
+            life = find_satellite_events(current_server.satellite, t)  # Find events for the satellite
+            
+            if current_server.is_acc_point:
+                info_sat = create_satellite_Identity_card(current_server, life, neighbors, t,
                                                            True)  # Create neighbor info for access points
             else:
-                info_sat = create_satellite_Identity_card(current_server, life, neighbor, t,
+                info_sat = create_satellite_Identity_card(current_server, life, neighbors, t,
                                                            False)  # Create neighbor info for other satellites
 
             configuration.append(info_sat)  # Save this satellite's configuration
 
-        #print(f"Configuration ({elapsed_time // interval}/{num_configs - 1})")
-        #print("#" * 70)
+        print(f"Configuration ({elapsed_time // interval}/{num_configs - 1})")
+        print("#" * 70)
 
         data = {
             "time": t.utc_datetime().isoformat(),  # Current time in ISO format

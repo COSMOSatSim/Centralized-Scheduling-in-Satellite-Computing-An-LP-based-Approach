@@ -4,6 +4,7 @@ import numpy as np
 import sys
 from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
+from Satellite import Satellite
 import sys
 from datetime import datetime
 
@@ -180,7 +181,30 @@ def filterSatellitesInView(satellite, t):
     return True if v_rel < 0 else False
 
 # ---------------------------------------------------------------------------- #
-def getAllSatOnMe(t, serializable = False, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):    
+def getAllSatOnMe(t, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):    
+    """
+    Identifies and classifies satellites visible to the observer at a given time, 
+    selecting access points and categorizing satellites based on their position 
+    relative to the observer's dome and buffer zone.
+    Args:
+        t: The observation time (typically an astropy Time or similar object).
+        Phi_max (float, optional): Maximum elevation angle (in degrees) defining the observer's dome. 
+            Defaults to config["Phi_max"].
+        Num_Access_point (int, optional): Number of desired access points (satellites) to select. 
+            Defaults to config["access_point"].
+    Returns:
+        tuple: A tuple containing three lists:
+            - acc_points (list): Selected access point satellites within the dome, 
+              sorted by distance and filtered by visibility.
+            - dome (list): Remaining satellites within the dome, sorted by distance.
+            - sat_sort_buff (list): Satellites within the buffer zone, sorted by distance.
+    Notes:
+        - If the number of satellites in the dome is less than the requested number of access points,
+          the number of access points is reduced and a warning is printed.
+        - Satellites are classified as being in the dome if their altitude is greater than Phi_max,
+          and in the buffer zone if their altitude is between buffer_Phi and Phi_max.
+        - Only satellites passing the filterSatellitesInView check are considered as access points.
+    """
     
     buffer_Phi = Phi_max - config["Phi_buffer"]             # Angle of a Buffer Zone
     satellites_dome, satellites_buffer = [], []             
@@ -195,25 +219,21 @@ def getAllSatOnMe(t, serializable = False, Phi_max = config["Phi_max"], Num_Acce
         satellite = EarthSatellite(line1, line2, name, ts)  # Converting tle Data in SGP4 Satellite Object
         syst = getSystemFromSat(satellite, t)        # reference system 
         
-        alt, az, distance = syst.altaz()                     # alt : Altitude in degrees relative to the observer
+        alt, az, distance = syst.altaz()                    # alt : Altitude in degrees relative to the observer
                                                             # az : Sat Azimuth Angle relative to the observer
                                                             # distance: distance Sat - Observer
         if alt.degrees > buffer_Phi:
             if alt.degrees > Phi_max:
                 # Satellite in the Dome
-                if not serializable:
-                    satellites_dome.append((satellite, distance.km))
-                else:
-                    satellites_dome.append((satellite, distance.km, (name, line1, line2)))
+                satellites_dome.append(Satellite(satellite, distance.km, (name, line1, line2), False))
             else:
                 # Satellite in the Buffer Zone
-                if not serializable:
-                    satellites_buffer.append((satellite, distance.km))
-                else:
-                    satellites_buffer.append((satellite, distance.km, (name, line1, line2)))
+                satellites_buffer.append(Satellite(satellite, distance.km, (name, line1, line2), False))
+
 
     #Ordino i satelliti in base alla posizione rispetto all'utente
-    sat_sort_dome, sat_sort_buff = sorted(satellites_dome, key=lambda x: x[1]), sorted(satellites_buffer, key=lambda x: x[1])
+    sat_sort_dome = sorted(satellites_dome, key=lambda s: s.distance)
+    sat_sort_buff = sorted(satellites_buffer, key=lambda s: s.distance)
     
     counter, acc_points, dome = 0, [], []
     if Num_Access_point > len(sat_sort_dome):
@@ -221,20 +241,15 @@ def getAllSatOnMe(t, serializable = False, Phi_max = config["Phi_max"], Num_Acce
         print(f"WARNING: Not enough satellites to satisfy the request. The number of access points has been set to {Num_Access_point}.")
 
     #Determino Access Points    
-    for s in sat_sort_dome:
-        if counter < Num_Access_point and filterSatellitesInView(s[0], t):
-            if not serializable:
-                acc_points.append((s[0], s[1]))
-            else:
-                acc_points.append((s[0], s[1], s[2]))
+    for sat in sat_sort_dome:
+        if counter < Num_Access_point and filterSatellitesInView(sat.satellite, t):
+            sat.is_acc_point = True
+            dome.append(sat)
             counter+=1
         else:
-            if not serializable:
-                dome.append((s[0], s[1]))
-            else:
-                dome.append((s[0], s[1], s[2]))
+            dome.append(sat)
 
-    return acc_points, dome, sat_sort_buff
+    return  dome, sat_sort_buff
 
 
 
@@ -254,15 +269,15 @@ def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
     
     vector_Sat_Topology = []
     for i in range(0, len(closerSatellite_Sorted)):
-        if are_satellites_equal(sat[0], closerSatellite_Sorted[i][0]):
+        if are_satellites_equal(sat.satellite, closerSatellite_Sorted[i].satellite):
             pass
         else:
-            proximity = get_orbit_proximity(sat[0] , closerSatellite_Sorted[i][0], t)         
+            proximity = get_orbit_proximity(sat.satellite , closerSatellite_Sorted[i].satellite, t)         
             if  proximity < config["Laser_Communication_Range"] :                                # Check laser distance
                 latency = getLatency(proximity)                                                  # Calculate latency
-                vector_Sat_Topology.append((closerSatellite_Sorted[i][0].name, proximity, latency)) 
+                vector_Sat_Topology.append((closerSatellite_Sorted[i].satellite.name, proximity, latency)) 
 
-    sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])
+    sat_vector_Topology_sorted = sorted(vector_Sat_Topology, key=lambda x: x[1])                # Ordino i vicini in base alla distanza dal satellite       
     return sat_vector_Topology_sorted
 
 
@@ -296,14 +311,14 @@ def create_satellite_Identity_card(satellite, life, neighbors_info, t, access_po
     Returns:
         dict: A dictionary representing the satellite and its neighbors.
     """
-    elevation_angle = find_angle(t, satellite[0])  # Mi trovo l'angolo di elevazione del satellite rispetto l'obverver
+    elevation_angle = find_angle(t, satellite.satellite)  # Mi trovo l'angolo di elevazione del satellite rispetto l'obverver
 
     satellite_data = {
-        "satellite": satellite[0].name,
-        "distance_from_user": satellite[1],
+        "satellite": satellite.satellite.name,
+        "distance_from_user": satellite.distance,
         "is_access_point": access_points,
         "elev_angle": elevation_angle,
-        "TLE-DATA": [{"name": satellite[2][0], "line1": satellite[2][1], "line2": satellite[2][2]}],
+        "TLE-DATA": [{"name": satellite.tle[0], "line1": satellite.tle[1], "line2": satellite.tle[2]}],
         "life": life,
         "neighbors": [
             {"name": neighbor_name, "distance": distance, "latency": latency}

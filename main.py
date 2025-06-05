@@ -48,6 +48,7 @@ if __name__ == "__main__":
 
         sys.exit("File of configurations created")
 
+
     if config["Load_Configuration"]:
         print("Carico le configurazioni dal File")
         globals.edge_servers, globals.global_access_point = loadConfiguration(
@@ -61,16 +62,16 @@ if __name__ == "__main__":
     globals.observer = Observer(env, getObserverObj())  # Singleton Observer
     
     skyfield_time = string_to_skyfield_time(data_configurations["t0"])
-    env.process(periodic_recall_Routing_monitor(env, globals.observer))   # Aggiugno routing Manager 
+    #env.process(periodic_recall_Routing_monitor(env, globals.observer))   # Aggiugno routing Manager 
 
     # # ! Riempimento delle OGM Table per satellite
-    ogm_map = [globals.observer] + globals.edge_servers
+    # ogm_map = [globals.observer] + globals.edge_servers
 
-    for i in range(config["OGMs_EPOCH"]):
-        print(f"Epoch {i}")
-        manage_ogm(ogm_map, skyfield_time)
-        print(f"SAT: {ogm_map[1].name} History: {len(ogm_map[1].OGMs_History)}")
-        #print(f"{ogm_map[1].OGMs_History}")
+    # for i in range(config["OGMs_EPOCH"]):
+    #     print(f"Epoch {i}")
+    #     manage_ogm(ogm_map, skyfield_time)
+    #     print(f"SAT: {ogm_map[1].name} History: {len(ogm_map[1].OGMs_History)}")
+    #     #print(f"{ogm_map[1].OGMs_History}")
 
     # print("PRINTING TABLES")
     # for s in ogm_map:
@@ -78,7 +79,6 @@ if __name__ == "__main__":
     #     print(f"\t{s.name}:\n")
     #     print_dict(s.ogm_table)
 
-    #sys.exit("Stop")
 
     globals.initial_server_counter = {
         server.name: 0 for server in globals.edge_servers}
