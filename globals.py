@@ -1,3 +1,5 @@
+import threading
+
 # Variabili globali per i server
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server
 different_server_counter = {}   # Tiene traccia dei task inoltrati a server diversi
@@ -8,7 +10,10 @@ next_server_index = 0       # Indice del prossimo server a cui inviare un task
 
 config_index = 0            # Indice che indica la configurazione corrente
 
-edge_servers = []           # Lista dei server globali
+edge_servers = []           # Lista dei server globali totali
+edge_servers_topology = []  # Edge Servers nella topologia nella configurazione 
 
 observer = None
 instant_in_configuration = None 
+
+lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock

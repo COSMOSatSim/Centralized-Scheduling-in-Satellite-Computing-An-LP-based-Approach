@@ -5,7 +5,7 @@ class Ogm:
         self.ttl = ttl
         self.sequence_number = sequence_number
         
-        self.ogm_id = f"{originator}_{sequence_number}"  # identificatore unico
+        self.id = f"{originator}_{sequence_number}"  # identificatore unico
 
     def clone_for_forwarding(self, new_sender):
         return Ogm(
@@ -16,4 +16,4 @@ class Ogm:
         )
     
     def __str__(self):
-        return f"[{self.ogm_id}] SENDER:{self.sender} TTL:{self.ttl}"
+        return f"[{self.id}] SENDER:{self.sender} TTL:{self.ttl}"

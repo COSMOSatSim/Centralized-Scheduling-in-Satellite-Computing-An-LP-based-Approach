@@ -159,6 +159,7 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
         dome, sat_sort_buff = getAllSatOnMe(t) 
         topology = dome + sat_sort_buff
 
+        # Gestione della serializzabilità
         for current_server in topology:
 
             neighbors = compute_distances_from_target_satellite(current_server, topology,
@@ -176,11 +177,13 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
             configuration.append(info_sat)  # Save this satellite's configuration
 
+
         print(f"Configuration ({elapsed_time // interval}/{num_configs - 1})")
         print("#" * 70)
 
         data = {
             "time": t.utc_datetime().isoformat(),  # Current time in ISO format
+            "OGM_Table": {},
             "configuration": configuration  # List of satellite configurations
         }
         configs.append(data)  # Append the configuration to the list
@@ -233,9 +236,9 @@ def periodic_recall_Topology_monitor(env):
     while True:
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
 
-        #print("-" * 70)
-        #print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
-        #print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
+        print("-" * 70)
+        print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
+        print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
         
         new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
         
@@ -411,6 +414,10 @@ def loadConfiguration(env):
                                                            new_neighbors)  # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
         # Pulisco i dizionari che riguardano i vicini dei server tramontati
         [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  
+        
+        with globals.lock_access_edge_servers_topology:
+            # Salvo solo i satelliti che appartengono alla topologia
+            globals.edge_servers_topology = list(servers_in_dome_updated.values())
 
         new_edge_servers = list(servers_in_dome_updated.values()) + list(old_edge_servers.values())
 

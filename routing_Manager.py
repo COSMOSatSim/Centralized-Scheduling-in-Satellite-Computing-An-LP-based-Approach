@@ -4,87 +4,132 @@ from user_based_topology import get_orbit_proximity
 from Ogm import Ogm
 from Observer import Observer
 import globals
+import sys
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-def manage_ogm(ogm_map, t):
+def clear_line():
+    # Sposta il cursore all'inizio e sovrascrive con spazi
+    sys.stdout.write('\r' + ' ' * 100 + '\r')
+    sys.stdout.flush()
 
-    #! Ogni oggetto manda un OGM
-    for obj in ogm_map:            
-        #obj.create_ogm()
-        create_ogm(obj)
+def print_progress_bar(i, total, bar_length=30):
+    progress = int(bar_length * i / total)
+    bar = '#' * progress + '-' * (bar_length - progress)
+    output = f'\r\t\t[{bar}] {i}/{total}'
 
-    # ! Processiamo gli OGM per ogni Satellite considerando i suoi Vicini
-    for obj in ogm_map:
-        for ogm in obj.OGMs:
+    sys.stdout.write(output)
+    sys.stdout.flush()
+
+    if i == total:
+        # Alla fine: cancella riga e non va a capo
+        clear_line()
+
+
+def manage_ogm_test(ogm_map, t):
+
+    print("\t| Generazione OGM")
+    # Ogni Nodo manda un OGM
+    for node in ogm_map:
+        create_ogm(node)
+
+    print("\t| Processing OGMs")
+    total = len(ogm_map)
+
+    for i, node in enumerate(ogm_map, start=1):
+        #print(f"\t{node.name} : N to Processing ({len(node.OGMs)})")
+        for ogm in node.OGMs:
+
+            #! Fase di Controllo
+            if ogm.id in node.OGMs_History or ogm.ttl == 0:  # Il pacchetto è stato già visionato o è scaduto
+                continue    # non lo mando
+
+            # Se il pacchetto è il mio ma mi è arrivato da qualqun altro
+            if ogm.originator == node.name and ogm.sender != node.name:
+                continue    #non lo mando
             
-            # $ BATMAN TABLE
-            if ogm.ogm_id in obj.OGMs_History or ogm.ttl == 0:                      # Il pacchetto è stato già visionato o è scaduto
-                continue
+            # Se il pacchetto non l'ho generato io, lo salvo
+            if ogm.originator != node.name and ogm.sender != node.name:
+                node.OGMs_History[ogm.id] = {"originator": ogm.originator, "sender": ogm.sender}
             
-            ogm_dict = {"originator":ogm.originator, "sender":ogm.sender}
-            if ogm.originator != obj.name:
-                obj.OGMs_History.append(ogm_dict)                                       # Salviamo le info sul singolo ogm nella history                               # Salvo il pacchetto
-
-            # Se l'ORIGINATOR non è nella mia BATMAN Table, lo salvo
-            if ogm.originator != obj.name:                                          # Non mi salvo i pacchetti che riguardano questo server
-                if ogm.originator not in obj.ogm_table:
-                    obj.ogm_table[ogm.originator] = {}
+            # ! Fase di salvataggio del OGM nella tabella di questo nodo
+            if ogm.originator != node.name:  # Non mi salvo i pacchetti che riguardano questo server
+                if ogm.originator not in node.ogm_table:
+                    node.ogm_table[ogm.originator] = {}
 
                 # Aggiorno la Table
-                if ogm.sender not in obj.ogm_table[ogm.originator]:
-                    obj.ogm_table[ogm.originator][ogm.sender] = 1
-                obj.ogm_table[ogm.originator][ogm.sender] += 1
+                if ogm.sender not in node.ogm_table[ogm.originator]:
+                    node.ogm_table[ogm.originator][ogm.sender] = 0
+                node.ogm_table[ogm.originator][ogm.sender] += 1
             
-            # ! Controllo delle connessioni con i vicini
-            if type(obj) == Observer:
-                #print("Riconosciuto Observer")
+            # ! Fase di redistribuzione
+            if type(node) == Observer:
+                # Sto analizzando un Observer
                 for ap in globals.global_access_point:
-                    # ? Gestione della probabilità di fallimento (??)
-                    # ! Probabilità di failure bassa 99.99%
-                    ap.OGMs_NP.append(ogm.clone_for_forwarding(obj.name))
+                    ap.OGMs_NP.append(ogm.clone_for_forwarding(node.name))
             else:
-                # Mando il messaggio prima a tutti i miei vicini
-                for n in obj.neighbors.keys():
-                    proximity = get_orbit_proximity(obj.get_satellite(), n.get_satellite(), t)
-                    failure_prob = transmission_failure_probability(proximity)
-                    num = round(random.uniform(0, 1), 2)
-                    if num > failure_prob:
-                        n.OGMs_NP.append(ogm.clone_for_forwarding(obj.name))
+                # Sto analizzando un Satellite normale
+                for neighbor in node.neighbors.keys():
+                    # Per ogni vicino
+                    if neighbor.name == ogm.sender:    # Se è il vicino che mi ha mandato questo pacchetto non lo mando
+                        continue
+                    else:
+                        proximity = get_orbit_proximity(node.get_satellite(), neighbor.get_satellite(), t)
+                        failure_prob = transmission_failure_probability(proximity)
+                        value = round(random.uniform(0, 1), 2)
+                        
+                        if value > failure_prob:
+                            # Spedisco il pacchetto
+                            neighbor.OGMs_NP.append(ogm.clone_for_forwarding(node.name))
+        node.OGMs = []
 
-        obj.OGMs = []                                                               # Pulizia dei pacchetti processati
+        print_progress_bar(i, total)
 
-    # ! Per ogni oggetto OGMs_NP -> OGMs
+
+    # ! OGMs_NP -> OGMs
     for obj in ogm_map:
-        if obj.OGMs_NP:                                                             # Se c'è qualcosa nella lista dei Non Processati
-            obj.OGMs = obj.OGMs_NP.copy()
-            obj.OGMs_NP = []
+        obj.OGMs = obj.OGMs_NP.copy()
+        obj.OGMs_NP = []
 
-    # ! Pulizia delle BATMAN TABLE
+    # ! Pulizia della History
+    print("\t| Cleaning History")
     for obj in ogm_map:
         # Calcolo quanto siamo fuori dimensione nella history ed eliminiamo i primi che sono entrati
         if type(obj) != Observer:
             out_dim = len(obj.OGMs_History) - obj.OGMs_History_dim
             if out_dim > 0:
                 for i in range(out_dim):
-                    ogm_dict = obj.OGMs_History.pop(0)
-                    obj.ogm_table[ogm_dict['originator']][ogm_dict['sender']] -= 1
-    
 
-def periodic_recall_Routing_monitor(env, observer):
+                    # ! Pulizia OrderedDict
+                    key, value_ogm_dict = obj.OGMs_History.popitem(last=False)                   # Rimuove il più vecchio
+                    # Prendo l'elemento dalla history
+                    #print(f"\tRiduzione O:{value_ogm_dict['originator']} from {value_ogm_dict['sender']}")
+                    obj.ogm_table[value_ogm_dict['originator']][value_ogm_dict['sender']] -= 1    # Puliamo la table
+                
+
+
+def periodic_recall_Routing_monitor(env, observer, data_configurations):
     while True:
         yield env.timeout(config["OGMs_Interval_seconds"])
+        
+        with globals.lock_access_edge_servers_topology:
+            ogm_map = [observer] + globals.edge_servers_topology     # Aggiungo l'elemento alla lista
+        
+        print('ESECUZIONE processo di distribuzione OGM')
+        #manage_ogm(ogm_map, globals.instant_in_configuration)
+        manage_ogm_test(ogm_map, globals.instant_in_configuration)
 
-        ogm_map = [observer] + globals.edge_servers     # Aggiungo l'elemento alla lista
+        #! Operazione di salvataggio
+        #ogm_tables_snapshot = {i.name: i.ogm_table for i in ogm_map}
+        
+        print(f"\t\tCONFIGURAZIONE {globals.config_index} COMPLETATA!")
 
-        manage_ogm(ogm_map, globals.instant_in_configuration)
-
-        print("-"*20,"CHECK OGM MANAGER")
-        print(f"{globals.edge_servers[0].name}")
-        print_dict(globals.edge_servers[0].ogm_table)
-        print("-"*20)
+        # print("-"*20,"CHECK OGM MANAGER")
+        # print(f"{globals.edge_servers[0].name}")
+        # print_dict(globals.edge_servers[0].ogm_table)
+        # print("-"*20)
 
         
 
@@ -133,3 +178,7 @@ def create_ogm(obj):
 
     obj.ogm_sequence += 1          # Aumento la sequence del server
     obj.OGMs.append(ogm)           # Lo inserisco nella lista degli OGM da processare in questo server
+
+
+
+#def temporal_ogm_simulation(env, json_path = "data/configurations.json"):

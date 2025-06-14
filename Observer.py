@@ -1,4 +1,7 @@
 
+from collections import OrderedDict
+
+
 class ObserverMeta(type):
     """
     Singleton instance of an Observer
@@ -21,11 +24,11 @@ class Observer(metaclass = ObserverMeta):
 
         self.name = 'OBS' 
 
-        self.ogm_sequence = 0           # Contatore OGM emessi
-        self.OGMs = []                  # OGM to process
-        self.OGMs_NP = []               # OGM recived and Not-Processed
-        self.ogm_table = {}             # OGMs Table {'originator': [ 'neighbor': 'count']
-        self.OGMs_History = []          # Lista OGM visionati in passato
+        self.ogm_sequence = 0               # Contatore OGM emessi
+        self.OGMs = []                      # OGM to process
+        self.OGMs_NP = []                   # OGM recived and Not-Processed
+        self.ogm_table = {}                 # OGMs Table {'originator': [ 'neighbor': 'count']
+        self.OGMs_History = OrderedDict()   # Lista OGM visionati in passato
 
     
 # ob1 = Observer(1)

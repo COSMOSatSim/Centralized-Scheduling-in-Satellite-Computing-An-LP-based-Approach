@@ -33,6 +33,7 @@ if __name__ == "__main__":
                    # Costruisco le configurazioni a partire dai TLE
                    config["Number_of_Configurations"])
 
+
         T_min, T_max, T_avg = updateTaskValue()     # Aggiorna i valori dei task
         config["Build_Configurations"] = False
         config["CPU_timeout"]["min"] = T_min

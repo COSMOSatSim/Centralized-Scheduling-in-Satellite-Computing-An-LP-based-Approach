@@ -2,6 +2,7 @@ import json
 import logging
 import simpy
 from skyfield.api import EarthSatellite
+from collections import OrderedDict
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -39,8 +40,8 @@ class EdgeServer:
         self.OGMs_NP = []               # OGM recived and Not-Processed
         self.ogm_table = {}             # OGMs Table {'originator': { 'neighbor': 'count'
         
-        self.OGMs_History = []          # Lista OGM visionati in passato (FIFO)
-        self.OGMs_History_dim = 256     # Limite dimensione History OGM 
+        self.OGMs_History = OrderedDict()# Lista OGM visionati in passato (FIFO)
+        self.OGMs_History_dim = 1024     # Limite dimensione History OGM 
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
