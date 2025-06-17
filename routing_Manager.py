@@ -10,6 +10,15 @@ import sys
 with open('config.json') as config_file:
     config = json.load(config_file)
 
+# Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
+try:
+    with open("data/configurations.json", "r") as f:
+        print("Configuration file loaded.\n")
+        data_configurations = json.load(f)
+except Exception as e:
+    print(f"Error loading configuration file: {e}")
+
+
 def clear_line():
     # Sposta il cursore all'inizio e sovrascrive con spazi
     sys.stdout.write('\r' + ' ' * 100 + '\r')
@@ -104,13 +113,38 @@ def manage_ogm_test(ogm_map, t):
 
                     # ! Pulizia OrderedDict
                     key, value_ogm_dict = obj.OGMs_History.popitem(last=False)                   # Rimuove il più vecchio
-                    # Prendo l'elemento dalla history
-                    #print(f"\tRiduzione O:{value_ogm_dict['originator']} from {value_ogm_dict['sender']}")
+                    
                     obj.ogm_table[value_ogm_dict['originator']][value_ogm_dict['sender']] -= 1    # Puliamo la table
-                
+                    if obj.ogm_table[value_ogm_dict['originator']][value_ogm_dict['sender']] == 0:
+                        del obj.ogm_table[value_ogm_dict['originator']][value_ogm_dict['sender']]
+
+                    if len(obj.ogm_table[value_ogm_dict['originator']]) == 0:
+                        del obj.ogm_table[value_ogm_dict['originator']]
+
+    # ! Salvataggio informazioni table
+    ogm_tables_snapshot = {
+        satellite.name: satellite.ogm_table
+        for satellite in ogm_map
+        if type(satellite) != Observer
+    }
+
+    return ogm_tables_snapshot
 
 
-def periodic_recall_Routing_monitor(env, observer, data_configurations):
+def saveInConfigurations(ogm_tables_snapshot):
+    for satellite_dict in data_configurations["configurations"][globals.config_index]["configuration"]:
+        #print(f"CONF({globals.config_index}) E' presente {satellite_dict["satellite"]} dentro la ogm_tables_snapsho?")
+        try:
+            satellite_dict["OGM_Table"] = ogm_tables_snapshot[satellite_dict["satellite"]] 
+        except Exception as e:
+            print("!"*20)
+            print(f"ERROR sat {satellite_dict["satellite"]} not found in OGM_tables!")
+            print(e)
+            sys.exit("CHIUSURA FORZATA")
+
+
+
+def periodic_recall_Routing_monitor(env, observer):
     while True:
         yield env.timeout(config["OGMs_Interval_seconds"])
         
@@ -118,12 +152,18 @@ def periodic_recall_Routing_monitor(env, observer, data_configurations):
             ogm_map = [observer] + globals.edge_servers_topology     # Aggiungo l'elemento alla lista
         
         print('ESECUZIONE processo di distribuzione OGM')
+        print(f'Esecuzione OGM configurazione: {globals.config_index}')
         #manage_ogm(ogm_map, globals.instant_in_configuration)
-        manage_ogm_test(ogm_map, globals.instant_in_configuration)
+        ogm_table_snapshot = manage_ogm_test(ogm_map, globals.instant_in_configuration)        
+
+
 
         #! Operazione di salvataggio
-        #ogm_tables_snapshot = {i.name: i.ogm_table for i in ogm_map}
-        
+        print(f"Sto provando a scrivere in questo index : {globals.config_index}")
+        print(f"configuration time: {data_configurations["configurations"][globals.config_index]["time"]}")
+
+        saveInConfigurations(ogm_table_snapshot)
+
         print(f"\t\tCONFIGURAZIONE {globals.config_index} COMPLETATA!")
 
         # print("-"*20,"CHECK OGM MANAGER")

@@ -320,6 +320,7 @@ def create_satellite_Identity_card(satellite, life, neighbors_info, t, access_po
         "elev_angle": elevation_angle,
         "TLE-DATA": [{"name": satellite.tle[0], "line1": satellite.tle[1], "line2": satellite.tle[2]}],
         "life": life,
+        "OGM_Table":{},
         "neighbors": [
             {"name": neighbor_name, "distance": distance, "latency": latency}
             for neighbor_name, distance, latency in neighbors_info

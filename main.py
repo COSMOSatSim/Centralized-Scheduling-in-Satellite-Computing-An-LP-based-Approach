@@ -10,7 +10,7 @@ from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, data_configurations, string_to_skyfield_time
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
-from routing_Manager import manage_ogm, print_dict, periodic_recall_Routing_monitor
+#from routing_Manager import manage_ogm, print_dict, periodic_recall_Routing_monitor
 from  Observer import Observer 
 import globals
 

@@ -41,7 +41,7 @@ class EdgeServer:
         self.ogm_table = {}             # OGMs Table {'originator': { 'neighbor': 'count'
         
         self.OGMs_History = OrderedDict()# Lista OGM visionati in passato (FIFO)
-        self.OGMs_History_dim = 1024     # Limite dimensione History OGM 
+        self.OGMs_History_dim = 2046     # Limite dimensione History OGM 
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,

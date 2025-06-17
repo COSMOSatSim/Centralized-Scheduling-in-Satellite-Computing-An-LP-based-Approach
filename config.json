@@ -8,8 +8,8 @@
  "Tmax_H": 400,
  "Tmax_L": 0.05,
  "CPU_timeout": {
-  "min": 25,
-  "mean": 140.52898550724638,
+  "min": 17,
+  "mean": 136.5243243243243,
   "max": 176
  },
  "MI": {
@@ -84,7 +84,7 @@
  "Build_Configurations": false,
  "Load_Configuration": true,
  "Interval_between_Configurations_in_seconds": 2,
- "Number_of_Configurations": 300,
+ "Number_of_Configurations": 340,
  "Interval_future_event_prediction": 15,
  "Interval_past_event_prediction": 10,
  "OGMs_EPOCH": 10,

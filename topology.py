@@ -5,6 +5,7 @@ from skyfield.api import EarthSatellite, load
 from EdgeServer import EdgeServer
 from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
+from routing_Manager import print_dict, manage_ogm_test, saveInConfigurations
 import globals 
 
 
@@ -183,7 +184,7 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
         data = {
             "time": t.utc_datetime().isoformat(),  # Current time in ISO format
-            "OGM_Table": {},
+            "OGMs_Tables" : {},
             "configuration": configuration  # List of satellite configurations
         }
         configs.append(data)  # Append the configuration to the list
@@ -209,7 +210,8 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
 def build_EdgeServer_from_config(env, configuration):
     neighbors_SAT, tmp_ES, list_acc_point = {}, [], []
-
+    #dict_OGMs = configuration["OGMs_Tables"]
+    #print_dict(dict_OGMs)
     for sat_info in configuration["configuration"]:
         server_id = f"{sat_info['satellite']}"
         name = sat_info["TLE-DATA"][0]["name"]
@@ -222,11 +224,14 @@ def build_EdgeServer_from_config(env, configuration):
         if acc_point:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
+            #edge_server.ogm_table = dict_OGMs[name]
             tmp_ES.append(edge_server)
             list_acc_point.append(edge_server.name)
+            
         else:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
+            #edge_server.ogm_table = dict_OGMs[name]
             tmp_ES.append(edge_server)
 
     return tmp_ES, neighbors_SAT, list_acc_point
@@ -235,7 +240,7 @@ def build_EdgeServer_from_config(env, configuration):
 def periodic_recall_Topology_monitor(env):
     while True:
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
-
+    
         print("-" * 70)
         print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
@@ -251,11 +256,44 @@ def periodic_recall_Topology_monitor(env):
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
         
+        
+        #print(f"STAMPA DICT di {globals.edge_servers[0].name}")
+        #print_dict(globals.edge_servers[0].ogm_table)
         #print("--- NEW ACCESS POINT ---")
         #for ap in globals.global_access_point:
         #    print(f"{ap.name}")
 
         #print("MODIFICA CONFIGURAZIONE COMPLETATA\n")
+
+def distribute_ogm(env):
+    while True:
+        yield env.timeout(config["Interval_between_Configurations_in_seconds"])
+        
+        print(f"||CONF({globals.config_index}) TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
+        print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
+
+        new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
+        
+        print("CONFIGURAZIONE MODIFICATA!")
+        
+        # Aggiorno le Globali
+        with lock:
+            globals.global_access_point = new_global_access_point
+            globals.edge_servers = new_edge_servers
+        
+        with globals.lock_access_edge_servers_topology:
+            ogm_map = [globals.observer] + globals.edge_servers_topology   
+        
+        print("\tOGMS REDISTRIBUTION")
+        ogm_table_snapshot = manage_ogm_test(ogm_map, globals.instant_in_configuration)
+        
+        print("\tSalvataggio snapshot!")
+
+        saveInConfigurations(ogm_table_snapshot)
+
+        globals.config_index += 1
+        print("-"*20)
+
 
 
 def update_counters_dictionary(all_server, initial_server_counter, different_server_counter, other_server_counter):
@@ -414,7 +452,8 @@ def loadConfiguration(env):
                                                            new_neighbors)  # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
         # Pulisco i dizionari che riguardano i vicini dei server tramontati
         [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  
-        
+
+
         with globals.lock_access_edge_servers_topology:
             # Salvo solo i satelliti che appartengono alla topologia
             globals.edge_servers_topology = list(servers_in_dome_updated.values())
@@ -435,8 +474,8 @@ def loadConfiguration(env):
         # Incrementa l'indice di configurazione
         if globals.config_index == config["Number_of_Configurations"] - 1:
             print("(!) Hai finito le configurazioni")
-        else:
-            globals.config_index += 1
+        # else:
+        #     globals.config_index += 1
         return new_edge_servers, global_access_point
     else:
         # Caricamento iniziale della configurazione
@@ -470,8 +509,9 @@ def loadConfiguration(env):
                     counter_acc_found += 1
             else:
                 break
-
+        
         globals.config_index += 1
+        globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
 
 
