@@ -13,6 +13,8 @@ config_index = 0            # Indice che indica la configurazione corrente
 edge_servers = []           # Lista dei server globali totali
 edge_servers_topology = []  # Edge Servers nella topologia nella configurazione 
 
+tasks = []                  # Lista di task completate in corso di elaborazione
+
 observer = None
 instant_in_configuration = None 
 

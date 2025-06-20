@@ -3,6 +3,12 @@ import logging
 import simpy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
+from user_based_topology import get_pos_proximity
+from Task import Task
+import sys 
+
+import globals
+
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -35,9 +41,11 @@ class EdgeServer:
         self.utility_value = 0  # Valore iniziale di utilità del server
         self.completed_tasks = []
 
+        self.tasks = []              # Lista task da Spedire
+
         self.ogm_sequence = 0           # Contatore OGM emessi
         self.OGMs = []                  # OGM to process
-        self.OGMs_NP = []               # OGM recived and Not-Processed
+        self.OGMs_NP = []               # OGM received and Not-Processed
         self.ogm_table = {}             # OGMs Table {'originator': { 'neighbor': 'count'
         
         self.OGMs_History = OrderedDict()# Lista OGM visionati in passato (FIFO)
@@ -64,8 +72,10 @@ class EdgeServer:
 
                 :return: None
                 '''
-        
-        #exec_after_set = False  # booleano che indica se il task è stato eseguito quando il satellite è tramontato
+        task = Task(task_id, self.name, globals.observer.name)  # Creo la task
+        self.tasks.append(task)
+
+        #exec_after_set = False # booleano che indica se il task è stato eseguito quando il satellite è tramontato
         if self.elev_angle < config["Phi_max"]:
             exec_after_set = True
 
@@ -145,6 +155,50 @@ class EdgeServer:
     def __str__(self):
         return f"Satellite :{self.name} neighbor:({len(self.neighbors)})\n"
 
+
+
+    def batman_approach(self, t):
+
+        # ! SE NON ARRIVATO, PRENDO IL VICINO CON NUMERO OGM MAGGIORE PER QUESTO PACCHETTO
+        ogm_from_neighbors = self.ogm_table[t.dest_node]
+        print(f"{self.name} : need to sent {t.id} to {t.dest_node}")
+        print(self.ogm_table[t.dest_node])
+
+        # Trova la key con il value maggiore
+        if ogm_from_neighbors:
+            if self.is_acc_point:
+                sendTask(t, self, globals.observer)
+                print(f"Zio è arrivato {t.id}")
+            else:
+                best_neighbor_name = max(ogm_from_neighbors, key=ogm_from_neighbors.get)  # Prendo il nome del vicino che mi ha mandato più pacchetti
+                best_neighbor = self.neighbors.get(best_neighbor_name)          # Prendo l'oggetto vicino
+                if best_neighbor:
+                    sendTask(t, self, best_neighbor)
+                else:
+                    
+                    print(f"Neighbor {best_neighbor_name} not found among current neighbors.")
+        else:
+            print("No neighbors found in OGM table.")
+            sys.exit("Nessun vicino disponibile")
+                         
+
+
+
+    def forward_packet_BATMAN(self):
+        for t in self.tasks:
+
+            if not t.arrived:
+
+                print(f"CHECK {self.name} | Destination Task : {t.dest_node}")
+                if t.dest_node in self.ogm_table:
+                    self.batman_approach(t)
+                else:
+                    sys.exit("non è presente l' OGM nella table")
+
+
+
+
+
     def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
         '''
         Aggiorna il valore di utilità del server in base ai task attualmente in coda e al carico richiesto.
@@ -222,4 +276,57 @@ class EdgeServer:
             self.utility_value = self.Th_ij + (estimated_execution_time) + total_time #+ sunset_penalty
         else:  # Task a bassa priorità
             self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time #+ sunset_penalty
+
+
+
+
+def sendTask(task, sender, receiver):
+    """
+    Transfers a task from a sender satellite to a receiver satellite, updating its state and attributes.
+
+    Args:
+        task (Task): The task object to be transferred. It contains attributes such as `hop`, `ttl`, 
+                     `id`, `current_server`, and `satellite_destination`.
+        sender (Satellite): The satellite currently holding the task. It must have a `remove_task` method.
+        receiver (Satellite): The satellite to which the task is being sent. It must have an `add_task` method.
+
+    Behavior:
+        - Increments the `hop` count of the task by 1 to track the number of hops.
+        - Decrements the `ttl` (time-to-live) of the task by 1 to reflect its remaining lifespan.
+        - Removes the task from the sender using `sender.remove_task(task.id)`.
+        - Adds the task to the receiver using `receiver.add_task(task)`.
+        - Updates the `current_server` attribute of the task to the receiver.
+        - Checks if the receiver is the task's `satellite_destination`. If so, marks the task as arrived by 
+          setting `task.arrived` to `True`.
+        - Logs the transfer operation in the format: "[task.id] sender.name -> receiver.name".
+
+    Note:
+        This function assumes that the `task`, `sender`, and `receiver` objects are properly defined and 
+        implement the required attributes and methods.
+    """
+    if task.ttl != 0:
+        
+        task.hop += 1
+        task.ttl -= 1   
+
+        # Rimuoviamo il task dal Sender
+        sender.tasks.remove(task)
+        # Inviamo il task al Receiver
+        receiver.tasks.append(task)
+        # Modifichiamo le informazioni sul task
+        task.current_server = receiver.name
+
+        # ! USIAMO SOLO I NOMI E NON PRPRIO L'oggetto
+        if task.dest_node == receiver.name:
+            task.arrived = True
+
+        task.hop_History.append(receiver.name)     # Aggiorno la History
+        task.visited.add(receiver)            # Aggiorno i visitati
+        print(f"[{task.id}] {sender.name} -> {receiver.name}")
+    else:
+        # Rimuoviamo il task
+        print(f"RIMOZIONE TASK {task.id} DA {sender.name}")
+        sender.remove_task(task.id)
+
     
+

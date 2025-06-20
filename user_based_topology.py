@@ -114,6 +114,20 @@ def getSystemFromSat(satellite, time ,Geocentric = False ):
         difference = satellite - OBSERVER   # Calculate the difference between the satellite's position and the observer's position to get the topocentric reference system
         return difference.at(time)                  # return topocentric system
     
+def get_pos_proximity(pos1, pos2):
+    """
+    Calcola la distanza fra due punti in uno spazio tridimensionale
+    Args:
+        pos1: Vettore posizionale dell'obj1
+        pos2: Vettore posizionale dell'obj2
+    :return: lunghezza del segmento obj1 -> obj2
+    """
+    # Extraction of coordinate components
+    x1, y1, z1 = pos1
+    x2, y2, z2 = pos2
+
+    # Calculate the Euclidean distance
+    return sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
 
 def get_orbit_proximity(sat1 , sat2, t):
     """

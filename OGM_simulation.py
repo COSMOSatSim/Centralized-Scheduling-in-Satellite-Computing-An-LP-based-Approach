@@ -45,6 +45,7 @@ def process_OGM_enviroment_simulation():
 def remove_first_30_configurations():
     with open("data/configurations.json", "r") as f:
         data = json.load(f)
+        #
 
     config_list = data["configurations"]
     

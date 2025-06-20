@@ -210,7 +210,6 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
 def build_EdgeServer_from_config(env, configuration):
     neighbors_SAT, tmp_ES, list_acc_point = {}, [], []
-    #dict_OGMs = configuration["OGMs_Tables"]
     #print_dict(dict_OGMs)
     for sat_info in configuration["configuration"]:
         server_id = f"{sat_info['satellite']}"
@@ -219,21 +218,28 @@ def build_EdgeServer_from_config(env, configuration):
         line2 = sat_info["TLE-DATA"][0]["line2"]
         life = sat_info["life"]["time_until_set_seconds"]
         acc_point = sat_info["is_access_point"]
+        OGMs_Table = sat_info["OGM_Table"]
         satellite_angle = sat_info["elev_angle"]
+
+
+        # print(f"OGMs_Table di {name}:\n")
+        # print_dict(OGMs_Table)
+        # print("^"*10)
+
 
         if acc_point:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
-            #edge_server.ogm_table = dict_OGMs[name]
+            edge_server.ogm_table = OGMs_Table
             tmp_ES.append(edge_server)
             list_acc_point.append(edge_server.name)
             
         else:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
-            #edge_server.ogm_table = dict_OGMs[name]
+            edge_server.ogm_table = OGMs_Table
             tmp_ES.append(edge_server)
-
+        
     return tmp_ES, neighbors_SAT, list_acc_point
 
 
@@ -255,8 +261,14 @@ def periodic_recall_Topology_monitor(env):
         with lock:
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
+    
+        print("COUNTING TASK COMPLETED TO SEND:")
+        with lock:
+            [print(f"{s.name} : task{len(s.tasks)}") for s in globals.edge_servers]
+        print("()"*10)
         
-        
+        globals.config_index += 1
+
         #print(f"STAMPA DICT di {globals.edge_servers[0].name}")
         #print_dict(globals.edge_servers[0].ogm_table)
         #print("--- NEW ACCESS POINT ---")

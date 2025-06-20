@@ -143,36 +143,6 @@ def saveInConfigurations(ogm_tables_snapshot):
             sys.exit("CHIUSURA FORZATA")
 
 
-
-def periodic_recall_Routing_monitor(env, observer):
-    while True:
-        yield env.timeout(config["OGMs_Interval_seconds"])
-        
-        with globals.lock_access_edge_servers_topology:
-            ogm_map = [observer] + globals.edge_servers_topology     # Aggiungo l'elemento alla lista
-        
-        print('ESECUZIONE processo di distribuzione OGM')
-        print(f'Esecuzione OGM configurazione: {globals.config_index}')
-        #manage_ogm(ogm_map, globals.instant_in_configuration)
-        ogm_table_snapshot = manage_ogm_test(ogm_map, globals.instant_in_configuration)        
-
-
-
-        #! Operazione di salvataggio
-        print(f"Sto provando a scrivere in questo index : {globals.config_index}")
-        print(f"configuration time: {data_configurations["configurations"][globals.config_index]["time"]}")
-
-        saveInConfigurations(ogm_table_snapshot)
-
-        print(f"\t\tCONFIGURAZIONE {globals.config_index} COMPLETATA!")
-
-        # print("-"*20,"CHECK OGM MANAGER")
-        # print(f"{globals.edge_servers[0].name}")
-        # print_dict(globals.edge_servers[0].ogm_table)
-        # print("-"*20)
-
-        
-
 def transmission_failure_probability(distance):
     # Probabilità di fallimento cresce linearmente con la distanza
     return round(min(1.0, distance / config["Laser_Communication_Range"]), 2)
@@ -221,4 +191,37 @@ def create_ogm(obj):
 
 
 
-#def temporal_ogm_simulation(env, json_path = "data/configurations.json"):
+def periodic_recall_Routing_monitor(env, interval = 1):
+    """
+    Questa funzione dovrà scorrere costantemente tutti i task dentro
+    la lista dei globali, e costantemente spingerli verso la destinazione.
+    """
+    while True:
+        for node in globals.edge_servers:
+            node.forward_packet_BATMAN()    # Eseguiamo il forwarding
+        yield env.timeout(interval)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
