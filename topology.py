@@ -297,11 +297,11 @@ def distribute_ogm(env):
             ogm_map = [globals.observer] + globals.edge_servers_topology   
         
         print("\tOGMS REDISTRIBUTION")
-        ogm_table_snapshot = manage_ogm_test(ogm_map, globals.instant_in_configuration)
+        ogm_table_snapshot, ogm_position_dict = manage_ogm_test(ogm_map, globals.instant_in_configuration)
         
         print("\tSalvataggio snapshot!")
 
-        saveInConfigurations(ogm_table_snapshot)
+        saveInConfigurations(ogm_table_snapshot, ogm_position_dict)
 
         globals.config_index += 1
         print("-"*20)

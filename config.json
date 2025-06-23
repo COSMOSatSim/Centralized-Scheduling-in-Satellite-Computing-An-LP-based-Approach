@@ -8,8 +8,8 @@
  "Tmax_H": 400,
  "Tmax_L": 0.05,
  "CPU_timeout": {
-  "min": 17,
-  "mean": 136.5243243243243,
+  "min": 13,
+  "mean": 142.52298850574712,
   "max": 176
  },
  "MI": {
@@ -88,5 +88,6 @@
  "Interval_future_event_prediction": 15,
  "Interval_past_event_prediction": 10,
  "OGMs_EPOCH": 10,
- "OGMs_Interval_seconds": 2
+ "OGMs_Interval_seconds": 2,
+ "sphere_altitude_km": 500000.0
 }

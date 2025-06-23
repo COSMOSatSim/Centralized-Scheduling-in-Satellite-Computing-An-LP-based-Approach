@@ -19,6 +19,10 @@ with open('config.json') as config_file:
 
 
 def process_OGM_enviroment_simulation():
+    """
+    Funzione usata per la costruzione delle tabelle OGM nella fase di PRE-Loading
+    """
+    
     random.seed(config["seed"])
 
     env_ogm = simpy.Environment()  
@@ -45,7 +49,7 @@ def process_OGM_enviroment_simulation():
 def remove_first_30_configurations():
     with open("data/configurations.json", "r") as f:
         data = json.load(f)
-        #
+        
 
     config_list = data["configurations"]
     

@@ -1,4 +1,4 @@
-import threading
+import threading, json
 
 # Variabili globali per i server
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server

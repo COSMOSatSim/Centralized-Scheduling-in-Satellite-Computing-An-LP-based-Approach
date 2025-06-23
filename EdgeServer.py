@@ -3,7 +3,7 @@ import logging
 import simpy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
-from user_based_topology import get_pos_proximity
+from user_based_topology import getSystemFromSat
 from Task import Task
 import sys 
 
@@ -42,6 +42,8 @@ class EdgeServer:
         self.completed_tasks = []
 
         self.tasks = []              # Lista task da Spedire
+
+        self.OGMs_position = {}     # Dizionario delle posizioni dei vicini 
 
         self.ogm_sequence = 0           # Contatore OGM emessi
         self.OGMs = []                  # OGM to process
@@ -155,6 +157,13 @@ class EdgeServer:
     def __str__(self):
         return f"Satellite :{self.name} neighbor:({len(self.neighbors)})\n"
 
+    def getPositionVector(self, t):
+        """
+        Questa funzione ritorna un vettore in 3 dimensioni,
+        rappresenta la posizione del satellite in un determinato istante.
+        """
+
+        return getSystemFromSat(self.satellite, t, True).position.km.tolist()
 
 
     def batman_approach(self, t):

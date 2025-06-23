@@ -1,6 +1,6 @@
 import random
 import json
-from user_based_topology import get_orbit_proximity
+from user_based_topology import get_orbit_proximity, getSystemFromSat
 from Ogm import Ogm
 from Observer import Observer
 import globals
@@ -42,7 +42,7 @@ def manage_ogm_test(ogm_map, t):
     print("\t| Generazione OGM")
     # Ogni Nodo manda un OGM
     for node in ogm_map:
-        create_ogm(node)
+        create_ogm(node, node.getPositionVector(t))
 
     print("\t| Processing OGMs")
     total = len(ogm_map)
@@ -72,6 +72,15 @@ def manage_ogm_test(ogm_map, t):
                 if ogm.sender not in node.ogm_table[ogm.originator]:
                     node.ogm_table[ogm.originator][ogm.sender] = 0
                 node.ogm_table[ogm.originator][ogm.sender] += 1
+                
+                if not isinstance(node, Observer):  
+                    # $ Inizializzazione dizionario delle posizioni
+                    if ogm.originator not in node.OGMs_position:
+                        node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect)
+                    else:
+                        # $ Controllo se aggiornare il valore 
+                        if ogm.sequence_number > node.OGMs_position[ogm.originator][0]:
+                            node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect)
             
             # ! Fase di redistribuzione
             if type(node) == Observer:
@@ -128,14 +137,22 @@ def manage_ogm_test(ogm_map, t):
         if type(satellite) != Observer
     }
 
-    return ogm_tables_snapshot
+    # $ Salvataggio informazioni posizioni
+    ogm_position_dict = {
+        satellite.name: satellite.OGMs_position
+        for satellite in ogm_map
+        if not isinstance(satellite, Observer)
+    }
+
+    return ogm_tables_snapshot, ogm_position_dict
 
 
-def saveInConfigurations(ogm_tables_snapshot):
+def saveInConfigurations(ogm_tables_snapshot, ogm_position_dict):
     for satellite_dict in data_configurations["configurations"][globals.config_index]["configuration"]:
         #print(f"CONF({globals.config_index}) E' presente {satellite_dict["satellite"]} dentro la ogm_tables_snapsho?")
         try:
             satellite_dict["OGM_Table"] = ogm_tables_snapshot[satellite_dict["satellite"]] 
+            satellite_dict["OGMs_Positions"] = ogm_position_dict[satellite_dict["satellite"]]
         except Exception as e:
             print("!"*20)
             print(f"ERROR sat {satellite_dict["satellite"]} not found in OGM_tables!")
@@ -169,7 +186,7 @@ def print_dict(d, level=0):
         print(f"{indent}{d}")
 
 
-def create_ogm(obj):
+def create_ogm(obj, origin_position_vect):
     """
     Crea e invia un nuovo OGM (Originator Generated Message) ai nodi vicini.
 
@@ -179,9 +196,11 @@ def create_ogm(obj):
     Returns:
         Ogm: L'istanza del nuovo OGM creato.
     """
+
     ogm = Ogm(
         originator = obj.name,
         sender = obj.name,
+        origin_position_vect = origin_position_vect,
         ttl = 10,
         sequence_number = obj.ogm_sequence
     )
