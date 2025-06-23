@@ -1,11 +1,14 @@
 class Ogm:
-    def __init__(self, originator, sender, ttl=7, sequence_number=0):
+    def __init__(self, originator, sender, originator_lat, originator_lon ,ttl=7, sequence_number=0):
         self.originator = originator
         self.sender = sender
         self.ttl = ttl
         self.sequence_number = sequence_number
         
-        self.id = f"{originator}_{sequence_number}"  # identificatore unico
+        self.originator_lat = originator_lat        # Latitude 
+        self.originator_lon = originator_lon        # Longitude
+
+        self.id = f"{originator}_{sequence_number}" # identificatore unico
 
     def clone_for_forwarding(self, new_sender):
         return Ogm(
