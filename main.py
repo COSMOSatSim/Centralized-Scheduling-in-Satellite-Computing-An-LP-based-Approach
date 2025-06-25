@@ -112,7 +112,9 @@ if __name__ == "__main__":
 
     env.run(config['simulation_duration'])
 
+
     print(f"A FINE SIMULAZIONE OBSERVER REGISTRA {len(globals.observer.tasks)} ")
+
 
     # task_queueprint("SIMULATION COMPLETED, check RAM :")
     '''

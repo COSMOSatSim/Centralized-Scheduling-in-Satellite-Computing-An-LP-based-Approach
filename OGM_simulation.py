@@ -72,5 +72,5 @@ def remove_first_30_configurations():
 
 
 if __name__ == "__main__":
-    process_OGM_enviroment_simulation()
+    process_OGM_enviroment_simulation() # 40 minuti
     remove_first_30_configurations()

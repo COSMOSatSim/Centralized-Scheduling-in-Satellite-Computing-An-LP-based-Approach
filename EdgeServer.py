@@ -179,13 +179,34 @@ class EdgeServer:
                 sendTask(t, self, globals.observer)
                 print(f"Zio è arrivato {t.id}")
             else:
-                best_neighbor_name = max(ogm_from_neighbors, key=ogm_from_neighbors.get)  # Prendo il nome del vicino che mi ha mandato più pacchetti
-                best_neighbor = self.neighbors.get(best_neighbor_name)          # Prendo l'oggetto vicino
-                if best_neighbor:
-                    sendTask(t, self, best_neighbor)
+
+                intersection = {
+                    neighbor: ogm_from_neighbors[neighbor.name]        # valore preso dalla OGM
+                    for neighbor in self.neighbors                     # oggetti Neighbor
+                    if neighbor.name in ogm_from_neighbors             # solo se esiste in OGM
+                }
+
+                #Trova il Neighbor con il valore OGM più alto
+                if intersection:                                       # evita ValueError se vuoto
+                    max_neighbor, max_value = max(intersection.items(), key=lambda item: item[1])
                 else:
-                    
-                    print(f"Neighbor {best_neighbor_name} not found among current neighbors.")
+                    max_neighbor, max_value = None, None
+
+
+                # best_neighbor_name = max(ogm_from_neighbors, key=ogm_from_neighbors.get)  # Prendo il nome del vicino che mi ha mandato più pacchetti
+                # #best_neighbor = self.neighbors.get(best_neighbor_name)          # Prendo l'oggetto vicino
+                
+                # chiave_trovata = next((k for k in self.neighbors if k.name == best_neighbor_name), None)
+
+                if max_neighbor:
+                    sendTask(t, self, max_neighbor)
+                else:
+                    # print("VICINI NELL'INTERSEZIONE:")
+                    # [print(f"{n.name} count: {s}") for n,s in intersection.items()]
+                    # print(f"Miglior vicino: {max_neighbor.name} count: {max_value}")
+                    #print(f"Neighbor {max_neighbor.name} not found among current neighbors.")
+                    print("Non so a chi mandare questo pacchetto")
+                    #sys.exit("STOP")
         else:
             print("No neighbors found in OGM table.")
             sys.exit("Nessun vicino disponibile")
@@ -313,7 +334,7 @@ def sendTask(task, sender, receiver):
         This function assumes that the `task`, `sender`, and `receiver` objects are properly defined and 
         implement the required attributes and methods.
     """
-    if task.ttl != 0:
+    if task.ttl > 0:
         
         task.hop += 1
         task.ttl -= 1   
@@ -334,8 +355,7 @@ def sendTask(task, sender, receiver):
         print(f"[{task.id}] {sender.name} -> {receiver.name}")
     else:
         # Rimuoviamo il task
-        print(f"RIMOZIONE TASK {task.id} DA {sender.name}")
-        sender.remove_task(task.id)
-
+        print(f"RIMOZIONE TASK {task.id} DA {sender.name}, ttl finito")
+        sender.tasks.remove(task)
     
 

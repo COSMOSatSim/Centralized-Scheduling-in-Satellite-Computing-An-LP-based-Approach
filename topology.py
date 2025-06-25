@@ -281,6 +281,7 @@ def distribute_ogm(env):
     while True:
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
         
+        print(f"time now : {env.now()}")
         print(f"||CONF({globals.config_index}) TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
 
@@ -522,7 +523,7 @@ def loadConfiguration(env):
             else:
                 break
         
-        globals.config_index += 1
+        #globals.config_index += 1
         globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
 
