@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import os
-import re
 import pandas as pd
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -67,6 +66,7 @@ def process_file(input_path):
     # 8) Statistiche R = Time in system
     tcol = 'Time in system'
     if tcol in filtered.columns:
+        print(tcol)
         times = pd.to_numeric(filtered[tcol], errors='coerce').dropna()
         r_avg = times.mean()
         r_max = times.max()
@@ -119,9 +119,10 @@ def process_file(input_path):
     return out
 
 def extract_cpu_and_at(filename):
-    at = filename.split('_')[-1]
-    cpu = filename.split('_')[-3]
-    return cpu, at
+    cpu = filename.split('_')[-1]
+    at = filename.split('_')[-3]
+    name = filename.split('_')[-5]
+    return cpu, at, name
 
 def unify_stats(stats_paths):
     """
@@ -137,18 +138,19 @@ def unify_stats(stats_paths):
         # rimuovi suffisso _stats
         raw_no_stats = raw.rsplit('_stats', 1)[0]
         # rimuovi prefisso simulation_results_
-        prefix = 'simulation_results_20_0_80_exponential_42_'
+        prefix = 'results_20_0_80_exponential_'
         if raw_no_stats.startswith(prefix):
             shortened = raw_no_stats[len(prefix):]
         else:
             shortened = raw_no_stats
-        at, cpu = extract_cpu_and_at(shortened)
+        cpu, at, name = extract_cpu_and_at(shortened)
         data['File'] = shortened
+        data['Name'] = name
         data['CPU'] = cpu
         data['AT'] = at
         records.append(data)
     combined = pd.DataFrame(records)
-    cols = ['File', 'AT', 'CPU'] + [c for c in combined.columns if c not in ['File', 'CPU', 'AT']]
+    cols = [ 'CPU', 'AT', 'Name'] + [c for c in combined.columns if c not in ['CPU', 'AT', 'Name']]
     return combined[cols]
 
 
@@ -161,7 +163,7 @@ def main():
         return
     all_files = os.listdir(folder)
     raw_paths = [os.path.join(folder, f) for f in all_files
-                 if f.startswith('simulation_result') and f.endswith('.csv') and not f.endswith('_stats.csv')]
+                 if f.startswith('results') and f.endswith('.csv') and not f.endswith('_stats.csv')]
     if not raw_paths:
         messagebox.showinfo("Info", "Nessun file corrispondente trovato.")
         return
@@ -176,13 +178,13 @@ def main():
     if messagebox.askyesno("Unire file", "Vuoi creare i file unificati per failed e success? "):
         combined = unify_stats(stats_files)
         fail_cols = [
-             'CPU', 'AT',  'Total Requests', 'Success Requests', 'Failed Requests', 'Percent Failed (Total)', 'Failed High (n)', 'Failed Low (n)',
+              'CPU', 'AT', 'Name', 'Total Requests', 'Success Requests', 'Failed Requests', 'Percent Failed (Total)', 'Failed High (n)', 'Failed Low (n)',
              'Percent Failed (High)', 'Percent Failed (Low)',
             'Executed After Sunset Total', 'Percent Exec After Sunset Total',
             'Executed After Sunset Success', 'Fail (hop>=6)'
         ]
         succ_cols = [
-             'CPU', 'AT',  'Total Requests', 'Success Requests', 'High Success', 'Low Success',
+             'CPU', 'AT', 'Name', 'Total Requests', 'Success Requests', 'High Success', 'Low Success',
             'Percent Success (Total)', 'Percent Success (High)', 'Percent Success (Low)',
             'Success (hop<6)', 'Executed After Sunset Success',
             'R Avg', 'R Max', 'R Min', 'R Std', 'R Var', 'R MSE', 'R 90%', 'R 95%', 'R MSE/2'

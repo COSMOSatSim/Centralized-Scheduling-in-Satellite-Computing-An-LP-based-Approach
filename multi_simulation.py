@@ -1,64 +1,91 @@
 import json
 import subprocess
 
+# Nome dello script di simulazione
 Simulation_type_distribuited = "main.py"
+# File JSON di configurazione di base
+file_json = "config.json"
+
+# Definizione delle modalità di simulazione
+modalita_simulazione = {
+    "DTS-base": {
+        "request_distribution": {"distribution": "DTS-base"},
+        "AP_selection": "distance_based",
+        "SearchNode": "ERT",
+        "SEN_selection": "random"
+    },
+    "DTS-AP optimal": {
+        "request_distribution": {"distribution": "DTS-AP optimal"},
+        "AP_selection": "optimal",
+        "SearchNode": "ERT",
+        "SEN_selection": "random"
+    },
+    "OrbitAware": {
+        "request_distribution": {"distribution": "OrbitAware"},
+        "AP_selection": "optimal",
+        "SearchNode": "ERT+SunsetCheck",
+        "SEN_selection": "maxSunset"
+    },
+    "OrbitAware Utility": {
+        "request_distribution": {"distribution": "OrbitAware Utility"},
+        "AP_selection": "optimal",
+        "SearchNode": "ERT/Sunset",
+        "SEN_selection": "maxSunset"
+    }
+}
+
+# Valori comuni
+seed_values = [42]
+arrival_time_values = [0.5, 1, 1.5]
+CPU_timeout_values = [10, 20, 30, 40, 50]
+priority_combination_values = [{"distribution": "20_0_80"}]
+
 
 def esegui_simulazione(file_path):
-    # Esegui la simulazione
-    comando_simulazione = ["python", Simulation_type_distribuited, "--file", file_path]
-    print("eseguo la simulazione")
-    subprocess.run(comando_simulazione)
+    comando = ["python", Simulation_type_distribuited, "--file", file_path]
+    print(f"Eseguo: {' '.join(comando)}")
+    subprocess.run(comando, check=True)
 
 
 def modifica_parametri(file_path, nuovi_parametri):
-    with open(file_path, 'r') as file:
-        dati = json.load(file)
+    with open(file_path, 'r') as f:
+        dati = json.load(f)
 
-    # Modifica i parametri
+    # Parametri comuni
     dati["generate_tasks"]["distribution"] = nuovi_parametri["generate_tasks"]["distribution"]
-    dati["CPU_timeout"] = nuovi_parametri["CPU_timeout"]
     dati["priority_combination"]["distribution"] = nuovi_parametri["priority_combination"]["distribution"]
     dati["request_distribution"]["distribution"] = nuovi_parametri["request_distribution"]["distribution"]
     dati["seed"] = nuovi_parametri["seed"]
     dati["arrival_time_exponential"] = nuovi_parametri["arrival_time_exponential"]
+    dati["CPU_timeout"] = nuovi_parametri["CPU_timeout"]
+
+    # Parametri specifici di modalità
+    dati["AP_selection"] = nuovi_parametri["AP_selection"]
+    dati["SearchNode_method"] = nuovi_parametri["SearchNode"]
+    dati["SEN_selection"] = nuovi_parametri["SEN_selection"]
+
+    with open(file_path, 'w') as f:
+        json.dump(dati, f, indent=2)
 
 
-
-    with open(file_path, 'w') as file:
-        json.dump(dati, file, indent=2)
-
-# Set comuni di seed e arrival_time_exponential
-seed_values = [42]#, 142, 242, 342, 442, 542, 642, 742, 842, 942 ]
-arrival_time_values = [1/2, 1/1, 1.5] #[1/1, 1/2, 1/3, 1/4] richieste al secondo ####[ 0.5, 1, 1.5, 2, 2.5, 3]
-CPU_timeout = [10,20,30,40,50] # [10,30,50,70,90,110]
-
-# File JSON di input
-file_json = "config.json"
-
-request_distribution_values = [
-    {"distribution": "33_33_33"},
-    {"distribution": "20_30_50"}
-]
-priority_combination_values = [
-    {"distribution": "20_0_80"}
-]
-
-# Itera su tutti i set di parametri
-#Cambinanzione task (H, L) = (20_0_80), (50_0_50)
-for seed in seed_values:
-    for arrival_time in arrival_time_values:
-        for priority_combination in priority_combination_values:
-                for CPU in CPU_timeout:
-                    print(CPU)
-                    nuovi_parametri = {
-                        "generate_tasks": {"distribution": "exponential"},
-                        "priority_combination": priority_combination,
-                        "request_distribution": {"distribution": "0_0_0"},
-                        "seed": seed,
-                        "arrival_time_exponential": arrival_time,
-                        "CPU_timeout":{"min":0,"mean": CPU, "max":90000}
-                    }
-                    print('Ci sono quasi... preparo il file json')
-
-                    modifica_parametri(file_json, nuovi_parametri)
-                    esegui_simulazione(file_json)
+if __name__ == "__main__":
+    for nome, config in modalita_simulazione.items():
+        print(f"\n>>> Modalità: {nome}")
+        for seed in seed_values:
+            for arrival in arrival_time_values:
+                for priority in priority_combination_values:
+                    for cpu in CPU_timeout_values:
+                        params = {
+                            "generate_tasks": {"distribution": "exponential"},
+                            "priority_combination": priority,
+                            "request_distribution": config["request_distribution"],
+                            "seed": seed,
+                            "arrival_time_exponential": arrival,
+                            "CPU_timeout": {"min": 0, "mean": cpu, "max": 90000},
+                            "AP_selection": config["AP_selection"],
+                            "SearchNode": config["SearchNode"],
+                            "SEN_selection": config["SEN_selection"]
+                        }
+                        print(f"Parametri: seed={seed}, arrival={arrival}, cpu={cpu}")
+                        modifica_parametri(file_json, params)
+                        esegui_simulazione(file_json)

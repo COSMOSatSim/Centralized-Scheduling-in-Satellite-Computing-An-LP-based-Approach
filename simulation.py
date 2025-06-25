@@ -225,8 +225,18 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     sorted_servers = sorted(server_metrics,
                             key=lambda x: (x['utility_value']))
 
-    sorted_servers2 = sorted(server_metrics,
-                            key=lambda x: (x['utility_value']/x['orbitalSunset']))
+
+    # Ordina secondo nuova politica: rapporto estimated_total_time / orbitalSunset (minimizzare)
+    if config["SearchNode"] == "ERT/Sunset":
+        '''non è scelto direttamente quello con orbitalSunset più alto, ma quello che minimizza il rapporto estimated_total_time / orbitalSunset.'''
+        sorted_servers = sorted(
+            server_metrics,
+            key=lambda x: (
+                x['estimated_total_time'] / x['orbitalSunset'],  # minimizza il rapporto
+                -x['orbitalSunset']  # in caso di pareggio, massimizza orbitalSunset
+            )
+        )
+
 
     Tmax_high -= 2 * Tmax_latency
 
@@ -243,21 +253,18 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             print(f"- Transfer time: {metrics['transfer_time']}")
 
     # Converti la lista di dizionari in lista di server, escludendo quelli con orbitalSunset pari a 0 o None
+    distribution = config.get("request_distribution", {}).get("distribution", "")
 
-    #Versione originale
-    sorted_servers = [metrics['server'] for metrics in sorted_servers if metrics['expected_completion_time'] < Tmax_high ]
-    #sorted_servers_MOD = [metrics['server'] for metrics in sorted_servers if metrics['utility_value'] < Tmax_high ]
-
-    #versione mod, con penalità aggiunta qui invece che nell'utility
-    '''sorted_servers = [metrics['server'] for metrics in sorted_servers
+    if distribution in ("DTS-base", "DTS-AP optimal"):
+        print('Versione originale: DTS-TMAX')
+        sorted_servers = [metrics['server'] for metrics in sorted_servers if
+                          metrics['expected_completion_time'] < Tmax_high]
+    else:
+        print('versione mod: OrbitAware, con penalità')
+        sorted_servers = [metrics['server'] for metrics in sorted_servers
                       if metrics['expected_completion_time'] < Tmax_high
                       and metrics['expected_completion_time'] < metrics['orbitalSunset']
-                      and metrics['orbitalSunset'] not in (0, None)]'''
-
-    '''sorted_servers2 = [metrics['server'] for metrics in sorted_servers
-                      if metrics['utility_value'] < Tmax_high
-                      and metrics['utility_value'] < metrics['orbitalSunset']
-                      and metrics['orbitalSunset'] not in (0, None)]'''
+                      and metrics['orbitalSunset'] not in (0, None)]
 
     '''for server in sorted_servers:
          print(f"Server {server.name}: Utility Value = {server.utility_value}, orbitalSunset {server.orbitalSunset}")'''
@@ -281,7 +288,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         #print(server.waiting_time, 'tempo di attesa wt')
 
         # Parametri utili per la gestione della coda
-        AVG_service_time = server.AVG_service_time
+        '''AVG_service_time = server.AVG_service_time
         Th_ij = server.Th_ij
         Tl_ij = server.Th_ij + server.Tl_ij
         waiting_time = server.waiting_time
@@ -293,7 +300,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             print(f"Task {task_id} mantenuto nella sua coda di priorità {task_priority}")
         else:
             task_priority = 100
-            print(f"Task {task_id} assegnato alla coda a bassa priorità")
+            print(f"Task {task_id} assegnato alla coda a bassa priorità")'''
 
         #print(
          #   f'server: {server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(server.server_queue)}, tempo di attesa {server.Th_ij + server.Tl_ij + server.waiting_time}, AVG {server.AVG_service_time}, orbitalSunset: {server.orbitalSunset}, Sunset: {server.elev_angle}')
@@ -315,20 +322,44 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             hop = 0
             return
         else:
-            available_servers = [neighbor for neighbor in neighbors_at_distance_one if neighbor != server_selected]
+            #available_servers = [neighbor for neighbor in neighbors_at_distance_one if neighbor != server_selected]
             ####prendere quello con sunset time maggiore
-            random_server = random.choice(available_servers)
-            Tmax_latency = random_server.get_latency(server_selected)
-            transfer_time = transfer_time + random_server.get_latency(server_selected)
-            hop += 1
-            print(f"server random scelto {random_server}")
-            print(
-               f'server: {random_server.name}, priorità {task_priority},task execution time: {total_estimated_time}, lunghezza coda, {len(random_server.server_queue)}, tempo di attesa {random_server.Th_ij + random_server.Tl_ij + random_server.waiting_time}, AVG {random_server.AVG_service_time}, orbitalSunset: {random_server.orbitalSunset}, Sunset: {random_server.elev_angle}')
+            available_servers = [neighbor for neighbor in neighbors_at_distance_one
+                                 if neighbor != server_selected and neighbor.orbitalSunset not in (None, 0)]
 
-            yield env.process(
-                SearchNode(env, random_server, task_id, required_ram, required_disk, image_size,
-                           Volume_size, restart_time, download_time, task_priority, arrival_time_system,
-                           Tmax_high, Tmax_Low, Tmax_latency, initial_server_counter, different_server_counter, other_server_counter))
+            if config["SEN_selection"] == 'random':
+                # Se DTS è attivo, scegli un server a caso
+                random_server = random.choice(available_servers)
+                Tmax_latency = random_server.get_latency(server_selected)
+                transfer_time = transfer_time + Tmax_latency
+                hop += 1
+                print(f"Server scelto in modo casuale: {random_server.name} (Sunset: {random_server.orbitalSunset})")
+
+                print(
+                    f'server: {random_server.name}, priorità {task_priority}, task execution time: {total_estimated_time}, lunghezza coda: {len(random_server.server_queue)}, tempo di attesa: {random_server.Th_ij + random_server.Tl_ij + random_server.waiting_time}, AVG: {random_server.AVG_service_time}, orbitalSunset: {random_server.orbitalSunset}, Sunset: {random_server.elev_angle}')
+
+                yield env.process(
+                    SearchNode(env, random_server, task_id, required_ram, required_disk, image_size,
+                               Volume_size, restart_time, download_time, task_priority, arrival_time_system,
+                               Tmax_high, Tmax_Low, Tmax_latency, initial_server_counter, different_server_counter,
+                               other_server_counter))
+
+            elif config["SEN_selection"] == "maxSunset":
+                # Se DTS è disattivo, scegli il best server (basato su orbitalSunset)
+                best_server = max(available_servers, key=lambda srv: srv.orbitalSunset)
+                Tmax_latency = best_server.get_latency(server_selected)
+                transfer_time = transfer_time + Tmax_latency
+                hop += 1
+                print(f"Server scelto con Sunset maggiore: {best_server.name} (Sunset: {best_server.orbitalSunset})")
+
+                print(
+                    f'server: {best_server.name}, priorità {task_priority}, task execution time: {total_estimated_time}, lunghezza coda: {len(best_server.server_queue)}, tempo di attesa: {best_server.Th_ij + best_server.Tl_ij + best_server.waiting_time}, AVG: {best_server.AVG_service_time}, orbitalSunset: {best_server.orbitalSunset}, Sunset: {best_server.elev_angle}')
+
+                yield env.process(
+                    SearchNode(env, best_server, task_id, required_ram, required_disk, image_size,
+                               Volume_size, restart_time, download_time, task_priority, arrival_time_system,
+                               Tmax_high, Tmax_Low, Tmax_latency, initial_server_counter, different_server_counter,
+                               other_server_counter))
 
 
 def LocalScheduler(env, task_id, required_ram, required_disk, server, image_size, Volume_size, restart_time,
@@ -337,30 +368,13 @@ def LocalScheduler(env, task_id, required_ram, required_disk, server, image_size
     global hop  # Indica che la variabile hop è globale e non locale
     hop += 1  # Incrementa hop ogni volta che la funzione viene richiamata
 
-    # controlla la configurazione se deve essere esclusa la parte della search_node.
-    # se la search_node è esclusa, i server vengono scelti tramite roud-robin e non viene utilizzata l'utility.
-    if config["search_node"] == 0:
-        # print("Without search_node")
-        yield from TaskAssignment(env, server, task_id, required_ram, required_disk, task_priority,
-                                  arrival_time_system, hop)
-    else:
-        # print("With search_node")
-        Tmax_latency = int(0)
-        yield from SearchNode(env, server, task_id, required_ram, required_disk, image_size, Volume_size,
+    Tmax_latency = int(0)
+    yield from SearchNode(env, server, task_id, required_ram, required_disk, image_size, Volume_size,
                               restart_time, download_time, task_priority, arrival_time_system, Tmax_H,
                               Tmax_L, Tmax_latency, initial_server_counter, different_server_counter, other_server_counter)
 
 
 def task(env, task_id, server, task_priority, initial_server_counter, different_server_counter, other_server_counter):
-    # Calcola la media della distribuzione esponenziale
-    #mean = (config["MI"]["min"] + config["MI"]["max"]) / 2
-
-    # Calcola il tasso di arrivo (lambda) corrispondente
-    #Avg_service_demand = 1 / mean
-
-    # Genera un numero casuale distribuito esponenzialmente
-    #MI = random.expovariate(Avg_service_demand)
-
     #required_cpu = random.choice([config["required_cpu"]["min"], config["required_cpu"]["max"]])  # CPU richiesta dal task
     required_ram = random.randint(config["required_ram"]["min"], config["required_ram"][
         "max"])  # RAM richiesta dal task #######cercare quali distributioni caratterizzano tipicamente la richiesta di RAM
@@ -370,9 +384,6 @@ def task(env, task_id, server, task_priority, initial_server_counter, different_
         "max"])  # Genera casualmente la dimensione dell'immagine con media di 1 GB ###cercare quali distributioni caratterizzano tipicamente la dimensione delle immagini dei container
     Volume_size = random.uniform(config["Volume_size"]["min"], config["Volume_size"][
         "max"])  # Genera casualmente la dimensione dell'Volume con media di 1 GB ###cercare quali distributioni caratterizzano tipicamente la dimensione delle immagini dei container
-
-    #utilization_CPU = MI / (config["cpu_capacity"] * required_cpu)  # MI/(limits × C_i^max )
-    # utilization_CPU = #MI / (config["cpu_capacity"] * required_cpu)  #MI/(limits × C_i^max )
 
     restart_time = random.uniform(config["restart_time"]["min"],
                                   config["restart_time"]["max"])  # Tempo di riavvio del task (ad esempio, in secondi)
