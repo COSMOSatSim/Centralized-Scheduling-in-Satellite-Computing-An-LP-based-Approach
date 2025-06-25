@@ -262,10 +262,6 @@ def periodic_recall_Topology_monitor(env):
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
     
-        print("COUNTING TASK COMPLETED TO SEND:")
-        with lock:
-            [print(f"{s.name} : task{len(s.tasks)}") for s in globals.edge_servers]
-        print("()"*10)
         
         globals.config_index += 1
 

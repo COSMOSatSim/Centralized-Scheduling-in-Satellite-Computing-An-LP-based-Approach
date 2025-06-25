@@ -170,8 +170,6 @@ class EdgeServer:
 
         # ! SE NON ARRIVATO, PRENDO IL VICINO CON NUMERO OGM MAGGIORE PER QUESTO PACCHETTO
         ogm_from_neighbors = self.ogm_table[t.dest_node]
-        print(f"{self.name} : need to sent {t.id} to {t.dest_node}")
-        print(self.ogm_table[t.dest_node])
 
         # Trova la key con il value maggiore
         if ogm_from_neighbors:
@@ -179,34 +177,34 @@ class EdgeServer:
                 sendTask(t, self, globals.observer)
                 print(f"Zio è arrivato {t.id}")
             else:
-
+                
+                # Generiamo l'intersezione tra i vicini reali e quelli salvati nell'OGM_Table
                 intersection = {
-                    neighbor: ogm_from_neighbors[neighbor.name]        # valore preso dalla OGM
-                    for neighbor in self.neighbors                     # oggetti Neighbor
-                    if neighbor.name in ogm_from_neighbors             # solo se esiste in OGM
+                    neighbor: ogm_from_neighbors[neighbor.name]        
+                    for neighbor in self.neighbors                     
+                    if neighbor.name in ogm_from_neighbors             
                 }
 
-                #Trova il Neighbor con il valore OGM più alto
+                # Trova il Neighbor con il valore OGM più alto
                 if intersection:                                       # evita ValueError se vuoto
                     max_neighbor, max_value = max(intersection.items(), key=lambda item: item[1])
                 else:
                     max_neighbor, max_value = None, None
 
-
-                # best_neighbor_name = max(ogm_from_neighbors, key=ogm_from_neighbors.get)  # Prendo il nome del vicino che mi ha mandato più pacchetti
-                # #best_neighbor = self.neighbors.get(best_neighbor_name)          # Prendo l'oggetto vicino
-                
-                # chiave_trovata = next((k for k in self.neighbors if k.name == best_neighbor_name), None)
-
                 if max_neighbor:
                     sendTask(t, self, max_neighbor)
                 else:
-                    # print("VICINI NELL'INTERSEZIONE:")
-                    # [print(f"{n.name} count: {s}") for n,s in intersection.items()]
-                    # print(f"Miglior vicino: {max_neighbor.name} count: {max_value}")
-                    #print(f"Neighbor {max_neighbor.name} not found among current neighbors.")
-                    print("Non so a chi mandare questo pacchetto")
-                    #sys.exit("STOP")
+                    # ! Capiamo perché questo pacchetto non può essere spedito
+                    
+                    print("!"*10)
+                    print(f"{self.name} vuole mandare il Task {t.id}. Ma non ci sono vicini disponibili")
+                    print("INFO SATELLITE:")
+                    print(f"\t Angolo di Elevazione : {self.elev_angle}")
+                    print(f"\t Orbital Sunset : {self.orbitalSunset}")
+                    print(f"\t Numero vicini: {len(self.neighbors)}")
+                    print(f"\t SITUAZIONE TABLE originator : {t.dest_node}")
+                    [print(f"\t\t {n} : {v}") for n,v in self.ogm_table[t.dest_node].items()]
+                    print("!"*10)
         else:
             print("No neighbors found in OGM table.")
             sys.exit("Nessun vicino disponibile")
@@ -223,6 +221,7 @@ class EdgeServer:
                 if t.dest_node in self.ogm_table:
                     self.batman_approach(t)
                 else:
+                    # ! Probabile applicazione Greedy
                     sys.exit("non è presente l' OGM nella table")
 
 
@@ -351,11 +350,11 @@ def sendTask(task, sender, receiver):
             task.arrived = True
 
         task.hop_History.append(receiver.name)     # Aggiorno la History
-        task.visited.add(receiver)            # Aggiorno i visitati
+        task.visited.add(receiver.name)            # Aggiorno i visitati
         print(f"[{task.id}] {sender.name} -> {receiver.name}")
     else:
         # Rimuoviamo il task
-        print(f"RIMOZIONE TASK {task.id} DA {sender.name}, ttl finito")
+        print(f"[{task.id}] RIMOZIONE TASK DA {sender.name}, TTL finito")
         sender.tasks.remove(task)
     
 

@@ -11,6 +11,7 @@ class Task:
         self.current_node = current_node        # Server sul quale si trova
         self.dest_node = dest_node              # Nodo di destinazione
 
+        #self.visited: set[str] = {current_node} # Set Server precedente
         self.visited = set()                    # Set Server precedente
         self.visited.add(current_node)                # Aggiungo il primo server (il nome!)
 
