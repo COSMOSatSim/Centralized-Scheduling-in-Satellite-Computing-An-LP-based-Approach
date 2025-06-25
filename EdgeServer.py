@@ -178,11 +178,15 @@ class EdgeServer:
                 print(f"Zio è arrivato {t.id}")
             else:
                 
-                # Generiamo l'intersezione tra i vicini reali e quelli salvati nell'OGM_Table
+                # Generiamo l'intersezione tra i vicini reali e quelli salvati nell'OGM_Table,
+                # ESCLUDENDO i satelliti già visitati dal task.
                 intersection = {
-                    neighbor: ogm_from_neighbors[neighbor.name]        
-                    for neighbor in self.neighbors                     
-                    if neighbor.name in ogm_from_neighbors             
+                    neighbor: ogm_from_neighbors[neighbor.name]
+                    for neighbor in self.neighbors
+                    if (
+                        neighbor.name in ogm_from_neighbors
+                        and neighbor.name not in t.visited      # nuovo filtro anti-loop
+                    )
                 }
 
                 # Trova il Neighbor con il valore OGM più alto
