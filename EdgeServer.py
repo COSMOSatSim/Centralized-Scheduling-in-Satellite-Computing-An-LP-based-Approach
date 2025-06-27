@@ -165,72 +165,33 @@ class EdgeServer:
 
         return getSystemFromSat(self.satellite, t, True).position.km.tolist()
 
+    def greedy_approach(self, task):
+        # Prendo la destinazione
+        print(f"Satellite {self.name}:")
+        print(self.OGMs_position)
+        destination_pos = self.OGMs_position[task.dest_node][1]
+        print(f"Destination: {destination_pos}")
 
-    def batman_approach(self, t):
+    def forward_packet(self):
+        for task in self.tasks:
 
-        # ! SE NON ARRIVATO, PRENDO IL VICINO CON NUMERO OGM MAGGIORE PER QUESTO PACCHETTO
-        ogm_from_neighbors = self.ogm_table[t.dest_node]
-
-        # Trova la key con il value maggiore
-        if ogm_from_neighbors:
-            if self.is_acc_point:
-                sendTask(t, self, globals.observer)
-                print(f"Zio è arrivato {t.id}")
-            else:
+            if not task.arrived:
                 
-                # Generiamo l'intersezione tra i vicini reali e quelli salvati nell'OGM_Table,
-                # ESCLUDENDO i satelliti già visitati dal task.
-                intersection = {
-                    neighbor: ogm_from_neighbors[neighbor.name]
-                    for neighbor in self.neighbors
-                    if (
-                        neighbor.name in ogm_from_neighbors
-                        and neighbor.name not in t.visited      # nuovo filtro anti-loop
-                    )
-                }
-
-                # Trova il Neighbor con il valore OGM più alto
-                if intersection:                                       # evita ValueError se vuoto
-                    max_neighbor, max_value = max(intersection.items(), key=lambda item: item[1])
+                if self.is_acc_point:
+                    sendTask(task, self, globals.observer)
+                    print(f"[{task.id}] Arrivato a Destinazione!")
                 else:
-                    max_neighbor, max_value = None, None
+                    # Controllo intersezione
+                    max_neighbor, max_value = find_OGM_intersection(self.ogm_table[task.dest_node], self.neighbors, task)
+                    if max_neighbor:
 
-                if max_neighbor:
-                    sendTask(t, self, max_neighbor)
-                else:
-                    # ! Capiamo perché questo pacchetto non può essere spedito
-                    
-                    print("!"*10)
-                    print(f"{self.name} vuole mandare il Task {t.id}. Ma non ci sono vicini disponibili")
-                    print("INFO SATELLITE:")
-                    print(f"\t Angolo di Elevazione : {self.elev_angle}")
-                    print(f"\t Orbital Sunset : {self.orbitalSunset}")
-                    print(f"\t Numero vicini: {len(self.neighbors)}")
-                    print(f"\t SITUAZIONE TABLE originator : {t.dest_node}")
-                    [print(f"\t\t {n} : {v}") for n,v in self.ogm_table[t.dest_node].items()]
-                    print("!"*10)
-        else:
-            print("No neighbors found in OGM table.")
-            sys.exit("Nessun vicino disponibile")
+                        # Applico il Batman mandando il task
+                        sendTask(task, self, max_neighbor)
+                    else:   
+                        # Applico algoritmo test    
+                        self.greedy_approach(task)
+                        sys.exit("Bro controlla")
                          
-
-
-
-    def forward_packet_BATMAN(self):
-        for t in self.tasks:
-
-            if not t.arrived:
-
-                print(f"CHECK {self.name} | Destination Task : {t.dest_node}")
-                if t.dest_node in self.ogm_table:
-                    self.batman_approach(t)
-                else:
-                    # ! Probabile applicazione Greedy
-                    sys.exit("non è presente l' OGM nella table")
-
-
-
-
 
     def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
         '''
@@ -362,3 +323,38 @@ def sendTask(task, sender, receiver):
         sender.tasks.remove(task)
     
 
+
+def find_OGM_intersection(ogm_table, neighbors, task):
+    """
+    Trova l'intersezione tra i vicini reali e quelli presenti nella tabella OGM,
+    escludendo i satelliti già visitati dal task, e restituisce il vicino con il valore OGM più alto.
+
+    Args:
+        ogm_table (dict): Dizionario che mappa i nomi dei vicini ai valori OGM.
+        neighbors (dict): Dizionario vicini.
+        task (Task): Oggetto task che contiene l'insieme dei satelliti già visitati.
+
+    Returns:
+        tuple: (max_neighbor, max_value)
+            - max_neighbor: Il vicino con il valore OGM più alto (oggetto neighbor).
+            - max_value: Il valore OGM associato a max_neighbor.
+            Se non ci sono vicini validi, entrambi sono None.
+    """
+    # Costruisce un dizionario di vicini che sono sia nella tabella OGM sia tra i vicini reali,
+    # escludendo quelli già visitati dal task (per evitare loop).
+    intersection = {
+        neighbor: ogm_table[neighbor.name]
+        for neighbor in neighbors
+        if (
+            neighbor.name in ogm_table
+            and neighbor.name not in task.visited  # filtro anti-loop
+        )
+    }
+
+    # Trova il vicino con il valore OGM più alto nell'intersezione.
+    max_neighbor, max_value = None, None
+    if intersection:  # Evita ValueError se intersection è vuoto
+        max_neighbor, max_value = max(
+            intersection.items(), key=lambda item: item[1])
+
+    return max_neighbor, max_value

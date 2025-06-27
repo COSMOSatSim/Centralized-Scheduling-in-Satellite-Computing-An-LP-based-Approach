@@ -233,24 +233,19 @@ def getAllSatOnMe(t, serializable = False, Phi_max = config["Phi_max"], Num_Acce
 
     #Determino Access Points
     # Determino Access Points
-    for s in sat_sort_dome:
+    for sat in sat_sort_dome:
         # Decido se eseguire il filtro o meno
         if config["AP_selection"] == "distance_based":
             can_take = (counter < Num_Access_point)
         else:
-            can_take = (counter < Num_Access_point and filterSatellitesInView(s[0], t))
+            can_take = (counter < Num_Access_point and filterSatellitesInView(s.satellite, t))
 
         if can_take:
-            if not serializable:
-                acc_points.append((s[0], s[1]))
-            else:
-                acc_points.append((s[0], s[1], s[2]))
-            counter += 1
+            sat.is_acc_point = True
+            dome.append(sat)
+            counter+=1
         else:
-            if not serializable:
-                dome.append((s[0], s[1]))
-            else:
-                dome.append((s[0], s[1], s[2]))
+            dome.append(sat)
 
     return acc_points, dome, sat_sort_buff
 
