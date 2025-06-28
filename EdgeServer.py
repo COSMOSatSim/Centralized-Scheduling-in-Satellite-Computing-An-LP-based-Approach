@@ -167,10 +167,17 @@ class EdgeServer:
 
     def greedy_approach(self, task):
         # Prendo la destinazione
-        print(f"Satellite {self.name}:")
+        print(f"Satellite {self.name} Ogm position:\n")
         print(self.OGMs_position)
+        print("OGMs Table:\n")
+        print(self.ogm_table)
+        print("vicini reali:\n", len(self.neighbors))
+        print(self.neighbors)
+
         destination_pos = self.OGMs_position[task.dest_node][1]
         print(f"Destination: {destination_pos}")
+
+
 
     def forward_packet(self):
         for task in self.tasks:
@@ -184,13 +191,15 @@ class EdgeServer:
                     # Controllo intersezione
                     max_neighbor, max_value = find_OGM_intersection(self.ogm_table[task.dest_node], self.neighbors, task)
                     if max_neighbor:
-
+                        print(f"[{task.id}] BATMAN {self.name} -> {max_neighbor.name}")
                         # Applico il Batman mandando il task
                         sendTask(task, self, max_neighbor)
                     else:   
-                        # Applico algoritmo test    
+                        # Applico algoritmo test  
+                        print(f"[{task.id}] Greedy approach {self.name}")
                         self.greedy_approach(task)
-                        sys.exit("Bro controlla")
+
+                        #sys.exit("Bro controlla")
                          
 
     def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
@@ -275,6 +284,7 @@ class EdgeServer:
 
 
 def sendTask(task, sender, receiver):
+
     """
     Transfers a task from a sender satellite to a receiver satellite, updating its state and attributes.
 
@@ -316,7 +326,6 @@ def sendTask(task, sender, receiver):
 
         task.hop_History.append(receiver.name)     # Aggiorno la History
         task.visited.add(receiver.name)            # Aggiorno i visitati
-        print(f"[{task.id}] {sender.name} -> {receiver.name}")
     else:
         # Rimuoviamo il task
         print(f"[{task.id}] RIMOZIONE TASK DA {sender.name}, TTL finito")

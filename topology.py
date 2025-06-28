@@ -277,10 +277,26 @@ def distribute_ogm(env):
     while True:
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
         
-        print(f"time now : {env.now()}")
+        with globals.lock_access_edge_servers_topology:
+            ogm_map = [globals.observer] + globals.edge_servers_topology   
+        
+        print("\tOGMS REDISTRIBUTION")
+        ogm_table_snapshot, ogm_position_dict = manage_ogm_test(ogm_map, globals.instant_in_configuration)
+
+
+
+
+        print("Salvataggio SnapShot")
+        saveInConfigurations(ogm_table_snapshot, ogm_position_dict)
+
+
+
+
+
         print(f"||CONF({globals.config_index}) TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
 
+        globals.config_index += 1   
         new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
         
         print("CONFIGURAZIONE MODIFICATA!")
@@ -290,17 +306,7 @@ def distribute_ogm(env):
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
         
-        with globals.lock_access_edge_servers_topology:
-            ogm_map = [globals.observer] + globals.edge_servers_topology   
-        
-        print("\tOGMS REDISTRIBUTION")
-        ogm_table_snapshot, ogm_position_dict = manage_ogm_test(ogm_map, globals.instant_in_configuration)
-        
-        print("\tSalvataggio snapshot!")
 
-        saveInConfigurations(ogm_table_snapshot, ogm_position_dict)
-
-        globals.config_index += 1
         print("-"*20)
 
 
@@ -463,6 +469,9 @@ def loadConfiguration(env):
         [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  
 
 
+        print("TOPOLOGIA ATTUALE:")
+        [print(sat.name) for sat in servers_in_dome_updated.values()]
+
         with globals.lock_access_edge_servers_topology:
             # Salvo solo i satelliti che appartengono alla topologia
             globals.edge_servers_topology = list(servers_in_dome_updated.values())
@@ -519,7 +528,11 @@ def loadConfiguration(env):
             else:
                 break
         
+        print("TOPOLOGIA ATTUALE:")
+        [print(sat.name) for sat in edge_servers]
+
         #globals.config_index += 1
+        globals.instant_in_configuration = string_to_skyfield_time(configuration["time"])
         globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
 

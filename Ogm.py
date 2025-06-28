@@ -1,5 +1,5 @@
 class Ogm:
-    def __init__(self, originator, sender, origin_position_vect, ttl=7, sequence_number=0):
+    def __init__(self, originator, sender, origin_position_vect, ttl, sequence_number=0):
         self.originator = originator
         self.sender = sender
         self.ttl = ttl

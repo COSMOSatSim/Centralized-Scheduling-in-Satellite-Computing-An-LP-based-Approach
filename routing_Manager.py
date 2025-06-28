@@ -50,7 +50,6 @@ def manage_ogm_test(ogm_map, t):
     for i, node in enumerate(ogm_map, start=1):
         #print(f"\t{node.name} : N to Processing ({len(node.OGMs)})")
         for ogm in node.OGMs:
-
             #! Fase di Controllo
             if ogm.id in node.OGMs_History or ogm.ttl == 0:  # Il pacchetto è stato già visionato o è scaduto
                 continue    # non lo mando
@@ -58,7 +57,7 @@ def manage_ogm_test(ogm_map, t):
             # Se il pacchetto è il mio ma mi è arrivato da qualqun altro
             if ogm.originator == node.name and ogm.sender != node.name:
                 continue    #non lo mando
-            
+
             # Se il pacchetto non l'ho generato io, lo salvo
             if ogm.originator != node.name and ogm.sender != node.name:
                 node.OGMs_History[ogm.id] = {"originator": ogm.originator, "sender": ogm.sender}
@@ -73,15 +72,22 @@ def manage_ogm_test(ogm_map, t):
                     node.ogm_table[ogm.originator][ogm.sender] = 0
                 node.ogm_table[ogm.originator][ogm.sender] += 1
                 
-                if not isinstance(node, Observer):  
-                    # $ Inizializzazione dizionario delle posizioni
-                    if ogm.originator not in node.OGMs_position:
+                #print("-"*10)
+                # $ Inizializzazione dizionario delle posizioni
+                if ogm.originator not in node.OGMs_position:
+                    #print(f"\t[{node.name}] get {ogm.id} | [orig:{ogm.originator} sender:{ogm.sender}] carico -> {ogm.origin_position_vect} ")
+                    node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect)
+                    #print(f"\tsaved! : {node.OGMs_position[ogm.originator]}")
+                else:
+                    # $ Controllo se aggiornare il valore 
+                    if ogm.sequence_number > node.OGMs_position[ogm.originator][0]:
+                        #print(f"\t[{node.name}] <- ({ogm.sequence_number},{ogm.origin_position_vect}) RECEIVED")
+                        #print(f"\t[{node.name}] : {node.OGMs_position[ogm.originator]} (old)")
                         node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect)
-                    else:
-                        # $ Controllo se aggiornare il valore 
-                        if ogm.sequence_number > node.OGMs_position[ogm.originator][0]:
-                            node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect)
-            
+                        #print(f"\t[{node.name}] Aggiornato: {node.OGMs_position[ogm.originator]} (new)")
+                #print("-"*10)
+  
+
             # ! Fase di redistribuzione
             if type(node) == Observer:
                 # Sto analizzando un Observer
@@ -103,7 +109,7 @@ def manage_ogm_test(ogm_map, t):
                             neighbor.OGMs_NP.append(ogm.clone_for_forwarding(node.name))
         node.OGMs = []
 
-        print_progress_bar(i, total)
+        #print_progress_bar(i, total)
 
 
     # ! OGMs_NP -> OGMs
@@ -130,6 +136,9 @@ def manage_ogm_test(ogm_map, t):
                     if len(obj.ogm_table[value_ogm_dict['originator']]) == 0:
                         del obj.ogm_table[value_ogm_dict['originator']]
 
+
+
+
     # ! Salvataggio informazioni table
     ogm_tables_snapshot = {
         satellite.name: satellite.ogm_table
@@ -143,6 +152,14 @@ def manage_ogm_test(ogm_map, t):
         for satellite in ogm_map
         if not isinstance(satellite, Observer)
     }
+
+
+    print("Checking Position Vectors")
+    for n, v in ogm_position_dict.items():
+        print(f"{n} : {len(v)}")
+        if not v:
+            print(f"{n} ha un dizionario delle posizioni vuoto!")
+            
 
     return ogm_tables_snapshot, ogm_position_dict
 
@@ -201,7 +218,7 @@ def create_ogm(obj, origin_position_vect):
         originator = obj.name,
         sender = obj.name,
         origin_position_vect = origin_position_vect,
-        ttl = 10,
+        ttl = 15,
         sequence_number = obj.ogm_sequence
     )
 

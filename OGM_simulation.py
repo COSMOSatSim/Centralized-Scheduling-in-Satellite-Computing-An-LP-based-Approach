@@ -26,8 +26,8 @@ def process_OGM_enviroment_simulation():
     random.seed(config["seed"])
 
     env_ogm = simpy.Environment()  
-    simulation_duration = config['simulation_duration'] + 60    #Aggiungo 60 secondi (30 conf) di simulazione per il caricamento delle tabelle
-    #simulation_duration = config['simulation_duration']
+    #simulation_duration = config['simulation_duration'] + 60    #Aggiungo 60 secondi (30 conf) di simulazione per il caricamento delle tabelle
+    simulation_duration = config['simulation_duration']
     
     globals.observer = Observer(env_ogm, getObserverObj())  # Singleton Observer
     globals.edge_servers, globals.global_access_point = loadConfiguration(env_ogm)
@@ -73,4 +73,4 @@ def remove_first_30_configurations():
 
 if __name__ == "__main__":
     process_OGM_enviroment_simulation() # 40 minuti
-    remove_first_30_configurations()
+    #remove_first_30_configurations()
