@@ -5,7 +5,7 @@ from skyfield.api import EarthSatellite, load
 from EdgeServer import EdgeServer
 from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
-from routing_Manager import print_dict, manage_ogm_test, saveInConfigurations
+from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
 import globals 
 
 
@@ -184,7 +184,6 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
         data = {
             "time": t.utc_datetime().isoformat(),  # Current time in ISO format
-            "OGMs_Tables" : {},
             "configuration": configuration  # List of satellite configurations
         }
         configs.append(data)  # Append the configuration to the list
@@ -218,26 +217,25 @@ def build_EdgeServer_from_config(env, configuration):
         line2 = sat_info["TLE-DATA"][0]["line2"]
         life = sat_info["life"]["time_until_set_seconds"]
         acc_point = sat_info["is_access_point"]
-        OGMs_Table = sat_info["OGM_Table"]
+
+        # ! Modifica Qui
+
+        #OGMs_Table = sat_info["OGM_Table"]
         satellite_angle = sat_info["elev_angle"]
 
-
-        # print(f"OGMs_Table di {name}:\n")
-        # print_dict(OGMs_Table)
-        # print("^"*10)
 
 
         if acc_point:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
-            edge_server.ogm_table = OGMs_Table
+            #edge_server.ogm_table = OGMs_Table
             tmp_ES.append(edge_server)
             list_acc_point.append(edge_server.name)
             
         else:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
-            edge_server.ogm_table = OGMs_Table
+            #edge_server.ogm_table = OGMs_Table
             tmp_ES.append(edge_server)
         
     return tmp_ES, neighbors_SAT, list_acc_point
@@ -281,21 +279,21 @@ def distribute_ogm(env):
             ogm_map = [globals.observer] + globals.edge_servers_topology   
         
         print("\tOGMS REDISTRIBUTION")
-        ogm_table_snapshot, ogm_position_dict = manage_ogm_test(ogm_map, globals.instant_in_configuration)
+        ogm_table_snapshot, position_dict = manage_ogm_test(ogm_map, globals.instant_in_configuration)
 
 
-
-
-        print("Salvataggio SnapShot")
-        saveInConfigurations(ogm_table_snapshot, ogm_position_dict)
-
-
-
+        # $ Fase di Salvataggio 
+        saveInfoInFile('data/OGMs_table.json', ogm_table_snapshot, globals.config_index)
+        saveInfoInFile('data/positions_vectors.json', position_dict, globals.config_index)
+        #saveOGMsRedistribution(ogm_table_snapshot)
+        #savePositionVector(position_dict)
+        print("Salvataggio SnapShot Completato")
 
 
         print(f"||CONF({globals.config_index}) TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
 
+        # $ Caricamento Configurazione Successiva
         globals.config_index += 1   
         new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
         

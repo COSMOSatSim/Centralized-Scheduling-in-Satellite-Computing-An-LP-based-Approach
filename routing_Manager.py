@@ -163,18 +163,22 @@ def manage_ogm_test(ogm_map, t):
 
     return ogm_tables_snapshot, ogm_position_dict
 
+def saveInfoInFile(file ,value_dictionary, N_config):
+    
+    try:
+        with open(file, "r") as f:
+            print("Position Vectors file loaded.\n")
+            data = json.load(f)
+    
+    except Exception as e:
+        print(f"Error loading configuration file: {e}")
+    
+    # Scrivo la nuova configurazione
+    data[N_config] = value_dictionary
 
-def saveInConfigurations(ogm_tables_snapshot, ogm_position_dict):
-    for satellite_dict in data_configurations["configurations"][globals.config_index]["configuration"]:
-        #print(f"CONF({globals.config_index}) E' presente {satellite_dict["satellite"]} dentro la ogm_tables_snapsho?")
-        try:
-            satellite_dict["OGM_Table"] = ogm_tables_snapshot[satellite_dict["satellite"]] 
-            satellite_dict["OGMs_Positions"] = ogm_position_dict[satellite_dict["satellite"]]
-        except Exception as e:
-            print("!"*20)
-            print(f"ERROR sat {satellite_dict["satellite"]} not found in OGM_tables!")
-            print(e)
-            sys.exit("CHIUSURA FORZATA")
+    with open(file, "w") as f:
+        json.dump(data, f, indent=4)
+
 
 
 def transmission_failure_probability(distance):

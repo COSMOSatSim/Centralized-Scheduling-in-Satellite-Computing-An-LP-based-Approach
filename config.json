@@ -6,8 +6,8 @@
   "arrival_time_exponential": 1.5,
   "Tmax_H": 400,
   "CPU_timeout": {
-    "min": 25,
-    "mean": 143.4496644295302,
+    "min": 6,
+    "mean": 135.27397260273972,
     "max": 176
   },
   "mode_name": "DTS-base",
