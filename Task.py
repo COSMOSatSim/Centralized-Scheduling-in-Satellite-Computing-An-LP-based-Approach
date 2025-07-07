@@ -4,7 +4,7 @@ class Task:
 
         
         self.id = task_id  
-        self.ttl = 10                           # Time to live
+        self.ttl = 30                           # Time to live
         self.hop = 0                            # num_hop
         self.arrived = False                    # Arrived Flag                                        
 

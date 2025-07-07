@@ -1,5 +1,6 @@
 import json
 import logging
+from math import sqrt
 import simpy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
@@ -74,9 +75,10 @@ class EdgeServer:
 
                 :return: None
                 '''
+        print(f"[{task_id}] Eseguito con Successo! Routing Start")
         task = Task(task_id, self.name, globals.observer.name)  # Creo la task
         self.tasks.append(task)
-
+        
         #exec_after_set = False # booleano che indica se il task è stato eseguito quando il satellite è tramontato
         if self.elev_angle < config["Phi_max"]:
             exec_after_set = True
@@ -167,15 +169,34 @@ class EdgeServer:
 
     def greedy_approach(self, task):
         # Prendo la destinazione
-        print(f"Satellite {self.name} Ogm position:\n")
-        print(self.OGMs_position)
-        print("OGMs Table:\n")
-        print(self.ogm_table)
-        print("vicini reali:\n", len(self.neighbors))
-        print(self.neighbors)
 
         destination_pos = self.OGMs_position[task.dest_node][1]
-        print(f"Destination: {destination_pos}")
+        print(f"Position of {task.dest_node} : {destination_pos}")
+        best_neighbor = None
+        best_distance = get_pos_proximity(destination_pos, self.getPositionVector(globals.instant_in_configuration))
+        print(f"my distance from OBS : {best_distance}")
+        
+        for name, numb in self.neighbors.items():                    # Per ogni vicino
+
+            d = get_pos_proximity(destination_pos, name.getPositionVector(globals.instant_in_configuration))
+            # Se la distanza è minima e il satellite non è stato visitato
+            if d < best_distance and name not in task.visited:
+                best_neighbor = name
+                best_distance = d
+        
+        
+        if best_neighbor:
+            print(f"Best Neighbors: {best_neighbor.name} Distance from OBS {best_distance}")
+            print(f"Sending Task to {best_neighbor.name}")
+            sendTask(task, self, best_neighbor)
+        else:
+            print("Non c'è nessun vicino che è più vicino di me?")
+            print(f"Miei vicini : {len(self.neighbors)}")
+            print(f"Sono un access Point? {self.is_acc_point}")
+            print("Vedo se uno dei miei vicini è un access point")
+            [print(f"{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
+            #sys.exit("BRO VEDI UN ATTIMO")
+
 
 
 
@@ -367,3 +388,19 @@ def find_OGM_intersection(ogm_table, neighbors, task):
             intersection.items(), key=lambda item: item[1])
 
     return max_neighbor, max_value
+
+
+def get_pos_proximity(pos1, pos2):
+    """
+    Calcola la distanza fra due punti in uno spazio tridimensionale
+    Args:
+        pos1: Vettore posizionale dell'obj1
+        pos2: Vettore posizionale dell'obj2
+    :return: lunghezza del segmento obj1 -> obj2
+    """
+    # Extraction of coordinate components
+    x1, y1, z1 = pos1
+    x2, y2, z2 = pos2
+
+    # Calculate the Euclidean distance
+    return sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)

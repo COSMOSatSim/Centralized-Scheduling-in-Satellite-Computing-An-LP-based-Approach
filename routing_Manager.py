@@ -5,6 +5,7 @@ from Ogm import Ogm
 from Observer import Observer
 import globals
 import sys
+import os
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -109,7 +110,7 @@ def manage_ogm_test(ogm_map, t):
                             neighbor.OGMs_NP.append(ogm.clone_for_forwarding(node.name))
         node.OGMs = []
 
-        #print_progress_bar(i, total)
+        print_progress_bar(i, total)
 
 
     # ! OGMs_NP -> OGMs
@@ -154,25 +155,26 @@ def manage_ogm_test(ogm_map, t):
     }
 
 
-    print("Checking Position Vectors")
-    for n, v in ogm_position_dict.items():
-        print(f"{n} : {len(v)}")
-        if not v:
-            print(f"{n} ha un dizionario delle posizioni vuoto!")
+    # print("Checking Position Vectors")
+    # for n, v in ogm_position_dict.items():
+    #     print(f"{n} : {len(v)}")
+    #     if not v:
+    #         print(f"{n} ha un dizionario delle posizioni vuoto!")
             
 
     return ogm_tables_snapshot, ogm_position_dict
 
 def saveInfoInFile(file ,value_dictionary, N_config):
     
+    
     try:
         with open(file, "r") as f:
-            print("Position Vectors file loaded.\n")
+            print("file loaded.\n")
             data = json.load(f)
-    
     except Exception as e:
         print(f"Error loading configuration file: {e}")
-    
+        data = {}
+
     # Scrivo la nuova configurazione
     data[N_config] = value_dictionary
 

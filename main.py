@@ -120,8 +120,8 @@ if __name__ == "__main__":
     env.run(config['simulation_duration'])
 
 
-    print(f"A FINE SIMULAZIONE OBSERVER REGISTRA {len(globals.observer.tasks)} ")
-
+    print(f"A FINE SIMULAZIONE OBSERVER REGISTRA {len(globals.observer.tasks)} :")
+    [print(task.id) for task in globals.observer.tasks]
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:

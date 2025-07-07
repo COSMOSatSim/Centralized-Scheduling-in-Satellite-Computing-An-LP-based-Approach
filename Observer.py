@@ -56,7 +56,7 @@ class Observer(metaclass = ObserverMeta):
         della posizione dell'observer proiettato nello spazio.
         """
 
-        return self.getLocation().at(t).position.km.tolist()
+        return self.getLocation(altitude = 0).at(t).position.km.tolist()
 
 # ob1 = Observer(1)
 # ob2 = Observer(2)

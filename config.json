@@ -6,8 +6,8 @@
   "arrival_time_exponential": 1.5,
   "Tmax_H": 400,
   "CPU_timeout": {
-    "min": 6,
-    "mean": 135.27397260273972,
+    "min": 13,
+    "mean": 142.71186440677965,
     "max": 176
   },
   "mode_name": "DTS-base",
@@ -49,7 +49,7 @@
     "distribution": "20_0_80"
   },
   "csv_name": {
-    "name": "OrbitAware Utility-sim_SystemAP5/seed_13/results_20_0_80_exponential_REQ-OrbitAware Utility_AT_1.5_CPU_143.4496644295302.csv"
+    "name": "OrbitAware Utility-sim_SystemAP5/seed_13/results_20_0_80_exponential_REQ-OrbitAware Utility_AT_1.5_CPU_142.71186440677965.csv"
   },
   "simulation_location": "Roma",
   "locations": {
@@ -71,7 +71,7 @@
   "Build_Configurations": false,
   "Load_Configuration": true,
   "Interval_between_Configurations_in_seconds": 2,
-  "Number_of_Configurations": 30,
+  "Number_of_Configurations": 60,
   "Interval_future_event_prediction": 15,
   "Interval_past_event_prediction": 10,
   "OGMs_EPOCH": 10,
