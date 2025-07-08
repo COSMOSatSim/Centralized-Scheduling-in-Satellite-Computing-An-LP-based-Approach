@@ -68,9 +68,6 @@ if __name__ == "__main__":
     globals.other_server_counter = {
         server.name: 0 for server in globals.edge_servers}
 
-    env.process(generate_tasks(env, globals.initial_server_counter,
-                globals.different_server_counter, globals.other_server_counter))
-
     # 4) Avvia la generazione dei task
     env.process(generate_tasks(
         env,

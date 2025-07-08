@@ -3,6 +3,7 @@ import random
 import logging
 import experiments
 import globals
+from SECMotionModel.Task import Task
 
 hop = 0  # Inizializza la variabile hop a zero
 
@@ -84,23 +85,35 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
               f"Service time: {service_time:.2f}")'''
 
         priority_mapping = {100: "low", 1: "high"}
+
         task_p = priority_mapping.get(task_priority, "NaN")
+
         if task_p == "low":
 
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(low_priority_tasks),
                                            original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,  TMAX_exceeded=False, exec_after_set = False )
+            print(f"Task {task_id} Eseguito con Successo! Routing Start")
+            task_POPPO = Task(task_id, selected_server.name, 'OBS')  # Creo la task
+            selected_server.tasks.append(task_POPPO)
+
         elif task_p == "high":
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(higher_priority_tasks),
                                            original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value, TMAX_exceeded=False, exec_after_set = False)
+            print(f"Task {task_id} Eseguito con Successo! Routing Start")
+            task_POPPO = Task(task_id, selected_server.name, 'OBS')  # Creo la task
+            selected_server.tasks.append(task_POPPO)
+
         else:
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,
                                            TMAX_exceeded=False, exec_after_set = False )
+
+
 
         # Rimuovi il task completato dalla coda
         if task in selected_server.server_queue:

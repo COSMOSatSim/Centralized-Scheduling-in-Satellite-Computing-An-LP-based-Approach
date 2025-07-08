@@ -62,8 +62,8 @@ def remove_first_30_configurations(conf_to_rem = 30):
     data["t0"] = config_list[0]["time"]
     data["total_seconds"] = config['simulation_duration']
     
-    print(f"total_second: {data["total_seconds"]} <= {config['simulation_duration']}")
-    print(f"tempo {data["t0"]} configList tempo {config_list[0]["time"]}")
+    print(f"total_second: {data['total_seconds']} <= {config['simulation_duration']}")
+    print(f"tempo {data['t0']} configList tempo {config_list[0]['time']}")
     
     with open("data/configurations.json", "w") as f:
         json.dump(data, f, indent=4)

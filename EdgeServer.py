@@ -75,9 +75,7 @@ class EdgeServer:
 
                 :return: None
                 '''
-        print(f"[{task_id}] Eseguito con Successo! Routing Start")
-        task = Task(task_id, self.name, globals.observer.name)  # Creo la task
-        self.tasks.append(task)
+
         
         #exec_after_set = False # booleano che indica se il task è stato eseguito quando il satellite è tramontato
         if self.elev_angle < config["Phi_max"]:
