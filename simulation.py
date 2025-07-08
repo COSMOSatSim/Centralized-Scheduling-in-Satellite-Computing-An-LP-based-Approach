@@ -86,6 +86,10 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
 
         priority_mapping = {100: "low", 1: "high"}
 
+        print(f"Task {task_id} Eseguito con Successo! Routing Start")
+        task_OBS = Task(task_id, selected_server.name, 'OBS')  # Creo la task
+        selected_server.tasks.append(task_OBS)
+
         task_p = priority_mapping.get(task_priority, "NaN")
 
         if task_p == "low":
@@ -94,18 +98,14 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(low_priority_tasks),
                                            original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,  TMAX_exceeded=False, exec_after_set = False )
-            print(f"Task {task_id} Eseguito con Successo! Routing Start")
-            task_POPPO = Task(task_id, selected_server.name, 'OBS')  # Creo la task
-            selected_server.tasks.append(task_POPPO)
+
 
         elif task_p == "high":
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(higher_priority_tasks),
                                            original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value, TMAX_exceeded=False, exec_after_set = False)
-            print(f"Task {task_id} Eseguito con Successo! Routing Start")
-            task_POPPO = Task(task_id, selected_server.name, 'OBS')  # Creo la task
-            selected_server.tasks.append(task_POPPO)
+
 
         else:
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
