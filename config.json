@@ -6,8 +6,8 @@
   "arrival_time_exponential": 1.5,
   "Tmax_H": 400,
   "CPU_timeout": {
-    "min": 13,
-    "mean": 142.71186440677965,
+    "min": 14,
+    "mean": 141.54430379746836,
     "max": 176
   },
   "mode_name": "DTS-base",
@@ -68,7 +68,7 @@
   "Phi_max": 40,
   "Phi_buffer": 15,
   "Laser_Communication_Range": 659,
-  "Build_Configurations": false,
+  "Build_Configurations": true,
   "Load_Configuration": true,
   "Interval_between_Configurations_in_seconds": 2,
   "Number_of_Configurations": 60,

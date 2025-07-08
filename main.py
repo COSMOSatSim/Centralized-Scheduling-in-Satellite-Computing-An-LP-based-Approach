@@ -10,6 +10,7 @@ from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
 from  Observer import Observer
+from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
 import globals
 
 
@@ -39,6 +40,10 @@ if __name__ == "__main__":
         config["CPU_timeout"]["mean"] = T_avg + 2.0
         with open('config.json', 'w') as wf:
             json.dump(config, wf, indent=2)
+
+        # process_OGM_enviroment_simulation() 
+        # remove_first_30_configurations()
+        
         sys.exit("File of configurations created")
 
     # 2) Caricamento o creazione topologia
