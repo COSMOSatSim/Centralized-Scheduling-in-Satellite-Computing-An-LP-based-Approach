@@ -40,9 +40,6 @@ if __name__ == "__main__":
         config["CPU_timeout"]["mean"] = T_avg + 2.0
         with open('config.json', 'w') as wf:
             json.dump(config, wf, indent=2)
-
-        # process_OGM_enviroment_simulation() 
-        # remove_first_30_configurations()
         
         sys.exit("File of configurations created")
 
@@ -123,7 +120,7 @@ if __name__ == "__main__":
 
 
     print(f"A FINE SIMULAZIONE OBSERVER REGISTRA {len(globals.observer.tasks)} :")
-    [print(task.id) for task in globals.observer.tasks]
+    [print(f"{task.id} byte: {task.weight} resolution : {task.resolution}") for task in globals.observer.tasks]
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:

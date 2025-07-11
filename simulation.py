@@ -3,7 +3,7 @@ import random
 import logging
 import experiments
 import globals
-from SECMotionModel.Task import Task
+from Task import Task
 
 hop = 0  # Inizializza la variabile hop a zero
 
@@ -85,7 +85,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
               f"Service time: {service_time:.2f}")'''
 
         priority_mapping = {100: "low", 1: "high"}
-
+        
         print(f"Task {task_id} Eseguito con Successo! Routing Start")
         task_OBS = Task(task_id, selected_server.name, 'OBS')  # Creo la task
         selected_server.tasks.append(task_OBS)

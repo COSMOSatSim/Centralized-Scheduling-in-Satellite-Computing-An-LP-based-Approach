@@ -169,7 +169,7 @@ def saveInfoInFile(file ,value_dictionary, N_config):
     
     try:
         with open(file, "r") as f:
-            print("file loaded.\n")
+            print(f"file {file} loaded.\n")
             data = json.load(f)
     except Exception as e:
         print(f"Error loading configuration file: {e}")
