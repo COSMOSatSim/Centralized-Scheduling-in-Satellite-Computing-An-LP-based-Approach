@@ -240,7 +240,7 @@ def periodic_recall_Routing_monitor(env, interval = 1):
     """
     while True:
         for node in globals.edge_servers:
-            node.forward_packet()    # Eseguiamo il forwarding
+            yield from node.forward_packet(env)    # Eseguiamo il forwarding
         yield env.timeout(interval)
 
 

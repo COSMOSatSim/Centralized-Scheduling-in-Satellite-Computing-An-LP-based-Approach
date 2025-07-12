@@ -165,7 +165,7 @@ class EdgeServer:
 
         return getSystemFromSat(self.satellite, t, True).position.km.tolist()
 
-    def greedy_approach(self, task):
+    def greedy_approach(self, env, task):
         # Prendo la destinazione
 
         destination_pos = self.OGMs_position[task.dest_node][1]
@@ -186,7 +186,7 @@ class EdgeServer:
         if best_neighbor:
             print(f"Best Neighbors: {best_neighbor.name} Distance from OBS {best_distance}")
             print(f"Sending Task to {best_neighbor.name}")
-            sendTask(task, self, best_neighbor)
+            yield from sendTask(env, task, self, best_neighbor)
         else:
             print("Non c'è nessun vicino che è più vicino di me?")
             print(f"Miei vicini : {len(self.neighbors)}")
@@ -198,13 +198,14 @@ class EdgeServer:
 
 
 
-    def forward_packet(self):
+    def forward_packet(self, env):
         for task in self.tasks:
 
             if not task.arrived:
                 
                 if self.is_acc_point:
-                    sendTask(task, self, globals.observer)
+                    print(f"recevier : {globals.observer.name}")
+                    yield from sendTask(env, task, self, globals.observer)
                     print(f"[{task.id}] Arrivato a Destinazione!")
                 else:
                     # Controllo intersezione
@@ -212,11 +213,11 @@ class EdgeServer:
                     if max_neighbor:
                         print(f"[{task.id}] BATMAN {self.name} -> {max_neighbor.name}")
                         # Applico il Batman mandando il task
-                        sendTask(task, self, max_neighbor)
+                        yield from sendTask(env, task, self, max_neighbor)
                     else:   
                         # Applico algoritmo test  
                         print(f"[{task.id}] Greedy approach {self.name}")
-                        self.greedy_approach(task)
+                        yield from self.greedy_approach(env, task)
 
                         #sys.exit("Bro controlla")
                          
@@ -302,7 +303,7 @@ class EdgeServer:
 
 
 
-def sendTask(task, sender, receiver):
+def sendTask(env, task, sender, receiver):
 
     """
     Transfers a task from a sender satellite to a receiver satellite, updating its state and attributes.
@@ -328,7 +329,17 @@ def sendTask(task, sender, receiver):
         implement the required attributes and methods.
     """
     if task.ttl > 0:
-        
+        trasmission_time = 0
+        if receiver.name != 'OBS':
+            # Gestione dell'attesa nell'env
+            bandwidth = sender.bandwidth[receiver]  # Bandwidht in bit
+            task_weight = task.weight * 8           # Peso in bit (Byte * 8)
+            latency = sender.latency[receiver]
+            trasmission_time = (task_weight/bandwidth) + latency
+
+            print(f"[{task.id}] Banda: {bandwidth}(b/s) weight-Task ({task.resolution}): {task.weight}(B) latency: {latency}(s) tramsission-time: {trasmission_time}(s)")
+        yield env.timeout(trasmission_time)
+
         task.hop += 1
         task.ttl -= 1   
 
@@ -336,6 +347,7 @@ def sendTask(task, sender, receiver):
         sender.tasks.remove(task)
         # Inviamo il task al Receiver
         receiver.tasks.append(task)
+        print(f"{sender.name} -> {receiver.name} : tasks {receiver.tasks}")
         # Modifichiamo le informazioni sul task
         task.current_server = receiver.name
 
@@ -345,6 +357,9 @@ def sendTask(task, sender, receiver):
 
         task.hop_History.append(receiver.name)     # Aggiorno la History
         task.visited.add(receiver.name)            # Aggiorno i visitati
+
+        
+
     else:
         # Rimuoviamo il task
         print(f"[{task.id}] RIMOZIONE TASK DA {sender.name}, TTL finito")
