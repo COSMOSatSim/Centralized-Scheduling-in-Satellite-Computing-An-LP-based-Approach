@@ -155,7 +155,7 @@ class EdgeServer:
 
     
     def __str__(self):
-        return f"Satellite :{self.name} neighbor:({len(self.neighbors)})\n"
+        return f"Satellite :{self.name}\n\telev:{self.elev_angle}\n\tis_AP:{self.is_acc_point}"
 
     def getPositionVector(self, t):
         """
@@ -194,33 +194,39 @@ class EdgeServer:
             print("Vedo se uno dei miei vicini è un access point")
             [print(f"{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
             #sys.exit("BRO VEDI UN ATTIMO")
-
-
+        
 
 
     def forward_packet(self, env):
         for task in self.tasks:
 
             if not task.arrived:
-                
-                if self.is_acc_point:
-                    print(f"recevier : {globals.observer.name}")
-                    yield from sendTask(env, task, self, globals.observer)
-                    print(f"[{task.id}] Arrivato a Destinazione!")
+                if config["AP_routing_bidirectional"]:
+                    # Bidirezionale, mandiamo il task verso gli access Point
+                    if self.is_acc_point:
+                        print(f"[MODE: BIDIRECTIONAL] {self.name} DELIVER Task {task.id} to OBS.")
+                        print(self)
+                        yield from sendTask(env, task, self, globals.observer)
+                        continue
                 else:
-                    # Controllo intersezione
-                    max_neighbor, max_value = find_OGM_intersection(self.ogm_table[task.dest_node], self.neighbors, task)
-                    if max_neighbor:
-                        print(f"[{task.id}] BATMAN {self.name} -> {max_neighbor.name}")
-                        # Applico il Batman mandando il task
-                        yield from sendTask(env, task, self, max_neighbor)
-                    else:   
-                        # Applico algoritmo test  
-                        print(f"[{task.id}] Greedy approach {self.name}")
-                        yield from self.greedy_approach(env, task)
+                    # Controllo che il satellite sia nella Dome
+                    if self.elev_angle >= 40:
+                        print(f"[MODE: UNIDIRECTIONAL] {self.name} DELIVER Task {task.id} to OBS.")
+                        print(self)
+                        yield from sendTask(env, task, self, globals.observer)
+                        continue
 
-                        #sys.exit("Bro controlla")
-                         
+                # $ Applico il Routing
+                # Controllo intersezione
+                max_neighbor, max_value = find_OGM_intersection(self.ogm_table[task.dest_node], self.neighbors, task)
+                if max_neighbor:
+                    print(f"[{task.id}] BATMAN {self.name} -> {max_neighbor.name}")
+                    # Applico il Batman mandando il task
+                    yield from sendTask(env, task, self, max_neighbor)
+                else:   
+                    # Applico algoritmo test  
+                    print(f"[{task.id}] Greedy approach {self.name}")
+                    yield from self.greedy_approach(env, task)
 
     def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
         '''
@@ -347,7 +353,7 @@ def sendTask(env, task, sender, receiver):
         sender.tasks.remove(task)
         # Inviamo il task al Receiver
         receiver.tasks.append(task)
-        print(f"{sender.name} -> {receiver.name} : tasks {receiver.tasks}")
+        print(f"{sender.name} -> {receiver.name}")
         # Modifichiamo le informazioni sul task
         task.current_server = receiver.name
 

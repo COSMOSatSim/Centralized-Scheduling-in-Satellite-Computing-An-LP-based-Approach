@@ -87,7 +87,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
         priority_mapping = {100: "low", 1: "high"}
         
         print(f"Task {task_id} Eseguito con Successo! Routing Start")
-        task_OBS = Task(task_id, selected_server.name, 'OBS')  # Creo la task
+        task_OBS = Task(task_id, selected_server.name, 'OBS', env.now())  # Creo la task
         selected_server.tasks.append(task_OBS)
 
         task_p = priority_mapping.get(task_priority, "NaN")

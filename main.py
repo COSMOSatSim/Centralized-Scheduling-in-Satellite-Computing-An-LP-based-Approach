@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
 
     print(f"A FINE SIMULAZIONE OBSERVER REGISTRA {len(globals.observer.tasks)} :")
-    [print(f"{task.id} byte: {task.weight} resolution : {task.resolution}") for task in globals.observer.tasks]
+    [print(f"{task.id} byte: {task.weight} resolution : {task.resolution} start Time:{task.routingInitTime}") for task in globals.observer.tasks]
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:

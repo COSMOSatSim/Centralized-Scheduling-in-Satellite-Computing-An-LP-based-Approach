@@ -94,5 +94,6 @@
   "Interval_past_event_prediction": 10,
   "OGMs_EPOCH": 10,
   "OGMs_Interval_seconds": 2,
-  "sphere_altitude_km": 500000.0
+  "sphere_altitude_km": 500000.0,
+  "AP_routing_bidirectional": false
 }

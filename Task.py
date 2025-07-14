@@ -5,12 +5,14 @@ with open('config.json') as config_file:
 
 class Task:
 
-    def __init__(self, task_id: int, current_node: str, dest_node: str):
+    def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime):
 
         self.id = task_id  
         self.ttl = 30                           # Time to live
         self.hop = 0                            # num_hop
         self.arrived = False                    # Arrived Flag                                        
+        self.routingInitTime = routingInitTime  # Tempo di partenza
+        self.routingEndTime = None              # Tempo di fine
 
         # Scegli una risoluzione casuale tra quelle disponibili
         resolution_key = random.choice(list(config["Resolution"].keys()))
