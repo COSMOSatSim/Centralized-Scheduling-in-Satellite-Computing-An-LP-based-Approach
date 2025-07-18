@@ -64,24 +64,6 @@
       "alt": 0
     }
   },
-  "Resolution": {
-    "Low": {
-      "min": 10000,
-      "max": 88000
-    },
-    "Medium": {
-      "min": 89000,
-      "max": 2200000
-    },
-    "High": {
-      "min": 230000,
-      "max": 24200000
-    },
-    "Very High": {
-      "min": 24300000,
-      "max": 135500000
-    }
-  },
   "LEO_orbit": 300,
   "Phi_max": 40,
   "Phi_buffer": 15,
@@ -95,5 +77,10 @@
   "OGMs_EPOCH": 10,
   "OGMs_Interval_seconds": 2,
   "sphere_altitude_km": 500000.0,
-  "AP_routing_bidirectional": false
+  "AP_routing_bidirectional": false,
+  "Routing_algorithm": {
+    "BATMAN": false,
+    "Greedy": true,
+    "Dinamico": false
+  }
 }

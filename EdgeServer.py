@@ -194,8 +194,12 @@ class EdgeServer:
             print("Vedo se uno dei miei vicini è un access point")
             [print(f"{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
             #sys.exit("BRO VEDI UN ATTIMO")
-        
-
+    
+    def deliver_to_Observer(self, env, mode, task):
+        print(f"[MODE: {mode}] {self.name} DELIVER Task {task.id} to OBS.")
+        task.routingEndTime = env.now
+        yield from sendTask(env, task, self, globals.observer)
+        print(f"[{task.id}] Consegnato all'OBS.")
 
     def forward_packet(self, env):
         for task in self.tasks:
@@ -204,16 +208,12 @@ class EdgeServer:
                 if config["AP_routing_bidirectional"]:
                     # Bidirezionale, mandiamo il task verso gli access Point
                     if self.is_acc_point:
-                        print(f"[MODE: BIDIRECTIONAL] {self.name} DELIVER Task {task.id} to OBS.")
-                        print(self)
-                        yield from sendTask(env, task, self, globals.observer)
+                        yield from self.deliver_to_Observer(env, 'BIDIRECTIONAL', task)
                         continue
                 else:
                     # Controllo che il satellite sia nella Dome
                     if self.elev_angle >= 40:
-                        print(f"[MODE: UNIDIRECTIONAL] {self.name} DELIVER Task {task.id} to OBS.")
-                        print(self)
-                        yield from sendTask(env, task, self, globals.observer)
+                        yield from self.deliver_to_Observer(env, 'MONODIRECTIONAL', task)
                         continue
 
                 # $ Applico il Routing

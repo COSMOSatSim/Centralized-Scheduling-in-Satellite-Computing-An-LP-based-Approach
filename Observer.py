@@ -4,6 +4,7 @@ from skyfield.api import wgs84
 import globals
 import sys
 import json
+from Task import byte_to_dim 
 
 # Leggi il file di configurazione JSON
 with open('config.json') as config_file:
@@ -57,21 +58,15 @@ class Observer(metaclass = ObserverMeta):
         """
 
         return self.getLocation(altitude = 0).at(t).position.km.tolist()
-
-# ob1 = Observer(1)
-# ob2 = Observer(2)
-
-# print(f"{ob1.position} - {ob2.position}")
-# print(f"type: {type(ob1)}")
-# if id(ob1) == id(ob2):
-#     print("So uguali")
-# else:
-#     print("so diversi")
-
-# # Controllo se ob1 è di tipo Observer
-# if type(ob1) == Observer:
-#     print("ob1 è di tipo <class '__main__.Observer'>")
-# else:
-#     print("ob1 NON è di tipo <class '__main__.Observer'>")
+    
+    def print_task_summary(self):
+        """
+        Stampa un riassunto formattato dei task arrivati con successo all'Observer
+        """
+        print(f"TASK ARRIVATI CON SUCCESSO ALL'OBS: {len(self.tasks)}:\n")
+        print(" id     | weight        | resolution    | Start Routing (s) | End Routing (s) | duration      |")
+        for task in self.tasks:
+            print(f" {task.id:<6} | {byte_to_dim(task.weight):<13} | {task.resolution:<13} | {round(task.routingInitTime, 2):<17} | {round(task.routingEndTime, 2):<15} | {round(task.routingEndTime - task.routingInitTime, 2):<13}")
+        print()  # Riga vuota alla fine per separare dall'output successivo
 
 

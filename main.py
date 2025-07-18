@@ -118,9 +118,8 @@ if __name__ == "__main__":
     # 6) Esecuzione simulazione
     env.run(config['simulation_duration'])
 
-
-    print(f"A FINE SIMULAZIONE OBSERVER REGISTRA {len(globals.observer.tasks)} :")
-    [print(f"{task.id} byte: {task.weight} resolution : {task.resolution} start Time:{task.routingInitTime}") for task in globals.observer.tasks]
+    # Stampa il riassunto dei task usando la funzione dell'Observer
+    globals.observer.print_task_summary()
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:

@@ -3,7 +3,7 @@ import random
 import logging
 import experiments
 import globals
-from Task import Task
+from Task import Task, assign_resolution
 
 hop = 0  # Inizializza la variabile hop a zero
 
@@ -86,8 +86,10 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
 
         priority_mapping = {100: "low", 1: "high"}
         
+        # Prendiamo le informazioni fondamentali
         print(f"Task {task_id} Eseguito con Successo! Routing Start")
-        task_OBS = Task(task_id, selected_server.name, 'OBS', env.now())  # Creo la task
+        category, resolution = assign_resolution(required_ram, required_disk)
+        task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)  # Creo la task
         selected_server.tasks.append(task_OBS)
 
         task_p = priority_mapping.get(task_priority, "NaN")
