@@ -35,8 +35,8 @@
     "max": 1000
   },
   "available_bandwidth": {
-    "min": 100000000,
-    "max": 100000000
+    "min": 10000,
+    "max": 10000
   },
   "restart_time": {
     "min": 0.1,
@@ -76,7 +76,7 @@
   "Interval_past_event_prediction": 10,
   "OGMs_redistribution": 20,
   "sphere_altitude_km": 500000.0,
-  "AP_routing_bidirectional": true,
+  "AP_routing_bidirectional": false,
   "Routing_algorithm": {
     "BATMAN": false,
     "Greedy": true,

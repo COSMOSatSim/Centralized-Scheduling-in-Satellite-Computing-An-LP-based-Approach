@@ -167,6 +167,7 @@ class EdgeServer:
 
 
     def greedy_approach_test(self, env, task):
+        # ! Possiamo eliminarlo forse
         
         destination_pos = self.OGMs_position[task.dest_node][1] # Posizione della destinazione
         best_neighbor, best_distance = None, get_pos_proximity(destination_pos, self.getPositionVector(globals.instant_in_configuration))
@@ -210,21 +211,16 @@ class EdgeServer:
                 dist = get_pos_proximity(destination_pos, ogm_data[1])
                 ## t = (name, vect, dist_from_dest, isAP)
                 t = (server, ogm_data[1], dist, ogm_data[2])
-                print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}")
                 ranked_neighbors.append(t)
             else:
                 continue
         ranked_neighbors.sort(key=lambda x: (not x[3], x[2]))
-        
-        if ranked_neighbors:
-            best_tuple = ranked_neighbors[0]
-            if best_tuple[3]:
-                # Lo mandiamo direttamente ad un AP   
-                print(f"Sending Task to one of the Access Point :{best_tuple[0].name}")
-            else:
-                print(f"Sending Task to {best_tuple[0].name}")
 
+        [print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}") for t in ranked_neighbors]
+        if ranked_neighbors:
+            best_tuple = ranked_neighbors[0]    # Prendo la miglior tupla
             yield from sendTask(env, task, self, best_tuple[0])
+            
         else:
             print("Non c'è nessun Vicino al quale mandare il Task")
 
@@ -241,12 +237,14 @@ class EdgeServer:
 
 
     def deliver_to_Observer(self, env, mode, task):
-        print(f"[MODE: {mode}] {self.name} DELIVER Task {task.id} to OBS.")
+        print(f"[MODE: {mode}]")
         task.routingEndTime = env.now
         yield from sendTask(env, task, self, globals.observer)
-        print(f"[{task.id}] Consegnato all'OBS.")
+        
 
     def forward_packet(self, env):
+        #! SUCCEDE UNA COSA STRANA, LO STESSO PACCHETTO È CONSEGNATO DUE VOLTE
+        # !SIA DALLA PARTE INIZIALE CHE DALLA PARTE FINALE DELL'ALGORITMO  
         for task in self.tasks:
 
             if not task.arrived:
@@ -265,12 +263,9 @@ class EdgeServer:
                 max_neighbor, max_value = find_OGM_intersection(self.ogm_table[task.dest_node], self.neighbors, task)
                 if max_neighbor:
                     # ! BATMAN 
-                    print(f"[{task.id}] BATMAN {self.name} -> {max_neighbor.name}")
-                    # Applico il Batman mandando il task
                     yield from sendTask(env, task, self, max_neighbor)
                 else:  
                     # ! Greedy  
-                    print(f"[{task.id}] Greedy approach {self.name}")
                     yield from self.greedy_approach(env, task)
 
     def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
@@ -352,7 +347,9 @@ class EdgeServer:
             self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time #+ sunset_penalty
 
 
-
+def getTransmissionTime(bandwidht, weight, latency):
+    return (weight/bandwidht) + latency
+     
 
 def sendTask(env, task, sender, receiver):
 
@@ -380,15 +377,16 @@ def sendTask(env, task, sender, receiver):
         implement the required attributes and methods.
     """
     if task.ttl > 0:
-        trasmission_time = 0
+        # Gestione dell'attesa nell'env
         if receiver.name != 'OBS':
-            # Gestione dell'attesa nell'env
-            bandwidth = sender.bandwidth[receiver]  # Bandwidht in bit
-            task_weight = task.weight * 8           # Peso in bit (Byte * 8)
-            latency = sender.latency[receiver]
-            trasmission_time = (task_weight/bandwidth) + latency
+            bandwidth = sender.bandwidth[receiver] * (1024**2)  # da MB/s a Byte/s
+            trasmission_time = getTransmissionTime(bandwidth, task.weight, sender.latency[receiver])
+            print(f"[{task.id}] {sender.name} -> {receiver.name} | Tramission-time: {trasmission_time}")
+        else:
+            bandwidth = 10000 * (1024**2)  # da MB/s a Byte/s
+            trasmission_time = getTransmissionTime(bandwidth, task.weight, 0)
+            print(f"[{task.id}] CONSEGNATO! {sender.name} -> {receiver.name} | Tramission-time: {trasmission_time}")
 
-            print(f"[{task.id}] Banda: {bandwidth}(b/s) weight-Task ({task.resolution}): {task.weight}(B) latency: {latency}(s) tramsission-time: {trasmission_time}(s)")
         yield env.timeout(trasmission_time)
 
         task.hop += 1

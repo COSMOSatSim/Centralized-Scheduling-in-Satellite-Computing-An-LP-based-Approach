@@ -63,7 +63,7 @@ def assign_resolution(required_ram, required_disk):
     min_byte = dim_to_Byte(min_value["dim"], min_value["value"])
     max_byte = dim_to_Byte(max_value["dim"], max_value["value"])
 
-    resolution_value = random.randint(min_byte, max_byte)
+    resolution_value = random.randint(min_byte, max_byte)   # Valore di Ritorno in Byte
     return category, resolution_value
 
 def dim_to_Byte(dim, value):
