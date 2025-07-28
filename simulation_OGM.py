@@ -29,9 +29,8 @@ def process_OGM_enviroment_simulation():
     simulation_duration = config['simulation_duration'] + 60    #Aggiungo 60 secondi (30 conf) di simulazione per il caricamento delle tabelle
     #simulation_duration = config['simulation_duration']
     
+
     globals.observer = Observer(env_ogm, getObserverObj())  # Singleton Observer
-    #globals.edge_servers, globals.global_access_point = loadConfiguration(env_ogm)
-    #globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env_ogm)
     env_ogm.process(distribute_ogm(env_ogm))    # ! Processo di redistribuzione
 
     start_time = time.time()

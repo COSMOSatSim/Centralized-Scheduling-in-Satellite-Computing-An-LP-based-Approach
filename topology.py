@@ -267,13 +267,14 @@ def periodic_recall_Topology_monitor(env):
 
 def distribute_ogm(env):
     while True:
+
+
         print(f"||CONF({globals.config_index}) TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
 
         new_edge_servers, new_global_access_point = loadConfiguration_simple(env)  # Carica la configurazione
         
         print("CONFIGURAZIONE MODIFICATA!")
-        
         # Aggiorno le Globali
         with lock:
             globals.global_access_point = new_global_access_point
@@ -283,16 +284,24 @@ def distribute_ogm(env):
         with globals.lock_access_edge_servers_topology:
             ogm_map = [globals.observer] + globals.edge_servers_topology   
         
-        print(f"\tOGMS REDISTRIBUTION on {globals.config_index}")
-        ogm_table_snapshot, position_dict = manage_ogm_test(ogm_map, globals.instant_in_configuration)
+        num_redistributions = config["OGMs_redistribution"]
+        time_section = config["Interval_between_Configurations_in_seconds"] / num_redistributions
+        ogm_table_snapshot, position_dict = None, None
+        at = timedelta(seconds=time_section)
 
-
+        for i in range(num_redistributions):
+             
+            new_instant = ts.utc(globals.instant_in_configuration.utc_datetime() + at)
+            at += timedelta(seconds=time_section)
+                                 
+            print(f"\tOGMS REDISTRIBUTION {i+1}/{num_redistributions}")
+            ogm_table_snapshot, position_dict = manage_ogm_test(ogm_map, new_instant)
+        
         # $ Fase di Salvataggio
         if globals.config_index >= 30:
             saveInfoInFile('data/OGMs_table.json', ogm_table_snapshot, globals.config_index - 30)
             saveInfoInFile('data/positions_vectors.json', position_dict, globals.config_index - 30)
-        #saveOGMsRedistribution(ogm_table_snapshot)
-        #savePositionVector(position_dict)
+
             print("Salvataggio SnapShot Completato")
 
         print("-"*20)

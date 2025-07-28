@@ -165,23 +165,27 @@ class EdgeServer:
 
         return getSystemFromSat(self.satellite, t, True).position.km.tolist()
 
-    def greedy_approach(self, env, task):
-        # Prendo la destinazione
 
-        destination_pos = self.OGMs_position[task.dest_node][1]
-        print(f"Position of {task.dest_node} : {destination_pos}")
-        best_neighbor = None
-        best_distance = get_pos_proximity(destination_pos, self.getPositionVector(globals.instant_in_configuration))
-        print(f"my distance from OBS : {best_distance}")
+    def greedy_approach_test(self, env, task):
         
-        for name, numb in self.neighbors.items():                    # Per ogni vicino
+        destination_pos = self.OGMs_position[task.dest_node][1] # Posizione della destinazione
+        best_neighbor, best_distance = None, get_pos_proximity(destination_pos, self.getPositionVector(globals.instant_in_configuration))
+        print("CONTROLLO CALCOLO DELLE POSIZIONI")
 
-            d = get_pos_proximity(destination_pos, name.getPositionVector(globals.instant_in_configuration))
+        for server in self.neighbors:  # Cicla solo sulla chiave (oggetto server)
+            d = get_pos_proximity(destination_pos, server.getPositionVector(globals.instant_in_configuration))
+            try:
+                d1 = self.OGMs_position[server.name][1]
+            except Exception as e:
+                print(f"Error: {e}. ")
+
+            print(f"Vicino:{server.name}-SYS_POS:{server.getPositionVector(globals.instant_in_configuration)} OGM_POS:{d1} dist: {get_pos_proximity(d1, server.getPositionVector(globals.instant_in_configuration))}")
+
             # Se la distanza è minima e il satellite non è stato visitato
-            if d < best_distance and name not in task.visited:
-                best_neighbor = name
+            if d < best_distance and server not in task.visited:
+                best_neighbor = server
                 best_distance = d
-        
+            
         
         if best_neighbor:
             print(f"Best Neighbors: {best_neighbor.name} Distance from OBS {best_distance}")
@@ -193,8 +197,49 @@ class EdgeServer:
             print(f"Sono un access Point? {self.is_acc_point}")
             print("Vedo se uno dei miei vicini è un access point")
             [print(f"{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
-            #sys.exit("BRO VEDI UN ATTIMO")
+            
     
+    
+    def greedy_approach(self, env, task):
+        destination_pos = self.OGMs_position[task.dest_node][1] # Posizione della destinazione
+        ranked_neighbors = []
+        for server in self.neighbors:
+            ogm_data = self.OGMs_position.get(server.name)
+            if ogm_data:
+                
+                dist = get_pos_proximity(destination_pos, ogm_data[1])
+                ## t = (name, vect, dist_from_dest, isAP)
+                t = (server, ogm_data[1], dist, ogm_data[2])
+                print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}")
+                ranked_neighbors.append(t)
+            else:
+                continue
+        ranked_neighbors.sort(key=lambda x: (not x[3], x[2]))
+        
+        if ranked_neighbors:
+            best_tuple = ranked_neighbors[0]
+            if best_tuple[3]:
+                # Lo mandiamo direttamente ad un AP   
+                print(f"Sending Task to one of the Access Point :{best_tuple[0].name}")
+            else:
+                print(f"Sending Task to {best_tuple[0].name}")
+
+            yield from sendTask(env, task, self, best_tuple[0])
+        else:
+            print("Non c'è nessun Vicino al quale mandare il Task")
+
+
+        
+        
+
+
+
+
+
+
+
+
+
     def deliver_to_Observer(self, env, mode, task):
         print(f"[MODE: {mode}] {self.name} DELIVER Task {task.id} to OBS.")
         task.routingEndTime = env.now
@@ -217,14 +262,14 @@ class EdgeServer:
                         continue
 
                 # $ Applico il Routing
-                # Controllo intersezione
                 max_neighbor, max_value = find_OGM_intersection(self.ogm_table[task.dest_node], self.neighbors, task)
                 if max_neighbor:
+                    # ! BATMAN 
                     print(f"[{task.id}] BATMAN {self.name} -> {max_neighbor.name}")
                     # Applico il Batman mandando il task
                     yield from sendTask(env, task, self, max_neighbor)
-                else:   
-                    # Applico algoritmo test  
+                else:  
+                    # ! Greedy  
                     print(f"[{task.id}] Greedy approach {self.name}")
                     yield from self.greedy_approach(env, task)
 

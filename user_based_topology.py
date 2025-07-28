@@ -377,21 +377,5 @@ def check_satellite_visibility(satellite, location, start, end):
     
     return between_20_40 and exceeds_40
 
-def checkConsistency():
-    tle_data = TLE_DATA
-    satellites = []
-    t0 = time_now
-
-    location = wgs84.latlon(41.9028, 12.4964)  # Roma
-
-
-    #Genero la lista di Satelliti
-    for i in range(0, len(tle_data), 3):
-        name = tle_data[i].strip()
-        line1 = tle_data[i + 1].strip()
-        line2 = tle_data[i + 2].strip()
-
-        satellite = EarthSatellite(line1, line2, name, ts)
-        # TODO ricordati di effettuare il controllo della consistenza
 
     

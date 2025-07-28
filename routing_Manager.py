@@ -43,7 +43,8 @@ def manage_ogm_test(ogm_map, t):
     print("\t| Generazione OGM")
     # Ogni Nodo manda un OGM
     for node in ogm_map:
-        create_ogm(node, node.getPositionVector(t))
+        print(f"{node.name} | {node.getPositionVector(t)} | AP: {node.is_acc_point}")
+        create_ogm(node, node.getPositionVector(t), node.is_acc_point)
 
     print("\t| Processing OGMs")
     total = len(ogm_map)
@@ -77,14 +78,14 @@ def manage_ogm_test(ogm_map, t):
                 # $ Inizializzazione dizionario delle posizioni
                 if ogm.originator not in node.OGMs_position:
                     #print(f"\t[{node.name}] get {ogm.id} | [orig:{ogm.originator} sender:{ogm.sender}] carico -> {ogm.origin_position_vect} ")
-                    node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect)
+                    node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect, ogm.is_AP)
                     #print(f"\tsaved! : {node.OGMs_position[ogm.originator]}")
                 else:
                     # $ Controllo se aggiornare il valore 
                     if ogm.sequence_number > node.OGMs_position[ogm.originator][0]:
                         #print(f"\t[{node.name}] <- ({ogm.sequence_number},{ogm.origin_position_vect}) RECEIVED")
                         #print(f"\t[{node.name}] : {node.OGMs_position[ogm.originator]} (old)")
-                        node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect)
+                        node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect, ogm.is_AP)
                         #print(f"\t[{node.name}] Aggiornato: {node.OGMs_position[ogm.originator]} (new)")
                 #print("-"*10)
   
@@ -154,14 +155,6 @@ def manage_ogm_test(ogm_map, t):
         if not isinstance(satellite, Observer)
     }
 
-
-    # print("Checking Position Vectors")
-    # for n, v in ogm_position_dict.items():
-    #     print(f"{n} : {len(v)}")
-    #     if not v:
-    #         print(f"{n} ha un dizionario delle posizioni vuoto!")
-            
-
     return ogm_tables_snapshot, ogm_position_dict
 
 def saveInfoInFile(file ,value_dictionary, N_config):
@@ -209,7 +202,7 @@ def print_dict(d, level=0):
         print(f"{indent}{d}")
 
 
-def create_ogm(obj, origin_position_vect):
+def create_ogm(obj, origin_position_vect, is_AP):
     """
     Crea e invia un nuovo OGM (Originator Generated Message) ai nodi vicini.
 
@@ -224,6 +217,7 @@ def create_ogm(obj, origin_position_vect):
         originator = obj.name,
         sender = obj.name,
         origin_position_vect = origin_position_vect,
+        is_AP = is_AP,
         ttl = 15,
         sequence_number = obj.ogm_sequence
     )
