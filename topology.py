@@ -294,7 +294,7 @@ def distribute_ogm(env):
             new_instant = ts.utc(globals.instant_in_configuration.utc_datetime() + at)
             at += timedelta(seconds=time_section)
                                  
-            print(f"\tOGMS REDISTRIBUTION {i+1}/{num_redistributions}")
+            print(f"\tOGMS REDISTRIBUTION {i+1}/{num_redistributions} on : {new_instant.utc_iso(places=6)}")
             ogm_table_snapshot, position_dict = manage_ogm_test(ogm_map, new_instant)
         
         # $ Fase di Salvataggio

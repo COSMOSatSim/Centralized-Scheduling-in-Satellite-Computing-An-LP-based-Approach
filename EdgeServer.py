@@ -204,27 +204,36 @@ class EdgeServer:
     def greedy_approach(self, env, task):
         destination_pos = self.OGMs_position[task.dest_node][1] # Posizione della destinazione
         ranked_neighbors = []
+
         for server in self.neighbors:
             ogm_data = self.OGMs_position.get(server.name)
             if ogm_data:
                 
                 dist = get_pos_proximity(destination_pos, ogm_data[1])
-                ## t = (name, vect, dist_from_dest, isAP)
+                ## t = (server, vect, dist_from_dest, isAP)
                 t = (server, ogm_data[1], dist, ogm_data[2])
                 ranked_neighbors.append(t)
             else:
                 continue
         ranked_neighbors.sort(key=lambda x: (not x[3], x[2]))
-
         [print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}") for t in ranked_neighbors]
-        if ranked_neighbors:
-            best_tuple = ranked_neighbors[0]    # Prendo la miglior tupla
-            yield from sendTask(env, task, self, best_tuple[0])
+        
+        best_server = None
+        for neighbor_tuple in ranked_neighbors:
+            if neighbor_tuple[0].name not in task.visited:
+                best_server = neighbor_tuple[0]
+                break
+        
+        if best_server:
+            print(f"--> BEST SERVER: {best_server.name}")
+            yield from sendTask(env, task, self, best_server)
             
         else:
-            print("Non c'è nessun Vicino al quale mandare il Task")
-
-
+            print(f"{self.name} Non ha Vicini al quale mandare il Task {task.id}")
+            print(f"Miei vicini : {len(self.neighbors)}")
+            print(f"Sono un access Point? {self.is_acc_point}")
+            print("Vedo se uno dei miei vicini è un access point")
+            [print(f"\t{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
         
         
 

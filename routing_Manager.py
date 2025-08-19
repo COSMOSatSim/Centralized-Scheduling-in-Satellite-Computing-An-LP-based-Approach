@@ -43,7 +43,7 @@ def manage_ogm_test(ogm_map, t):
     print("\t| Generazione OGM")
     # Ogni Nodo manda un OGM
     for node in ogm_map:
-        print(f"{node.name} | {node.getPositionVector(t)} | AP: {node.is_acc_point}")
+        #print(f"{node.name} | {node.getPositionVector(t)} | AP: {node.is_acc_point}")
         create_ogm(node, node.getPositionVector(t), node.is_acc_point)
 
     print("\t| Processing OGMs")
