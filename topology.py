@@ -578,12 +578,17 @@ def loadConfiguration(env):
         # Aggiorno i vicini
         servers_in_dome_updated = update_servers_neighbors({**intersection, **new_edge_servers},
                                                            new_neighbors)  # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
+        
         # Pulisco i dizionari che riguardano i vicini dei server tramontati
         [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  
-
-
-        # print("TOPOLOGIA ATTUALE:")
-        # [print(sat.name) for sat in servers_in_dome_updated.values()]
+        
+        # ! Ridefinisco le Labels dei Tasks
+        for server in old_edge_servers.values():
+            if len(server.tasks)>0:
+                print(f"{server.name} SERVER OUT OF BUFF")
+                for t in server.tasks:
+                    t.label = 'SEN_OUT_OF_BUFF'
+                    print(f"\t{t.id} : {t.label}")
 
         with globals.lock_access_edge_servers_topology:
             # Salvo solo i satelliti che appartengono alla topologia

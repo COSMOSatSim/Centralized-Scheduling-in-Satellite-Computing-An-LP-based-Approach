@@ -86,11 +86,16 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
 
         priority_mapping = {100: "low", 1: "high"}
         
-        # Prendiamo le informazioni fondamentali
-        print(f"Task {task_id} Eseguito con Successo! Routing Start")
+        print(f"Task {task_id} Routing Start")
         category, resolution = assign_resolution(required_ram, required_disk)
-        task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)  # Creo la task
-        selected_server.tasks.append(task_OBS)
+        task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)  # Creo il task
+        if selected_server.elev_angle < config["Phi_max"] - config["Phi_buffer"]:
+            task_OBS.label = 'SEN_OUT_OF_BUFF'  # Il Task è in un Satellite che è fuori Orbita
+            print(f"{selected_server} {selected_server.elev_angle}° {task_OBS.id} set as {task_OBS.label}")
+        selected_server.tasks.append(task_OBS) 
+        globals.gbl_tasks.append(task_OBS) 
+        
+
 
         task_p = priority_mapping.get(task_priority, "NaN")
 

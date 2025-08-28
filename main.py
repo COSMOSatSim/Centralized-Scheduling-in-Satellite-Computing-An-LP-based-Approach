@@ -4,6 +4,8 @@ import os
 import sys
 import random
 import simpy
+from EdgeServer import build_task_csv_path
+from Task import generate_Tasks_Status
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, data_configurations, string_to_skyfield_time
 from user_based_topology import get_current_time, getObserverObj
@@ -88,7 +90,9 @@ if __name__ == "__main__":
 
     # Cartella base: include modalità, AP e seed
     base_dir = f"{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
+    task_dir = f"{req_dist}-Task_Result{ap}/seed_{seed_val}"
     os.makedirs(base_dir, exist_ok=True)
+    os.makedirs(task_dir, exist_ok=True)
 
     # File CSV e log con nomenclatura completa
     csv_task = (
@@ -101,6 +105,8 @@ if __name__ == "__main__":
         f"{gen_dist}_REQ-{req_dist}_"
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
+    csv_routing_task = build_task_csv_path(task_dir, atime, cpu_mean)
+    
     log_file = f"{base_dir}/log_{prio_dist}_{gen_dist}_AT_{atime}.log"
 
     # Salvo il nome del CSV nel config per eventuali moduli esterni
@@ -120,6 +126,9 @@ if __name__ == "__main__":
 
     # Stampa il riassunto dei task usando la funzione dell'Observer
     globals.observer.print_task_summary()
+    print("-"*10)
+    generate_Tasks_Status(csv_routing_task)
+
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:

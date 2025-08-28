@@ -15,4 +15,7 @@ edge_servers_topology = []  # Edge Servers nella topologia nella configurazione
 observer = None
 instant_in_configuration = None 
 
+gbl_tasks = []                  # Lista che mantiene tutti i Task creati per il Routing
+
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
+
