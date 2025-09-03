@@ -3,12 +3,12 @@ from collections import OrderedDict
 from skyfield.api import wgs84
 import globals
 import sys
-import json
+import json5
 from Task import byte_to_dim 
 
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 class ObserverMeta(type):
     """

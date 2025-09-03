@@ -1,4 +1,4 @@
-import json
+import json, json5
 import random
 import logging
 import experiments
@@ -13,8 +13,8 @@ def setup_logging(log_file_path):
 simulation_results = []
 
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 # Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
 try:
@@ -70,6 +70,13 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
 
         yield env.timeout(estimated_execution_time)
 
+        # Consumo energetico di elaborazione
+        C_sen = config.get("C_sen", 1e9)  # default 1 GHz se non definito
+        energy_exec = selected_server.compute_execution_energy(estimated_execution_time, C_sen)
+        selected_server.energy -= energy_exec
+        print(
+            f"Task {task_id} executed on {selected_server.name}: energy consumed {energy_exec:.6f} J, remaining {selected_server.energy:.2f} J")
+
         end_time = env.now
         execution_time = estimated_execution_time #end_time - start_time if start_time > 0 and end_time > 0 else 0
         #print("execution time task assignment", execution_time, 'task', task_id)
@@ -94,8 +101,6 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
             print(f"{selected_server} {selected_server.elev_angle}° {task_OBS.id} set as {task_OBS.label}")
         selected_server.tasks.append(task_OBS) 
         globals.gbl_tasks.append(task_OBS) 
-        
-
 
         task_p = priority_mapping.get(task_priority, "NaN")
 
@@ -106,13 +111,11 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
                                            selected_server.name, num_hops, len(low_priority_tasks),
                                            original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,  TMAX_exceeded=False, exec_after_set = False )
 
-
         elif task_p == "high":
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
                                            start_time, end_time, execution_time, service_time, time_in_queue,
                                            selected_server.name, num_hops, len(higher_priority_tasks),
                                            original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value, TMAX_exceeded=False, exec_after_set = False)
-
 
         else:
             selected_server.task_completed(task_id, task_p, arrival_time_system, arrival_time_task_queue,
@@ -120,15 +123,11 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
                                            selected_server.name, num_hops, lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, selected_server.utility_value,
                                            TMAX_exceeded=False, exec_after_set = False )
 
-
-
         # Rimuovi il task completato dalla coda
         if task in selected_server.server_queue:
              selected_server.server_queue.remove(task)
 
-
 Tmax_H = config["Tmax_H"]
-Tmax_L = config["Tmax_H"]
 MaxTry = config["max_try"]
 
 def estimate_execution_time():
@@ -142,7 +141,7 @@ def estimate_execution_time():
     return estimated_time
 
 def SearchNode(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
-               restart_time, download_time, task_priority, arrival_time_system, Tmax_high, Tmax_Low,
+               restart_time, download_time, task_priority, arrival_time_system, Tmax_high,
                Tmax_latency, initial_server_counter, different_server_counter, other_server_counter):
     '''
         Search for the most suitable server to assign a task, considering utility values, latency, and task priorities.
@@ -164,7 +163,6 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         :param task_priority: Priority of the task (high or low).
         :param arrival_time_system: The time when the task arrives in the system.
         :param Tmax_high: High threshold for utility value.
-        :param Tmax_Low: Low threshold for utility value.
         :param Tmax_latency: Latency threshold for the server selection.
 
         :return: None
@@ -192,6 +190,8 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
         if bandwidth_to_server and latency_to_server is not None:
             transfer_time = ((image_size + Volume_size) / bandwidth_to_server) + latency_to_server
+            energy_tx = server_selected.compute_routing_energy(image_size + Volume_size, bandwidth_to_server)
+            server_selected.energy -= energy_tx
         if bandwidth_to_server and latency_to_server is None:
             transfer_time = 0
 
@@ -256,7 +256,6 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
                 -x['orbitalSunset']  # in caso di pareggio, massimizza orbitalSunset
             )
         )
-
 
     Tmax_high -= 2 * Tmax_latency
 
@@ -361,7 +360,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
                 yield env.process(
                     SearchNode(env, random_server, task_id, required_ram, required_disk, image_size,
                                Volume_size, restart_time, download_time, task_priority, arrival_time_system,
-                               Tmax_high, Tmax_Low, Tmax_latency, initial_server_counter, different_server_counter,
+                               Tmax_high,  Tmax_latency, initial_server_counter, different_server_counter,
                                other_server_counter))
 
             elif config["SEN_selection"] == "maxSunset":
@@ -378,7 +377,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
                 yield env.process(
                     SearchNode(env, best_server, task_id, required_ram, required_disk, image_size,
                                Volume_size, restart_time, download_time, task_priority, arrival_time_system,
-                               Tmax_high, Tmax_Low, Tmax_latency, initial_server_counter, different_server_counter,
+                               Tmax_high, Tmax_latency, initial_server_counter, different_server_counter,
                                other_server_counter))
 
 
@@ -391,7 +390,7 @@ def LocalScheduler(env, task_id, required_ram, required_disk, server, image_size
     Tmax_latency = int(0)
     yield from SearchNode(env, server, task_id, required_ram, required_disk, image_size, Volume_size,
                               restart_time, download_time, task_priority, arrival_time_system, Tmax_H,
-                              Tmax_L, Tmax_latency, initial_server_counter, different_server_counter, other_server_counter)
+                               Tmax_latency, initial_server_counter, different_server_counter, other_server_counter)
 
 
 def task(env, task_id, server, task_priority, initial_server_counter, different_server_counter, other_server_counter):

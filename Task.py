@@ -1,8 +1,8 @@
-import random, json, csv
+import random, json, json5, csv
 import globals
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 with open('img_resolution.json') as resolution_file:
     resolution = json.load(resolution_file)
 

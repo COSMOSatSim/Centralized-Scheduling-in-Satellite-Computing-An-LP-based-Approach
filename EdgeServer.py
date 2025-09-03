@@ -1,4 +1,4 @@
-import json
+import json5
 import logging
 from math import sqrt
 import simpy
@@ -6,14 +6,12 @@ from skyfield.api import EarthSatellite
 from collections import OrderedDict
 from user_based_topology import getSystemFromSat
 from Task import Task
-import sys 
-
 import globals
 
 
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 BATMAN = config["Routing_algorithm"]["BATMAN"]
 GREEDY = config["Routing_algorithm"]["GREEDY"]
@@ -44,6 +42,7 @@ class EdgeServer:
         self.server_queue = []
         self.utility_value = 0  # Valore iniziale di utilità del server
         self.completed_tasks = []
+        self.energy = config.get("initial_energy", 1000.0)  # J
 
         self.tasks = []             # Lista task da Spedire
         self.dead_tasks = []        # Lista dei Task Morti (TTL = 0) 
@@ -56,6 +55,24 @@ class EdgeServer:
         
         self.OGMs_History = OrderedDict()# Lista OGM visionati in passato (FIFO)
         self.OGMs_History_dim = 2046     # Limite dimensione History OGM 
+
+    def compute_routing_energy(self, file_size, bandwidth, Ptrasm=1.0):
+        """
+        Energia di routing (trasmissione) [Joule].
+        file_size in Byte, bandwidth in Byte/s
+        """
+        if bandwidth and bandwidth > 0:
+            return Ptrasm * (file_size / bandwidth)
+        return 0.0
+
+    def compute_execution_energy(self, execution_time, C_sen, e=5e-26):
+        """
+        Energia di computazione [Joule].
+        execution_time ~ domanda di servizio (s)
+        C_sen ~ capacità CPU in cicli/s
+        """
+        d = execution_time
+        return d * e * (C_sen ** 3)
 
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
                        execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
@@ -155,8 +172,6 @@ class EdgeServer:
         '''
         return self.bandwidth.get(neighbor_server, None)
 
-
-    
     def __str__(self):
         return f"Satellite :{self.name}\n\telev:{self.elev_angle}\n\tis_AP:{self.is_acc_point}"
 
@@ -201,15 +216,11 @@ class EdgeServer:
         #     print(f"Sono un access Point? {self.is_acc_point}")
         #     print("Vedo se uno dei miei vicini è un access point")
         #     [print(f"\t{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
-        
-        
-
 
     def deliver_to_Observer(self, env, mode, task):
         print(f"[MODE: {mode}]")
         task.routingEndTime = env.now
         yield from sendTask(env, task, self, globals.observer, 'DIRECT')
-        
 
     def forward_packet(self, env):
         if len(self.neighbors)>0:
@@ -252,7 +263,6 @@ class EdgeServer:
         #else:
             #print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
             #print("Task IDs:", [task.id for task in self.tasks])
-
 
     def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
         '''
@@ -332,10 +342,8 @@ class EdgeServer:
         else:  # Task a bassa priorità
             self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time #+ sunset_penalty
 
-
 def getTransmissionTime(bandwidht, weight, latency):
     return (weight/bandwidht) + latency
-     
 
 def sendTask(env, task, sender, receiver, algorithm):
 
@@ -369,6 +377,12 @@ def sendTask(env, task, sender, receiver, algorithm):
             trasmission_time = getTransmissionTime(bandwidth, task.weight, sender.latency[receiver])
             print(f"[{task.id}][{algorithm}] {sender.name} -> {receiver.name} | Tramission-time: {trasmission_time}")
 
+            energy_tx = sender.compute_routing_energy(task.weight, bandwidth)
+            sender.energy -= energy_tx
+            print(
+                f"[{task.id}] Energy routing consumed by {sender.name}: {energy_tx:.6f} J (remaining {sender.energy:.2f})")
+
+
         else:
             bandwidth = 10000 * (1024**2)  # da MB/s a Byte/s
             trasmission_time = getTransmissionTime(bandwidth, task.weight, 0)
@@ -389,9 +403,7 @@ def sendTask(env, task, sender, receiver, algorithm):
         # Modifichiamo le informazioni sul task
         task.current_node = receiver.name
 
-
-
-        # ! USIAMO SOLO I NOMI E NON PRPRIO L'oggetto
+        # ! USIAMO SOLO I NOMI E NON PROPRIO L'oggetto
         if task.dest_node == receiver.name:
             task.arrived = True
             task.label = 'TASK_ARRIVED'
@@ -399,18 +411,12 @@ def sendTask(env, task, sender, receiver, algorithm):
         task.hop_History.append(receiver.name)     # Aggiorno la History
         task.visited.add(receiver.name)            # Aggiorno i visitati
 
-        
-
     else:
         # Rimuoviamo il task
         print(f"[{task.id}] RIMOZIONE TASK DA {sender.name}, TTL finito")
         task.label = 'TTL_EXPIRED'
         sender.dead_tasks.append(task)
         sender.tasks.remove(task)
-        
-        
-    
-
 
 def find_OGM_intersection(ogm_table, neighbors, task):
     """
@@ -446,7 +452,6 @@ def find_OGM_intersection(ogm_table, neighbors, task):
             intersection.items(), key=lambda item: item[1])
 
     return max_neighbor, max_value
-    
 
 def get_pos_proximity(pos1, pos2):
     """

@@ -1,0 +1,102 @@
+{
+  // Durata simulazione in secondi
+  "simulation_duration": 300,
+
+  // Numero massimo di hop consentiti
+  "max_try": 5,
+
+  // Seed random
+  "seed": 13,
+
+  // Numero di access point satellitari
+  "access_point": 5,
+
+  // Tempo medio (exp) di arrivo task
+  "arrival_time_exponential": 1.5,
+
+  // Tmax per task ad alta priorità
+  "Tmax_H": 400,
+
+  // Parametri energetici
+  "initial_energy": 1000,         // Energia iniziale di ogni satellite [J]
+  "C_sen": 1e9,                   // Capacità CPU (cicli/secondo), es. 1 GHz
+  "energy_coefficient": 5e-26,    // Coefficiente energetico del paper
+  "Ptrasm": 1.0,                  // Potenza di trasmissione [W]
+
+  // Timeout CPU (stimato in secondi)
+  "CPU_timeout": {
+    "min": 43,
+    "mean": 143.5,
+    "max": 176
+  },
+
+  // Modalità simulazione
+  "mode_name": "DTS-base",
+
+  // Distribuzione delle richieste
+  "request_distribution": {
+    "distribution": "OrbitAware Utility"
+  },
+
+  "DTS": true,
+  "AP_selection": "optimal",
+  "SearchNode": "ERT",
+  "SEN_selection": "maxSunset",
+
+  // Risorse richieste dai task
+  "required_ram": { "min": 50, "max": 500 },
+  "required_disk": { "min": 50, "max": 1000 },
+
+  // Dimensioni immagini container e volumi (in MB)
+  "image_size": { "min": 50, "max": 300 },
+  "Volume_size": { "min": 500, "max": 1000 },
+
+  // Banda disponibile (MB/s)
+  "available_bandwidth": { "min": 10000, "max": 10000 },
+
+  // Tempo di riavvio container (s)
+  "restart_time": { "min": 0.1, "max": 1 },
+
+  // Generazione task (esponenziale)
+  "generate_tasks": { "distribution": "exponential" },
+
+  // Combinazione priorità task (20% high, 0% medium, 80% low)
+  "priority_combination": { "distribution": "20_0_80" },
+
+  // Nome file CSV output
+  "csv_name": {
+    "name": "OrbitAware Utility-sim_SystemAP5/seed_13/results_20_0_80_exponential_REQ-OrbitAware Utility_AT_1.5_CPU_143.5.csv"
+  },
+
+  // Località di simulazione
+  "simulation_location": "Roma",
+  "locations": {
+    "Roma": { "lat": 41.8967, "lon": 12.4822, "alt": 0 },
+    "Polo Nord": { "lat": 90.0, "lon": 135.0, "alt": 0 }
+  },
+
+  // Parametri orbitali
+  "LEO_orbit": 300,             // altitudine orbita in km
+  "Phi_max": 40,                // angolo massimo elevazione [°]
+  "Phi_buffer": 15,             // buffer angolare
+  "Laser_Communication_Range": 659, // raggio comunicazione laser [km]
+
+  // Configurazioni di rete
+  "Build_Configurations": false,
+  "Load_Configuration": true,
+  "Interval_between_Configurations_in_seconds": 2,
+  "Number_of_Configurations": 180,
+  "Interval_future_event_prediction": 15,
+  "Interval_past_event_prediction": 10,
+  "OGMs_redistribution": 20,
+
+  // Parametri di simulazione spazio
+  "sphere_altitude_km": 500000.0,
+
+  // Routing
+  "AP_routing_bidirectional": true,
+  "Routing_algorithm": {
+    "BATMAN": true,
+    "GREEDY": true
+  }
+}

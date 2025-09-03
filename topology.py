@@ -1,4 +1,4 @@
-import json
+import json, json5
 import random
 import sys
 import threading
@@ -14,8 +14,8 @@ import globals
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
 
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 # Gestione thread
 lock = threading.Lock()  # Meccanismo di lock

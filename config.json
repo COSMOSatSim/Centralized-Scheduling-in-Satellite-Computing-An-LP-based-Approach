@@ -5,6 +5,12 @@
   "access_point": 5,
   "arrival_time_exponential": 1.5,
   "Tmax_H": 400,
+
+  "initial_energy": 1000,
+  "C_sen": 1000000000,
+  "energy_coefficient": 5e-26,
+  "Ptrasm": 1.0,
+
   "CPU_timeout": {
     "min": 43,
     "mean": 143.5,

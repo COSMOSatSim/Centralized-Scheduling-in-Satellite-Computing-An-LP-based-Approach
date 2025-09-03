@@ -1,5 +1,5 @@
 import csv
-import json
+import json5
 import os
 import sys
 import random
@@ -17,8 +17,8 @@ import globals
 
 
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 
 if __name__ == "__main__":
@@ -40,8 +40,8 @@ if __name__ == "__main__":
         config["CPU_timeout"]["min"] = T_min
         config["CPU_timeout"]["max"] = T_max
         config["CPU_timeout"]["mean"] = T_avg + 2.0
-        with open('config.json', 'w') as wf:
-            json.dump(config, wf, indent=2)
+        with open('config.json5', 'w') as wf:
+            json5.dump(config, wf, indent=2)
         
         sys.exit("File of configurations created")
 
@@ -111,8 +111,8 @@ if __name__ == "__main__":
 
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
-    with open('config.json', 'w') as wf:
-        json.dump(config, wf, indent=2)
+    with open('config.json5', 'w') as wf:
+        json5.dump(config, wf, indent=2)
 
     print(f"--- Avvio simulazione ---")
     print(f"Modalità: {mode_name}")

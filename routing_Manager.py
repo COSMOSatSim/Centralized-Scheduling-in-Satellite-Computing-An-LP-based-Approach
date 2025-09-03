@@ -1,5 +1,5 @@
 import random
-import json
+import json, json5
 from user_based_topology import get_orbit_proximity, getSystemFromSat
 from Ogm import Ogm
 from Observer import Observer
@@ -8,8 +8,8 @@ import sys
 import os
 
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 # Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
 try:

@@ -1,6 +1,6 @@
 import random
 import simpy
-import json
+import json, json5
 from  Observer import Observer 
 from user_based_topology import getObserverObj
 from topology import distribute_ogm, loadConfiguration, loadConfiguration_simple
@@ -12,8 +12,8 @@ import globals
 import time
 
 # Leggi il file di configurazione JSON
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 
 

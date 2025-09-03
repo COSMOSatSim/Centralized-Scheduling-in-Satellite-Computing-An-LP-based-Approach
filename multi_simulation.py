@@ -1,10 +1,10 @@
-import json
+import json5
 import subprocess
 
 # Nome dello script di simulazione
 Simulation_type_distribuited = "main.py"
 # File JSON di configurazione di base
-file_json = "config.json"
+file_json = "config.json5"
 
 # Definizione delle modalità di simulazione
 modalita_simulazione = {
@@ -49,7 +49,7 @@ def esegui_simulazione(file_path):
 
 def modifica_parametri(file_path, nuovi_parametri):
     with open(file_path, 'r') as f:
-        dati = json.load(f)
+        dati = json5.load(f)
 
     # Parametri comuni
     dati["generate_tasks"]["distribution"] = nuovi_parametri["generate_tasks"]["distribution"]
@@ -65,7 +65,7 @@ def modifica_parametri(file_path, nuovi_parametri):
     dati["SEN_selection"] = nuovi_parametri["SEN_selection"]
 
     with open(file_path, 'w') as f:
-        json.dump(dati, f, indent=2)
+        json5.dump(dati, f, indent=2)
 
 
 if __name__ == "__main__":
