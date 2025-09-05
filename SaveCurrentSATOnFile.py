@@ -33,6 +33,7 @@ def saveTLEOnFile():
                 for line in tle_data:
                     file.write(line + "\n")
             print(f"Dati TLE salvati correttamente in '{filename}'")
+            return tle_data
         except IOError as e:
             print(f"Errore nel salvataggio del file: {e}")
     else:

@@ -7,14 +7,14 @@ import simpy
 from EdgeServer import build_task_csv_path
 from Task import generate_Tasks_Status
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, data_configurations, string_to_skyfield_time
+from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, string_to_skyfield_time
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
 from  Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
-import globals
 
+import globals
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
@@ -29,27 +29,36 @@ if __name__ == "__main__":
 
     # 1) Costruzione configurazioni
     if config.get("Build_Configurations", False):
-        saveTLEOnFile()
-        genConfigs(
+        
+        tle_data = saveTLEOnFile()
+        tot_config = int((config["simulation_duration"] + config["adding_time"]) / 2)
+        configurations = genConfigs(
             get_current_time(),
             config["Interval_between_Configurations_in_seconds"],
-            config["Number_of_Configurations"]
+            tot_config,
+            tle_data
         )
-        T_min, T_max, T_avg = updateTaskValue()
+        
+        T_min, T_max, T_avg = updateTaskValue(configurations)
         config["Build_Configurations"] = False
         config["CPU_timeout"]["min"] = T_min
         config["CPU_timeout"]["max"] = T_max
         config["CPU_timeout"]["mean"] = T_avg + 2.0
+        
         with open('config.json5', 'w') as wf:
             json5.dump(config, wf, indent=2)
         
+        if config["redistribuite_OGM"]:
+            process_OGM_enviroment_simulation(configurations)
+            remove_first_30_configurations()
+
         sys.exit("File of configurations created")
 
     # 2) Caricamento o creazione topologia
     if config.get("Load_Configuration", False):
         print("Carico le configurazioni dal file...")
-        globals.edge_servers, globals.global_access_point = loadConfiguration(env)
-        env.process(periodic_recall_Topology_monitor(env))
+        globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations, globals.OGMs_tables, globals.positions_vectors)
+        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables, globals.positions_vectors))
     else:
         print("Creo la topologia DOMEv2...")
         globals.edge_servers = create_topology_dome(env)
@@ -57,7 +66,9 @@ if __name__ == "__main__":
     globals.observer = Observer(env, getObserverObj())  # Singleton Observer
     env.process(periodic_recall_Routing_monitor(env))
 
-    skyfield_time = string_to_skyfield_time(data_configurations["t0"])
+    if not globals.data_configurations:
+        sys.exit("Errore: il file delle configurazioni è vuoto.")
+    skyfield_time = string_to_skyfield_time(globals.data_configurations["t0"])
 
 
     globals.initial_server_counter = {

@@ -16,13 +16,6 @@ simulation_results = []
 with open('config.json5') as config_file:
     config = json5.load(config_file)
 
-# Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
-try:
-    with open("data/configurations.json", "r") as f:
-        #print("Configuration file loaded.\n")
-        data_configurations = json.load(f)
-except Exception as e:
-    print(f"Error loading configuration file: {e}")
 
 
 def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, task_priority,

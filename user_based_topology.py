@@ -195,11 +195,10 @@ def filterSatellitesInView(satellite, t):
     return True if v_rel < 0 else False
 
 # ---------------------------------------------------------------------------- #
-def getAllSatOnMe(t, serializable = False, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):
+def getAllSatOnMe(t, tle_data, serializable = False, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):
     
     buffer_Phi = Phi_max - config["Phi_buffer"]             # Angle of a Buffer Zone
     satellites_dome, satellites_buffer = [], []             
-    tle_data = TLE_DATA
 
     # Prendo tutti i satelliti nella mia Cupola e BufferZone
     for i in range(0, len(tle_data), 3):

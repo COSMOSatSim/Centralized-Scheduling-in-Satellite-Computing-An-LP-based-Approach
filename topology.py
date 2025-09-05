@@ -8,6 +8,8 @@ from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time,
 from datetime import datetime, timedelta, timezone
 from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
 import globals 
+import os
+
 
 
 # Converti il tempo in UTC e formatta
@@ -19,20 +21,6 @@ with open('config.json5') as config_file:
 
 # Gestione thread
 lock = threading.Lock()  # Meccanismo di lock
-
-# Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
-try:
-    with open("data/configurations.json", "r") as f:
-        print("Configuration file loaded.\n")
-        data_configurations = json.load(f)
-    with open("data/OGMs_table.json", "r") as f:
-        print("OGMs table file loaded.")
-        OGMs_tables = json.load(f)
-    with open("data/positions_vectors.json", "r") as f:
-        positions_vectors = json.load(f)
-
-except Exception as e:
-    print(f"Error loading configuration file: {e}")
 
 
 def compute_distances_from_target_sw(sat, closerServer_Sorted, t):
@@ -146,7 +134,23 @@ def find_satellite_events(satellite, t0):
     return life
 
 
-def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"):
+def print_progress_bar(current_step, total_steps, bar_width=40, prefix="Avanzamento"):
+    """
+    Stampa una barra di progresso aggiornata sulla stessa riga.
+    current_step: 1-based index della iterazione corrente
+    total_steps: numero totale di step
+    """
+    if total_steps <= 0:
+        return
+    progress = current_step / total_steps
+    filled = int(bar_width * progress)
+    bar = "[" + "#" * filled + "-" * (bar_width - filled) + "]"
+    percent = progress * 100
+    print(f"\r{prefix}: {bar} {current_step}/{total_steps} ({percent:5.1f}%)", end="", flush=True)
+
+
+
+def genConfigs(t0, interval, num_configs, tle_data, json_path = "data/configurations.json"):
     """
     Generates a list of configurations over a specified time period.
     Args:
@@ -160,11 +164,16 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
     t, configs = t0, []  # Initialize time and configuration list
     num_access_point = config["access_point"]  # Number of access points
     totSecs = num_configs * interval  # Total duration in seconds
-
+    steps = num_configs
+    bar_width = 40
+    
+    print("GENERAZIONE CONFIGURAZIONI: ")
     for elapsed_time in range(0, totSecs, interval):
-        configuration = []
+        step_index = elapsed_time // interval + 1
+        print_progress_bar(step_index, steps, bar_width)
 
-        dome, sat_sort_buff = getAllSatOnMe(t) 
+        configuration = []
+        dome, sat_sort_buff = getAllSatOnMe(t, tle_data) 
         topology = dome + sat_sort_buff
 
         # Gestione della serializzabilità
@@ -185,9 +194,6 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
 
             configuration.append(info_sat)  # Save this satellite's configuration
 
-
-        print(f"Configuration ({elapsed_time // interval}/{num_configs - 1})")
-        print("#" * 70)
 
         data = {
             "time": t.utc_datetime().isoformat(),  # Current time in ISO format
@@ -212,6 +218,8 @@ def genConfigs(t0, interval, num_configs, json_path = "data/configurations.json"
         print("File saved successfully!")
     except IOError as e:
         print(f"Error saving configuration file: {e}")
+    
+    return output
 
 
 def build_EdgeServer_from_config(env, configuration, ogm_tables = None, positions_vectors = None):
@@ -246,14 +254,14 @@ def build_EdgeServer_from_config(env, configuration, ogm_tables = None, position
     return tmp_ES, neighbors_SAT, list_acc_point
 
 
-def periodic_recall_Topology_monitor(env):
+def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables, positions_vectors):
     while True:
         
         print("-" * 70)
         print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
         
-        new_edge_servers, new_global_access_point = loadConfiguration(env)  # Carica la configurazione
+        new_edge_servers, new_global_access_point = loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors)  # Carica la configurazione
 
         # ! Aggiorno le Globali
         with lock:
@@ -265,14 +273,14 @@ def periodic_recall_Topology_monitor(env):
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
 
 
-def distribute_ogm(env):
+def distribute_ogm(env, data_configuration, config_riempimento):
     while True:
 
 
         print(f"||CONF({globals.config_index}) TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
 
-        new_edge_servers, new_global_access_point = loadConfiguration_simple(env)  # Carica la configurazione
+        new_edge_servers, new_global_access_point = loadConfiguration_simple(env, data_configuration)  # Carica la configurazione
         
         print("CONFIGURAZIONE MODIFICATA!")
         # Aggiorno le Globali
@@ -298,11 +306,12 @@ def distribute_ogm(env):
             ogm_table_snapshot, position_dict = manage_ogm_test(ogm_map, new_instant)
         
         # $ Fase di Salvataggio
-        if globals.config_index >= 30:
-            saveInfoInFile('data/OGMs_table.json', ogm_table_snapshot, globals.config_index - 30)
-            saveInfoInFile('data/positions_vectors.json', position_dict, globals.config_index - 30)
+        if globals.config_index >= config_riempimento:
+            new_index = globals.config_index - config_riempimento
+            saveInfoInFile('data/OGMs_table.json', ogm_table_snapshot, new_index)
+            saveInfoInFile('data/positions_vectors.json', position_dict, new_index)
 
-            print("Salvataggio SnapShot Completato")
+            print(f"Salvataggio SnapShot Completato ({new_index}|{globals.config_index})")
 
         print("-"*20)
 
@@ -436,7 +445,7 @@ def update_servers_neighbors(servers_dict, neighbors_SAT):
         server.update_neighbors(hop_neighbors, latency, bandwidth)
 
     return servers_dict
-def loadConfiguration_simple(env):
+def loadConfiguration_simple(env, data_configurations):
     """
     Funzione identica a loadConfiguration ma non ha dipendenze dai file degli OGM_table e positions_Vectors.
     Costruisce le configurazioni satellitari usando solamente il file 'configurations.json'
@@ -542,7 +551,7 @@ def loadConfiguration_simple(env):
 
 
 
-def loadConfiguration(env):
+def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
     """
     Carica una configurazione dal file e aggiorna la lista edge_servers senza sostituirla completamente.
 
@@ -659,7 +668,7 @@ def loadConfiguration(env):
         return edge_servers, global_access_point
 
 
-def updateTaskValue():
+def updateTaskValue(data_configurations):
     index_config = 0
     lifes = []  # Lista per salvare le vite dei satelliti
     configurations = data_configurations["configurations"]   
