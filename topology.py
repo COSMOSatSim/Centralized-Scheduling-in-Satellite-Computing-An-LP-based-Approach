@@ -164,13 +164,11 @@ def genConfigs(t0, interval, num_configs, tle_data, json_path = "data/configurat
     t, configs = t0, []  # Initialize time and configuration list
     num_access_point = config["access_point"]  # Number of access points
     totSecs = num_configs * interval  # Total duration in seconds
-    steps = num_configs
-    bar_width = 40
     
     print("GENERAZIONE CONFIGURAZIONI: ")
     for elapsed_time in range(0, totSecs, interval):
         step_index = elapsed_time // interval + 1
-        print_progress_bar(step_index, steps, bar_width)
+        print_progress_bar(step_index, num_configs, 40)
 
         configuration = []
         dome, sat_sort_buff = getAllSatOnMe(t, tle_data) 
@@ -299,7 +297,7 @@ def distribute_ogm(env, data_configuration, config_riempimento):
 
         for i in range(num_redistributions):
              
-            new_instant = ts.utc(globals.instant_in_configuration.utc_datetime() + at)
+            new_instant = ts.utc(globals.ist_in_conf.utc_datetime() + at)
             at += timedelta(seconds=time_section)
                                  
             print(f"\tOGMS REDISTRIBUTION {i+1}/{num_redistributions} on : {new_instant.utc_iso(places=6)}")
@@ -455,9 +453,9 @@ def loadConfiguration_simple(env, data_configurations):
         #print("#" * 30)
         configuration = data_configurations["configurations"][globals.config_index]
     
-        globals.instant_in_configuration = string_to_skyfield_time(configuration["time"])
+        globals.ist_in_conf = string_to_skyfield_time(configuration["time"])
 
-        print("Aggiornato il Tempo Globale: ", globals.instant_in_configuration.utc_strftime('%Y-%m-%d %H:%M:%S'))
+        print("Aggiornato il Tempo Globale: ", globals.ist_in_conf.utc_strftime('%Y-%m-%d %H:%M:%S'))
         #print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
 
         # Costruisci i nuovi server dalla configurazione
@@ -502,9 +500,9 @@ def loadConfiguration_simple(env, data_configurations):
                 break
 
         # Incrementa l'indice di configurazione
-        if globals.config_index > config["Number_of_Configurations"] - 1:
-            print("(!) Hai finito le configurazioni")
-            print(f"CONFIGURAZIONE elaborata {globals.config_index}")
+        # if globals.config_index > config["Number_of_Configurations"] - 1:
+        #     print("(!) Hai finito le configurazioni")
+        #     print(f"CONFIGURAZIONE elaborata {globals.config_index}")
         # else:
         #     globals.config_index += 1
         return new_edge_servers, global_access_point
@@ -543,7 +541,7 @@ def loadConfiguration_simple(env, data_configurations):
         # [print(sat.name) for sat in edge_servers]
 
         #globals.config_index += 1
-        globals.instant_in_configuration = string_to_skyfield_time(configuration["time"])
+        globals.ist_in_conf = string_to_skyfield_time(configuration["time"])
         globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
 
@@ -564,9 +562,9 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
         configuration = data_configurations["configurations"][globals.config_index]
         OGMs_table_single_config = OGMs_tables[str(globals.config_index)]
         positions_Vectors_single_config = positions_vectors[str(globals.config_index)]
-        globals.instant_in_configuration = string_to_skyfield_time(configuration["time"])
+        globals.ist_in_conf = string_to_skyfield_time(configuration["time"])
 
-        print("Aggiornato il Tempo Globale: ", globals.instant_in_configuration.utc_strftime('%Y-%m-%d %H:%M:%S'))
+        print("Aggiornato il Tempo Globale: ", globals.ist_in_conf.utc_strftime('%Y-%m-%d %H:%M:%S'))
         #print(f'Conf: {globals.config_index} | time : {configuration["time"]}')
 
         # Costruisci i nuovi server dalla configurazione
@@ -617,9 +615,9 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
                 break
 
         # Incrementa l'indice di configurazione
-        if globals.config_index > config["Number_of_Configurations"] - 1:
-            print("(!) Hai finito le configurazioni")
-            print(f"CONFIGURAZIONE elaborata {globals.config_index}")
+        # if globals.config_index > config["Number_of_Configurations"] - 1:
+        #     print("(!) Hai finito le configurazioni")
+        #     print(f"CONFIGURAZIONE elaborata {globals.config_index}")
         # else:
         #     globals.config_index += 1
         return new_edge_servers, global_access_point
@@ -663,7 +661,7 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
         # [print(sat.name) for sat in edge_servers]
 
         #globals.config_index += 1
-        globals.instant_in_configuration = string_to_skyfield_time(configuration["time"])
+        globals.ist_in_conf = string_to_skyfield_time(configuration["time"])
         globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
 

@@ -1,3 +1,4 @@
+import sys
 import json5
 import logging
 from math import sqrt
@@ -175,6 +176,7 @@ class EdgeServer:
     def __str__(self):
         return f"Satellite :{self.name}\n\telev:{self.elev_angle}\n\tis_AP:{self.is_acc_point}"
 
+
     def getPositionVector(self, t):
         """
         Questa funzione ritorna un vettore in 3 dimensioni,
@@ -183,44 +185,39 @@ class EdgeServer:
 
         return getSystemFromSat(self.satellite, t, True).position.km.tolist()  
     
+
+
     def greedy_approach(self, env, task):
-        destination_pos = self.OGMs_position[task.dest_node][1] # Posizione della destinazione
-        ranked_neighbors = []
+        dest_pos = globals.observer.getPositionVector(globals.ist_in_conf)
+        ranker_neighbors = []
 
         for server in self.neighbors:
-            ogm_data = self.OGMs_position.get(server.name)
-            if ogm_data:
-                
-                dist = get_pos_proximity(destination_pos, ogm_data[1])
-                ## t = (server, vect, dist_from_dest, isAP)
-                t = (server, ogm_data[1], dist, ogm_data[2])
-                ranked_neighbors.append(t)
-            else:
-                continue
-        ranked_neighbors.sort(key=lambda x: (not x[3], x[2]))
-        #[print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}") for t in ranked_neighbors]
+            neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.ist_in_conf))
+            t = (server, neighbor_distance, server.is_acc_point)
+            ranker_neighbors.append(t)
+
+        ranker_neighbors.sort(key = lambda x: (not x[2], x[1]))
         
         best_server = None
-        for neighbor_tuple in ranked_neighbors:
+        for neighbor_tuple in ranker_neighbors:
             if neighbor_tuple[0].name not in task.visited:
                 best_server = neighbor_tuple[0]
                 break
         
         if best_server:
-            #print(f"--> BEST SERVER: {best_server.name}")
-            yield from sendTask(env, task, self, best_server, 'GREEDY')
-            
-        # else:
-        #     print(f"{self.name} Non ha Vicini al quale mandare il Task {task.id}")
-        #     print(f"Miei vicini : {len(self.neighbors)}")
-        #     print(f"Sono un access Point? {self.is_acc_point}")
-        #     print("Vedo se uno dei miei vicini è un access point")
-        #     [print(f"\t{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
+            yield from sendTask(env, task, self, best_server, 'SIMPLE_GREEDY')
+
+        #sys.exit("Controllo posizioni Vicini")
+
+
+
 
     def deliver_to_Observer(self, env, mode, task):
         print(f"[MODE: {mode}]")
         task.routingEndTime = env.now
         yield from sendTask(env, task, self, globals.observer, 'DIRECT')
+
+
 
     def forward_packet(self, env):
         if len(self.neighbors)>0:

@@ -31,10 +31,12 @@ if __name__ == "__main__":
     if config.get("Build_Configurations", False):
         
         tle_data = saveTLEOnFile()
-        tot_config = int((config["simulation_duration"] + config["adding_time"]) / 2)
+        config_interval = config["Interval_between_Configurations_in_seconds"]
+        tot_config = int((config["simulation_duration"] + config["adding_time"]) / config_interval)
+        
         configurations = genConfigs(
             get_current_time(),
-            config["Interval_between_Configurations_in_seconds"],
+            config_interval,
             tot_config,
             tle_data
         )

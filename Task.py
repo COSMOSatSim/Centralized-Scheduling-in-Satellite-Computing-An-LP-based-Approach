@@ -117,6 +117,37 @@ def get_algo_percentages(t):
             algo_perc[algo] = round((count / total) * 100, 2)
     return algo_perc  # se non ci sono algoritmi rimane {}
 
+def colorize(text: str, color: str) -> str:
+    """
+    Colora una stringa con i codici ANSI per il terminale.
+
+    Args:
+        text (str): La stringa da colorare.
+        color (str): Il colore (es: "red", "green", "yellow", "blue", "magenta", "cyan", "white").
+
+    Returns:
+        str: La stringa colorata con codici ANSI.
+    """
+    colors = {
+        "black": "\033[30m",
+        "red": "\033[91m",
+        "green": "\033[92m",
+        "yellow": "\033[93m",
+        "blue": "\033[94m",
+        "magenta": "\033[95m",
+        "cyan": "\033[96m",
+        "white": "\033[97m",
+        "reset": "\033[0m",
+        "orange": "\033[33m"  
+    }
+
+    start = colors.get(color.lower(), "")
+    end = colors["reset"] if start else ""
+    return f"{start}{text}{end}"
+
+
+
+
 def generate_Tasks_Status(csv_filename):
     """
         Questa funzione salva in un file CSV le informazioni sui Task
@@ -154,21 +185,26 @@ def generate_Tasks_Status(csv_filename):
 
     # FASE DI STAMPA FORMATTATA
     print(f"TOT TASK IN ROUTING SYS: {len(total_tasks)}\n")
-    print(" id     | CurrentNode   | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
+    print(" id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
     for elem in total_tasks:
         id_, current_node, hop, label, resolution_cat, routing_start, routing_end, durata, algorithms = elem
         algorithms_str = ', '.join([f"{k}:{v}%" for k, v in algorithms.items()]) if algorithms else "-"
         
-        # Colora di verde se routing_start e routing_end sono entrambi presenti
-        if routing_start is not None and routing_end is not None:
-            color_start = "\033[92m"  # Verde
-            color_end = "\033[0m"     # Reset
-        else:
-            color_start = ""
-            color_end = ""
+        row = (
+            f"{id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | "
+            f"{resolution_cat:<13} | {routing_start:<17} | {str(routing_end):<15} | "
+            f"{str(durata):<13} | {algorithms_str}"
+        )
+
+        if label == "TASK_ARRIVED":
+            row = colorize(row, "green")
+        elif label == "TTL_EXPIRED":
+            row = colorize(row, "red")
+        elif label == "SEN_OUT_OF_BUFF":
+            row = colorize(row, "orange")
         
-        print(f"{color_start} {id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | {resolution_cat:<13} | {routing_start:<17} | {str(routing_end):<15} | {str(durata):<13} | {algorithms_str}{color_end}")
-   
+        print(row)
+            
     print()  # Riga vuota alla fine per separare dall'output successivo
 
     # FASE DI SCRITTURA CSV

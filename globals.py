@@ -1,4 +1,5 @@
 import threading, os, json
+
 # Variabili globali per i server
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server
 different_server_counter = {}   # Tiene traccia dei task inoltrati a server diversi
@@ -13,9 +14,9 @@ edge_servers = []           # Lista dei server globali totali
 edge_servers_topology = []  # Edge Servers nella topologia nella configurazione 
 
 observer = None
-instant_in_configuration = None 
+ist_in_conf = None          #Istante nella configurazione attuale 
 
-gbl_tasks = []                  # Lista che mantiene tutti i Task creati per il Routing
+gbl_tasks = []              # Lista che mantiene tutti i Task creati per il Routing
 
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
 
