@@ -32,7 +32,8 @@ class Task:
 
         self.hop_History = [current_node]             # Lista di satelliti sui quali sono stato
 
-    
+
+
     def __str__(self):
         """
         String representation of the Task object.

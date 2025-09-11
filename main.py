@@ -168,6 +168,7 @@ if __name__ == "__main__":
                     eps_cpu, eps_net, eps_tot, srv.energy
                 ])
 
+
             # server_queue residui
             for (
                 tid, rr, rd, tp, arr_sys, est_e, trf, util,

@@ -31,6 +31,7 @@ class EdgeServer:
         :param name: Name of the edge server.
         '''
 
+
         self.env = env
         self.name = name
         self.satellite = satellite

@@ -31,6 +31,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
     eps_cpu, eps_net = 0.0, 0.0
     start_time = env.now
 
+
     # === CPU Queue (simpy PriorityResource) ===
     if task_type in ("CPU", "CPU+NET", "REALTIME"):
         # usa la risorsa SimPy definita nella classe EdgeServer
