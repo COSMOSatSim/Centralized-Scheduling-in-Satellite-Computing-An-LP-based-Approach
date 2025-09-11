@@ -31,7 +31,6 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
     eps_cpu, eps_net = 0.0, 0.0
     start_time = env.now
 
-
     # === CPU Queue (simpy PriorityResource) ===
     if task_type in ("CPU", "CPU+NET", "REALTIME"):
         # usa la risorsa SimPy definita nella classe EdgeServer
@@ -81,6 +80,15 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
         time_in_queue = time_in_queue
     except UnboundLocalError:
         time_in_queue = 0.0
+
+    print(f"Task {task_id} Routing Start")
+    category, resolution = assign_resolution(required_ram, required_disk)
+    task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)  # Creo il task
+    if selected_server.elev_angle < config["Phi_max"] - config["Phi_buffer"]:
+        task_OBS.label = 'SEN_OUT_OF_BUFF'  # Il Task è in un Satellite che è fuori Orbita
+        print(f"{selected_server} {selected_server.elev_angle}° {task_OBS.id} set as {task_OBS.label}")
+    selected_server.tasks.append(task_OBS)
+    globals.gbl_tasks.append(task_OBS)
 
     # Controllo lunghezza code come somma delle code SimPy (liste .queue)
     qlen = len(selected_server.cpu_dev.queue) + len(selected_server.net_dev.queue)

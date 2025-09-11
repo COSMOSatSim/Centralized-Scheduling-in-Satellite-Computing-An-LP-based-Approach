@@ -69,99 +69,6 @@ class EdgeServer:
         self.OGMs_History = OrderedDict()
         self.OGMs_History_dim = 2046
 
-    # --------------------------------------------------
-    # Gestione Energetica
-    # --------------------------------------------------
-    def compute_routing_energy(self, file_size, bandwidth, Ptrasm=1.0):
-        """
-        Energia di routing (trasmissione) [Joule].
-        file_size in Byte, bandwidth in Byte/s
-        """
-        if bandwidth and bandwidth > 0:
-            return Ptrasm * (file_size / bandwidth)
-        return 0.0
-
-    def compute_execution_energy(self, execution_time, C_sen, e=5e-26):
-        """
-        Energia di computazione [Joule].
-        execution_time ~ domanda di servizio (s)
-        C_sen ~ capacità CPU in cicli/s
-        """
-        d = execution_time
-        return d * e * (C_sen ** 3)
-
-    # Wrapper dedicati a CPU e NET
-    def eps_cpu(self, d_cpu_s, C_sen):
-        return self.compute_execution_energy(d_cpu_s, C_sen)
-
-    def eps_net(self, bytes_out, bw_Bps):
-        P = config.get("Ptrasm", 1.0)
-        return P * (bytes_out / bw_Bps) if bw_Bps > 0 else float('inf')
-
-    # --------------------------------------------------
-    # Waiting time (W^cpu, W^net)
-    # --------------------------------------------------
-    def _remaining(self, busy_until, now):
-        return max(0.0, busy_until - now)
-
-    def W_cpu(self, now):
-        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_cpu)
-        rem = 0.5 * self._remaining(self.cpu_busy_until, now) if self.cpu_dev.count > 0 else 0.0
-        return sum_q + rem
-
-    def W_net(self, now):
-        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_net)
-        rem = 0.5 * self._remaining(self.net_busy_until, now) if self.net_dev.count > 0 else 0.0
-        return sum_q + rem
-
-    # --------------------------------------------------
-    # Pipeline CPU -> NET
-    # --------------------------------------------------
-    def process_locally(self, env, task_id, prio, d_cpu_s, d_net_bytes,
-                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen):
-        """
-        Simula l’esecuzione di un task sul server (CPU -> NET).
-        """
-        # 1) Ammissione
-        Wc = self.W_cpu(env.now)
-        Wn = self.W_net(env.now)
-        d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
-        R = Wc + Wn + d_cpu_s + d_net_svc
-        eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
-
-        if (deadline is not None and R > deadline) or (self.energy < eps) \
-                or (self.orbitalSunset and (env.now + R) > self.orbitalSunset):
-            return False, R, eps
-
-        # 2) Enqueue
-        if d_cpu_s > 0:
-            self.queue_cpu.append((task_id, d_cpu_s, prio, env.now))
-        if d_net_bytes > 0:
-            self.queue_net.append((task_id, d_net_svc, prio, env.now))
-
-        # 3) CPU stage
-        if d_cpu_s > 0:
-            with self.cpu_dev.request(priority=prio) as req:
-                yield req
-                self.queue_cpu = [x for x in self.queue_cpu if x[0] != task_id]
-                self.cpu_busy_until = env.now + d_cpu_s
-                yield env.timeout(d_cpu_s)
-                self.cpu_busy_until = env.now
-                self.energy -= self.eps_cpu(d_cpu_s, C_sen)
-
-        # 4) NET stage
-        if d_net_bytes > 0:
-            with self.net_dev.request(priority=prio) as req:
-                yield req
-                self.queue_net = [x for x in self.queue_net if x[0] != task_id]
-                t_tx = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
-                self.net_busy_until = env.now + t_tx
-                yield env.timeout(t_tx)
-                self.net_busy_until = env.now
-                self.energy -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
-
-        return True, R, eps
-
     def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue,
                        start_time, end_time, execution_time, service_time, time_in_queue,
                        selected_server, num_hops, lunghezza_coda, original_TaskPriority,
@@ -262,6 +169,100 @@ class EdgeServer:
         """
 
         return getSystemFromSat(self.satellite, t, True).position.km.tolist()
+    # --------------------------------------------------
+    # Gestione Energetica
+    # --------------------------------------------------
+    def compute_routing_energy(self, file_size, bandwidth, Ptrasm=1.0):
+        """
+        Energia di routing (trasmissione) [Joule].
+        file_size in Byte, bandwidth in Byte/s
+        """
+        if bandwidth and bandwidth > 0:
+            return Ptrasm * (file_size / bandwidth)
+        return 0.0
+
+    def compute_execution_energy(self, execution_time, C_sen, e=5e-26):
+        """
+        Energia di computazione [Joule].
+        execution_time ~ domanda di servizio (s)
+        C_sen ~ capacità CPU in cicli/s
+        """
+        d = execution_time
+        return d * e * (C_sen ** 3)
+
+    # Wrapper dedicati a CPU e NET
+    def eps_cpu(self, d_cpu_s, C_sen):
+        return self.compute_execution_energy(d_cpu_s, C_sen)
+
+    def eps_net(self, bytes_out, bw_Bps):
+        P = config.get("Ptrasm", 1.0)
+        return P * (bytes_out / bw_Bps) if bw_Bps > 0 else float('inf')
+
+    # --------------------------------------------------
+    # Waiting time (W^cpu, W^net)
+    # --------------------------------------------------
+    def _remaining(self, busy_until, now):
+        return max(0.0, busy_until - now)
+
+    def W_cpu(self, now):
+        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_cpu)
+        rem = 0.5 * self._remaining(self.cpu_busy_until, now) if self.cpu_dev.count > 0 else 0.0
+        return sum_q + rem
+
+    def W_net(self, now):
+        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_net)
+        rem = 0.5 * self._remaining(self.net_busy_until, now) if self.net_dev.count > 0 else 0.0
+        return sum_q + rem
+
+    # --------------------------------------------------
+    # Pipeline CPU -> NET
+    # --------------------------------------------------
+    def process_locally(self, env, task_id, prio, d_cpu_s, d_net_bytes,
+                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen):
+        """
+        Simula l’esecuzione di un task sul server (CPU -> NET).
+        """
+        # 1) Ammissione
+        Wc = self.W_cpu(env.now)
+        Wn = self.W_net(env.now)
+        d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
+        R = Wc + Wn + d_cpu_s + d_net_svc
+        eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
+
+        if (deadline is not None and R > deadline) or (self.energy < eps) \
+                or (self.orbitalSunset and (env.now + R) > self.orbitalSunset):
+            return False, R, eps
+
+        # 2) Enqueue
+        if d_cpu_s > 0:
+            self.queue_cpu.append((task_id, d_cpu_s, prio, env.now))
+        if d_net_bytes > 0:
+            self.queue_net.append((task_id, d_net_svc, prio, env.now))
+
+        # 3) CPU stage
+        if d_cpu_s > 0:
+            with self.cpu_dev.request(priority=prio) as req:
+                yield req
+                self.queue_cpu = [x for x in self.queue_cpu if x[0] != task_id]
+                self.cpu_busy_until = env.now + d_cpu_s
+                yield env.timeout(d_cpu_s)
+                self.cpu_busy_until = env.now
+                self.energy -= self.eps_cpu(d_cpu_s, C_sen)
+
+        # 4) NET stage
+        if d_net_bytes > 0:
+            with self.net_dev.request(priority=prio) as req:
+                yield req
+                self.queue_net = [x for x in self.queue_net if x[0] != task_id]
+                t_tx = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
+                self.net_busy_until = env.now + t_tx
+                yield env.timeout(t_tx)
+                self.net_busy_until = env.now
+                self.energy -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
+
+        return True, R, eps
+
+
 
     def greedy_approach(self, env, task):
         destination_pos = self.OGMs_position[task.dest_node][1]  # Posizione della destinazione

@@ -11,9 +11,8 @@ from topology import loadConfiguration, periodic_recall_Topology_monitor, create
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
-from  Observer import Observer
+from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
-
 import globals
 
 # Leggi il file di configurazione JSON

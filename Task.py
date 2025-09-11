@@ -1,5 +1,6 @@
 import random, json, json5, csv
 import globals
+
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
