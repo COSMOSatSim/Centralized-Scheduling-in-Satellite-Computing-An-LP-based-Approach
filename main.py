@@ -148,7 +148,8 @@ if __name__ == "__main__":
             "Task ID","Task Priority","Arrival time in system","arrival_time_task_queue",
             "Start Time","End Time","Execution time","Time in system","Time in queue",
             "Server Name","Num Hops","Queue length","original_TaskPriority",
-            "estimated_execution_time","transfer_time ","Utility","TMAX_exceeded","Exec_after_set"
+            "estimated_execution_time","transfer_time","Utility","TMAX_exceeded","Exec_after_set",
+            "Energy_CPU [J]","Energy_NET [J]","Energy_TOTAL [J]","Remaining_energy [J]"
         ])
 
         for srv in globals.edge_servers:
@@ -156,14 +157,15 @@ if __name__ == "__main__":
             for (
                 tid, tp, arr_sys, arr_q, st, et, ex_t, sv_t,
                 tq, sel_srv, hops, qlen, orig_p, est_e, trf,
-                util, tmax_exc, exec_set
+                util, tmax_exc, exec_set, eps_cpu, eps_net, eps_tot
             ) in srv.completed_tasks:
                 orig_label = 'high' if orig_p == 1 else 'low'
                 writer.writerow([
                     tid, tp, arr_sys, arr_q, st, et,
                     ex_t, sv_t, tq, sel_srv, hops,
                     qlen, orig_label, est_e, trf,
-                    util, tmax_exc, exec_set
+                    util, tmax_exc, exec_set,
+                    eps_cpu, eps_net, eps_tot, srv.energy
                 ])
 
             # server_queue residui
@@ -178,7 +180,8 @@ if __name__ == "__main__":
                     0, 0, 0, time_in_q,
                     time_in_q, srv.name, hops,
                     len(srv.server_queue), label,
-                    est_e, trf, util, False
+                    est_e, trf, util, False,
+                    0.0, 0.0, 0.0, srv.energy  # se non eseguito, consumo=0
                 ])
 
     print(f"Simulation results saved to: {csv_task}")

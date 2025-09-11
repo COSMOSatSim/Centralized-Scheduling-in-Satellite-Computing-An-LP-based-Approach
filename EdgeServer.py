@@ -21,13 +21,14 @@ def setup_logging(log_file_path):
 
 total_time = 0  # Imposta il valore iniziale di total_time
 
+
 class EdgeServer:
     def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point, elev_angle):
         '''
-                Initialize an EdgeServer instance.
+        Initialize an EdgeServer instance.
 
-                :param env: Simulation environment.
-                :param name: Name of the edge server.
+        :param env: Simulation environment.
+        :param name: Name of the edge server.
         '''
         self.env = env
         self.name = name
@@ -38,24 +39,37 @@ class EdgeServer:
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
-        self.process_queue = simpy.PriorityResource(env, capacity=5)  # Initialize a PriorityResource for the task queue
+
+        # Code classiche come in precedenza (non verrà più utilizzata)
+        self.process_queue = simpy.PriorityResource(env, capacity=5)
         self.server_queue = []
-        self.utility_value = 0  # Valore iniziale di utilità del server
+
+        # Nuove code CPU + NET per modello a 2 stadi
+        self.cpu_dev = simpy.PriorityResource(env, capacity=5)
+        self.net_dev = simpy.PriorityResource(env, capacity=5)
+        self.queue_cpu = []
+        self.queue_net = []
+        self.cpu_busy_until = 0.0
+        self.net_busy_until = 0.0
+
+        self.utility_value = 0
         self.completed_tasks = []
-        self.energy = config.get("initial_energy", 1000.0)  # J
+        self.energy = config.get("initial_energy", 10000.0)  # J (valore più alto)
 
-        self.tasks = []             # Lista task da Spedire
-        self.dead_tasks = []        # Lista dei Task Morti (TTL = 0) 
-        self.OGMs_position = {}     # Dizionario delle posizioni dei vicini 
+        self.tasks = []  # Lista task da Spedire
+        self.dead_tasks = []  # Lista dei Task Morti (TTL = 0)
+        self.OGMs_position = {}  # Dizionario delle posizioni dei vicini
 
-        self.ogm_sequence = 0           # Contatore OGM emessi
-        self.OGMs = []                  # OGM to process
-        self.OGMs_NP = []               # OGM received and Not-Processed
-        self.ogm_table = {}             # OGMs Table {'originator': { 'neighbor': 'count'
-        
-        self.OGMs_History = OrderedDict()# Lista OGM visionati in passato (FIFO)
-        self.OGMs_History_dim = 2046     # Limite dimensione History OGM 
+        self.ogm_sequence = 0
+        self.OGMs = []
+        self.OGMs_NP = []
+        self.ogm_table = {}
+        self.OGMs_History = OrderedDict()
+        self.OGMs_History_dim = 2046
 
+    # --------------------------------------------------
+    # Gestione Energetica
+    # --------------------------------------------------
     def compute_routing_energy(self, file_size, bandwidth, Ptrasm=1.0):
         """
         Energia di routing (trasmissione) [Joule].
@@ -74,38 +88,102 @@ class EdgeServer:
         d = execution_time
         return d * e * (C_sen ** 3)
 
-    def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time, end_time,
-                       execution_time, service_time, time_in_queue, selected_server, num_hops, lunghezza_coda,
-                       original_TaskPriority, estimated_execution_time, transfer_time, utility, TMAX_exceeded, exec_after_set):
+    # Wrapper dedicati a CPU e NET
+    def eps_cpu(self, d_cpu_s, C_sen):
+        return self.compute_execution_energy(d_cpu_s, C_sen)
+
+    def eps_net(self, bytes_out, bw_Bps):
+        P = config.get("Ptrasm", 1.0)
+        return P * (bytes_out / bw_Bps) if bw_Bps > 0 else float('inf')
+
+    # --------------------------------------------------
+    # Waiting time (W^cpu, W^net)
+    # --------------------------------------------------
+    def _remaining(self, busy_until, now):
+        return max(0.0, busy_until - now)
+
+    def W_cpu(self, now):
+        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_cpu)
+        rem = 0.5 * self._remaining(self.cpu_busy_until, now) if self.cpu_dev.count > 0 else 0.0
+        return sum_q + rem
+
+    def W_net(self, now):
+        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_net)
+        rem = 0.5 * self._remaining(self.net_busy_until, now) if self.net_dev.count > 0 else 0.0
+        return sum_q + rem
+
+    # --------------------------------------------------
+    # Pipeline CPU -> NET
+    # --------------------------------------------------
+    def process_locally(self, env, task_id, prio, d_cpu_s, d_net_bytes,
+                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen):
+        """
+        Simula l’esecuzione di un task sul server (CPU -> NET).
+        """
+        # 1) Ammissione
+        Wc = self.W_cpu(env.now)
+        Wn = self.W_net(env.now)
+        d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
+        R = Wc + Wn + d_cpu_s + d_net_svc
+        eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
+
+        if (deadline is not None and R > deadline) or (self.energy < eps) \
+                or (self.orbitalSunset and (env.now + R) > self.orbitalSunset):
+            return False, R, eps
+
+        # 2) Enqueue
+        if d_cpu_s > 0:
+            self.queue_cpu.append((task_id, d_cpu_s, prio, env.now))
+        if d_net_bytes > 0:
+            self.queue_net.append((task_id, d_net_svc, prio, env.now))
+
+        # 3) CPU stage
+        if d_cpu_s > 0:
+            with self.cpu_dev.request(priority=prio) as req:
+                yield req
+                self.queue_cpu = [x for x in self.queue_cpu if x[0] != task_id]
+                self.cpu_busy_until = env.now + d_cpu_s
+                yield env.timeout(d_cpu_s)
+                self.cpu_busy_until = env.now
+                self.energy -= self.eps_cpu(d_cpu_s, C_sen)
+
+        # 4) NET stage
+        if d_net_bytes > 0:
+            with self.net_dev.request(priority=prio) as req:
+                yield req
+                self.queue_net = [x for x in self.queue_net if x[0] != task_id]
+                t_tx = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
+                self.net_busy_until = env.now + t_tx
+                yield env.timeout(t_tx)
+                self.net_busy_until = env.now
+                self.energy -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
+
+        return True, R, eps
+
+    def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue,
+                       start_time, end_time, execution_time, service_time, time_in_queue,
+                       selected_server, num_hops, lunghezza_coda, original_TaskPriority,
+                       estimated_execution_time, transfer_time, utility,
+                       TMAX_exceeded, exec_after_set,
+                       eps_cpu=0.0, eps_net=0.0):
         '''
-                Record completed tasks.
-
-                :param task_id: ID of the completed task.
-                :param task_priority: Priority of the completed task.
-                :param arrival_time_system: Arrival time of the task in the system.
-                :param arrival_time_task_queue: Arrival time of the task in the server queue.
-                :param start_time: Start time of task execution.
-                :param end_time: End time of task execution.
-                :param execution_time: Execution time of the task.
-                :param service_time: Service time of the task.
-                :param time_in_queue: Time spent by the task in the queue.
-                :param selected_server: Server selected for task execution.
-                :param num_hops: Number of hops to reach the selected server.
-                :param lunghezza_coda: Length of the server queue.
-
-                :return: None
-                '''
-
-        
-        #exec_after_set = False # booleano che indica se il task è stato eseguito quando il satellite è tramontato
+        Record completed tasks, including energy metrics (CPU + NET).
+        '''
         if self.elev_angle < config["Phi_max"]:
             exec_after_set = True
 
-        #print(f"Completamento Task {task_id}: Priority {task_priority}, Start {start_time}, End {end_time}, {self.name} Tramontato: {exec_after_set}")
+        total_energy = eps_cpu + eps_net
+        self.completed_tasks.append(
+            (task_id, task_priority, arrival_time_system, arrival_time_task_queue,
+             start_time, end_time, execution_time, service_time, time_in_queue,
+             selected_server, num_hops, lunghezza_coda, original_TaskPriority,
+             estimated_execution_time, transfer_time, utility,
+             TMAX_exceeded, exec_after_set, eps_cpu, eps_net, total_energy)
+        )
 
-        self.completed_tasks.append((task_id, task_priority, arrival_time_system, arrival_time_task_queue, start_time,
-                                     end_time, execution_time, service_time, time_in_queue, selected_server, num_hops,
-                                     lunghezza_coda, original_TaskPriority, estimated_execution_time, transfer_time, utility, TMAX_exceeded, exec_after_set))
+        print(f"[Task {task_id}] COMPLETED on {self.name} | "
+              f"CPU={eps_cpu:.4f}J, NET={eps_net:.4f}J, TOTAL={total_energy:.4f}J, "
+              f"Remaining={self.energy:.2f}J")
 
     def add_neighbor(self, neighbor_server, hop_count, latency, bandwidth):
         '''
@@ -181,16 +259,16 @@ class EdgeServer:
         rappresenta la posizione del satellite in un determinato istante.
         """
 
-        return getSystemFromSat(self.satellite, t, True).position.km.tolist()  
-    
+        return getSystemFromSat(self.satellite, t, True).position.km.tolist()
+
     def greedy_approach(self, env, task):
-        destination_pos = self.OGMs_position[task.dest_node][1] # Posizione della destinazione
+        destination_pos = self.OGMs_position[task.dest_node][1]  # Posizione della destinazione
         ranked_neighbors = []
 
         for server in self.neighbors:
             ogm_data = self.OGMs_position.get(server.name)
             if ogm_data:
-                
+
                 dist = get_pos_proximity(destination_pos, ogm_data[1])
                 ## t = (server, vect, dist_from_dest, isAP)
                 t = (server, ogm_data[1], dist, ogm_data[2])
@@ -198,18 +276,18 @@ class EdgeServer:
             else:
                 continue
         ranked_neighbors.sort(key=lambda x: (not x[3], x[2]))
-        #[print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}") for t in ranked_neighbors]
-        
+        # [print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}") for t in ranked_neighbors]
+
         best_server = None
         for neighbor_tuple in ranked_neighbors:
             if neighbor_tuple[0].name not in task.visited:
                 best_server = neighbor_tuple[0]
                 break
-        
+
         if best_server:
-            #print(f"--> BEST SERVER: {best_server.name}")
+            # print(f"--> BEST SERVER: {best_server.name}")
             yield from sendTask(env, task, self, best_server, 'GREEDY')
-            
+
         # else:
         #     print(f"{self.name} Non ha Vicini al quale mandare il Task {task.id}")
         #     print(f"Miei vicini : {len(self.neighbors)}")
@@ -223,7 +301,7 @@ class EdgeServer:
         yield from sendTask(env, task, self, globals.observer, 'DIRECT')
 
     def forward_packet(self, env):
-        if len(self.neighbors)>0:
+        if len(self.neighbors) > 0:
             for task in self.tasks:
 
                 if not task.arrived:
@@ -237,7 +315,6 @@ class EdgeServer:
                         if self.elev_angle >= 40:
                             yield from self.deliver_to_Observer(env, 'MONODIRECTIONAL', task)
                             continue
-                    
 
                     # ! Algorithm
                     max_neighbor = None
@@ -259,88 +336,42 @@ class EdgeServer:
                     elif GREEDY:
                         yield from self.greedy_approach(env, task)
 
+        # else:
+        # print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
+        # print("Task IDs:", [task.id for task in self.tasks])
 
-        #else:
-            #print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
-            #print("Task IDs:", [task.id for task in self.tasks])
-
-    def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time, restart_time, download_time, server, task_priority):
+    def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time,
+                           restart_time, download_time, server, task_priority):
         '''
-        Aggiorna il valore di utilità del server in base ai task attualmente in coda e al carico richiesto.
-
-        :param estimated_execution_time: CPU richiesta dal task.
-        :param transfer_time: Tempo di trasferimento del contesto.
-        :param restart_time: Tempo di riavvio del task.
-        :param download_time: Tempo di download dell'immagine.
-        :param task_priority: Priorità del task (1 = alta, 100 = bassa).
-        :param server: Server su cui viene aggiornato il valore di utilità.
-
-        :return: Nessun valore di ritorno, aggiorna l'attributo utility_value del server.
+        Aggiorna il valore di utilità del server in base alle code CPU/NET reali.
         '''
-        # Ottiene la lista di task attualmente in coda nel server
-        tasks_in_queue = list(server.server_queue)
-        #  task_id, required_ram, required_disk, task_priority, arrival_time_system, estimated_execution_time, transfer_time, num_hops, arrival_time_task_queue, original_TaskPriority
-        #     0            1          2           3               4                    5                        6              7             8                    9
+        now = env.now
 
-        # Se ci sono task in coda, calcola i parametri di utilità
-        if len(tasks_in_queue) > 0:
-            # Calcola il numero di task che sono arrivati prima del tempo attuale (env.now)
-            self.total_priority_in_queue = sum([1 for r in tasks_in_queue if r[4] < env.now])
+        # Nuovo: waiting times reali da code CPU/NET
+        Wc = self.W_cpu(now)
+        Wn = self.W_net(now)
 
-            # Calcola il tempo di attesa totale dei task (waiting_time)
-            self.waiting_time = sum([r[5] for r in tasks_in_queue if r[8] < env.now])
-
-            # Calcola il tempo medio di servizio (AVG_service_time)
-            self.AVG_service_time = self.waiting_time / self.total_priority_in_queue if self.total_priority_in_queue > 0 else 0
-
-            # Conta il numero di task ad alta priorità nella coda
-            num_high_priority = sum(1 for r in tasks_in_queue if r[3] == 1 and (env.now - 1) < r[8] <= (env.now))
-
-            # Conta il numero di task a bassa priorità nella coda
-            num_low_priority = sum(1 for r in tasks_in_queue if r[3] == 100 and (env.now - 1) < r[8] <= (env.now))
-
-            # Calcola rho_l_ij (carico della bassa priorità)
-            rho_l_ij = num_low_priority * self.AVG_service_time
-
-            # Calcola rho_h_ij (carico dell'alta priorità)
-            rho_h_ij = num_high_priority * self.AVG_service_time
-
-            if rho_h_ij > 1:
-                rho_h_ij = 0.99  # Se rho_h_ij è maggiore di 1, lo limitiamo a 0.99
-
-            # Calcola il tempo di attesa per i task ad alta priorità (Th_ij)
-            self.Th_ij = ((1 + rho_l_ij) * self.AVG_service_time) / (1 - rho_h_ij)
-
-            # Calcola rho totale (somma di carico alta e bassa priorità)
-            rho = rho_h_ij + rho_l_ij
-            if rho > 1:
-                rho = 0.99  # Limitiamo rho a 0.99 per evitare sovraccarichi
-
-            # Calcola il tempo di attesa per i task a bassa priorità (Tl_ij)
-            self.Tl_ij = ((1 - rho_h_ij * (1 - rho)) * self.AVG_service_time) / ((1 - rho_h_ij) * (1 - rho))
-
-        # Se non ci sono task in coda, setta i valori di utilità a zero
-        else:
-            self.AVG_service_time = 0
-            self.Th_ij = 0
-            self.Tl_ij = 0
-            self.waiting_time = 0
-
-        # Calcola il tempo totale per trasferimento, riavvio e download
-        total_time = transfer_time + restart_time + download_time
-
-        # Penalizzazione per il tramonto del server
+        #  Penalizzazione per sunset
         if server.orbitalSunset is not None and server.orbitalSunset > 0:
-            sunset_penalty = 1 / server.orbitalSunset  # Più è vicino al tramonto, più alto è il valore
+            sunset_penalty = 1 / server.orbitalSunset
         else:
-            sunset_penalty = float('inf')  # Penalizzazione massima se il tramonto è imminente
+            sunset_penalty = float('inf')
 
+        # Tempo complessivo: CPU demand stimata + overhead (download, restart, transfer)
+        total_demand = estimated_execution_time + transfer_time + restart_time + download_time
 
-        # Aggiorna il valore di utilità del server in base alla priorità del task
-        if task_priority == 1:  # Task ad alta priorità
-            self.utility_value = self.Th_ij + (estimated_execution_time) + total_time #+ sunset_penalty
-        else:  # Task a bassa priorità
-            self.utility_value = self.Th_ij + self.Tl_ij + (estimated_execution_time) + total_time #+ sunset_penalty
+        # Utility in base al tipo di task
+        if task_priority == 1:  # alta priorità → focus CPU
+            self.utility_value = Wc + total_demand  # + sunset_penalty se vuoi enfatizzarlo
+        elif task_priority == 100:  # bassa priorità → focus CPU+NET
+            self.utility_value = Wc + Wn + total_demand
+        else:  # default
+            self.utility_value = Wc + Wn + total_demand
+
+        # Debug
+        print(f"[Utility] {self.name} | Wc={Wc:.2f}, Wn={Wn:.2f}, "
+              f"total_demand={total_demand:.2f}, utility={self.utility_value:.2f}")
+
 
 def getTransmissionTime(bandwidht, weight, latency):
     return (weight/bandwidht) + latency
