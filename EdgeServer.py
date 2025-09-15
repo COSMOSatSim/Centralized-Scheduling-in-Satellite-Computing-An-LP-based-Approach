@@ -2,11 +2,13 @@ import sys
 import json5
 import logging
 from math import sqrt
-import simpy
+import simpy, copy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
+from routing_Manager import forward_packet_DSR
 from user_based_topology import getSystemFromSat
 from Task import Task
+from packet import Packet
 import globals
 
 
@@ -16,6 +18,7 @@ with open('config.json5') as config_file:
 
 BATMAN = config["Routing_algorithm"]["BATMAN"]
 GREEDY = config["Routing_algorithm"]["GREEDY"]
+DSR = config["Routing_algorithm"]["DSR"]
 
 def setup_logging(log_file_path):
     logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
@@ -56,6 +59,11 @@ class EdgeServer:
         
         self.OGMs_History = OrderedDict()# Lista OGM visionati in passato (FIFO)
         self.OGMs_History_dim = 2046     # Limite dimensione History OGM 
+        
+        self.routes = {}            # Dizionario di Percorsi arrivati
+        self.packets = []           # Lista di pacchetti da smaltire
+        self.packets_seq = 0        # contatore pacchetti spediti
+        self.pkt_history = []
 
     def compute_routing_energy(self, file_size, bandwidth, Ptrasm=1.0):
         """
@@ -177,6 +185,7 @@ class EdgeServer:
         return f"Satellite :{self.name}\n\telev:{self.elev_angle}\n\tis_AP:{self.is_acc_point}"
 
 
+
     def getPositionVector(self, t):
         """
         Questa funzione ritorna un vettore in 3 dimensioni,
@@ -185,6 +194,12 @@ class EdgeServer:
 
         return getSystemFromSat(self.satellite, t, True).position.km.tolist()  
     
+
+
+
+
+
+
 
 
     def greedy_approach(self, env, task):
@@ -207,8 +222,6 @@ class EdgeServer:
         if best_server:
             yield from sendTask(env, task, self, best_server, 'SIMPLE_GREEDY')
 
-        #sys.exit("Controllo posizioni Vicini")
-
 
 
 
@@ -219,42 +232,49 @@ class EdgeServer:
 
 
 
+
+
     def forward_packet(self, env):
         if len(self.neighbors)>0:
-            for task in self.tasks:
 
-                if not task.arrived:
-                    if config["AP_routing_bidirectional"]:
-                        # Bidirezionale, mandiamo il task verso gli access Point
-                        if self.is_acc_point:
-                            yield from self.deliver_to_Observer(env, 'BIDIRECTIONAL', task)
-                            continue
-                    else:
-                        # Controllo che il satellite sia nella Dome
-                        if self.elev_angle >= 40:
-                            yield from self.deliver_to_Observer(env, 'MONODIRECTIONAL', task)
-                            continue
-                    
+            if DSR :
+                # ! DSR
+                forward_packet_DSR(env, self)
+            else :
+                # ! BATMAN and GREEDY
+                for task in self.tasks:
 
-                    # ! Algorithm
-                    max_neighbor = None
-                    if BATMAN:
-                        max_neighbor, max_value = find_OGM_intersection(
-                            self.ogm_table[task.dest_node], self.neighbors, task
-                        )
-                    # Se entrambi attivi: prova BATMAN, altrimenti passa a GREEDY
-                    if BATMAN and GREEDY:
-                        if max_neighbor:
-                            yield from sendTask(env, task, self, max_neighbor, 'BATMAN')
+                    if not task.arrived:
+                        if config["AP_routing_bidirectional"]:
+                            # Bidirezionale, mandiamo il task verso gli access Point
+                            if self.is_acc_point:
+                                yield from self.deliver_to_Observer(env, 'BIDIRECTIONAL', task)
+                                continue
                         else:
+                            # Controllo che il satellite sia nella Dome
+                            if self.elev_angle >= 40:
+                                yield from self.deliver_to_Observer(env, 'MONODIRECTIONAL', task)
+                                continue
+                        
+                        max_neighbor = None
+                        if BATMAN:
+                            max_neighbor, max_value = find_OGM_intersection(
+                                self.ogm_table[task.dest_node], self.neighbors, task
+                            )
+                        # Se entrambi attivi: prova BATMAN, altrimenti passa a GREEDY
+                        if BATMAN and GREEDY:
+                            if max_neighbor:
+                                yield from sendTask(env, task, self, max_neighbor, 'BATMAN')
+                            else:
+                                yield from self.greedy_approach(env, task)
+
+                        elif BATMAN:
+                            if max_neighbor:
+                                yield from sendTask(env, task, self, max_neighbor, 'BATMAN')
+
+                        elif GREEDY:
                             yield from self.greedy_approach(env, task)
-
-                    elif BATMAN:
-                        if max_neighbor:
-                            yield from sendTask(env, task, self, max_neighbor, 'BATMAN')
-
-                    elif GREEDY:
-                        yield from self.greedy_approach(env, task)
+                        
 
 
         #else:

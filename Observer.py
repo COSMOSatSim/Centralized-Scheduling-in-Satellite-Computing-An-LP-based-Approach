@@ -40,7 +40,11 @@ class Observer(metaclass = ObserverMeta):
         self.OGMs_NP = []                   # OGM recived and Not-Processed
         self.ogm_table = {}                 # OGMs Table {'originator': [ 'neighbor': 'count']
         self.OGMs_History = OrderedDict()   # Lista OGM visionati in passato
-    
+
+        self.packets = []           # Lista di pacchetti da smaltire
+        self.packets_seq = 0        # contatore pacchetti spediti
+        self.pkt_history = []
+
     
     def getLocation(self, altitude = config["sphere_altitude_km"] ,location = config["simulation_location"]):
         if location in config["locations"]:

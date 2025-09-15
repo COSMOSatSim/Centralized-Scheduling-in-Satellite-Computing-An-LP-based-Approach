@@ -1,5 +1,6 @@
 import random
 import json, json5
+from packet import Mode, Packet
 from user_based_topology import get_orbit_proximity, getSystemFromSat
 from Ogm import Ogm
 from Observer import Observer
@@ -11,6 +12,7 @@ import os
 with open('config.json5') as config_file:
     config = json5.load(config_file)
 
+DSR = config["Routing_algorithm"]["DSR"]
 # Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
 # try:
 #     with open("data/configurations.json", "r") as f:
@@ -226,15 +228,182 @@ def create_ogm(obj, origin_position_vect, is_AP):
     obj.OGMs.append(ogm)           # Lo inserisco nella lista degli OGM da processare in questo server
 
 
+def routeDiscovery(source, task, neighbors):
+    """
+    Questa funzione prende un task è fa partire un processo 
+    di route request fino alla destinazione.
+    """
+    task.routeRequestIst = source.env.now    # Save timestamp
+    
+    for node in neighbors:
 
-def periodic_recall_Routing_monitor(env, interval = 1):
+        pkt_ID = source.name+"_"+str(source.packets_seq)
+        pkt = Packet(pkt_ID, task.id, task.current_node, task.dest_node, Mode.ROUTE_DISCOVERY)
+        
+        node.packets.append(pkt)
+        pkt.current_node = node.name
+        
+        source.pkt_history.append(pkt_ID)
+        source.packets_seq += 1
+        globals.gbl_packet.append(pkt)
+        #print(f"[{pkt_ID}] {task.current_node} --> {node.name}")
+
+def getNextNode(neighbors, nextHopName):
+
+    neighbor = next((n for n in neighbors if n.name == nextHopName), None)
+    return neighbor
+
+def startRouteReply(source, neighbors, pkt: Packet):
+    print(f"AVVIO FASE DI ROUTE REPLY")
+    pkt.mode = Mode.ROUTE_REPLY
+    last_node = pkt.node_stack.pop()
+    
+    nextHop = getNextNode(neighbors, last_node)
+    
+    if nextHop:
+        print(f"\t[START-RREPLY] Task {pkt.taskID} pktID {pkt.id}\t| {source.name} -> {nextHop.name}")
+        nextHop.packets.append(pkt)
+    else:
+        #! ROUTE ERROR?
+        print(f"\tERROR ROUTE ??\n{source.name} tryed to send {pkt.taskID} pkt to one of:")
+        [print(n.name) for n in neighbors]
+        print(f"pkt said the last_node was {last_node}")
+        print(f"{source.name} fails to send pktID{pkt.id} of taskID {pkt.taskID}")
+    
+
+
+
+
+def sendPkt(source, dest, pkt:Packet):
+    if dest == None:
+        sys.exit("ERRORE: destination = None")
+    
+    newPkt = pkt.duplicate()
+
+    newPkt.current_node = dest.name
+
+    newPkt.visited.add(source.name)         
+    newPkt.hop_History.append(source.name)
+    newPkt.node_stack.append(source.name)
+
+    dest.packets.append(newPkt)
+
+
+
+def forward_packet_DSR(env, node):
+    
+    # ? Gestione dei vicini 
+    neighbors = None
+    if node.name != 'OBS':
+        neighbors = list(node.neighbors.keys()) # Vicini Nodo Normale
+        if node.is_acc_point:
+            neighbors += [globals.observer]     # Vicini Nodo AP
+    else:
+        neighbors = globals.global_access_point # Vicini Observer
+
+
+    for pkt in node.packets[:]:
+        if pkt.mode == Mode.ROUTE_DISCOVERY:
+            if pkt.id not in node.pkt_history:
+                if pkt.dest == node.name:
+                    startRouteReply(node, neighbors, pkt)
+                else:
+                    print(f"[RDISCOVERY] pktID:{pkt.id} taskID.{pkt.taskID} on {node.name}")
+                    for n in neighbors:
+                        sendPkt(node, n, pkt)
+            
+            # Nella history inserisco i DISCOVERY
+            node.pkt_history.append(pkt.id)
+
+        elif pkt.mode == Mode.ROUTE_REPLY:
+
+            if pkt.source == node.name:
+                # Se la source di questo pacchetto sono io
+                print(f"CONSEGNATO [{pkt.id}] TASK:{pkt.taskID}")
+                
+                #! Salviamo l'informazione che ci è giunta
+                if pkt.taskID not in node.routes:
+                    node.routes[pkt.taskID] = []
+                
+                if pkt.hop_History not in node.routes[pkt.taskID]:
+                    node.routes[pkt.taskID].append(pkt.hop_History)
+
+                # Rendiamo il Task Spedibile
+                task = next((t for t in node.tasks if t.id == pkt.taskID), None)
+                task.RouteReply = True
+                
+            else:
+                # Lo mando al prossimo nodo della rete
+                lastNodeStack = pkt.node_stack.pop()
+                nextNode = getNextNode(neighbors,lastNodeStack)
+                sendPkt(node, nextNode, pkt)
+
+        node.packets.remove(pkt)
+
+    # ! Route Request
+    for task in node.tasks: 
+        if not task.routeRequestIst:
+            routeDiscovery(node, task, neighbors)
+            print(f"\t[RDISCOVERY] Task {task.id}\t| {node.name} start routeRequest: {round(task.routeRequestIst,4)} ")
+        else:
+            if task.RouteReply:
+                # Abbiamo ricevuto un Pacchetto Reply
+
+                sys.exit("Possiamo iniziare il trasferimento")
+            else:
+                # Controllo che non sia scaduto il suo tempo.
+                if env.now - task.routeRequestIst > 2:
+                    print(f"Route request for task {task.id} expired (timestamp: {task.routeRequestIst}, now: {env.now})")
+                    # Puoi aggiungere qui la logica per gestire la scadenza, ad esempio rimuovere il task o ritentare
+                    
+                    if task.id in node.routes:
+                        print(f"{node.routes[task.id]}")
+                    else:
+                        print(f"Nessuna informazione di routing per il task {task.id}")
+
+                    print("\n\n")
+                    [print(p) for p in globals.gbl_packet]
+                    sys.exit(f"BRO IL TEMPO é SCADUPTO DEL TASK: {task.id}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# | Secondi | Millisecondi |
+# | ------- | ------------ |
+# | 1       | 1000 ms      |
+# | 0,5     | 500 ms       |
+# | 0,1     | 100 ms       |
+# | 0,01    | 10 ms        |
+# | 0,001   | 1 ms         |
+
+def periodic_recall_Routing_monitor(env, interval = 0.005):
     """
     Questa funzione dovrà scorrere costantemente tutti i task dentro
     la lista dei globali, e costantemente spingerli verso la destinazione.
     """
     while True:
+        print(f"env time: {env.now}")
         for node in globals.edge_servers:
             yield from node.forward_packet(env)    # Eseguiamo il forwarding
+            if DSR:
+                forward_packet_DSR(env, globals.observer)
+
+        # TODO DIMINUIRE QUESTO VALORE PER rendere il routing più veloce
         yield env.timeout(interval)
 
 

@@ -17,6 +17,7 @@ observer = None
 ist_in_conf = None          #Istante nella configurazione attuale 
 
 gbl_tasks = []              # Lista che mantiene tutti i Task creati per il Routing
+gbl_packet = []             # Lista globale dei pacchetti che girano nel simulatore
 
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
 
@@ -38,4 +39,3 @@ try:
     positions_vectors = load_or_create_json("data/positions_vectors.json")
 except Exception as e:
     print(f"Error loading configuration file: {e}")
-

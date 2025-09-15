@@ -11,7 +11,7 @@ class Task:
     def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, category, resolution):
 
         self.id = task_id  
-        self.ttl = 20                           # Time to live
+        self.ttl = 20                           # Time to live in HOP
         self.hop = 0                            # num_hop
         self.arrived = False                    # Arrived Flag                                        
         self.routingInitTime = routingInitTime  # Tempo di partenza
@@ -24,15 +24,19 @@ class Task:
         self.current_node = current_node        # Server sul quale si trova
         self.dest_node = dest_node              # Nodo di destinazione
 
-        #self.visited: set[str] = {current_node} # Set Server precedente
+        #self.visited: set[str] = {current_node}# Set Server precedente
         self.visited = set()                    # Set Server precedente
-        self.visited.add(current_node)                # Aggiungo il primo server (il nome!)
+        self.visited.add(current_node)          # Aggiungo il primo server (il nome!)
 
         self.algorithms_used = {}               # Dizionario degli algoritmi utilizzati
 
-        self.hop_History = [current_node]             # Lista di satelliti sui quali sono stato
-
-    
+        self.hop_History = [current_node]       # Lista di satelliti sui quali sono stato
+        
+        # DSR
+        self.routeRequestIst = None             # Timestamp start route Request
+        self.RouteReply = False                 # Bool allow reply
+        self.Route = []                         # Lista percorso da seguire
+        self.routeHopCounter = 0                
     def __str__(self):
         """
         String representation of the Task object.

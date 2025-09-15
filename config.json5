@@ -84,7 +84,8 @@
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
   Routing_algorithm: {
-    BATMAN: true,
-    GREEDY: true,
+    BATMAN: false,
+    GREEDY: false,
+    DSR: true,
   },
 }
