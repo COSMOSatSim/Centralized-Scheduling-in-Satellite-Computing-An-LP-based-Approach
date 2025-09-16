@@ -183,6 +183,8 @@ def generate_Tasks_Status(csv_filename):
     # FASE DI SORTING
     total_tasks.sort(key=lambda x: x[0])
 
+    TArr, TExp, Tsob, ToS = 0,0,0,0
+
     # FASE DI STAMPA FORMATTATA
     print(f"TOT TASK IN ROUTING SYS: {len(total_tasks)}\n")
     print(" id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
@@ -198,10 +200,15 @@ def generate_Tasks_Status(csv_filename):
 
         if label == "TASK_ARRIVED":
             row = colorize(row, "green")
+            TArr += 1
         elif label == "TTL_EXPIRED":
             row = colorize(row, "red")
+            TExp += 1
         elif label == "SEN_OUT_OF_BUFF":
             row = colorize(row, "orange")
+            Tsob += 1
+        else:
+            ToS += 1
         
         print(row)
             
@@ -219,3 +226,5 @@ def generate_Tasks_Status(csv_filename):
         writer.writerows(total_tasks)
 
     print(f"Task info saved to: {csv_filename}")
+    print(f"TASK GLOBALI {len(globals.gbl_tasks)} \n",)
+    print(f"TASK CONSEGNATI:{TArr} EXP:{TExp} SOB:{Tsob} OnSim:{ToS}")
