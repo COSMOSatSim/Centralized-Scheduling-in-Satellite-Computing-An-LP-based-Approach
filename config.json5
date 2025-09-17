@@ -2,7 +2,7 @@
   simulation_duration: 300,
   adding_time: 30,
   max_try: 5,
-  seed: 53,
+  seed: 13,
   access_point: 5,
   arrival_time_exponential: 1.5,
   Tmax_H: 400,
@@ -54,7 +54,7 @@
     distribution: "20_0_80",
   },
   csv_name: {
-    name: "OrbitAware Utility-sim_SystemAP5/seed_53/results_20_0_80_exponential_REQ-OrbitAware Utility_AT_1.5_CPU_130.83928571428572.csv",
+    name: "OrbitAware Utility-sim_SystemAP5/seed_13/results_20_0_80_exponential_REQ-OrbitAware Utility_AT_1.5_CPU_130.83928571428572.csv",
   },
   simulation_location: "Roma",
   locations: {

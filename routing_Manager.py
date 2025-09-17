@@ -227,7 +227,7 @@ def create_ogm(obj, origin_position_vect, is_AP):
 
 
 
-def periodic_recall_Routing_monitor(env, interval = 0.1):
+def periodic_recall_Routing_monitor(env, interval = 1):
     """
     Questa funzione dovrà scorrere costantemente tutti i task dentro
     la lista dei globali, e costantemente spingerli verso la destinazione.
