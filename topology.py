@@ -1,5 +1,5 @@
+import globals 
 import json, json5
-import random
 import sys
 import threading
 from skyfield.api import EarthSatellite, load
@@ -7,7 +7,7 @@ from EdgeServer import EdgeServer
 from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
 from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
-import globals 
+
 import os
 
 
@@ -79,7 +79,7 @@ def create_topology_dome(env, time=get_current_time()):
         for n in neighbor:
             # print(type(n[0]), " n -> ", n[0])
             current_server.add_neighbor(n[0], 1, getLatency(n[1]),
-                                        random.uniform(config["available_bandwidth"]["min"],
+                                        uniform(config["available_bandwidth"]["min"],
                                                        config["available_bandwidth"]["max"]))
         # print(current_server.name)
     return edge_servers
@@ -436,7 +436,7 @@ def update_servers_neighbors(servers_dict, neighbors_SAT):
         for neighbor in info["neighbors"]:
             hop_neighbors[neighbor['server']] = 1
             latency[neighbor['server']] = neighbor['latency']
-            bandwidth[neighbor['server']] = random.uniform(config["available_bandwidth"]["min"],
+            bandwidth[neighbor['server']] = globals.rnd.uniform(config["available_bandwidth"]["min"],
                                                            config["available_bandwidth"]["max"])
 
             # Aggiungo i dizionari riguardanti i vicini ai rispettivi server
@@ -524,7 +524,7 @@ def loadConfiguration_simple(env, data_configurations):
             for n in neighbors:
                 neighbor_server = server_dict.get(n["name"])
                 server.add_neighbor(neighbor_server, 1, n["latency"],
-                                    random.uniform(config["available_bandwidth"]["min"],
+                                    globals.rnd.uniform(config["available_bandwidth"]["min"],
                                                    config["available_bandwidth"]["max"]))
 
         #Trovo i nuovi acc_points
@@ -644,7 +644,7 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
             for n in neighbors:
                 neighbor_server = server_dict.get(n["name"])
                 server.add_neighbor(neighbor_server, 1, n["latency"],
-                                    random.uniform(config["available_bandwidth"]["min"],
+                                    globals.rnd.uniform(config["available_bandwidth"]["min"],
                                                    config["available_bandwidth"]["max"]))
 
         #Trovo i nuovi acc_points

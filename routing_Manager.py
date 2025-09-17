@@ -1,9 +1,9 @@
-import random
+import globals
 import json, json5
 from user_based_topology import get_orbit_proximity, getSystemFromSat
 from Ogm import Ogm
 from Observer import Observer
-import globals
+
 import sys
 import os
 
@@ -104,7 +104,7 @@ def manage_ogm_test(ogm_map, t):
                     else:
                         proximity = get_orbit_proximity(node.get_satellite(), neighbor.get_satellite(), t)
                         failure_prob = transmission_failure_probability(proximity)
-                        value = round(random.uniform(0, 1), 2)
+                        value = round(globals.rnd.uniform(0, 1), 2)
                         
                         if value > failure_prob:
                             # Spedisco il pacchetto
@@ -227,7 +227,7 @@ def create_ogm(obj, origin_position_vect, is_AP):
 
 
 
-def periodic_recall_Routing_monitor(env, interval = 1):
+def periodic_recall_Routing_monitor(env, interval = 0.1):
     """
     Questa funzione dovrà scorrere costantemente tutti i task dentro
     la lista dei globali, e costantemente spingerli verso la destinazione.
@@ -235,6 +235,7 @@ def periodic_recall_Routing_monitor(env, interval = 1):
     while True:
         for node in globals.edge_servers:
             yield from node.forward_packet(env)    # Eseguiamo il forwarding
+        #print(env.now)
         yield env.timeout(interval)
 
 

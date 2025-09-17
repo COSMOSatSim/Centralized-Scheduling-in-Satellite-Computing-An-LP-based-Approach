@@ -1,3 +1,4 @@
+import globals
 import sys
 import json5
 import logging
@@ -7,7 +8,7 @@ from skyfield.api import EarthSatellite
 from collections import OrderedDict
 from user_based_topology import getSystemFromSat
 from Task import Task
-import globals
+
 
 
 # Leggi il file di configurazione JSON

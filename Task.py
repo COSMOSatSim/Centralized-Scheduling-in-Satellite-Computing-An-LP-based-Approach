@@ -1,5 +1,6 @@
-import random, json, json5, csv
 import globals
+import json, json5, csv
+
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
@@ -73,7 +74,7 @@ def assign_resolution(required_ram, required_disk):
     min_byte = dim_to_Byte(min_value["dim"], min_value["value"])
     max_byte = dim_to_Byte(max_value["dim"], max_value["value"])
 
-    resolution_value = random.randint(min_byte, max_byte)   # Valore di Ritorno in Byte
+    resolution_value = globals.rnd.randint(min_byte, max_byte)   # Valore di Ritorno in Byte
     return category, resolution_value
 
 def dim_to_Byte(dim, value):

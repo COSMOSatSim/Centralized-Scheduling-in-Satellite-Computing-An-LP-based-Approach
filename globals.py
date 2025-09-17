@@ -1,4 +1,12 @@
 import threading, os, json
+import random as _random
+import numpy as np
+
+# Imposta seme e ambiente
+rnd = _random.Random()
+rnd.seed(13)
+np.random.seed(13)
+
 
 # Variabili globali per i server
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server

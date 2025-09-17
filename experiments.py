@@ -1,12 +1,10 @@
-import numpy as np
-import random
+import globals
 import json5
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
 
-random.seed(config["seed"])
 
 
 def priority_combination(high, med, low):
@@ -22,7 +20,7 @@ def priority_combination(high, med, low):
 
         """
 
-    numero_casuale = random.uniform(0, 1)
+    numero_casuale = globals.rnd.uniform(0, 1)
 
     if numero_casuale < (high / 100):
         priority_weights = 1  # "alta"
@@ -33,7 +31,7 @@ def priority_combination(high, med, low):
 
 def request_distribution(high, med, low):
     global random_server
-    numero_casuale = random.uniform(0, 1)
+    numero_casuale = globals.rnd.uniform(0, 1)
 
     if numero_casuale < (high / 100):
         random_server = 1
@@ -49,7 +47,7 @@ def generate_random_numbers():
     random_numbers = []
     global random_number
     while len(random_numbers) < 5:
-        random_number = random.randint(0, 25)
+        random_number = globals.rnd.randint(0, 25)
         if random_number not in random_numbers:
             random_numbers.append(random_number)
     return random_number
@@ -65,7 +63,7 @@ def exponential(description):
     λ = 2.0, è l'inverso del valore atteso (o della media) della distribuzione quindi 1/λ = 0.5 .
     """
     config_arrival_time = config["arrival_time_exponential"]
-    arrival_time = np.random.exponential(config_arrival_time)
+    arrival_time = globals.np.random.exponential(config_arrival_time)
     # print(f'{description} arrival rate distribution: exponential')
     return arrival_time
 
@@ -75,7 +73,7 @@ def normal(description):
     # Parametri della distribuzione normale (media e deviazione standard)
     media = 2.0  # Media della distribuzione normale. Tasso medio di arrivo 2 sec
     deviazione_standard = 0.5  # Deviazione standard della distribuzione normale
-    arrival_time = np.random.normal(media, deviazione_standard)
+    arrival_time = globals.np.random.normal(media, deviazione_standard)
     # print(f'{description} arrival rate distribution: normal')
     return arrival_time
 
@@ -85,8 +83,8 @@ def lognormal(description):
     # Parametri della distribuzione log-normale (media e deviazione standard del logaritmo)
     media_log = 1.0  # Media del logaritmo della distribuzione log-normale
     deviazione_standard_log = 0.2  # Deviazione standard del logaritmo della distribuzione log-normale
-    log_arrival_time = np.random.normal(media_log, deviazione_standard_log)
-    arrival_time = np.exp(log_arrival_time)
+    log_arrival_time = globals.np.random.normal(media_log, deviazione_standard_log)
+    arrival_time = globals.np.exp(log_arrival_time)
 
     # print(f'{description} arrival rate distribution: log-normal')
     return arrival_time
@@ -105,7 +103,7 @@ def weibull(description):
     scale = 2.0
 
     # Genera campioni da una distribuzione Weibull
-    arrival_time = np.random.weibull(shape) * scale
+    arrival_time = globals.np.random.weibull(shape) * scale
 
     # print(f'{description} arrival rate distribution: Weibull')
     return arrival_time
@@ -113,7 +111,7 @@ def weibull(description):
 
 # Genera un numero con distribuzione esponenziale troncata tra 10 e 25 minuti
 def truncated_exponential(mean, lower, upper):
-    return np.random.exponential(scale=mean)
+    return globals.np.random.exponential(scale=mean)
     ''' while True:
         value = np.random.exponential(scale=mean)
         if lower <= value <= upper:
