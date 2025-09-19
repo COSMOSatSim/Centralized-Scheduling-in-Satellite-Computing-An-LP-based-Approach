@@ -16,6 +16,7 @@ simulation_results = []
 with open('config.json5') as config_file:
     config = json5.load(config_file)
 
+
 def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, task_priority,
                    arrival_time_system, num_hops, transfer_time, original_TaskPriority,
                    initial_server_counter, different_server_counter, other_server_counter,
@@ -24,86 +25,119 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
     Assign a task to a selected server and process it through CPU and/or Network queues.
     Uses SimPy resources selected_server.cpu_dev and selected_server.net_dev (PriorityResource).
     """
-    # Simulo il tempo di trasferimento accumulato fino ad ora (dal SearchNode)
+    task_p_label = "high" if task_priority == 1 else "low"
+
+    # L'energia del trasferimento viene sottratta e verificata in SearchNode
     yield env.timeout(transfer_time)
     arrival_time_task_queue = env.now
 
     eps_cpu, eps_net = 0.0, 0.0
     start_time = env.now
+    time_in_queue = 0.0
 
-    # === CPU Queue (simpy PriorityResource) ===
-    if task_type in ("CPU", "CPU+NET", "REALTIME"):
-        # usa la risorsa SimPy definita nella classe EdgeServer
+    # NEW: Logica di routing basata sul tipo di task
+    if task_type in ("Generic_Service", "CPU_Intensive"):
+        C_sen = config.get("C_sen", 1e9)
+        e_coeff = config.get("energy_coefficient", 5e-26)
+        eps_cpu = selected_server.compute_execution_energy(estimated_execution_time, C_sen, e=e_coeff)
+
+        # ⚠️ SPOSTA QUI IL CONTROLLO ENERGIA
+        if selected_server.energy < eps_cpu:
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for CPU",
+                                                 task_priority)
+            return
+
         with selected_server.cpu_dev.request(priority=task_priority) as req_cpu:
             yield req_cpu
             time_in_queue = env.now - arrival_time_task_queue
-
-            # esecuzione CPU
             yield env.timeout(estimated_execution_time)
 
-            # Consumo energetico CPU (usa C_sen da config)
-            C_sen = config.get("C_sen", 1e9)
-            e_coeff = config.get("energy_coefficient", 5e-26)
-            eps_cpu = selected_server.compute_execution_energy(estimated_execution_time, C_sen, e=e_coeff)
+            # ⚠️ SOTTRAI L'ENERGIA DOPO L'ESECUZIONE, MA IL CONTROLLO È STATO FATTO PRIMA
             selected_server.energy -= eps_cpu
 
-            print(f"[{env.now:.2f}] [Task {task_id}] CPU done on {selected_server.name} | "
-                  f"E_CPU={eps_cpu:.6f} J | Remaining={selected_server.energy:.2f} J")
 
-    # === Network Queue (simpy PriorityResource) ===
-    if task_type in ("CPU+NET", "NET"):
+    elif task_type in ("CPU_and_Data_Intensive"):
+        C_sen = config.get("C_sen", 1e9)
+        e_coeff = config.get("energy_coefficient", 5e-26)
+        eps_cpu = selected_server.compute_execution_energy(estimated_execution_time, C_sen, e=e_coeff)
+
+        bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
+        bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
+        data_MB = (required_ram + required_disk)
+        data_bytes = data_MB * (1024 ** 2)
+        eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
+
+        # ⚠️ SPOSTA QUI IL CONTROLLO ENERGIA
+        if selected_server.energy < (eps_cpu + eps_net):
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system,
+                                                 "Insufficient Energy for CPU+NET", task_priority)
+            return
+
+        with selected_server.cpu_dev.request(priority=task_priority) as req_cpu:
+            yield req_cpu
+            Wc = env.now - arrival_time_task_queue
+            yield env.timeout(estimated_execution_time)
+            selected_server.energy -= eps_cpu
+
+            with selected_server.net_dev.request(priority=task_priority) as req_net:
+                yield req_net
+                Wn = env.now - arrival_time_task_queue
+
+                net_time = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
+                yield env.timeout(net_time)
+                selected_server.energy -= eps_net
+
+                time_in_queue = Wc + Wn
+
+    elif task_type == "Batch":
+        # Solo coda Network
+        bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
+        bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
+        data_MB = (required_ram + required_disk)
+        data_bytes = data_MB * (1024 ** 2)
+        eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
+
+        # ⚠️ SPOSTA QUI IL CONTROLLO ENERGIA
+        if selected_server.energy < eps_net:
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for NET",
+                                                 task_priority)
+            return
+
         with selected_server.net_dev.request(priority=task_priority) as req_net:
             yield req_net
-            # --- UNITÀ: required_ram/required_disk sono in MB (config),
-            #     available_bandwidth è in MB/s (config).
-            # Converto esplicitamente in bytes e bytes/s per coerenza.
-            bw_MBps = config.get("available_bandwidth", {}).get("min", 0)  # MB/s
-            bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0  # bytes/s
-            data_MB = (required_ram + required_disk)  # MB
-            data_bytes = data_MB * (1024 ** 2)  # bytes
+            time_in_queue = env.now - arrival_time_task_queue
 
             net_time = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
             yield env.timeout(net_time)
-
-            # consumo energia rete (Ptrasm dal config)
-            eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
             selected_server.energy -= eps_net
-
-            print(f"[{env.now:.2f}] [Task {task_id}] NET done on {selected_server.name} | "
-                  f"E_NET={eps_net:.6f} J | Remaining={selected_server.energy:.2f} J")
 
     end_time = env.now
     execution_time = end_time - start_time
     service_time = execution_time + transfer_time
-    # se il task è entrato nella coda prima di essere servito, time_in_queue lo abbiamo calcolato; altrimenti 0
-    try:
-        time_in_queue = time_in_queue
-    except UnboundLocalError:
-        time_in_queue = 0.0
 
     print(f"Task {task_id} Routing Start")
     category, resolution = assign_resolution(required_ram, required_disk)
-    task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)  # Creo il task
+    task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)
     if selected_server.elev_angle < config["Phi_max"] - config["Phi_buffer"]:
-        task_OBS.label = 'SEN_OUT_OF_BUFF'  # Il Task è in un Satellite che è fuori Orbita
+        task_OBS.label = 'SEN_OUT_OF_BUFF'
         print(f"{selected_server} {selected_server.elev_angle}° {task_OBS.id} set as {task_OBS.label}")
+
     selected_server.tasks.append(task_OBS)
     globals.gbl_tasks.append(task_OBS)
 
-    # Controllo lunghezza code come somma delle code SimPy (liste .queue)
     qlen = len(selected_server.cpu_dev.queue) + len(selected_server.net_dev.queue)
 
-    # Registra completamento (nota: task_priority originale lo passiamo come stringa)
-    task_p_label = "high" if task_priority == 1 else "low"
+
+
+    # NEW: Passa il tipo di task e i valori energetici
     selected_server.task_completed(
-        task_id, task_p_label, arrival_time_system, arrival_time_task_queue,
+        task_id, task_p_label, task_type, arrival_time_system, arrival_time_task_queue,
         start_time, end_time, execution_time, service_time, time_in_queue,
         selected_server.name, num_hops, qlen,
         original_TaskPriority, estimated_execution_time, transfer_time,
         utility, TMAX_exceeded=False, exec_after_set=False,
         eps_cpu=eps_cpu, eps_net=eps_net
     )
-
 Tmax_H = config["Tmax_H"]
 MaxTry = config["max_try"]
 
@@ -117,19 +151,15 @@ def estimate_execution_time():
     #print(f"Tempo di esecuzione stimato: {estimated_time:.2f} secondi")
     return estimated_time
 
+
 def SearchNode(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
                restart_time, download_time, task_priority, arrival_time_system, Tmax_high,
                Tmax_latency, initial_server_counter, different_server_counter, other_server_counter,
                task_type="CPU+NET"):
-    """
-    Search for the most suitable server for task assignment, considering CPU/NET queues, deadlines and energy.
-    """
-
     global hop
     estimated_execution_time = estimate_execution_time()
 
     neighbors_at_distance_one = server_selected.get_neighbors()
-    # include server_selected per possibilità di esecuzione locale
     neighbors_at_distance_one.append(server_selected)
 
     server_metrics = []
@@ -137,60 +167,40 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
-        bandwidth_to_server = server_selected.get_bandwidth(neighbor)  # expected MB/s
+        bandwidth_to_server = server_selected.get_bandwidth(neighbor)
 
-        # Stima tempo trasferimento (nota: non convertiamo qui per EPS_NET; solo tempo)
         if bandwidth_to_server is not None and latency_to_server is not None:
             transfer_time = ((image_size + Volume_size) / bandwidth_to_server) + latency_to_server
         else:
             transfer_time = 0.0
 
-        # Aggiorna utilità (la funzione interna calcola Wcpu/Wnet usando le queue attuali)
-        neighbor.UpdateUtilityValue(env, estimated_execution_time, transfer_time,
-                                    restart_time, download_time, neighbor, task_priority)
-
-        # Calcolo attesa nelle code (W_cpu e W_net sono metodi di EdgeServer)
-        if task_type == "CPU":
-            waiting_time_adjusted = neighbor.W_cpu(env.now)
-        elif task_type == "NET":
-            waiting_time_adjusted = neighbor.W_net(env.now)
-        else:  # CPU+NET o REALTIME
-            waiting_time_adjusted = neighbor.W_cpu(env.now) + neighbor.W_net(env.now)
-
-        expected_completion_time = estimated_execution_time + transfer_time + waiting_time_adjusted
+        # NEW: Calcola il punteggio di selezione in base al tipo di task
+        # Richiede che tu abbia già aggiunto la funzione get_selection_score in EdgeServer.py
+        # come spiegato nella risposta precedente.
+        selection_score = neighbor.get_selection_score(task_type)
 
         server_metrics.append({
             'server': neighbor,
-            'utility_value': neighbor.utility_value,
-            'estimated_total_time': estimated_execution_time + transfer_time,
+            'selection_score': selection_score,  # NEW: Usa il nuovo punteggio di selezione
             'transfer_time': transfer_time,
-            'queue_length': len(neighbor.cpu_dev.queue) + len(neighbor.net_dev.queue),
-            'waiting_time': waiting_time_adjusted,
             'orbitalSunset': neighbor.orbitalSunset,
-            'expected_completion_time': expected_completion_time
         })
 
-    # Filtra server non validi (sunset e tempo stimato)
+    # Filtra i server non validi
+    # Nota: questa logica di filtro non è stata modificata
     server_metrics = [m for m in server_metrics
-                      if m['orbitalSunset'] not in (None, 0)
-                      and m['expected_completion_time'] < m['orbitalSunset']]
+                      if m['orbitalSunset'] not in (None, 0)]
 
-    # Ordinamenti
-    sorted_servers = sorted(server_metrics, key=lambda x: x['utility_value'])
-    if config.get("SearchNode", "") == "ERT/Sunset":
-        sorted_servers = sorted(server_metrics,
-                                key=lambda x: (x['estimated_total_time'] / x['orbitalSunset'],
-                                               -x['orbitalSunset']))
-
-    Tmax_high -= 2 * Tmax_latency
-
-    if not sorted_servers:
+    if not server_metrics:
         print(f"[Task {task_id}] Nessun server valido trovato.")
         return
 
-    # Seleziono il miglior server
+    # NEW: Ordina i server in base al nuovo punteggio di selezione, in ordine decrescente
+    sorted_servers = sorted(server_metrics, key=lambda x: x['selection_score'], reverse=True)
+
     chosen = sorted_servers.pop(0)
     server = chosen['server']
+    transfer_time = chosen['transfer_time']  # NEW: Ottieni il transfer_time dal dizionario
 
     # Aggiorna contatori
     initial_server_counter[server_selected.name] += 1
@@ -199,7 +209,6 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         other_server_counter[server.name] += 1
         hop += 1
 
-        # Calcolo E_NET per l'inoltro effettivo (qui converto MB -> bytes)
         bw_MBps = server_selected.get_bandwidth(server)
         if bw_MBps is None:
             bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
@@ -216,45 +225,52 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
               f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
 
     # Chiamo TaskAssignment sul server scelto
-    # original_TaskPriority lo passiamo come task_priority se non abbiamo altro
     yield from TaskAssignment(env, server, task_id, required_ram, required_disk,
                               task_priority, arrival_time_system, hop,
                               transfer_time, task_priority,
                               initial_server_counter, different_server_counter, other_server_counter,
                               estimated_execution_time, server.utility_value, task_type=task_type)
 
-
 def LocalScheduler(env, task_id, required_ram, required_disk, server, image_size, Volume_size, restart_time,
-                   download_time, task_priority, arrival_time_system, initial_server_counter, different_server_counter, other_server_counter):
+                   download_time, task_priority, arrival_time_system, initial_server_counter, different_server_counter, other_server_counter, task_type):
     # print('Local Scheduler')
-    global hop  # Indica che la variabile hop è globale e non locale
-    hop += 1  # Incrementa hop ogni volta che la funzione viene richiamata
+    global hop
+    hop += 1
 
     Tmax_latency = int(0)
     yield from SearchNode(env, server, task_id, required_ram, required_disk, image_size, Volume_size,
                               restart_time, download_time, task_priority, arrival_time_system, Tmax_H,
-                               Tmax_latency, initial_server_counter, different_server_counter, other_server_counter)
+                               Tmax_latency, initial_server_counter, different_server_counter, other_server_counter, task_type)
 
 
 def task(env, task_id, server, task_priority, initial_server_counter, different_server_counter, other_server_counter):
-    #required_cpu = random.choice([config["required_cpu"]["min"], config["required_cpu"]["max"]])  # CPU richiesta dal task
-    required_ram = random.randint(config["required_ram"]["min"], config["required_ram"][
-        "max"])  # RAM richiesta dal task #######cercare quali distributioni caratterizzano tipicamente la richiesta di RAM
-    required_disk = random.randint(config["required_disk"]["min"],
-                                   config["required_disk"]["max"])  # Spazio su disco richiesto dal task
-    image_size = random.uniform(config["image_size"]["min"], config["image_size"][
-        "max"])  # Genera casualmente la dimensione dell'immagine con media di 1 GB ###cercare quali distributioni caratterizzano tipicamente la dimensione delle immagini dei container
-    Volume_size = random.uniform(config["Volume_size"]["min"], config["Volume_size"][
-        "max"])  # Genera casualmente la dimensione dell'Volume con media di 1 GB ###cercare quali distributioni caratterizzano tipicamente la dimensione delle immagini dei container
-
-    restart_time = random.uniform(config["restart_time"]["min"],
-                                  config["restart_time"]["max"])  # Tempo di riavvio del task (ad esempio, in secondi)
-    download_time = 0  # image_size / available_bandwidth
+    required_ram = random.randint(config["required_ram"]["min"], config["required_ram"]["max"])
+    required_disk = random.randint(config["required_disk"]["min"], config["required_disk"]["max"])
+    image_size = random.uniform(config["image_size"]["min"], config["image_size"]["max"])
+    Volume_size = random.uniform(config["Volume_size"]["min"], config["Volume_size"]["max"])
+    restart_time = random.uniform(config["restart_time"]["min"], config["restart_time"]["max"])
+    download_time = 0
     arrival_time_system = env.now
-    print(f"---> Task {task_id} (Priority: {task_priority}) arriva in {arrival_time_system:.2f}")
+
+    task_type = "Generic_Service"
+    if task_priority == 1:
+        # NEW: Aggiungi un'opzione per i task CPU_Intensive
+        if random.random() < 0.5:
+            task_type = "CPU_Intensive"
+        else:
+            task_type = "CPU_and_Data_Intensive"
+    elif task_priority == 0:
+        # NEW: Aggiungi una logica per i task Batch
+        if random.random() < 0.5:
+            task_type = "Data_Intensive"
+        else:
+            task_type = "Batch"  # Questo tipo non userà la coda CPU
+
+    print(f"---> Task {task_id} (Priority: {task_priority}, Type: {task_type}) arriva in {arrival_time_system:.2f}")
 
     yield from LocalScheduler(env, task_id, required_ram, required_disk, server, image_size, Volume_size,
-                              restart_time, download_time, task_priority, arrival_time_system, initial_server_counter, different_server_counter, other_server_counter)
+                              restart_time, download_time, task_priority, arrival_time_system, initial_server_counter,
+                              different_server_counter, other_server_counter, task_type)
 
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):

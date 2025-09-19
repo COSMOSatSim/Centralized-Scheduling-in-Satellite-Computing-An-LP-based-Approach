@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # 1) Costruzione configurazioni
     if config.get("Build_Configurations", False):
-        
+
         tle_data = saveTLEOnFile()
         tot_config = int((config["simulation_duration"] + config["adding_time"]) / 2)
         configurations = genConfigs(
@@ -37,16 +37,16 @@ if __name__ == "__main__":
             tot_config,
             tle_data
         )
-        
+
         T_min, T_max, T_avg = updateTaskValue(configurations)
         config["Build_Configurations"] = False
         config["CPU_timeout"]["min"] = T_min
         config["CPU_timeout"]["max"] = T_max
         config["CPU_timeout"]["mean"] = T_avg + 2.0
-        
+
         with open('config.json5', 'w') as wf:
             json5.dump(config, wf, indent=2)
-        
+
         if config["redistribuite_OGM"]:
             process_OGM_enviroment_simulation(configurations)
             remove_first_30_configurations()
@@ -116,7 +116,7 @@ if __name__ == "__main__":
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
     csv_routing_task = build_task_csv_path(task_dir, atime, cpu_mean)
-    
+
     log_file = f"{base_dir}/log_{prio_dist}_{gen_dist}_AT_{atime}.log"
 
     # Salvo il nome del CSV nel config per eventuali moduli esterni
@@ -139,49 +139,61 @@ if __name__ == "__main__":
     print("-"*10)
     generate_Tasks_Status(csv_routing_task)
 
-
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:
         writer = csv.writer(f_out)
         writer.writerow([
-            "Task ID","Task Priority","Arrival time in system","arrival_time_task_queue",
-            "Start Time","End Time","Execution time","Time in system","Time in queue",
-            "Server Name","Num Hops","Queue length","original_TaskPriority",
-            "estimated_execution_time","transfer_time","Utility","TMAX_exceeded","Exec_after_set",
-            "Energy_CPU [J]","Energy_NET [J]","Energy_TOTAL [J]","Remaining_energy [J]"
+            "Task ID", "Task Priority", "Task Type", "Status", "Arrival Time (System)",
+            "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
+            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
+            "Queue length", "original_TaskPriority", "estimated_execution_time",
+            "transfer_time", "Utility", "TMAX_exceeded", "Exec_after_set",
+            "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]",
+            "Rejection Reason"
         ])
 
         for srv in globals.edge_servers:
-            # completed_tasks
+            # Scrivi i task completati
             for (
-                tid, tp, arr_sys, arr_q, st, et, ex_t, sv_t,
-                tq, sel_srv, hops, qlen, orig_p, est_e, trf,
-                util, tmax_exc, exec_set, eps_cpu, eps_net, eps_tot
+                    tid, tp, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
+                    tq, sel_srv, hops, qlen, orig_p, est_e, trf,
+                    util, tmax_exc, exec_set, eps_cpu, eps_net, eps_tot
             ) in srv.completed_tasks:
                 orig_label = 'high' if orig_p == 1 else 'low'
+                time_in_system = et - arr_sys
                 writer.writerow([
-                    tid, tp, arr_sys, arr_q, st, et,
-                    ex_t, sv_t, tq, sel_srv, hops,
+                    tid, tp, task_type, "Completed", arr_sys, arr_q, st, et,
+                    ex_t, sv_t, time_in_system, tq, sel_srv, hops,
                     qlen, orig_label, est_e, trf,
                     util, tmax_exc, exec_set,
-                    eps_cpu, eps_net, eps_tot, srv.energy
+                    eps_cpu, eps_net, eps_tot, srv.energy, "N/A"
                 ])
 
-
-            # server_queue residui
+            # Scrivi i task scartati (correttamente indentato)
             for (
-                tid, rr, rd, tp, arr_sys, est_e, trf, util,
-                hops, arr_q, orig_p
+                    tid, task_type, arr_sys, reason, prior
+            ) in srv.rejected_tasks:
+                writer.writerow([
+                    tid, prior, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
+                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
+                    "N/A", "N/A", "N/A", "N/A",
+                    "N/A", "N/A", "N/A", "N/A",
+                    "N/A", "N/A", srv.energy, reason
+                ])
+
+            # server_queue residui (correttamente indentato)
+            for (
+                    tid, rr, rd, tp, arr_sys, est_e, trf, util,
+                    hops, arr_q, orig_p
             ) in srv.server_queue:
                 label = 'high' if tp == 1 or orig_p == 1 else 'low'
                 time_in_q = env.now - arr_q
                 writer.writerow([
-                    tid, label, arr_sys, arr_q,
-                    0, 0, 0, time_in_q,
-                    time_in_q, srv.name, hops,
-                    len(srv.server_queue), label,
-                    est_e, trf, util, False,
-                    0.0, 0.0, 0.0, srv.energy  # se non eseguito, consumo=0
+                    tid, label, "N/A", "In Queue", arr_sys, arr_q, "N/A", "N/A",
+                    "N/A", "N/A", env.now - arr_sys, time_in_q, srv.name, hops,
+                    len(srv.server_queue), label, est_e, trf,
+                    util, "N/A", "N/A", "N/A",
+                    "N/A", "N/A", srv.energy, "N/A"
                 ])
 
     print(f"Simulation results saved to: {csv_task}")

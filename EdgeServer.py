@@ -56,6 +56,8 @@ class EdgeServer:
 
         self.utility_value = 0
         self.completed_tasks = []
+        self.rejected_tasks = []  # NEW: Lista per i task scartati
+        self.completed_tasks = []
         self.energy = config.get("initial_energy", 10000.0)  # J (valore più alto)
 
         self.tasks = []  # Lista task da Spedire
@@ -69,21 +71,32 @@ class EdgeServer:
         self.OGMs_History = OrderedDict()
         self.OGMs_History_dim = 2046
 
-    def task_completed(self, task_id, task_priority, arrival_time_system, arrival_time_task_queue,
+    def record_rejected_task(self, task_id, task_type, arrival_time_system, rejection_reason, task_priority ):
+        """
+        Registra un task scartato con la motivazione del rifiuto.
+        """
+        self.rejected_tasks.append(
+            (task_id, task_type, arrival_time_system, rejection_reason, task_priority )
+        )
+        print(f"[Task {task_id}] REJECTED on {self.name} due to: {rejection_reason}")
+
+    def task_completed(self, task_id, task_priority, task_type, arrival_time_system, arrival_time_task_queue,
                        start_time, end_time, execution_time, service_time, time_in_queue,
                        selected_server, num_hops, lunghezza_coda, original_TaskPriority,
                        estimated_execution_time, transfer_time, utility,
                        TMAX_exceeded, exec_after_set,
                        eps_cpu=0.0, eps_net=0.0):
         '''
-        Record completed tasks, including energy metrics (CPU + NET).
+        Record completed tasks, including energy metrics (CPU + NET) and task type.
         '''
+        # NEW: Calcola l'energia totale all'inizio della funzione per evitare l'errore
+        total_energy = eps_cpu + eps_net
+
         if self.elev_angle < config["Phi_max"]:
             exec_after_set = True
 
-        total_energy = eps_cpu + eps_net
         self.completed_tasks.append(
-            (task_id, task_priority, arrival_time_system, arrival_time_task_queue,
+            (task_id, task_priority, task_type, arrival_time_system, arrival_time_task_queue,
              start_time, end_time, execution_time, service_time, time_in_queue,
              selected_server, num_hops, lunghezza_coda, original_TaskPriority,
              estimated_execution_time, transfer_time, utility,
@@ -206,19 +219,21 @@ class EdgeServer:
 
     def W_cpu(self, now):
         sum_q = sum(d for (_id, d, _prio, _t) in self.queue_cpu)
-        rem = 0.5 * self._remaining(self.cpu_busy_until, now) if self.cpu_dev.count > 0 else 0.0
+        # Calcola il tempo rimanente del task in esecuzione
+        rem = self._remaining(self.cpu_busy_until, now)
         return sum_q + rem
 
     def W_net(self, now):
         sum_q = sum(d for (_id, d, _prio, _t) in self.queue_net)
-        rem = 0.5 * self._remaining(self.net_busy_until, now) if self.net_dev.count > 0 else 0.0
+        # Calcola il tempo rimanente del task in esecuzione
+        rem = self._remaining(self.net_busy_until, now)
         return sum_q + rem
 
     # --------------------------------------------------
     # Pipeline CPU -> NET
     # --------------------------------------------------
     def process_locally(self, env, task_id, prio, d_cpu_s, d_net_bytes,
-                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen):
+                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen, task_type="CPU+NET", arrival_time_system=0.0):
         """
         Simula l’esecuzione di un task sul server (CPU -> NET).
         """
@@ -229,8 +244,16 @@ class EdgeServer:
         R = Wc + Wn + d_cpu_s + d_net_svc
         eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
 
-        if (deadline is not None and R > deadline) or (self.energy < eps) \
-                or (self.orbitalSunset and (env.now + R) > self.orbitalSunset):
+        if deadline is not None and R > deadline:
+            self.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
+            return False, R, eps
+
+        if self.energy < eps:
+            self.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy")
+            return False, R, eps
+
+        if self.orbitalSunset and (env.now + R) > self.orbitalSunset:
+            self.record_rejected_task(task_id, task_type, arrival_time_system, "Orbital Sunset")
             return False, R, eps
 
         # 2) Enqueue
@@ -261,6 +284,7 @@ class EdgeServer:
                 self.energy -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
 
         return True, R, eps
+
 
 
 
@@ -343,11 +367,50 @@ class EdgeServer:
         # print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
         # print("Task IDs:", [task.id for task in self.tasks])
 
-    def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time,
+    def get_selection_score(self, task_type):
+        """
+        Calcola il punteggio di selezione del server basato sul tipo di task e sui criteri specificati.
+        Un punteggio più alto indica una migliore candidabilità.
+        """
+        now = self.env.now
+
+        # I tempi di attesa sono stimati in base ai task attualmente in coda
+        W_cpu = self.W_cpu(now)
+        W_net = self.W_net(now)
+
+        B = self.energy
+
+        if task_type == "CPU_Intensive":
+            # Per i task CPU-intensive: priorità a W_cpu basso e B alto
+            # Combiniamo i due valori in una singola metrica. Un'opzione è sommare l'inverso del tempo di attesa
+            # e l'energia rimanente. Aggiungiamo 1 ai tempi di attesa per evitare divisioni per zero.
+            score = (1 / (W_cpu + 1)) + B
+            return score
+
+        elif task_type == "Data_Intensive":
+            # Per i task Data-intensive: priorità a W_net basso e B alto
+            score = (1 / (W_net + 1)) + B
+            return score
+
+        elif task_type == "CPU_and_Data_Intensive":
+            # Per i task CPU-Data-intensive: priorità alla somma dei tempi di attesa e a B alto
+            score = (1 / (W_cpu + W_net + 1)) + B
+            return score
+
+        elif task_type == "Generic_Service":
+            # Per i task generici: priorità al server con il più basso budget energetico
+            # Dato che vogliamo massimizzare il punteggio, usiamo il negativo di B per minimizzarlo.
+            score = -B
+            return score
+
+        # Ritorna 0 per i task di tipo sconosciuto, non saranno mai scelti
+        return 0
+
+    '''def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time,
                            restart_time, download_time, server, task_priority):
-        '''
+        ''''''
         Aggiorna il valore di utilità del server in base alle code CPU/NET reali.
-        '''
+        ''''''
         now = env.now
 
         # Nuovo: waiting times reali da code CPU/NET
@@ -374,6 +437,7 @@ class EdgeServer:
         # Debug
         print(f"[Utility] {self.name} | Wc={Wc:.2f}, Wn={Wn:.2f}, "
               f"total_demand={total_demand:.2f}, utility={self.utility_value:.2f}")
+'''
 
 
 def getTransmissionTime(bandwidht, weight, latency):
@@ -385,7 +449,7 @@ def sendTask(env, task, sender, receiver, algorithm):
     Transfers a task from a sender satellite to a receiver satellite, updating its state and attributes.
 
     Args:
-        task (Task): The task object to be transferred. It contains attributes such as `hop`, `ttl`, 
+        task (Task): The task object to be transferred. It contains attributes such as `hop`, `ttl`,
                      `id`, `current_server`, and `satellite_destination`.
         sender (Satellite): The satellite currently holding the task. It must have a `remove_task` method.
         receiver (Satellite): The satellite to which the task is being sent. It must have an `add_task` method.
@@ -396,12 +460,12 @@ def sendTask(env, task, sender, receiver, algorithm):
         - Removes the task from the sender using `sender.remove_task(task.id)`.
         - Adds the task to the receiver using `receiver.add_task(task)`.
         - Updates the `current_server` attribute of the task to the receiver.
-        - Checks if the receiver is the task's `satellite_destination`. If so, marks the task as arrived by 
+        - Checks if the receiver is the task's `satellite_destination`. If so, marks the task as arrived by
           setting `task.arrived` to `True`.
         - Logs the transfer operation in the format: "[task.id] sender.name -> receiver.name".
 
     Note:
-        This function assumes that the `task`, `sender`, and `receiver` objects are properly defined and 
+        This function assumes that the `task`, `sender`, and `receiver` objects are properly defined and
         implement the required attributes and methods.
     """
     if task.ttl > 0:
@@ -425,8 +489,8 @@ def sendTask(env, task, sender, receiver, algorithm):
         yield env.timeout(trasmission_time)
 
         task.hop += 1
-        task.ttl -= 1   
-        
+        task.ttl -= 1
+
         task.add_algorithm(algorithm)   # Contiamo quale algoritmo abbiamo usato
 
         # Rimuoviamo il task dal Sender
