@@ -16,7 +16,6 @@ simulation_results = []
 with open('config.json5') as config_file:
     config = json5.load(config_file)
 
-
 def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, task_priority,
                    arrival_time_system, num_hops, transfer_time, original_TaskPriority,
                    initial_server_counter, different_server_counter, other_server_counter,
@@ -41,7 +40,6 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
         e_coeff = config.get("energy_coefficient", 5e-26)
         eps_cpu = selected_server.compute_execution_energy(estimated_execution_time, C_sen, e=e_coeff)
 
-        # ⚠️ SPOSTA QUI IL CONTROLLO ENERGIA
         if selected_server.energy < eps_cpu:
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for CPU",
                                                  task_priority)
@@ -52,9 +50,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
             time_in_queue = env.now - arrival_time_task_queue
             yield env.timeout(estimated_execution_time)
 
-            # ⚠️ SOTTRAI L'ENERGIA DOPO L'ESECUZIONE, MA IL CONTROLLO È STATO FATTO PRIMA
             selected_server.energy -= eps_cpu
-
 
     elif task_type in ("CPU_and_Data_Intensive"):
         C_sen = config.get("C_sen", 1e9)
@@ -67,7 +63,6 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
         data_bytes = data_MB * (1024 ** 2)
         eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
 
-        # ⚠️ SPOSTA QUI IL CONTROLLO ENERGIA
         if selected_server.energy < (eps_cpu + eps_net):
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system,
                                                  "Insufficient Energy for CPU+NET", task_priority)
@@ -97,7 +92,6 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
         data_bytes = data_MB * (1024 ** 2)
         eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
 
-        # ⚠️ SPOSTA QUI IL CONTROLLO ENERGIA
         if selected_server.energy < eps_net:
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for NET",
                                                  task_priority)
@@ -126,8 +120,6 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, t
     globals.gbl_tasks.append(task_OBS)
 
     qlen = len(selected_server.cpu_dev.queue) + len(selected_server.net_dev.queue)
-
-
 
     # NEW: Passa il tipo di task e i valori energetici
     selected_server.task_completed(
@@ -163,7 +155,6 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     neighbors_at_distance_one.append(server_selected)
 
     server_metrics = []
-    transfer_time = 0.0
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
@@ -252,19 +243,16 @@ def task(env, task_id, server, task_priority, initial_server_counter, different_
     download_time = 0
     arrival_time_system = env.now
 
-    task_type = "Generic_Service"
+    task_type = "Generic_Service" ## Low resolution 10-88k
     if task_priority == 1:
-        # NEW: Aggiungi un'opzione per i task CPU_Intensive
         if random.random() < 0.5:
-            task_type = "CPU_Intensive"
+            task_type = "CPU_Intensive" ## Low resolution
         else:
-            task_type = "CPU_and_Data_Intensive"
+            task_type = "CPU_and_Data_Intensive" ## Medium, high and very high resolution
     elif task_priority == 0:
-        # NEW: Aggiungi una logica per i task Batch
         if random.random() < 0.5:
-            task_type = "Data_Intensive"
-        else:
-            task_type = "Batch"  # Questo tipo non userà la coda CPU
+            task_type = "Data_Intensive" ## come batch, High e very high
+
 
     print(f"---> Task {task_id} (Priority: {task_priority}, Type: {task_type}) arriva in {arrival_time_system:.2f}")
 
