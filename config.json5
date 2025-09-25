@@ -5,7 +5,7 @@
   seed: 13,
   access_point: 5,
   arrival_time_exponential: 1.5,
-  Tmax_H: 400, //task deadline
+  Tmax_H: 400,
   initial_energy: 150000,
   C_sen: 1000000000.0,
   energy_coefficient: 5e-26,
@@ -17,7 +17,7 @@
   },
   mode_name: "DTS-base",
   request_distribution: {
-    distribution: "OrbitAware Utility",
+    distribution: "OrbitAware",
   },
   DTS: true,
   AP_selection: "optimal",
@@ -50,11 +50,23 @@
   generate_tasks: {
     distribution: "exponential",
   },
-  priority_combination: {
-    distribution: "20_0_80", // solo alta o bassa priorità
+  beta: {
+    gen: 0.7,
+    CPUI: 0.2,
+    CPUI_DataI: 0.1,
+    batch: 0.1,
+  },
+  alpha: {
+    M: 0.5,
+    H: 0.3,
+    VH: 0.2,
+  },
+  gamma: {
+    H: 0.7,
+    VH: 0.3,
   },
   csv_name: {
-    name: "OrbitAware Utility-sim_SystemAP5/seed_13/results_20_0_80_exponential_REQ-OrbitAware Utility_AT_1.5_CPU_143.5.csv",
+    name: "OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_143.5.csv",
   },
   simulation_location: "Roma",
   locations: {
@@ -83,7 +95,7 @@
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
   Routing_algorithm: {
-    BATMAN: true,
+    BATMAN: false,
     GREEDY: true,
   },
 }

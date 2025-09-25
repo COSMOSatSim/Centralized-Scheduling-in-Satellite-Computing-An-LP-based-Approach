@@ -5,7 +5,6 @@ from Ogm import Ogm
 from Observer import Observer
 import globals
 import sys
-import os
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:

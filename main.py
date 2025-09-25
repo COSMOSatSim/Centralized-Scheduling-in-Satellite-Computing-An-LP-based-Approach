@@ -5,6 +5,7 @@ import sys
 import random
 import simpy
 from EdgeServer import build_task_csv_path
+from SECMotionModel import simulation
 from Task import generate_Tasks_Status
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, string_to_skyfield_time
@@ -77,6 +78,48 @@ if __name__ == "__main__":
     globals.other_server_counter = {
         server.name: 0 for server in globals.edge_servers}
 
+    # 3) Aggiungi i task batch alle code di rete dei server
+    batch_task_id = 0
+    task_id = batch_task_id  # numerico, non stringa
+
+    # La richiesta dice che il numero di task batch è tra 0 e 3
+    for _ in range(random.randint(0, 3)):
+        batch_task_id += 1
+        # Scegli un server a cui assegnare il task batch
+        selected_server = random.choice(globals.global_access_point)
+
+        # Genera i requisiti del task batch
+        required_ram = random.randint(config["required_ram"]["min"], config["required_ram"]["max"])
+        required_disk = random.randint(config["required_disk"]["min"], config["required_disk"]["max"])
+        # Assegna i requisiti di dimensione file come specificato per i task batch
+        r = random.random()
+        if r < config["gamma"]["H"]:
+            # File di ALTA risoluzione
+            image_size = random.uniform(2.2, 24.2)
+        else:
+            # File di ALTISSIMA risoluzione
+            image_size = random.uniform(132.5, 500)
+
+        # Poiché i task batch non usano la CPU, il tempo stimato di esecuzione CPU è 0
+        estimated_execution_time = 0.0
+        transfer_time = 0.0  # Non c'è tempo di trasferimento iniziale
+
+        # Avvia un processo SimPy per il task batch che lo mette direttamente nella coda di rete
+        env.process(simulation.TaskAssignment(
+            env,
+            selected_server,
+            f"Batch-{batch_task_id}",  # ID del task batch
+            required_ram, required_disk,
+            env.now,
+            0,  # hop
+            transfer_time,
+            globals.initial_server_counter,
+            globals.different_server_counter,
+            globals.other_server_counter,
+            estimated_execution_time,
+            task_type="Batch"
+        ))
+
     # 4) Avvia la generazione dei task
     env.process(generate_tasks(
         env,
@@ -90,7 +133,6 @@ if __name__ == "__main__":
     mode_name             = config.get("mode_name", "UnknownMode").replace(" ", "_")
     ap                    = config.get("access_point", 0)
     seed_val              = config["seed"]
-    prio_dist             = config["priority_combination"]["distribution"]
     gen_dist              = config["generate_tasks"]["distribution"]
     req_dist              = config["request_distribution"]["distribution"]
     if req_dist == "0_0_0":
@@ -106,18 +148,18 @@ if __name__ == "__main__":
 
     # File CSV e log con nomenclatura completa
     csv_task = (
-        f"{base_dir}/results_{prio_dist}_"
+        f"{base_dir}/results_"
         f"{gen_dist}_REQ-{req_dist}_"
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
     csv_mig = (
-        f"{base_dir}/migration_{prio_dist}_"
+        f"{base_dir}/migration_"
         f"{gen_dist}_REQ-{req_dist}_"
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
     csv_routing_task = build_task_csv_path(task_dir, atime, cpu_mean)
 
-    log_file = f"{base_dir}/log_{prio_dist}_{gen_dist}_AT_{atime}.log"
+    log_file = f"{base_dir}/log_{gen_dist}_AT_{atime}.log"
 
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
@@ -143,11 +185,11 @@ if __name__ == "__main__":
     with open(csv_task, mode='w', newline='') as f_out:
         writer = csv.writer(f_out)
         writer.writerow([
-            "Task ID", "Task Priority", "Task Type", "Status", "Arrival Time (System)",
+            "Task ID", "Task Type", "Status", "Arrival Time (System)",
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
             "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
-            "Queue length", "original_TaskPriority", "estimated_execution_time",
-            "transfer_time", "Utility", "TMAX_exceeded", "Exec_after_set",
+            "Queue length", "estimated_execution_time",
+            "transfer_time", "TMAX_exceeded", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]",
             "Rejection Reason"
         ])
@@ -155,43 +197,40 @@ if __name__ == "__main__":
         for srv in globals.edge_servers:
             # Scrivi i task completati
             for (
-                    tid, tp, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
-                    tq, sel_srv, hops, qlen, orig_p, est_e, trf,
-                    util, tmax_exc, exec_set, eps_cpu, eps_net, eps_tot
+                    tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
+                    tq, sel_srv, hops, qlen,  est_e, trf,
+                     tmax_exc, exec_set, eps_cpu, eps_net, eps_tot
             ) in srv.completed_tasks:
-                orig_label = 'high' if orig_p == 1 else 'low'
                 time_in_system = et - arr_sys
                 writer.writerow([
-                    tid, tp, task_type, "Completed", arr_sys, arr_q, st, et,
+                    tid, task_type, "Completed", arr_sys, arr_q, st, et,
                     ex_t, sv_t, time_in_system, tq, sel_srv, hops,
-                    qlen, orig_label, est_e, trf,
-                    util, tmax_exc, exec_set,
+                    qlen, est_e, trf,
+                    tmax_exc, exec_set,
                     eps_cpu, eps_net, eps_tot, srv.energy, "N/A"
                 ])
 
-            # Scrivi i task scartati (correttamente indentato)
+            # Scrivi i task scartati
             for (
-                    tid, task_type, arr_sys, reason, prior
+                    tid, task_type, arr_sys, reason
             ) in srv.rejected_tasks:
                 writer.writerow([
-                    tid, prior, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
+                    tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
                     "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
                     "N/A", "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", "N/A",
-                    "N/A", "N/A", srv.energy, reason
+                    "N/A", "N/A", "N/A", "N/A", srv.energy, reason
                 ])
 
-            # server_queue residui (correttamente indentato)
+            # server_queue residui
             for (
                     tid, rr, rd, tp, arr_sys, est_e, trf, util,
                     hops, arr_q, orig_p
             ) in srv.server_queue:
-                label = 'high' if tp == 1 or orig_p == 1 else 'low'
                 time_in_q = env.now - arr_q
                 writer.writerow([
-                    tid, label, "N/A", "In Queue", arr_sys, arr_q, "N/A", "N/A",
+                    tid, "N/A", "In Queue", arr_sys, arr_q, "N/A", "N/A",
                     "N/A", "N/A", env.now - arr_sys, time_in_q, srv.name, hops,
-                    len(srv.server_queue), label, est_e, trf,
+                    len(srv.server_queue), est_e, trf,
                     util, "N/A", "N/A", "N/A",
                     "N/A", "N/A", srv.energy, "N/A"
                 ])

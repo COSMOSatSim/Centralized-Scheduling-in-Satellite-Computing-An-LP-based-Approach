@@ -31,7 +31,6 @@ class EdgeServer:
         :param name: Name of the edge server.
         '''
 
-
         self.env = env
         self.name = name
         self.satellite = satellite
@@ -43,18 +42,17 @@ class EdgeServer:
         self.bandwidth = {}
 
         # Code classiche come in precedenza (non verrà più utilizzata)
-        self.process_queue = simpy.PriorityResource(env, capacity=5)
+        self.process_queue = simpy.Resource(env, capacity=5)
         self.server_queue = []
 
         # Nuove code CPU + NET per modello a 2 stadi
-        self.cpu_dev = simpy.PriorityResource(env, capacity=5)
-        self.net_dev = simpy.PriorityResource(env, capacity=5)
+        self.cpu_dev = simpy.Resource(env, capacity=5)
+        self.net_dev = simpy.Resource(env, capacity=5)
         self.queue_cpu = []
         self.queue_net = []
         self.cpu_busy_until = 0.0
         self.net_busy_until = 0.0
 
-        self.utility_value = 0
         self.completed_tasks = []
         self.rejected_tasks = []  # NEW: Lista per i task scartati
         self.completed_tasks = []
@@ -71,19 +69,18 @@ class EdgeServer:
         self.OGMs_History = OrderedDict()
         self.OGMs_History_dim = 2046
 
-    def record_rejected_task(self, task_id, task_type, arrival_time_system, rejection_reason, task_priority ):
+    def record_rejected_task(self, task_id, task_type, arrival_time_system, rejection_reason ):
         """
         Registra un task scartato con la motivazione del rifiuto.
         """
         self.rejected_tasks.append(
-            (task_id, task_type, arrival_time_system, rejection_reason, task_priority )
+            (task_id, task_type, arrival_time_system, rejection_reason )
         )
         print(f"[Task {task_id}] REJECTED on {self.name} due to: {rejection_reason}")
 
-    def task_completed(self, task_id, task_priority, task_type, arrival_time_system, arrival_time_task_queue,
+    def task_completed(self, task_id, task_type, arrival_time_system, arrival_time_task_queue,
                        start_time, end_time, execution_time, service_time, time_in_queue,
-                       selected_server, num_hops, lunghezza_coda, original_TaskPriority,
-                       estimated_execution_time, transfer_time, utility,
+                       selected_server, num_hops, lunghezza_coda, estimated_execution_time, transfer_time,
                        TMAX_exceeded, exec_after_set,
                        eps_cpu=0.0, eps_net=0.0):
         '''
@@ -96,10 +93,10 @@ class EdgeServer:
             exec_after_set = True
 
         self.completed_tasks.append(
-            (task_id, task_priority, task_type, arrival_time_system, arrival_time_task_queue,
+            (task_id,  task_type, arrival_time_system, arrival_time_task_queue,
              start_time, end_time, execution_time, service_time, time_in_queue,
-             selected_server, num_hops, lunghezza_coda, original_TaskPriority,
-             estimated_execution_time, transfer_time, utility,
+             selected_server, num_hops, lunghezza_coda,
+             estimated_execution_time, transfer_time,
              TMAX_exceeded, exec_after_set, eps_cpu, eps_net, total_energy)
         )
 
@@ -264,7 +261,7 @@ class EdgeServer:
 
         # 3) CPU stage
         if d_cpu_s > 0:
-            with self.cpu_dev.request(priority=prio) as req:
+            with self.cpu_dev.request() as req:
                 yield req
                 self.queue_cpu = [x for x in self.queue_cpu if x[0] != task_id]
                 self.cpu_busy_until = env.now + d_cpu_s
@@ -274,7 +271,7 @@ class EdgeServer:
 
         # 4) NET stage
         if d_net_bytes > 0:
-            with self.net_dev.request(priority=prio) as req:
+            with self.net_dev.request() as req:
                 yield req
                 self.queue_net = [x for x in self.queue_net if x[0] != task_id]
                 t_tx = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
@@ -391,6 +388,10 @@ class EdgeServer:
             # Per i task Data-intensive: priorità a W_net basso e B alto
             score = (1 / (W_net + 1)) + B
             return score
+        elif task_type == "Batch":
+            # Per i task Data-intensive: priorità a W_net basso e B alto
+            score = (1 / (W_net + 1)) + B
+            return score
 
         elif task_type == "CPU_and_Data_Intensive":
             # Per i task CPU-Data-intensive: priorità alla somma dei tempi di attesa e a B alto
@@ -403,41 +404,10 @@ class EdgeServer:
             score = -B
             return score
 
+
+
         # Ritorna 0 per i task di tipo sconosciuto, non saranno mai scelti
         return 0
-
-    '''def UpdateUtilityValue(self, env, estimated_execution_time, transfer_time,
-                           restart_time, download_time, server, task_priority):
-        ''''''
-        Aggiorna il valore di utilità del server in base alle code CPU/NET reali.
-        ''''''
-        now = env.now
-
-        # Nuovo: waiting times reali da code CPU/NET
-        Wc = self.W_cpu(now)
-        Wn = self.W_net(now)
-
-        #  Penalizzazione per sunset
-        if server.orbitalSunset is not None and server.orbitalSunset > 0:
-            sunset_penalty = 1 / server.orbitalSunset
-        else:
-            sunset_penalty = float('inf')
-
-        # Tempo complessivo: CPU demand stimata + overhead (download, restart, transfer)
-        total_demand = estimated_execution_time + transfer_time + restart_time + download_time
-
-        # Utility in base al tipo di task
-        if task_priority == 1:  # alta priorità → focus CPU
-            self.utility_value = Wc + total_demand  # + sunset_penalty se vuoi enfatizzarlo
-        elif task_priority == 100:  # bassa priorità → focus CPU+NET
-            self.utility_value = Wc + Wn + total_demand
-        else:  # default
-            self.utility_value = Wc + Wn + total_demand
-
-        # Debug
-        print(f"[Utility] {self.name} | Wc={Wc:.2f}, Wn={Wn:.2f}, "
-              f"total_demand={total_demand:.2f}, utility={self.utility_value:.2f}")
-'''
 
 
 def getTransmissionTime(bandwidht, weight, latency):

@@ -1,19 +1,16 @@
-import json
+import json, json5
 from math import sqrt
 import numpy as np
-import sys
 from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
 from Satellite import Satellite
 import sys
-from datetime import datetime
 
-with open('config.json') as config_file:
-    config = json.load(config_file)
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
 
 ts = load.timescale()                                   # ts : time management with astronomical time
 time_now = ts.now()
-
 
 # reading TLE DATA from File
 def loadTLEFromFile(filename):
@@ -79,8 +76,6 @@ def advance_time(current_time, minutes_to_add):
     new_time = ts.from_datetime(new_datetime)
     
     return new_time
-
-
 
 # Getter Topos 'Observer' object 
 def getObserverObj(location = config["simulation_location"]):
@@ -248,11 +243,6 @@ def getAllSatOnMe(t, tle_data, serializable = False, Phi_max = config["Phi_max"]
 
     return dome, sat_sort_buff
 
-
-
-
-
-
 def compute_distances_from_target_satellite(sat, closerSatellite_Sorted, t):
     """
     Compute the distances from the target satellite to other satellites.
@@ -350,11 +340,6 @@ def classifySat_BufferZone(buffer_satellites, time = time_now):
             selected_satellites.append((s[0], s[1], max_elevation))
     
     return selected_satellites
-
-
-
-
-
 
 # ---------------------------------------------------------------------------- #
 

@@ -1,7 +1,6 @@
 
 from collections import OrderedDict
 from skyfield.api import wgs84
-import globals
 import sys
 import json5
 from Task import byte_to_dim 

@@ -1,6 +1,5 @@
 import json, json5
 import random
-import sys
 import threading
 from skyfield.api import EarthSatellite, load
 from EdgeServer import EdgeServer
@@ -8,9 +7,6 @@ from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time,
 from datetime import datetime, timedelta, timezone
 from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
 import globals 
-import os
-
-
 
 # Converti il tempo in UTC e formatta
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
@@ -320,10 +316,6 @@ def distribute_ogm(env, data_configuration, config_riempimento):
         
             
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
-        
-
-        
-
 
 
 def update_counters_dictionary(all_server, initial_server_counter, different_server_counter, other_server_counter):
@@ -547,10 +539,6 @@ def loadConfiguration_simple(env, data_configurations):
         globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
 
-
-
-
-
 def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
     """
     Carica una configurazione dal file e aggiorna la lista edge_servers senza sostituirla completamente.
@@ -630,7 +618,6 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
         OGMs_table_single_config = OGMs_tables[str(globals.config_index)]
         positions_Vectors_single_config = positions_vectors[str(globals.config_index)]
 
-
         # Costruisci i server iniziali
         edge_servers, neighbors_SAT, list_acc_point = build_EdgeServer_from_config(env,
                      configuration, OGMs_table_single_config, positions_Vectors_single_config)
@@ -648,7 +635,6 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
                 server.add_neighbor(neighbor_server, 1, n["latency"],
                                     random.uniform(config["available_bandwidth"]["min"],
                                                    config["available_bandwidth"]["max"]))
-
         #Trovo i nuovi acc_points
         counter_acc_found = 0
         for server in edge_servers:
@@ -666,7 +652,6 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
         globals.instant_in_configuration = string_to_skyfield_time(configuration["time"])
         globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
-
 
 def updateTaskValue(data_configurations):
     index_config = 0
@@ -697,8 +682,6 @@ def updateTaskValue(data_configurations):
     #print(f"Min life: {min(lifes_value)}")
     
     return min(lifes_value), max(lifes_value), sum(lifes_value) / len(lifes_value)
-
-
 
 def string_to_skyfield_time(time_str):
     # Converte la stringa in oggetto datetime
