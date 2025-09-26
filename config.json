@@ -2,7 +2,7 @@
     "simulation_duration": 300,
     "adding_time": 30,
     "max_try": 5,
-    "seed": 13,
+    "seed": 53,
     "access_point": 5,
     "arrival_time_exponential": 1.5,
     "Tmax_H": 400,

@@ -10,8 +10,6 @@ from routing_Manager import periodic_recall_Routing_monitor
 from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
 
-
-
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)

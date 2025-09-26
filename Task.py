@@ -1,5 +1,6 @@
 import globals
 import json, json5, csv
+import os
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
@@ -212,7 +213,24 @@ def generate_Tasks_Status(csv_filename):
             ToS += 1
         
         print(row)
-            
+    
+    # ! Scrittura delle informazioni nel file csv
+    summary_filename = "tasks_summary.csv"
+
+    # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
+    summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
+
+    # Se il file non esiste, crea il file e scrivi l'intestazione
+    file_exists = os.path.isfile(summary_filename)
+    with open(summary_filename, mode="a", newline="") as summary_file:
+        writer = csv.writer(summary_file)
+        if not file_exists:
+            writer.writerow(["Seed", "TotalTasks", "Arrived", "Expired", "OutOfBuff", "OnSim"])
+        writer.writerow(summary_row)
+    print(f"Summary info saved to: {summary_filename}")
+
+    # ! Fine scrittura
+
     print()  # Riga vuota alla fine per separare dall'output successivo
 
     # FASE DI SCRITTURA CSV
