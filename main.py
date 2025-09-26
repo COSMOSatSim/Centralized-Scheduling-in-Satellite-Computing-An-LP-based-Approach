@@ -1,9 +1,5 @@
-import csv
-import json5
-import os
-import sys
-import random
-import simpy
+import globals
+import csv, json5, os, sys, simpy
 from EdgeServer import build_task_csv_path
 from Task import generate_Tasks_Status
 from simulation import generate_tasks
@@ -11,10 +7,8 @@ from topology import loadConfiguration, periodic_recall_Topology_monitor, create
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
-from  Observer import Observer
+from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
-
-import globals
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
@@ -22,8 +16,7 @@ with open('config.json5') as config_file:
 
 
 if __name__ == "__main__":
-    # Imposta seme e ambiente
-    random.seed(config["seed"])
+    
     env = simpy.Environment()
     MaxTry = config.get("max_try", 10)
 

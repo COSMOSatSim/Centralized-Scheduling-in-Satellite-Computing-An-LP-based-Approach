@@ -1,4 +1,4 @@
-import random
+import globals
 import simpy
 import json, json5
 from  Observer import Observer 
@@ -6,8 +6,6 @@ from user_based_topology import getObserverObj
 from topology import distribute_ogm, loadConfiguration, loadConfiguration_simple
 from routing_Manager import periodic_recall_Routing_monitor
 
-
-import globals
 import time
 
 # Leggi il file di configurazione JSON
@@ -24,8 +22,6 @@ def process_OGM_enviroment_simulation(data_configuration):
     Funzione usata per la costruzione delle tabelle OGM nella fase di PRE-Loading
     """
     
-    random.seed(config["seed"])
-
     env_ogm = simpy.Environment()  
     simulation_duration = config['simulation_duration'] + ADDING_TIME    #Aggiungo 60 secondi (30 conf) di simulazione per il caricamento delle tabelle
     #simulation_duration = config['simulation_duration']

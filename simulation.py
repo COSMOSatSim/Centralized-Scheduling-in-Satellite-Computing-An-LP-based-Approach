@@ -1,8 +1,8 @@
+import globals
 import json, json5
-import random
 import logging
 import experiments
-import globals
+
 from Task import Task, assign_resolution
 
 hop = 0  # Inizializza la variabile hop a zero
@@ -341,7 +341,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
             if config["SEN_selection"] == 'random':
                 # Se DTS è attivo, scegli un server a caso
-                random_server = random.choice(available_servers)
+                random_server = globals.rnd.choice(available_servers)
                 Tmax_latency = random_server.get_latency(server_selected)
                 transfer_time = transfer_time + Tmax_latency
                 hop += 1
@@ -388,16 +388,16 @@ def LocalScheduler(env, task_id, required_ram, required_disk, server, image_size
 
 def task(env, task_id, server, task_priority, initial_server_counter, different_server_counter, other_server_counter):
     #required_cpu = random.choice([config["required_cpu"]["min"], config["required_cpu"]["max"]])  # CPU richiesta dal task
-    required_ram = random.randint(config["required_ram"]["min"], config["required_ram"][
+    required_ram = globals.rnd.randint(config["required_ram"]["min"], config["required_ram"][
         "max"])  # RAM richiesta dal task #######cercare quali distributioni caratterizzano tipicamente la richiesta di RAM
-    required_disk = random.randint(config["required_disk"]["min"],
+    required_disk = globals.rnd.randint(config["required_disk"]["min"],
                                    config["required_disk"]["max"])  # Spazio su disco richiesto dal task
-    image_size = random.uniform(config["image_size"]["min"], config["image_size"][
+    image_size = globals.rnd.uniform(config["image_size"]["min"], config["image_size"][
         "max"])  # Genera casualmente la dimensione dell'immagine con media di 1 GB ###cercare quali distributioni caratterizzano tipicamente la dimensione delle immagini dei container
-    Volume_size = random.uniform(config["Volume_size"]["min"], config["Volume_size"][
+    Volume_size = globals.rnd.uniform(config["Volume_size"]["min"], config["Volume_size"][
         "max"])  # Genera casualmente la dimensione dell'Volume con media di 1 GB ###cercare quali distributioni caratterizzano tipicamente la dimensione delle immagini dei container
 
-    restart_time = random.uniform(config["restart_time"]["min"],
+    restart_time = globals.rnd.uniform(config["restart_time"]["min"],
                                   config["restart_time"]["max"])  # Tempo di riavvio del task (ad esempio, in secondi)
     download_time = 0  # image_size / available_bandwidth
     arrival_time_system = env.now

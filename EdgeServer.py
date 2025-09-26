@@ -1,3 +1,4 @@
+import globals
 import sys
 import json5
 import logging
@@ -8,8 +9,8 @@ from collections import OrderedDict
 from routing_Manager import forward_packet_DSR
 from user_based_topology import getSystemFromSat
 from Task import Task
+
 from packet import Packet
-import globals
 from utils import sendTask
 
 

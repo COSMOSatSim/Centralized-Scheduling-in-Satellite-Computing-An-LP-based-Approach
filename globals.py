@@ -1,4 +1,16 @@
-import threading, os, json
+import threading, os, json5, json
+import random as _random
+import numpy as np
+
+# Leggi il file di configurazione JSON
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
+
+# Imposta seme e ambiente
+rnd = _random.Random()
+rnd.seed(config["seed"])
+np.random.seed(config["seed"])
+
 
 # Variabili globali per i server
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server
