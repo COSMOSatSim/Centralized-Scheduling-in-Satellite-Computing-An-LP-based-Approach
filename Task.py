@@ -1,5 +1,6 @@
 import random, json, json5, csv
 import globals
+import os
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
@@ -17,7 +18,7 @@ class Task:
         self.routingInitTime = routingInitTime  # Tempo di partenza
         self.routingEndTime = None              # Tempo di fine
         self.label = 'ON_SIMULATION'            # Failure Label 
-        
+        self.source = current_node              # Nodo di partenza
         self.resolution = category              # Categoria Risoluzione Immagine
         self.weight = resolution                # Dimensione Immagine
 
@@ -33,10 +34,11 @@ class Task:
         self.hop_History = [current_node]       # Lista di satelliti sui quali sono stato
         
         # DSR
+        self.source_DSR = current_node
         self.routeRequestIst = None             # Timestamp start route Request
         self.RouteReply = False                 # Bool allow reply
-        self.Route = []                         # Lista percorso da seguire
-        self.routeHopCounter = 0                
+        self.selected_route = []                # Lista percorso da seguire
+
     def __str__(self):
         """
         String representation of the Task object.
@@ -152,7 +154,7 @@ def colorize(text: str, color: str) -> str:
 
 
 
-def generate_Tasks_Status(csv_filename):
+def generate_Tasks_Status(csv_filename = "DSR_Execution.csv"):
     """
         Questa funzione salva in un file CSV le informazioni sui Task
     """
@@ -216,6 +218,10 @@ def generate_Tasks_Status(csv_filename):
         "TaskID", "CurrentNode", "Hop", "Label", "Resolution",
         "RoutingInitTime", "RoutingEndTime", "Duration", "Algorithms"
     ]
+
+    # Crea il file se non esiste
+    if not os.path.exists(csv_filename):
+        open(csv_filename, "w").close()
 
     with open(csv_filename, mode="w", newline="") as file:
         writer = csv.writer(file)

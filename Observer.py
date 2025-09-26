@@ -34,6 +34,7 @@ class Observer(metaclass = ObserverMeta):
         self.is_acc_point = False
         
         self.tasks = []
+        self.arrived_tasks = []
         self.OGMs_position = {}
         self.ogm_sequence = 0               # Contatore OGM emessi
         self.OGMs = []                      # OGM to process

@@ -18,6 +18,7 @@ class Packet:
         self.id = id
         self.taskID = taskID
         self.source = source
+        
         self.dest = dest
         self.mode = mode
 
@@ -26,8 +27,8 @@ class Packet:
         self.visited = set()        # Set di Nodi Visitati
         self.visited.add(source)
 
-        self.hop_History = [source] # history tracking
-        self.node_stack = [source]  # hop tracing
+        self.hop_History = []       # route Tracker
+        self.node_stack = [source]  # back walk Tracker
 
     def duplicate(self):
         new_pkt = Packet(

@@ -1,5 +1,6 @@
 import random
 import json, json5
+from utils import sendTask
 from packet import Mode, Packet
 from user_based_topology import get_orbit_proximity, getSystemFromSat
 from Ogm import Ogm
@@ -245,7 +246,9 @@ def routeDiscovery(source, task, neighbors):
         
         source.pkt_history.append(pkt_ID)
         source.packets_seq += 1
+
         globals.gbl_packet.append(pkt)
+        #print(f"\t[{task.id}] PKTID: {pkt_ID} ({source.name}->{node.name})\t| HISTORY: {pkt.hop_History}")
         #print(f"[{pkt_ID}] {task.current_node} --> {node.name}")
 
 def getNextNode(neighbors, nextHopName):
@@ -254,21 +257,23 @@ def getNextNode(neighbors, nextHopName):
     return neighbor
 
 def startRouteReply(source, neighbors, pkt: Packet):
-    print(f"AVVIO FASE DI ROUTE REPLY")
+    
     pkt.mode = Mode.ROUTE_REPLY
     last_node = pkt.node_stack.pop()
     
     nextHop = getNextNode(neighbors, last_node)
     
     if nextHop:
-        print(f"\t[START-RREPLY] Task {pkt.taskID} pktID {pkt.id}\t| {source.name} -> {nextHop.name}")
         nextHop.packets.append(pkt)
+    
     else:
         #! ROUTE ERROR?
         print(f"\tERROR ROUTE ??\n{source.name} tryed to send {pkt.taskID} pkt to one of:")
         [print(n.name) for n in neighbors]
-        print(f"pkt said the last_node was {last_node}")
-        print(f"{source.name} fails to send pktID{pkt.id} of taskID {pkt.taskID}")
+        
+        if pkt in source.packets:
+            print(f"{pkt.id} Rimosso da {source.name}")
+            source.packets.remove(pkt)
     
 
 
@@ -282,8 +287,11 @@ def sendPkt(source, dest, pkt:Packet):
 
     newPkt.current_node = dest.name
 
-    newPkt.visited.add(source.name)         
-    newPkt.hop_History.append(source.name)
+    newPkt.visited.add(source.name)  
+
+    if pkt.mode == Mode.ROUTE_DISCOVERY:
+        newPkt.hop_History.append(source.name)
+    
     newPkt.node_stack.append(source.name)
 
     dest.packets.append(newPkt)
@@ -301,25 +309,28 @@ def forward_packet_DSR(env, node):
     else:
         neighbors = globals.global_access_point # Vicini Observer
 
-
     for pkt in node.packets[:]:
+        # TODO : Aggiungi un controllo per evitare il Sovracarico della rete
         if pkt.mode == Mode.ROUTE_DISCOVERY:
             if pkt.id not in node.pkt_history:
                 if pkt.dest == node.name:
+                    
+                    pkt.hop_History.append(node.name)
+                    #print(f"\t[{pkt.taskID}] PKTID: {pkt.id} ARRIVED to {node.name}\t| HISTORY: {pkt.hop_History}")
+                    #print(f"ABBIAMO CONCLUSO LA DISCOVERY at {env.now}. TASK : {pkt.taskID} pktid: {pkt.id}\tStack: {pkt.node_stack}")
                     startRouteReply(node, neighbors, pkt)
                 else:
-                    print(f"[RDISCOVERY] pktID:{pkt.id} taskID.{pkt.taskID} on {node.name}")
+
                     for n in neighbors:
                         sendPkt(node, n, pkt)
-            
+                        #print(f"\t[{pkt.taskID}] PKTID: {pkt.id} ({node.name}->{n.name})\t| HISTORY: {pkt.hop_History}")
+
             # Nella history inserisco i DISCOVERY
             node.pkt_history.append(pkt.id)
 
         elif pkt.mode == Mode.ROUTE_REPLY:
-
             if pkt.source == node.name:
                 # Se la source di questo pacchetto sono io
-                print(f"CONSEGNATO [{pkt.id}] TASK:{pkt.taskID}")
                 
                 #! Salviamo l'informazione che ci è giunta
                 if pkt.taskID not in node.routes:
@@ -327,43 +338,119 @@ def forward_packet_DSR(env, node):
                 
                 if pkt.hop_History not in node.routes[pkt.taskID]:
                     node.routes[pkt.taskID].append(pkt.hop_History)
-
-                # Rendiamo il Task Spedibile
-                task = next((t for t in node.tasks if t.id == pkt.taskID), None)
-                task.RouteReply = True
                 
+                #print(f"[{pkt.taskID}] pktID: {pkt.id} ROURE REPLY COMPLETATA! HISTORY: {pkt.hop_History}")
+                # Trova il task corrispondente in node.tasks usando pkt.taskID
+                task = next((t for t in node.tasks if t.id == pkt.taskID), None)
+                # if task:
+                #     print(f"Trovato task: {task.id} per pktID: {pkt.id}")
+                # else:
+                #     print(f"Nessun task trovato con id {pkt.taskID} in node.tasks")
+
+                #print(f"CONTROLLO HISTORY DI [{pkt.taskID}] pktID: {pkt.id} time: {env.now} IMPIEGATO: {env.now - task.routeRequestIst}")
+
+
             else:
                 # Lo mando al prossimo nodo della rete
                 lastNodeStack = pkt.node_stack.pop()
-                nextNode = getNextNode(neighbors,lastNodeStack)
-                sendPkt(node, nextNode, pkt)
-
+                nextNode = getNextNode(neighbors, lastNodeStack)
+                
+                # TODO : Controlla questa parte
+                if nextNode is not None:
+                    sendPkt(node, nextNode, pkt)
+                
         node.packets.remove(pkt)
 
     # ! Route Request
     for task in node.tasks: 
         if not task.routeRequestIst:
+            # Task è stato appena eseguito, avvio fase di Discovery
             routeDiscovery(node, task, neighbors)
-            print(f"\t[RDISCOVERY] Task {task.id}\t| {node.name} start routeRequest: {round(task.routeRequestIst,4)} ")
+            #print(f"[{task.id}] FROM {node.name} START ROUTE DISCOVERY at {env.now}")
         else:
-            if task.RouteReply:
-                # Abbiamo ricevuto un Pacchetto Reply
 
-                sys.exit("Possiamo iniziare il trasferimento")
-            else:
-                # Controllo che non sia scaduto il suo tempo.
-                if env.now - task.routeRequestIst > 2:
-                    print(f"Route request for task {task.id} expired (timestamp: {task.routeRequestIst}, now: {env.now})")
-                    # Puoi aggiungere qui la logica per gestire la scadenza, ad esempio rimuovere il task o ritentare
+            if node.name == task.source_DSR:
+                timeout = 1             # 1s
+
+                # controllo se è scaduto il timeout per spedirlo
+                if env.now - task.routeRequestIst > timeout:
                     
-                    if task.id in node.routes:
-                        print(f"{node.routes[task.id]}")
-                    else:
-                        print(f"Nessuna informazione di routing per il task {task.id}")
+                    # Controllo se mi sono arrivate delle routes
+                    if task.id in node.routes: 
+                        #print(f"[TRASMISSION] DEL TASK {task.id}! Ecco le route salvate:{node.routes[task.id]}")
+                        
+                        nextHop = None
+                        # Finché ho route candidate
+                        while len(node.routes[task.id]) > 0:
+                            
+                            # Prendo la più corta
+                            bestRoute = min(node.routes[task.id], key=len).copy()
+                            route = bestRoute.copy()
+                            
+                            # Controllo il prossimo hop
+                            nextHopName = route.pop(0)
+                            nextHop = next((n for n in neighbors if n.name == nextHopName), None)
 
-                    print("\n\n")
-                    [print(p) for p in globals.gbl_packet]
-                    sys.exit(f"BRO IL TEMPO é SCADUPTO DEL TASK: {task.id}")
+                            if nextHop is not None:
+                                task.selected_route = route
+                                break
+                            else:
+                                node.routes[task.id].remove(bestRoute)  # elimino route non valida e continuo
+
+                        if nextHop is not None:
+                            #print(f"[{task.id}] ROTTA TROVATA: {bestRoute}")
+                            env.process(sendTask(env, task, node, nextHop, 'DSR'))
+                            
+                        else:
+                            #print(f"[{task.id}] Nessuna Route Valida!")
+                            
+                            # Puliamo il Task
+                            task.routeRequestIst = None
+                            task.RouteReply = False
+                            task.selected_route = []
+
+                            if task.id in node.pkt_history:
+                                node.pkt_history.remove(task.id)
+                    else:
+                        # ! TimeOut Error
+                        #print(f"[TimeOut-Error] Per il task {task.id} non sono arrivate ancora le Routes")
+                        timeout += 1
+            
+            elif node.name == task.dest_node:
+                node.arrived_tasks.append(task)
+                node.tasks.remove(task)
+                task.routingEndTime = env.now
+                print(f"[{task.id}] CONSEGNATO! LABEL: {task.label}")
+                
+            else:
+                # $ Devo rispedire il task
+                #print(f"[{task.id}] {node.name} ha ricevuto il Task, lo reindirizza")
+                #print(f"\t{task.id}] Route presente nel Task : {task.selected_route}")
+                
+                nextHopName = task.selected_route.pop(0)
+                nextHop = next((n for n in neighbors if n.name == nextHopName), None)
+                
+                if nextHop is not None:
+                    env.process(sendTask(env, task, node, nextHop, 'DSR'))
+                else:
+                    # ! Route-Error
+                    #print(f"!!!!!!!!!!!!!!!! [{node.name}] ROUTE ERROR! Il satellite {node.name} non ha contatti con {nextHopName}")
+                    #print(f"Neighbors: {[n.name for n in neighbors]}\n")
+                    #print(f"HO RESETTATO IL TASK {task.id}:")
+                    #print(f"\t\t ReqIST (prima) : {task.routeRequestIst}\n\t\tROUTE: {task.selected_route}\n\t\t source: {task.source_DSR}")
+
+                    # Puliamo il Task
+                    task.routeRequestIst = None
+                    task.RouteReply = False
+                    task.selected_route = []
+                    task.source_DSR = node.name
+                    #print("MODIFICHE EFFETTUATE:")
+                    #print(f"\t\t ReqIST (dopo) : {task.routeRequestIst}\n\t\tROUTE: {task.selected_route}\n\t\t source: {task.source_DSR}")
+
+
+                    
+
+
 
 
 
@@ -391,20 +478,26 @@ def forward_packet_DSR(env, node):
 # | 0,01    | 10 ms        |
 # | 0,001   | 1 ms         |
 
-def periodic_recall_Routing_monitor(env, interval = 0.005):
+def periodic_recall_Routing_monitor(env, interval = 0.1):
     """
     Questa funzione dovrà scorrere costantemente tutti i task dentro
     la lista dei globali, e costantemente spingerli verso la destinazione.
     """
     while True:
-        print(f"env time: {env.now}")
-        for node in globals.edge_servers:
-            yield from node.forward_packet(env)    # Eseguiamo il forwarding
-            if DSR:
-                forward_packet_DSR(env, globals.observer)
+        print(f"ENV TIME: {env.now}")
+        
+        if DSR:
+            for node in globals.edge_servers:
+                forward_packet_DSR(env, node)
+            
+            forward_packet_DSR(env, globals.observer)
+        else:
+            for node in globals.edge_servers:
+                yield from node.forward_packet(env)    # Eseguiamo il forwarding
 
         # TODO DIMINUIRE QUESTO VALORE PER rendere il routing più veloce
         yield env.timeout(interval)
+
 
 
 
