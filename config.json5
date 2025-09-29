@@ -11,8 +11,8 @@
   energy_coefficient: 5e-26,
   Ptrasm: 1.0,
   CPU_timeout: {
-    min: 43,
-    mean: 143.5,
+    min: 33,
+    mean: 132.38532110091742,
     max: 176,
   },
   mode_name: "DTS-base",
@@ -54,7 +54,6 @@
     gen: 0.7,
     CPUI: 0.2,
     CPUI_DataI: 0.1,
-    batch: 0.1,
   },
   alpha: {
     M: 0.5,
@@ -65,8 +64,18 @@
     H: 0.7,
     VH: 0.3,
   },
+  d_gen: {
+    min: 0.01,
+    mean: 0.05,
+    max: 0.1,
+  },
+  d_CPUI: {
+    min: 0.1,
+    mean: 0.5,
+    max: 1.0,
+  },
   csv_name: {
-    name: "OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_143.5.csv",
+    name: "OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_132.38532110091742.csv",
   },
   simulation_location: "Roma",
   locations: {

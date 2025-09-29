@@ -1,5 +1,4 @@
 import json5
-import logging
 from math import sqrt
 import simpy
 from skyfield.api import EarthSatellite
@@ -16,8 +15,6 @@ with open('config.json5') as config_file:
 BATMAN = config["Routing_algorithm"]["BATMAN"]
 GREEDY = config["Routing_algorithm"]["GREEDY"]
 
-def setup_logging(log_file_path):
-    logging.basicConfig(filename=log_file_path, level=logging.DEBUG)
 
 total_time = 0  # Imposta il valore iniziale di total_time
 
@@ -68,6 +65,49 @@ class EdgeServer:
         self.ogm_table = {}
         self.OGMs_History = OrderedDict()
         self.OGMs_History_dim = 2046
+
+    def export_state(self, env):
+        """
+        Esporta lo stato corrente del satellite come dizionario, recuperando
+        i dettagli del task direttamente dagli eventi di richiesta di SimPy.
+        """
+
+        # Recupera i dettagli dei task in coda CPU
+        tasks_in_cpu_queue = []
+        for req in self.cpu_dev.queue:
+            # Controlla se l'attributo 'task_data' è stato allegato
+            if hasattr(req, 'task_data'):
+                task_obj = req.task_data
+                tasks_in_cpu_queue.append({
+                    "task_id": task_obj.id,
+                    "d_cpu": task_obj.d_cpu,
+                    "deadline": task_obj.deadline,
+                })
+
+        # Recupera i dettagli dei task in coda NET
+        tasks_in_net_queue = []
+        for req in self.net_dev.queue:
+            if hasattr(req, 'task_data'):
+                task_obj = req.task_data
+                tasks_in_net_queue.append({
+                    "task_id": task_obj.id,
+                    "d_net": task_obj.d_net,  # Assumi che 'd_net' sia un attributo di Task
+                    "deadline": task_obj.deadline,
+                })
+
+        state = {
+            "time": env.now,
+            "satellite": self.name,
+            "in_listening_dome": self.elev_angle >= 40,
+            "elev_angle": self.elev_angle,
+            "energy_budget": self.energy,
+            "neighbors": [n.name for n in self.get_neighbors()],
+            "queue_cpu_len": len(self.cpu_dev.queue),
+            "queue_net_len": len(self.net_dev.queue),
+            "queue_cpu": tasks_in_cpu_queue,
+            "queue_net": tasks_in_net_queue
+        }
+        return state
 
     def record_rejected_task(self, task_id, task_type, arrival_time_system, rejection_reason ):
         """
@@ -215,13 +255,13 @@ class EdgeServer:
         return max(0.0, busy_until - now)
 
     def W_cpu(self, now):
-        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_cpu)
+        sum_q = sum(d for (_id, d, _t) in self.queue_cpu)
         # Calcola il tempo rimanente del task in esecuzione
         rem = self._remaining(self.cpu_busy_until, now)
         return sum_q + rem
 
     def W_net(self, now):
-        sum_q = sum(d for (_id, d, _prio, _t) in self.queue_net)
+        sum_q = sum(d for (_id, d, _t) in self.queue_net)
         # Calcola il tempo rimanente del task in esecuzione
         rem = self._remaining(self.net_busy_until, now)
         return sum_q + rem
@@ -230,7 +270,7 @@ class EdgeServer:
     # Pipeline CPU -> NET
     # --------------------------------------------------
     def process_locally(self, env, task_id, prio, d_cpu_s, d_net_bytes,
-                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen, task_type="CPU+NET", arrival_time_system=0.0):
+                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen, task_type, arrival_time_system=0.0):
         """
         Simula l’esecuzione di un task sul server (CPU -> NET).
         """
@@ -255,9 +295,9 @@ class EdgeServer:
 
         # 2) Enqueue
         if d_cpu_s > 0:
-            self.queue_cpu.append((task_id, d_cpu_s, prio, env.now))
+            self.queue_cpu.append((task_id, d_cpu_s, prio, env.now, deadline))
         if d_net_bytes > 0:
-            self.queue_net.append((task_id, d_net_svc, prio, env.now))
+            self.queue_net.append((task_id, d_net_svc, prio, env.now, deadline))
 
         # 3) CPU stage
         if d_cpu_s > 0:
@@ -281,8 +321,6 @@ class EdgeServer:
                 self.energy -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
 
         return True, R, eps
-
-
 
 
     def greedy_approach(self, env, task):
@@ -384,10 +422,7 @@ class EdgeServer:
             score = (1 / (W_cpu + 1)) + B
             return score
 
-        elif task_type == "Data_Intensive":
-            # Per i task Data-intensive: priorità a W_net basso e B alto
-            score = (1 / (W_net + 1)) + B
-            return score
+
         elif task_type == "Batch":
             # Per i task Data-intensive: priorità a W_net basso e B alto
             score = (1 / (W_net + 1)) + B

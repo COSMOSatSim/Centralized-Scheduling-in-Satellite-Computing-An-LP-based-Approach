@@ -4,6 +4,7 @@ import os
 import sys
 import random
 import simpy
+import json
 from EdgeServer import build_task_csv_path
 from SECMotionModel import simulation
 from Task import generate_Tasks_Status
@@ -19,6 +20,39 @@ import globals
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
+
+simulation_dataset = []
+
+# Aggiungi il nuovo processo di raccolta dati
+def data_collector(env, interval, start_time, end_time):
+    """
+    Processo per la raccolta periodica dei dati dello stato della rete
+    in un intervallo di tempo specificato.
+    """
+    global simulation_dataset
+
+    # Attendi fino all'inizio dell'intervallo di raccolta
+    yield env.timeout(start_time)
+
+    while env.now <= end_time:
+        # Crea un 'snapshot' dello stato attuale
+        snapshot = {
+            "time": env.now,
+            "satellites": []
+        }
+
+        # Scansiona tutti i satelliti e raccogli i dati
+        for sat_obj in globals.edge_servers:
+            # Assicurati che l'oggetto non sia nullo prima di esportare lo stato
+            if sat_obj:
+                state = sat_obj.export_state(env)
+                snapshot["satellites"].append(state)
+
+        # Aggiungi lo snapshot alla lista globale
+        simulation_dataset.append(snapshot)
+
+        # Attendi l'intervallo di tempo specificato prima della prossima raccolta
+        yield env.timeout(interval)
 
 
 if __name__ == "__main__":
@@ -65,11 +99,12 @@ if __name__ == "__main__":
 
     globals.observer = Observer(env, getObserverObj())  # Singleton Observer
     env.process(periodic_recall_Routing_monitor(env))
+    # Avvia il nuovo processo per la raccolta dei dati (es. ogni 5 secondi)
+    env.process(data_collector(env, interval=1, start_time=100, end_time=200))
 
     if not globals.data_configurations:
         sys.exit("Errore: il file delle configurazioni è vuoto.")
     skyfield_time = string_to_skyfield_time(globals.data_configurations["t0"])
-
 
     globals.initial_server_counter = {
         server.name: 0 for server in globals.edge_servers}
@@ -79,12 +114,10 @@ if __name__ == "__main__":
         server.name: 0 for server in globals.edge_servers}
 
     # 3) Aggiungi i task batch alle code di rete dei server
-    batch_task_id = 0
-    task_id = batch_task_id  # numerico, non stringa
-
-    # La richiesta dice che il numero di task batch è tra 0 e 3
-    for _ in range(random.randint(0, 3)):
-        batch_task_id += 1
+    batch_task_id = 0.1
+    # numero di task batch è tra 0 e 3
+    for _ in range(random.randint(1, 4)):
+        batch_task_id += 0.1
         # Scegli un server a cui assegnare il task batch
         selected_server = random.choice(globals.global_access_point)
 
@@ -108,17 +141,16 @@ if __name__ == "__main__":
         env.process(simulation.TaskAssignment(
             env,
             selected_server,
-            f"Batch-{batch_task_id}",  # ID del task batch
+            batch_task_id,  # ID del task batch
             required_ram, required_disk,
             env.now,
             0,  # hop
             transfer_time,
-            globals.initial_server_counter,
-            globals.different_server_counter,
-            globals.other_server_counter,
             estimated_execution_time,
             task_type="Batch"
         ))
+
+        print("Batch task creation loop finished.")
 
     # 4) Avvia la generazione dei task
     env.process(generate_tasks(
@@ -127,6 +159,8 @@ if __name__ == "__main__":
         globals.different_server_counter,
         globals.other_server_counter
     ))
+
+
 
     # 5) Preparazione dei nomi di cartella e file
     # Prendo direttamente mode_name scritto dal runner in config.json
@@ -176,10 +210,17 @@ if __name__ == "__main__":
     # 6) Esecuzione simulazione
     env.run(config['simulation_duration'])
 
+    # Salva il dataset alla fine della simulazione
+    with open("simulation_dataset.json", "w") as f:
+        json.dump(simulation_dataset, f, indent=4)
+    print("\nDataset dello stato della simulazione salvato in 'simulation_dataset.json'")
+
     # Stampa il riassunto dei task usando la funzione dell'Observer
     globals.observer.print_task_summary()
     print("-"*10)
     generate_Tasks_Status(csv_routing_task)
+
+
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:

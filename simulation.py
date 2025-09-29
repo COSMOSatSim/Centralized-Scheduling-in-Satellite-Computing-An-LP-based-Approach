@@ -14,12 +14,17 @@ with open('config.json5') as config_file:
 
 def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
                    arrival_time_system, num_hops, transfer_time,
-                   initial_server_counter, different_server_counter, other_server_counter,
                    estimated_execution_time, task_type):
     """
     Assign a task to a selected server and process it through CPU and/or Network queues.
     Uses SimPy resources selected_server.cpu_dev and selected_server.net_dev (Resource).
     """
+    category, resolution = assign_resolution(required_ram, required_disk)
+    task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)
+
+    task_OBS.d_cpu = estimated_execution_time
+    task_OBS.d_net = required_ram + required_disk  # Usiamo la dimensione del dato come richiesta NET
+    task_OBS.deadline = arrival_time_system + Tmax_H
 
     # L'energia del trasferimento viene sottratta e verificata in SearchNode
     yield env.timeout(transfer_time)
@@ -40,6 +45,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
             return
 
         with selected_server.cpu_dev.request() as req_cpu:
+            req_cpu.task_data = task_OBS
             yield req_cpu
             time_in_queue = env.now - arrival_time_task_queue
             yield env.timeout(estimated_execution_time)
@@ -62,12 +68,14 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
             return
 
         with selected_server.cpu_dev.request() as req_cpu:
+            req_cpu.task_data = task_OBS
             yield req_cpu
             Wc = env.now - arrival_time_task_queue
             yield env.timeout(estimated_execution_time)
             selected_server.energy -= eps_cpu
 
             with selected_server.net_dev.request() as req_net:
+                req_net.task_data = task_OBS
                 yield req_net
                 Wn = env.now - arrival_time_task_queue
 
@@ -78,6 +86,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
                 time_in_queue = Wc + Wn
 
     elif task_type == "Batch":
+        print('Arrivato task BATCH')
         # Solo coda Network
         bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
         bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
@@ -90,6 +99,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
             return
 
         with selected_server.net_dev.request() as req_net:
+            req_net.task_data = task_OBS
             yield req_net
             time_in_queue = env.now - arrival_time_task_queue
 
@@ -102,8 +112,9 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
     service_time = execution_time + transfer_time
 
     print(f"Task {task_id} Routing Start")
-    category, resolution = assign_resolution(required_ram, required_disk)
-    task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)
+    selected_server.tasks.append(task_OBS)
+    globals.gbl_tasks.append(task_OBS)
+
     if selected_server.elev_angle < config["Phi_max"] - config["Phi_buffer"]:
         task_OBS.label = 'SEN_OUT_OF_BUFF'
         print(f"{selected_server} {selected_server.elev_angle}° {task_OBS.id} set as {task_OBS.label}")
@@ -208,8 +219,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     # Chiamo TaskAssignment sul server scelto
     yield from TaskAssignment(env, server, task_id, required_ram, required_disk,
                                arrival_time_system, hop, transfer_time,
-                              initial_server_counter, different_server_counter, other_server_counter,
-                              estimated_execution_time, task_type=task_type)
+                              estimated_execution_time, task_type)
 
 
 def LocalScheduler(env, task_id, required_ram, required_disk, server, image_size, Volume_size, restart_time,
@@ -224,31 +234,68 @@ def LocalScheduler(env, task_id, required_ram, required_disk, server, image_size
                                Tmax_latency, initial_server_counter, different_server_counter, other_server_counter, task_type)
 
 def task(env, task_id, server, initial_server_counter, different_server_counter, other_server_counter):
+    with open('img_resolution.json') as resolution_file:
+        resolution = json.load(resolution_file)
+
     required_ram = random.randint(config["required_ram"]["min"], config["required_ram"]["max"])
     required_disk = random.randint(config["required_disk"]["min"], config["required_disk"]["max"])
-    image_size = random.uniform(config["image_size"]["min"], config["image_size"]["max"])
-    Volume_size = random.uniform(config["Volume_size"]["min"], config["Volume_size"]["max"])
+
+    Volume_size = 0.0  # se lo vuoi usare ancora per il calcolo totale
     restart_time = random.uniform(config["restart_time"]["min"], config["restart_time"]["max"])
     arrival_time_system = env.now
+
     beta_gen = config["beta"]["gen"]
     beta_CPUI = config["beta"]["CPUI"]
     beta_CPUI_DataI = config["beta"]["CPUI_DataI"]
 
+    alphas = config.get("alpha", {"M", "H", "VH"})
+    gammas = config.get("gamma", {"H", "VH"})
+
+    # --- Selezione tipo di task ---
     r = random.random()
     if r < beta_gen:
         task_type = "Generic_Service"
+        image_size = random.uniform(0.01, 0.088)  # 10KB–88KB
+
     elif r < beta_gen + beta_CPUI:
         task_type = "CPU_Intensive"
+        image_size = random.uniform(0.01, 0.088)
+
     elif r < beta_gen + beta_CPUI + beta_CPUI_DataI:
         task_type = "CPU_and_Data_Intensive"
-    else:  # Se r è maggiore della somma delle tre beta
+        r2 = random.random()
+        if r2 < alphas["M"]:
+            image_size = random.uniform(0.022, 2.2)   # 22KB–2.2MB
+        elif r2 < alphas["M"] + alphas["H"]:
+            image_size = random.uniform(2.2, 24.2)    # 2.2MB–24.2MB
+        else:
+            image_size = random.uniform(132.5, 500)   # 132.5MB–500MB
+
+    else:
         task_type = "Batch"
+        r3 = random.random()
+        if r3 < gammas["H"]:
+            image_size = random.uniform(2.2, 24.2)    # High
+        else:
+            image_size = random.uniform(132.5, 500)   # Very High
 
-    print(f"---> Task {task_id} ( Type: {task_type}) arriva in {arrival_time_system:.2f}")
+    print(f"---> Task {task_id} (Type: {task_type}) arriva in {arrival_time_system:.2f}")
 
-    yield from LocalScheduler(env, task_id, required_ram, required_disk, server, image_size, Volume_size,
-                              restart_time,  arrival_time_system, initial_server_counter,
-                              different_server_counter, other_server_counter, task_type)
+    yield from LocalScheduler(
+        env,
+        task_id,
+        required_ram,
+        required_disk,
+        server,
+        image_size,
+        Volume_size,
+        restart_time,
+        arrival_time_system,
+        initial_server_counter,
+        different_server_counter,
+        other_server_counter,
+        task_type
+    )
 
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):
@@ -257,6 +304,44 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
     print('Genero i task')
 
     task_id = 1
+
+    '''for _ in range(random.randint(0, 3)):
+        print('primotask Batch')
+        # Scegli un server a cui assegnare il task batch
+        selected_server = random.choice(globals.global_access_point)
+
+        # Genera i requisiti del task batch
+        required_ram = random.randint(config["required_ram"]["min"], config["required_ram"]["max"])
+        required_disk = random.randint(config["required_disk"]["min"], config["required_disk"]["max"])
+        # Assegna i requisiti di dimensione file come specificato per i task batch
+        r = random.random()
+        if r < config["gamma"]["H"]:
+            # File di ALTA risoluzione
+            image_size = random.uniform(2.2, 24.2)
+        else:
+            # File di ALTISSIMA risoluzione
+            image_size = random.uniform(132.5, 500)
+
+        # Poiché i task batch non usano la CPU, il tempo stimato di esecuzione CPU è 0
+        estimated_execution_time = 0.0
+        transfer_time = 0.0  # Non c'è tempo di trasferimento iniziale
+
+        # Avvia un processo SimPy per il task batch che lo mette direttamente nella coda di rete
+        env.process(TaskAssignment(
+            env,
+            selected_server,
+            task_id,  # ID del task batch
+            required_ram, required_disk,
+            env.now,
+            0,  # hop
+            transfer_time,
+            globals.initial_server_counter,
+            globals.different_server_counter,
+            globals.other_server_counter,
+            estimated_execution_time,
+            task_type="Batch"
+        ))'''
+
 
     while True:
         # Read the distribution type from the configuration
