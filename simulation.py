@@ -19,12 +19,18 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
     Assign a task to a selected server and process it through CPU and/or Network queues.
     Uses SimPy resources selected_server.cpu_dev and selected_server.net_dev (Resource).
     """
+
+    # Leggi il flag di configurazione
+    ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
+
     category, resolution = assign_resolution(required_ram, required_disk)
     task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)
 
-    task_OBS.d_cpu = estimated_execution_time
-    task_OBS.d_net = required_ram + required_disk  # Usiamo la dimensione del dato come richiesta NET
-    task_OBS.deadline = arrival_time_system + Tmax_H
+    # Inizializza gli attributi solo se il monitoraggio è attivo
+    if ENABLE_MONITORING:
+        task_OBS.d_cpu = estimated_execution_time
+        task_OBS.d_net = required_ram + required_disk  # Usiamo la dimensione del dato come richiesta NET
+        task_OBS.deadline = arrival_time_system + Tmax_H
 
     # L'energia del trasferimento viene sottratta e verificata in SearchNode
     yield env.timeout(transfer_time)
@@ -45,7 +51,8 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
             return
 
         with selected_server.cpu_dev.request() as req_cpu:
-            req_cpu.task_data = task_OBS
+            if ENABLE_MONITORING:
+                    req_cpu.task_data = task_OBS
             yield req_cpu
             time_in_queue = env.now - arrival_time_task_queue
             yield env.timeout(estimated_execution_time)
@@ -68,14 +75,16 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
             return
 
         with selected_server.cpu_dev.request() as req_cpu:
-            req_cpu.task_data = task_OBS
+            if ENABLE_MONITORING:
+                    req_cpu.task_data = task_OBS
             yield req_cpu
             Wc = env.now - arrival_time_task_queue
             yield env.timeout(estimated_execution_time)
             selected_server.energy -= eps_cpu
 
             with selected_server.net_dev.request() as req_net:
-                req_net.task_data = task_OBS
+                if ENABLE_MONITORING:
+                        req_net.task_data = task_OBS
                 yield req_net
                 Wn = env.now - arrival_time_task_queue
 
@@ -99,7 +108,8 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk,
             return
 
         with selected_server.net_dev.request() as req_net:
-            req_net.task_data = task_OBS
+            if ENABLE_MONITORING:
+                    req_net.task_data = task_OBS
             yield req_net
             time_in_queue = env.now - arrival_time_task_queue
 
@@ -304,44 +314,6 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
     print('Genero i task')
 
     task_id = 1
-
-    '''for _ in range(random.randint(0, 3)):
-        print('primotask Batch')
-        # Scegli un server a cui assegnare il task batch
-        selected_server = random.choice(globals.global_access_point)
-
-        # Genera i requisiti del task batch
-        required_ram = random.randint(config["required_ram"]["min"], config["required_ram"]["max"])
-        required_disk = random.randint(config["required_disk"]["min"], config["required_disk"]["max"])
-        # Assegna i requisiti di dimensione file come specificato per i task batch
-        r = random.random()
-        if r < config["gamma"]["H"]:
-            # File di ALTA risoluzione
-            image_size = random.uniform(2.2, 24.2)
-        else:
-            # File di ALTISSIMA risoluzione
-            image_size = random.uniform(132.5, 500)
-
-        # Poiché i task batch non usano la CPU, il tempo stimato di esecuzione CPU è 0
-        estimated_execution_time = 0.0
-        transfer_time = 0.0  # Non c'è tempo di trasferimento iniziale
-
-        # Avvia un processo SimPy per il task batch che lo mette direttamente nella coda di rete
-        env.process(TaskAssignment(
-            env,
-            selected_server,
-            task_id,  # ID del task batch
-            required_ram, required_disk,
-            env.now,
-            0,  # hop
-            transfer_time,
-            globals.initial_server_counter,
-            globals.different_server_counter,
-            globals.other_server_counter,
-            estimated_execution_time,
-            task_type="Batch"
-        ))'''
-
 
     while True:
         # Read the distribution type from the configuration

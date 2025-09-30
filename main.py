@@ -211,16 +211,16 @@ if __name__ == "__main__":
     env.run(config['simulation_duration'])
 
     # Salva il dataset alla fine della simulazione
-    with open("simulation_dataset.json", "w") as f:
-        json.dump(simulation_dataset, f, indent=4)
-    print("\nDataset dello stato della simulazione salvato in 'simulation_dataset.json'")
+    ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
+    if ENABLE_MONITORING:
+        with open("simulation_dataset.json", "w") as f:
+            json.dump(simulation_dataset, f, indent=4)
+        print("\nDataset dello stato della simulazione salvato in 'simulation_dataset.json'")
 
     # Stampa il riassunto dei task usando la funzione dell'Observer
     globals.observer.print_task_summary()
     print("-"*10)
     generate_Tasks_Status(csv_routing_task)
-
-
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:

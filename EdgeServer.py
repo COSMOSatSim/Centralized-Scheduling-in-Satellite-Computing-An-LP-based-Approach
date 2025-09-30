@@ -71,43 +71,45 @@ class EdgeServer:
         Esporta lo stato corrente del satellite come dizionario, recuperando
         i dettagli del task direttamente dagli eventi di richiesta di SimPy.
         """
+        ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
 
         # Recupera i dettagli dei task in coda CPU
-        tasks_in_cpu_queue = []
-        for req in self.cpu_dev.queue:
-            # Controlla se l'attributo 'task_data' è stato allegato
-            if hasattr(req, 'task_data'):
-                task_obj = req.task_data
-                tasks_in_cpu_queue.append({
-                    "task_id": task_obj.id,
-                    "d_cpu": task_obj.d_cpu,
-                    "deadline": task_obj.deadline,
-                })
+        if ENABLE_MONITORING:
+            tasks_in_cpu_queue = []
+            for req in self.cpu_dev.queue:
+                # Controlla se l'attributo 'task_data' è stato allegato
+                if hasattr(req, 'task_data'):
+                    task_obj = req.task_data
+                    tasks_in_cpu_queue.append({
+                        "task_id": task_obj.id,
+                        "d_cpu": task_obj.d_cpu,
+                        "deadline": task_obj.deadline,
+                    })
 
-        # Recupera i dettagli dei task in coda NET
-        tasks_in_net_queue = []
-        for req in self.net_dev.queue:
-            if hasattr(req, 'task_data'):
-                task_obj = req.task_data
-                tasks_in_net_queue.append({
-                    "task_id": task_obj.id,
-                    "d_net": task_obj.d_net,  # Assumi che 'd_net' sia un attributo di Task
-                    "deadline": task_obj.deadline,
-                })
+            # Recupera i dettagli dei task in coda NET
+            tasks_in_net_queue = []
+            for req in self.net_dev.queue:
+                if hasattr(req, 'task_data'):
+                    task_obj = req.task_data
+                    tasks_in_net_queue.append({
+                        "task_id": task_obj.id,
+                        "d_net": task_obj.d_net,  # Assumi che 'd_net' sia un attributo di Task
+                        "deadline": task_obj.deadline,
+                    })
 
-        state = {
-            "time": env.now,
-            "satellite": self.name,
-            "in_listening_dome": self.elev_angle >= 40,
-            "elev_angle": self.elev_angle,
-            "energy_budget": self.energy,
-            "neighbors": [n.name for n in self.get_neighbors()],
-            "queue_cpu_len": len(self.cpu_dev.queue),
-            "queue_net_len": len(self.net_dev.queue),
-            "queue_cpu": tasks_in_cpu_queue,
-            "queue_net": tasks_in_net_queue
-        }
-        return state
+            state = {
+                "time": env.now,
+                "satellite": self.name,
+                "in_listening_dome": self.elev_angle >= 40,
+                "elev_angle": self.elev_angle,
+                "energy_budget": self.energy,
+                "neighbors": [n.name for n in self.get_neighbors()],
+                "queue_cpu_len": len(self.cpu_dev.queue),
+                "queue_net_len": len(self.net_dev.queue),
+                "queue_cpu": tasks_in_cpu_queue,
+                "queue_net": tasks_in_net_queue
+            }
+            return state
 
     def record_rejected_task(self, task_id, task_type, arrival_time_system, rejection_reason ):
         """
