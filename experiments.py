@@ -55,8 +55,6 @@ def generate_random_numbers():
     return random_number
 
 
-# print(random_numbers)
-
 def exponential(description):
     """
     Distribuzione esponenziale con parametro lambda=2.0.

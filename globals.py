@@ -3,7 +3,7 @@ import threading, os, json, json5
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server
 different_server_counter = {}   # Tiene traccia dei task inoltrati a server diversi
 other_server_counter = {}       # Tiene traccia di altre metriche per i server
-
+gbl_generated_tasks_data = [] # Lista per raccogliere i dettagli del task generato
 global_access_point = []    # Lista degli access point globali
 next_server_index = 0       # Indice del prossimo server a cui inviare un task
 

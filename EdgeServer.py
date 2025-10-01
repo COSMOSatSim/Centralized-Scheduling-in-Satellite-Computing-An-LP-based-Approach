@@ -15,9 +15,7 @@ with open('config.json5') as config_file:
 BATMAN = config["Routing_algorithm"]["BATMAN"]
 GREEDY = config["Routing_algorithm"]["GREEDY"]
 
-
 total_time = 0  # Imposta il valore iniziale di total_time
-
 
 class EdgeServer:
     def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point, elev_angle):
@@ -37,22 +35,16 @@ class EdgeServer:
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
-
-        # Code classiche come in precedenza (non verrà più utilizzata)
-        self.process_queue = simpy.Resource(env, capacity=5)
         self.server_queue = []
+        self.completed_tasks = []
 
         # Nuove code CPU + NET per modello a 2 stadi
         self.cpu_dev = simpy.Resource(env, capacity=5)
         self.net_dev = simpy.Resource(env, capacity=5)
-        self.queue_cpu = []
-        self.queue_net = []
-        self.cpu_busy_until = 0.0
-        self.net_busy_until = 0.0
 
-        self.completed_tasks = []
-        self.rejected_tasks = []  # NEW: Lista per i task scartati
-        self.completed_tasks = []
+        self.energy_reserved = 0.0
+
+        self.rejected_tasks = []  # Lista per i task scartati
         self.energy = config.get("initial_energy", 10000.0)  # J (valore più alto)
 
         self.tasks = []  # Lista task da Spedire
@@ -128,7 +120,8 @@ class EdgeServer:
         '''
         Record completed tasks, including energy metrics (CPU + NET) and task type.
         '''
-        # NEW: Calcola l'energia totale all'inizio della funzione per evitare l'errore
+
+        # Calcola l'energia totale all'inizio della funzione per evitare l'errore
         total_energy = eps_cpu + eps_net
 
         if self.elev_angle < config["Phi_max"]:
@@ -139,10 +132,10 @@ class EdgeServer:
              start_time, end_time, execution_time, service_time, time_in_queue,
              selected_server, num_hops, lunghezza_coda,
              estimated_execution_time, transfer_time,
-             TMAX_exceeded, exec_after_set, eps_cpu, eps_net, total_energy)
+             TMAX_exceeded, exec_after_set, eps_cpu, eps_net, total_energy, self.energy)
         )
 
-        print(f"[Task {task_id}] COMPLETED on {self.name} | "
+        print(f"[Task {task_id}] COMPLETED on {self.name} {self.elev_angle} degrees | "
               f"CPU={eps_cpu:.4f}J, NET={eps_net:.4f}J, TOTAL={total_energy:.4f}J, "
               f"Remaining={self.energy:.2f}J")
 
@@ -256,18 +249,49 @@ class EdgeServer:
     def _remaining(self, busy_until, now):
         return max(0.0, busy_until - now)
 
-    def W_cpu(self, now):
-        sum_q = sum(d for (_id, d, _t) in self.queue_cpu)
-        # Calcola il tempo rimanente del task in esecuzione
-        rem = self._remaining(self.cpu_busy_until, now)
-        return sum_q + rem
+    def W_cpu(self, d_r_cpu):
+        # W_r^cpu = [somma delle domande dei task in coda] + [0.5 * domanda del task in esecuzione]
+        # NOTA: Per un Resource SimPy standard, non possiamo conoscere il tempo residuo
+        # del task in esecuzione senza una gestione esplicita.
 
-    def W_net(self, now):
-        sum_q = sum(d for (_id, d, _t) in self.queue_net)
-        # Calcola il tempo rimanente del task in esecuzione
-        rem = self._remaining(self.net_busy_until, now)
-        return sum_q + rem
+        sum_q_demand = self._get_queue_demand_sum(self.cpu_dev.queue)
 
+        # Per implementare l'euristica (0.5 * d_p'), se non hai un modo semplice per
+        # stimare d_p', la soluzione più vicina è trattare la coda come una lista di task
+        # il cui arrivo è imminente.
+
+        # Se ci sono task in coda, ignora il fattore 0.5 per semplicità e usa solo la somma esatta.
+        # Se devi attenerti strettamente alla formula, devi ripristinare la gestione
+        # manuale del "busy_until", che è complessa e sconsigliata.
+
+        # Per coerenza con il modello e SimPy, usa SOLO la somma della coda.
+        # Oppure, se vuoi mantenere l'euristica del LaTeX, DEVI ripristinare il
+        # "busy_until" e la coda manuale (vedi nota finale).
+
+        # Scegliamo di usare solo la somma per disaccoppiare:
+        # Questo è l'approccio più SIMPY-FRIENDLY:
+        return sum_q_demand
+
+    def W_net(self, d_r_net):
+        sum_q_demand = self._get_queue_demand_sum(self.net_dev.queue)
+        return sum_q_demand
+
+    def _get_queue_demand_sum(self, simpy_resource_queue):
+        """
+        Calcola la somma delle domande di servizio (d_cpu o d_net) dei task
+        in coda al SimPy Resource.
+        """
+        total_demand = 0.0
+        # self.cpu_dev.queue contiene oggetti Request (o Event)
+        for req in simpy_resource_queue:
+            if hasattr(req, 'task_data'):
+                task_obj = req.task_data
+                # Assumiamo che task_data.d_cpu e task_data.d_net siano i tempi di servizio
+                if simpy_resource_queue == self.cpu_dev.queue:
+                    total_demand += task_obj.d_cpu
+                elif simpy_resource_queue == self.net_dev.queue:
+                    total_demand += task_obj.d_net
+        return total_demand
     # --------------------------------------------------
     # Pipeline CPU -> NET
     # --------------------------------------------------
@@ -277,10 +301,12 @@ class EdgeServer:
         Simula l’esecuzione di un task sul server (CPU -> NET).
         """
         # 1) Ammissione
-        Wc = self.W_cpu(env.now)
-        Wn = self.W_net(env.now)
         d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
+
+        Wc = self.W_cpu(env.now, d_cpu_prime=d_cpu_s)
+        Wn = self.W_net(env.now, d_net_prime=d_net_svc)  # d_net_svc è la domanda di servizio net in secondi
         R = Wc + Wn + d_cpu_s + d_net_svc
+
         eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
 
         if deadline is not None and R > deadline:
@@ -290,6 +316,7 @@ class EdgeServer:
         if self.energy < eps:
             self.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy")
             return False, R, eps
+        self.energy_reserved += eps
 
         if self.orbitalSunset and (env.now + R) > self.orbitalSunset:
             self.record_rejected_task(task_id, task_type, arrival_time_system, "Orbital Sunset")
@@ -309,7 +336,7 @@ class EdgeServer:
                 self.cpu_busy_until = env.now + d_cpu_s
                 yield env.timeout(d_cpu_s)
                 self.cpu_busy_until = env.now
-                self.energy -= self.eps_cpu(d_cpu_s, C_sen)
+                self.energy_reserved -= self.eps_cpu(d_cpu_s, C_sen)
 
         # 4) NET stage
         if d_net_bytes > 0:
@@ -320,7 +347,7 @@ class EdgeServer:
                 self.net_busy_until = env.now + t_tx
                 yield env.timeout(t_tx)
                 self.net_busy_until = env.now
-                self.energy -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
+                self.energy_reserved -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
 
         return True, R, eps
 
@@ -404,48 +431,58 @@ class EdgeServer:
         # print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
         # print("Task IDs:", [task.id for task in self.tasks])
 
-    def get_selection_score(self, task_type):
+    def get_selection_score(self, task_type, d_cpu, d_net, energy_budget_max=1.0):
         """
-        Calcola il punteggio di selezione del server basato sul tipo di task e sui criteri specificati.
-        Un punteggio più alto indica una migliore candidabilità.
+        Calcola lo score di selezione in base all'euristica semplice del modello LaTeX.
+        Lo score è massimizzato: (Beneficio) - (Costo/Ritardo)
         """
-        now = self.env.now
+        # 1. Calcola R e W predetti (usa le tue funzioni W_cpu/W_net modificate)
+        Wc = self.W_cpu(d_cpu)
+        Wn = self.W_net(d_net)
+        R_predicted = Wc + d_cpu + Wn + d_net
 
-        # I tempi di attesa sono stimati in base ai task attualmente in coda
-        W_cpu = self.W_cpu(now)
-        W_net = self.W_net(now)
+        # 2. Definisci il Beneficio (B_i) e il Costo (R) in base al tipo di task
 
-        B = self.energy
+        if task_type in ("Generic_Service", "CPU_Intensive"):
+            # Criterio LaTeX: shortest W_r^cpu and the higher B_i.
+            # Score = Beneficio (B_i) - Costo (W_cpu)
+            # R normalizzato rispetto a un massimo di R accettabile (ad esempio Tmax_H)
+            max_r_acceptable = config.get("Tmax_H", 100.0)
+            B_normalized = self.energy / energy_budget_max
+            Wc_normalized = Wc / max_r_acceptable if max_r_acceptable > 0 else Wc
 
-        if task_type == "CPU_Intensive":
-            # Per i task CPU-intensive: priorità a W_cpu basso e B alto
-            # Combiniamo i due valori in una singola metrica. Un'opzione è sommare l'inverso del tempo di attesa
-            # e l'energia rimanente. Aggiungiamo 1 ai tempi di attesa per evitare divisioni per zero.
-            score = (1 / (W_cpu + 1)) + B
-            return score
-
+            # Se Wc è l'unico ritardo di coda, massimizza B e minimizza Wc
+            # Score = B_normalized - Wc_normalized
+            return B_normalized - Wc_normalized
 
         elif task_type == "Batch":
-            # Per i task Data-intensive: priorità a W_net basso e B alto
-            score = (1 / (W_net + 1)) + B
-            return score
+            # Criterio LaTeX: shortest W_r^net and the higher B_i.
+            # Score = Beneficio (B_i) - Costo (W_net)
+            max_r_acceptable = config.get("Tmax_H", 100.0)
+            B_normalized = self.energy / energy_budget_max
+            Wn_normalized = Wn / max_r_acceptable if max_r_acceptable > 0 else Wn
+
+            # Score = B_normalized - Wn_normalized
+            return B_normalized - Wn_normalized
 
         elif task_type == "CPU_and_Data_Intensive":
-            # Per i task CPU-Data-intensive: priorità alla somma dei tempi di attesa e a B alto
-            score = (1 / (W_cpu + W_net + 1)) + B
-            return score
+            # Criterio LaTeX: shortest W_r^net + W_r^cpu and higher B_i.
+            # Score = Beneficio (B_i) - Costo (W_tot)
+            W_tot = Wc + Wn
+            max_r_acceptable = config.get("Tmax_H", 100.0)
+            B_normalized = self.energy / energy_budget_max
+            W_tot_normalized = W_tot / max_r_acceptable if max_r_acceptable > 0 else W_tot
 
-        elif task_type == "Generic_Service":
-            # Per i task generici: priorità al server con il più basso budget energetico
-            # Dato che vogliamo massimizzare il punteggio, usiamo il negativo di B per minimizzarlo.
-            score = -B
-            return score
+            # Score = B_normalized - W_tot_normalized
+            return B_normalized - W_tot_normalized
 
+        # Per il caso 'Generic Service' puro (solo energy budget):
+        # Criterio LaTeX: lower B_i (to use residual energy budget).
+        # Score = Costo (B_i) -> Minimizza B_i, quindi Score = -B_i
+        # if task_type == "Generic_Service":
+        #     return - (self.energy / energy_budget_max)
 
-
-        # Ritorna 0 per i task di tipo sconosciuto, non saranno mai scelti
-        return 0
-
+        return 0.0  # Score di default
 
 def getTransmissionTime(bandwidht, weight, latency):
     return (weight/bandwidht) + latency
@@ -504,7 +541,7 @@ def sendTask(env, task, sender, receiver, algorithm):
         sender.tasks.remove(task)
         # Inviamo il task al Receiver
         receiver.tasks.append(task)
-        #print(f"{sender.name} -> {receiver.name}")
+        print(f"TASK {task.id} {sender.name} -> {receiver.name}")
         # Modifichiamo le informazioni sul task
         task.current_node = receiver.name
 

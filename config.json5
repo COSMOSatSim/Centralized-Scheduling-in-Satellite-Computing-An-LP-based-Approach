@@ -1,6 +1,7 @@
 {
   simulation_duration: 300,
-  enable_queue_monitoring: false,
+  enable_queue_monitoring: true,
+  save_generated_tasks_dataset: true,
   adding_time: 30,
   max_try: 5,
   seed: 13,
@@ -105,7 +106,7 @@
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
   Routing_algorithm: {
-    BATMAN: false,
+    BATMAN: true,
     GREEDY: true,
   },
 }

@@ -141,13 +141,14 @@ if __name__ == "__main__":
         env.process(simulation.TaskAssignment(
             env,
             selected_server,
-            batch_task_id,  # ID del task batch
-            required_ram, required_disk,
-            env.now,
-            0,  # hop
-            transfer_time,
-            estimated_execution_time,
-            task_type="Batch"
+            batch_task_id,  # 3. task_id
+            required_ram, required_disk,  # 4. required_ram, 5. required_disk
+            image_size,  # 6. image_size
+            env.now,  # 7. arrival_time_system
+            0,  # 8. num_hops
+            transfer_time,  # 9. transfer_time
+            estimated_execution_time,  # 10. estimated_execution_time
+            task_type="Batch"  # 11. task_type
         ))
 
         print("Batch task creation loop finished.")
@@ -159,8 +160,6 @@ if __name__ == "__main__":
         globals.different_server_counter,
         globals.other_server_counter
     ))
-
-
 
     # 5) Preparazione dei nomi di cartella e file
     # Prendo direttamente mode_name scritto dal runner in config.json
@@ -210,10 +209,31 @@ if __name__ == "__main__":
     # 6) Esecuzione simulazione
     env.run(config['simulation_duration'])
 
+    # Definisci il nome del file di output
+    output_folder = "Generated_datasets"
+
+    if config.get("save_generated_tasks_dataset", True) and globals.gbl_generated_tasks_data:
+
+        os.makedirs(output_folder, exist_ok=True)
+        # Genera un nome di file basato su seed e durata (per unicità)
+        file_name = f"generated_tasks_seed{config['seed']}_dur{config['simulation_duration']}.json5"
+        output_path = os.path.join(output_folder, file_name)
+
+        print(f"\nSalvataggio del dataset generato in: {output_path}")
+
+        try:
+            with open(output_path, 'w') as f:
+                # Usa json5.dump per mantenere il formato json5, o json.dump per JSON standard
+                json5.dump(globals.gbl_generated_tasks_data, f, indent=4)
+            print("Salvataggio completato con successo.")
+        except Exception as e:
+            print(f"ERRORE nel salvataggio del dataset: {e}")
+
     # Salva il dataset alla fine della simulazione
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
     if ENABLE_MONITORING:
-        with open("simulation_dataset.json", "w") as f:
+        output_path_monitor = os.path.join(output_folder, "simulation_dataset.json")
+        with open(output_path_monitor, "w") as f:
             json.dump(simulation_dataset, f, indent=4)
         print("\nDataset dello stato della simulazione salvato in 'simulation_dataset.json'")
 
@@ -239,8 +259,8 @@ if __name__ == "__main__":
             # Scrivi i task completati
             for (
                     tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
-                    tq, sel_srv, hops, qlen,  est_e, trf,
-                     tmax_exc, exec_set, eps_cpu, eps_net, eps_tot
+                    tq, sel_srv, hops, qlen, est_e, trf,
+                    tmax_exc, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy
             ) in srv.completed_tasks:
                 time_in_system = et - arr_sys
                 writer.writerow([
@@ -248,7 +268,7 @@ if __name__ == "__main__":
                     ex_t, sv_t, time_in_system, tq, sel_srv, hops,
                     qlen, est_e, trf,
                     tmax_exc, exec_set,
-                    eps_cpu, eps_net, eps_tot, srv.energy, "N/A"
+                    eps_cpu, eps_net, eps_tot, srv_rem_energy, "N/A"
                 ])
 
             # Scrivi i task scartati
@@ -262,18 +282,52 @@ if __name__ == "__main__":
                     "N/A", "N/A", "N/A", "N/A", srv.energy, reason
                 ])
 
-            # server_queue residui
-            for (
-                    tid, rr, rd, tp, arr_sys, est_e, trf, util,
-                    hops, arr_q, orig_p
-            ) in srv.server_queue:
-                time_in_q = env.now - arr_q
-                writer.writerow([
-                    tid, "N/A", "In Queue", arr_sys, arr_q, "N/A", "N/A",
-                    "N/A", "N/A", env.now - arr_sys, time_in_q, srv.name, hops,
-                    len(srv.server_queue), est_e, trf,
-                    util, "N/A", "N/A", "N/A",
-                    "N/A", "N/A", srv.energy, "N/A"
-                ])
+            # --- Task Residui (non completati: in coda CPU o NET) ---
+            residual_tasks = []
 
-    print(f"Simulation results saved to: {csv_task}")
+            # I task in coda si trovano nelle liste custom srv.queue_cpu e srv.queue_net.
+            # I dati disponibili sono: (tid, demand, prio, arrival_time_queue, deadline)
+
+            # 1. Tasks in coda CPU (in attesa di esecuzione CPU)
+            for req in srv.cpu_dev.queue:
+                if hasattr(req, 'task_data'):
+                    task_obj = req.task_data
+                    residual_tasks.append({
+                        "tid": task_obj.id,
+                        "type": "CPU_Waiting",
+                        "demand": task_obj.d_cpu,  # Tempo di esecuzione stimato
+                    })
+
+            # 2. Tasks in coda NET (in attesa di trasmissione)
+            for req in srv.net_dev.queue:
+                if hasattr(req, 'task_data'):
+                    task_obj = req.task_data
+                    residual_tasks.append({
+                        "tid": task_obj.id,
+                        "type": "NET_Waiting",
+                        "demand": task_obj.d_net,  # Tempo di trasmissione stimato
+                    })
+
+            # Scrivi i task residui nel CSV
+            total_residual_count = len(residual_tasks)
+            for task_data in residual_tasks:
+                tid = task_data["tid"]
+
+                # I valori dei tempi precisi (arr_q, arr_sys, ecc.) non sono disponibili
+                # dalle code SimPy alla chiusura della simulazione; usiamo "N/A".
+
+                task_type_label = f"Residual ({task_data['type']})"
+
+                # Colonna 8 (Execution time) e 9 (Service Time) usa la domanda richiesta
+                demand = task_data["demand"]
+                execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
+                service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
+
+                writer.writerow([
+                    tid, task_type_label, "In Queue", arr_sys, "N/A", "N/A", "N/A",  # 7 valori
+                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A",  # 6 valori
+                    total_residual_count, "N/A", "N/A",  # 3 valori
+                    "N/A", "N/A", "N/A", "N/A",  # 4 valori (Energy_CPU, Energy_NET, Energy_TOTAL, Remaining_energy)
+                    "N/A", srv.energy, "In Queue at End"  # 2 valori (Remaining_energy e Rejection Reason)
+                ])
+        print(f"Simulation results saved to: {csv_task}")
