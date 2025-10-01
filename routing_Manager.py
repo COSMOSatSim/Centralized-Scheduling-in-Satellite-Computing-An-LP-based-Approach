@@ -1,4 +1,3 @@
-import random
 import json, json5
 from user_based_topology import get_orbit_proximity, getSystemFromSat
 from Ogm import Ogm
@@ -103,7 +102,7 @@ def manage_ogm_test(ogm_map, t):
                     else:
                         proximity = get_orbit_proximity(node.get_satellite(), neighbor.get_satellite(), t)
                         failure_prob = transmission_failure_probability(proximity)
-                        value = round(random.uniform(0, 1), 2)
+                        value = round(globals.rnd.uniform(0, 1), 2)
                         
                         if value > failure_prob:
                             # Spedisco il pacchetto

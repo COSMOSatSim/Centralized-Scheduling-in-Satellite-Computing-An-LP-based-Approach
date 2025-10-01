@@ -1,0 +1,34 @@
+{
+    "TASK_GENERATOR_PARAMS": {
+        // Probabilità relative per i tipi di task (la somma non include Batch)
+        "beta_probabilities": {
+            "Generic_Service": 0.25,
+            "CPU_Intensive": 0.35,
+            "CPU_and_Data_Intensive": 0.20
+            // Il restante (0.20) andrà a "Batch"
+        },
+
+        // Ranges di dimensione (in MB)
+        "size_ranges_MB": {
+
+            // Range standard per Generic e CPU Intensive (10KB–88KB)
+            "GENERIC_CPU_RANGE": [0.01, 0.088],
+
+            // Parametri per CPU_and_Data_Intensive
+            "CPU_DATA_INTENSIVE": {
+                "alpha_M_weight": 0.4,       // P(Media)
+                "alpha_H_weight": 0.3,       // P(Alta) - Il restante 0.3 è P(Altissima)
+                "M_range": [0.022, 2.2],     // 22KB–2.2MB
+                "H_range": [2.2, 24.2],      // 2.2MB–24.2MB
+                "VH_range": [132.5, 500.0]   // 132.5MB–500MB
+            },
+
+            // Parametri per Batch
+            "BATCH_TASK": {
+                "gamma_H_weight": 0.5,       // P(Alta) - Il restante 0.5 è P(Altissima)
+                "H_range": [2.2, 24.2],
+                "VH_range": [132.5, 500.0]
+            }
+        }
+    }
+}

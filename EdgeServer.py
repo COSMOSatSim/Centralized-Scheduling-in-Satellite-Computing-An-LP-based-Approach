@@ -303,8 +303,8 @@ class EdgeServer:
         # 1) Ammissione
         d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
 
-        Wc = self.W_cpu(env.now, d_cpu_prime=d_cpu_s)
-        Wn = self.W_net(env.now, d_net_prime=d_net_svc)  # d_net_svc è la domanda di servizio net in secondi
+        Wc = self.W_cpu(env.now)
+        Wn = self.W_net(env.now)
         R = Wc + Wn + d_cpu_s + d_net_svc
 
         eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
@@ -351,40 +351,25 @@ class EdgeServer:
 
         return True, R, eps
 
-
     def greedy_approach(self, env, task):
-        destination_pos = self.OGMs_position[task.dest_node][1]  # Posizione della destinazione
-        ranked_neighbors = []
+        dest_pos = globals.observer.getPositionVector(globals.instant_in_configuration)
+        ranker_neighbors = []
 
         for server in self.neighbors:
-            ogm_data = self.OGMs_position.get(server.name)
-            if ogm_data:
+            neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.instant_in_configuration))
+            t = (server, neighbor_distance, server.is_acc_point)
+            ranker_neighbors.append(t)
 
-                dist = get_pos_proximity(destination_pos, ogm_data[1])
-                ## t = (server, vect, dist_from_dest, isAP)
-                t = (server, ogm_data[1], dist, ogm_data[2])
-                ranked_neighbors.append(t)
-            else:
-                continue
-        ranked_neighbors.sort(key=lambda x: (not x[3], x[2]))
-        # [print(f"[{t[0].name}] \t| D_from_Dest : {t[2]} \tAP: {t[3]}") for t in ranked_neighbors]
+        ranker_neighbors.sort(key=lambda x: (not x[2], x[1]))
 
         best_server = None
-        for neighbor_tuple in ranked_neighbors:
+        for neighbor_tuple in ranker_neighbors:
             if neighbor_tuple[0].name not in task.visited:
                 best_server = neighbor_tuple[0]
                 break
 
         if best_server:
-            # print(f"--> BEST SERVER: {best_server.name}")
-            yield from sendTask(env, task, self, best_server, 'GREEDY')
-
-        # else:
-        #     print(f"{self.name} Non ha Vicini al quale mandare il Task {task.id}")
-        #     print(f"Miei vicini : {len(self.neighbors)}")
-        #     print(f"Sono un access Point? {self.is_acc_point}")
-        #     print("Vedo se uno dei miei vicini è un access point")
-        #     [print(f"\t{a.name} : ap? {a.is_acc_point} dist: {get_pos_proximity(destination_pos, a.getPositionVector(globals.instant_in_configuration))}") for a in self.neighbors]
+            yield from sendTask(env, task, self, best_server, 'SIMPLE_GREEDY')
 
     def deliver_to_Observer(self, env, mode, task):
         print(f"[MODE: {mode}]")

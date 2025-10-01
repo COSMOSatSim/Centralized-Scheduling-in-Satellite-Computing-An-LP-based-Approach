@@ -1,12 +1,9 @@
 import numpy as np
-import random
 import json5
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
-
-random.seed(config["seed"])
 
 
 def priority_combination(high, med, low):
@@ -22,7 +19,7 @@ def priority_combination(high, med, low):
 
         """
 
-    numero_casuale = random.uniform(0, 1)
+    numero_casuale = globals.rnd.uniform(0, 1)
 
     if numero_casuale < (high / 100):
         priority_weights = 1  # "alta"
@@ -33,7 +30,7 @@ def priority_combination(high, med, low):
 
 def request_distribution(high, med, low):
     global random_server
-    numero_casuale = random.uniform(0, 1)
+    numero_casuale = globals.rnd.uniform(0, 1)
 
     if numero_casuale < (high / 100):
         random_server = 1
@@ -49,7 +46,7 @@ def generate_random_numbers():
     random_numbers = []
     global random_number
     while len(random_numbers) < 5:
-        random_number = random.randint(0, 25)
+        random_number = globals.rnd.randint(0, 25)
         if random_number not in random_numbers:
             random_numbers.append(random_number)
     return random_number

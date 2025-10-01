@@ -1,4 +1,7 @@
 import threading, os, json, json5
+import random as _random
+import numpy as np
+
 # Variabili globali per i server
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server
 different_server_counter = {}   # Tiene traccia dei task inoltrati a server diversi
@@ -13,13 +16,20 @@ edge_servers = []           # Lista dei server globali totali
 edge_servers_topology = []  # Edge Servers nella topologia nella configurazione 
 
 observer = None
-instant_in_configuration = None 
+instant_in_configuration = None
+
+# Leggi il file di configurazione JSON
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
+
+# Imposta seme e ambiente
+rnd = _random.Random()
+rnd.seed(config["seed"])
+np.random.seed(config["seed"])
 
 gbl_tasks = []                  # Lista che mantiene tutti i Task creati per il Routing
 
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
-
-
 
 # Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
 def load_or_create_json(path):

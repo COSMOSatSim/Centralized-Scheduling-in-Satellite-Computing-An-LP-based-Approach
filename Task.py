@@ -1,15 +1,20 @@
-import random, json, json5, csv
+import json5, csv
 import globals
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
-with open('img_resolution.json') as resolution_file:
-    resolution = json.load(resolution_file)
+try:
+    with open('img_resolution.json5') as resolution_file:
+        # Carica il config completo per usarlo come riferimento
+        RESOLUTION_CONFIG = json5.load(resolution_file)["TASK_GENERATOR_PARAMS"]
+except FileNotFoundError:
+    print("ATTENZIONE: File 'img_resolution.json5' non trovato.")
+    RESOLUTION_CONFIG = {}
 
 class Task:
 
-    def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, category, resolution):
+    def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, task_type, image_size):
 
         self.id = task_id  
         self.ttl = 20                           # Time to live
@@ -18,9 +23,10 @@ class Task:
         self.routingInitTime = routingInitTime  # Tempo di partenza
         self.routingEndTime = None              # Tempo di fine
         self.label = 'ON_SIMULATION'            # Failure Label 
-        
-        self.resolution = category              # Categoria Risoluzione Immagine
-        self.weight = resolution                # Dimensione Immagine
+
+        # PARAMETRI DEL TASK (ora puliti)
+        self.task_type = task_type  # Es: "CPU_Intensive"
+        self.weight = image_size  # Dimensione Immagine (MB)
 
         self.current_node = current_node        # Server sul quale si trova
         self.dest_node = dest_node              # Nodo di destinazione
@@ -42,70 +48,18 @@ class Task:
         """
         lista = []
         for s in self.hop_History:
-            lista.append(s.name)
+            try:
+                lista.append(s.name)
+            except AttributeError:
+                lista.append(s)  # Se è già una stringa
 
-        return f"|HISTORY:{lista}\t|CURRENT:{self.current_server}\t|TTL:{self.ttl}|Hop:{self.hop}"
+        return f"|HISTORY:{lista}\t|CURRENT:{self.current_node}\t|TTL:{self.ttl}|Hop:{self.hop}"
 
     def add_algorithm(self, algo_name: str):
         """Incrementa il contatore per l'algoritmo usato"""
         if algo_name not in self.algorithms_used:
             self.algorithms_used[algo_name] = 0
         self.algorithms_used[algo_name] += 1
-
-def assign_resolution(required_ram, required_disk):
-    
-    # Normalizzazione pesata
-    norm_ram = required_ram / config["required_ram"]["max"]
-    norm_disk = required_disk / config["required_disk"]["max"]
-    weight = 0.5 * norm_ram + 0.5 * norm_disk
-    
-    # Mappatura del peso a una categoria
-    if weight <= 0.25:
-        category = "Low"
-    elif weight <= 0.5:
-        category = "Medium"
-    elif weight <= 0.75:
-        category = "High"
-    else:
-        category = "Very High"
-
-    min_value = resolution[category]["min"]
-    max_value = resolution[category]["max"]
-
-    min_byte = dim_to_Byte(min_value["dim"], min_value["value"])
-    max_byte = dim_to_Byte(max_value["dim"], max_value["value"])
-
-    resolution_value = random.randint(min_byte, max_byte)   # Valore di Ritorno in Byte
-    return category, resolution_value
-
-def dim_to_Byte(dim, value):
-    """
-    Converts megabytes (MB) or kilobytes (KB) to bytes.
-    :param dim: Dimension unit ('MB' or 'KB').
-    :param value: Value in the given unit.
-    :return: Value in bytes.
-    """
-    if dim == 'MB': 
-        return int(value * 1000 * 1000)
-    if dim == 'KB':
-        return int(value * 1000)
-
-def byte_to_dim(byte_value):
-    """
-    Converts bytes to the most suitable unit (MB, KB, or B) and returns a formatted string.
-    :param byte_value: Value in bytes.
-    :return: String in the format "value unit" (e.g., "2.5 MB").
-    """
-    if byte_value >= 1000 * 1000:
-        value = byte_value / (1000 * 1000)
-        unit = 'MB'
-    elif byte_value >= 1000:
-        value = byte_value / 1000
-        unit = 'KB'
-    else:
-        value = byte_value
-        unit = 'B'
-    return f"{value:.2f} {unit}"
 
 def get_algo_percentages(t):
     """
@@ -142,7 +96,7 @@ def generate_Tasks_Status(csv_filename):
             t.current_node,      # Nodo corrente
             t.hop,               # Numero di hop
             t.label,             # Etichetta di stato
-            t.resolution,        # Categoria di risoluzione
+            t.task_type,        # Categoria di task_type
             round(t.routingInitTime, 2),  # Tempo di inizio routing arrotondato
             routing_end,         # Tempo di fine routing arrotondato (se presente)
             durata,              # Durata del routing (se presente)
@@ -156,9 +110,9 @@ def generate_Tasks_Status(csv_filename):
 
     # FASE DI STAMPA FORMATTATA
     print(f"TOT TASK IN ROUTING SYS: {len(total_tasks)}\n")
-    print(" id     | CurrentNode   | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
+    print(" id     | CurrentNode          | Hop | Label           | Task Type              | Start Routing (s) | End Routing (s) | duration      | Algorithms")
     for elem in total_tasks:
-        id_, current_node, hop, label, resolution_cat, routing_start, routing_end, durata, algorithms = elem
+        id_, current_node, hop, label, task_type, routing_start, routing_end, durata, algorithms = elem
         algorithms_str = ', '.join([f"{k}:{v}%" for k, v in algorithms.items()]) if algorithms else "-"
         
         # Colora di verde se routing_start e routing_end sono entrambi presenti
@@ -169,13 +123,13 @@ def generate_Tasks_Status(csv_filename):
             color_start = ""
             color_end = ""
         
-        print(f"{color_start} {id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | {resolution_cat:<13} | {routing_start:<17} | {str(routing_end):<15} | {str(durata):<13} | {algorithms_str}{color_end}")
+        print(f"{color_start} {id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | {task_type:<22} | {routing_start:<17} | {str(routing_end):<15} | {str(durata):<13} | {algorithms_str}{color_end}")
    
     print()  # Riga vuota alla fine per separare dall'output successivo
 
     # FASE DI SCRITTURA CSV
     headers = [
-        "TaskID", "CurrentNode", "Hop", "Label", "Resolution",
+        "TaskID", "CurrentNode", "Hop", "Label", "TaskType",
         "RoutingInitTime", "RoutingEndTime", "Duration", "Algorithms"
     ]
 

@@ -2,11 +2,10 @@ import csv
 import json5
 import os
 import sys
-import random
 import simpy
 import json
 from EdgeServer import build_task_csv_path
-from SECMotionModel import simulation
+import simulation
 from Task import generate_Tasks_Status
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, string_to_skyfield_time
@@ -20,6 +19,12 @@ import globals
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
+try:
+    with open('img_resolution.json5') as res_file:
+        resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
+except FileNotFoundError:
+    print("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
+    resolution_config = None
 
 simulation_dataset = []
 
@@ -57,7 +62,6 @@ def data_collector(env, interval, start_time, end_time):
 
 if __name__ == "__main__":
     # Imposta seme e ambiente
-    random.seed(config["seed"])
     env = simpy.Environment()
     MaxTry = config.get("max_try", 10)
 
@@ -116,22 +120,22 @@ if __name__ == "__main__":
     # 3) Aggiungi i task batch alle code di rete dei server
     batch_task_id = 0.1
     # numero di task batch è tra 0 e 3
-    for _ in range(random.randint(1, 4)):
+    for _ in range(globals.rnd.randint(1, 4)):
         batch_task_id += 0.1
         # Scegli un server a cui assegnare il task batch
-        selected_server = random.choice(globals.global_access_point)
+        selected_server = globals.rnd.choice(globals.global_access_point)
 
         # Genera i requisiti del task batch
-        required_ram = random.randint(config["required_ram"]["min"], config["required_ram"]["max"])
-        required_disk = random.randint(config["required_disk"]["min"], config["required_disk"]["max"])
+        required_ram = globals.rnd.randint(config["required_ram"]["min"], config["required_ram"]["max"])
+        required_disk = globals.rnd.randint(config["required_disk"]["min"], config["required_disk"]["max"])
         # Assegna i requisiti di dimensione file come specificato per i task batch
-        r = random.random()
-        if r < config["gamma"]["H"]:
-            # File di ALTA risoluzione
-            image_size = random.uniform(2.2, 24.2)
+        ranges = resolution_config["size_ranges_MB"]
+        batch_params = ranges["BATCH_TASK"]
+        r = globals.rnd.random()
+        if r < batch_params["gamma_H_weight"]:
+            image_size = globals.rnd.uniform(*batch_params["H_range"])
         else:
-            # File di ALTISSIMA risoluzione
-            image_size = random.uniform(132.5, 500)
+            image_size = globals.rnd.uniform(*batch_params["VH_range"])
 
         # Poiché i task batch non usano la CPU, il tempo stimato di esecuzione CPU è 0
         estimated_execution_time = 0.0

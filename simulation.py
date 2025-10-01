@@ -1,14 +1,20 @@
 import json5
-import random
 import experiments
 import globals
-from Task import Task, assign_resolution
+from Task import Task
 
 hop = 0  # Inizializza la variabile hop a zero
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
+
+try:
+    with open('img_resolution.json5') as res_file:
+        resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
+except FileNotFoundError:
+    print("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
+    resolution_config = None
 
 def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, image_size,
                    arrival_time_system, num_hops, transfer_time,
@@ -21,8 +27,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
     # Leggi il flag di configurazione
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
 
-    category, resolution = assign_resolution(required_ram, required_disk)
-    task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, category, resolution)
+    task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, task_type, image_size)
     bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
     bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps else 0.0
 
@@ -376,45 +381,56 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
 
         task_id += 1
 
+
 def task_type_and_size_generator():
     """Genera i parametri del task senza avviarlo, utile per la pre-selezione."""
 
-    required_ram = random.randint(config["required_ram"]["min"], config["required_ram"]["max"])
-    required_disk = random.randint(config["required_disk"]["min"], config["required_disk"]["max"])
+    # Assicurati che la configurazione sia stata caricata
+    if not resolution_config:
+        raise RuntimeError("Configurazione risoluzione task non caricata correttamente.")
 
-    beta_gen = config["beta"]["gen"]
-    beta_CPUI = config["beta"]["CPUI"]
-    beta_CPUI_DataI = config["beta"]["CPUI_DataI"]
+    # Ram e Disk (questi restano nel config principale)
+    required_ram = globals.rnd.randint(config["required_ram"]["min"], config["required_ram"]["max"])
+    required_disk = globals.rnd.randint(config["required_disk"]["min"], config["required_disk"]["max"])
 
-    alphas = config.get("alpha", {"M", "H", "VH"})
-    gammas = config.get("gamma", {"H", "VH"})
+    # Carica i parametri dal file di risoluzione
+    betas = resolution_config["beta_probabilities"]
+    ranges = resolution_config["size_ranges_MB"]
+    cpu_data_params = ranges["CPU_DATA_INTENSIVE"]
+    batch_params = ranges["BATCH_TASK"]
 
     # --- Selezione tipo di task ---
-    r = random.random()
-    if r < beta_gen:
+    r = globals.rnd.random()
+
+    if r < betas["Generic_Service"]:
         task_type = "Generic_Service"
-        image_size = random.uniform(0.01, 0.088)  # 10KB–88KB
+        image_size = globals.rnd.uniform(*ranges["GENERIC_CPU_RANGE"])
 
-    elif r < beta_gen + beta_CPUI:
+    elif r < betas["Generic_Service"] + betas["CPU_Intensive"]:
         task_type = "CPU_Intensive"
-        image_size = random.uniform(0.01, 0.088)
+        image_size = globals.rnd.uniform(*ranges["GENERIC_CPU_RANGE"])
 
-    elif r < beta_gen + beta_CPUI + beta_CPUI_DataI:
+    elif r < betas["Generic_Service"] + betas["CPU_Intensive"] + betas["CPU_and_Data_Intensive"]:
         task_type = "CPU_and_Data_Intensive"
-        r2 = random.random()
-        if r2 < alphas["M"]:
-            image_size = random.uniform(0.022, 2.2)  # 22KB–2.2MB
-        elif r2 < alphas["M"] + alphas["H"]:
-            image_size = random.uniform(2.2, 24.2)  # 2.2MB–24.2MB
+        r2 = globals.rnd.random()
+
+        # Uso dei pesi di alpha per le risoluzioni (M, H, VH)
+        if r2 < cpu_data_params["alpha_M_weight"]:
+            image_size = globals.rnd.uniform(*cpu_data_params["M_range"])
+        elif r2 < cpu_data_params["alpha_M_weight"] + cpu_data_params["alpha_H_weight"]:
+            image_size = globals.rnd.uniform(*cpu_data_params["H_range"])
         else:
-            image_size = random.uniform(132.5, 500)  # 132.5MB–500MB
+            image_size = globals.rnd.uniform(*cpu_data_params["VH_range"])
+
     else:
         task_type = "Batch"
-        r3 = random.random()
-        if r3 < gammas["H"]:
-            image_size = random.uniform(2.2, 24.2)  # High
+        r3 = globals.rnd.random()
+
+        # Uso dei pesi di gamma per le risoluzioni (H, VH)
+        if r3 < batch_params["gamma_H_weight"]:
+            image_size = globals.rnd.uniform(*batch_params["H_range"])
         else:
-            image_size = random.uniform(132.5, 500)  # Very High
+            image_size = globals.rnd.uniform(*batch_params["VH_range"])
 
     return {
         'type': task_type,

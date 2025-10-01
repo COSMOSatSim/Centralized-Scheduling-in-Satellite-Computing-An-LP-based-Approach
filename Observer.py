@@ -3,11 +3,22 @@ from collections import OrderedDict
 from skyfield.api import wgs84
 import sys
 import json5
-from Task import byte_to_dim 
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
+
+def format_mb(mb_value):
+    """
+    Formats the MB value to a clean string.
+    :param mb_value: Value in Megabytes (MB).
+    :return: Formatted string (e.g., "5.25 MB").
+    """
+    if mb_value >= 1024:
+        # Se è troppo grande, converti in GB per pulizia, altrimenti mantieni MB.
+        gb_value = mb_value / 1024
+        return f"{gb_value:.2f} GB"
+    return f"{mb_value:.2f} MB"
 
 class ObserverMeta(type):
     """
@@ -64,9 +75,8 @@ class Observer(metaclass = ObserverMeta):
         Stampa un riassunto formattato dei task arrivati con successo all'Observer
         """
         print(f"TASK ARRIVATI CON SUCCESSO ALL'OBS: {len(self.tasks)}:\n")
-        print(" id     | weight        | resolution    | Start Routing (s) | End Routing (s) | duration      | hop |")
+        print(" id     | weight        | resolution               | Start Routing (s) | End Routing (s) | duration      | hop |")
         for task in self.tasks:
-            print(f" {task.id:<6} | {byte_to_dim(task.weight):<13} | {task.resolution:<13} | {round(task.routingInitTime, 2):<17} | {round(task.routingEndTime, 2):<15} | {round(task.routingEndTime - task.routingInitTime, 2):<13} | {task.hop:<3} |")
-        print()  # Riga vuota alla fine per separare dall'output successivo
+            print(f" {task.id:<6} | {format_mb(task.weight):<13} | {task.task_type:<24} | {round(task.routingInitTime, 2):<17} | {round(task.routingEndTime, 2):<15} | {round(task.routingEndTime - task.routingInitTime, 2):<13} | {task.hop:<3} |")
 
 

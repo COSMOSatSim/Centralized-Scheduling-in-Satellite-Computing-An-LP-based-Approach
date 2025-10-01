@@ -1,4 +1,3 @@
-import random
 import simpy
 import json, json5
 from  Observer import Observer 
@@ -24,7 +23,7 @@ def process_OGM_enviroment_simulation(data_configuration):
     Funzione usata per la costruzione delle tabelle OGM nella fase di PRE-Loading
     """
     
-    random.seed(config["seed"])
+    globals.rnd.seed(config["seed"])
 
     env_ogm = simpy.Environment()  
     simulation_duration = config['simulation_duration'] + ADDING_TIME    #Aggiungo 60 secondi (30 conf) di simulazione per il caricamento delle tabelle
