@@ -253,23 +253,8 @@ class EdgeServer:
         # W_r^cpu = [somma delle domande dei task in coda] + [0.5 * domanda del task in esecuzione]
         # NOTA: Per un Resource SimPy standard, non possiamo conoscere il tempo residuo
         # del task in esecuzione senza una gestione esplicita.
-
         sum_q_demand = self._get_queue_demand_sum(self.cpu_dev.queue)
 
-        # Per implementare l'euristica (0.5 * d_p'), se non hai un modo semplice per
-        # stimare d_p', la soluzione più vicina è trattare la coda come una lista di task
-        # il cui arrivo è imminente.
-
-        # Se ci sono task in coda, ignora il fattore 0.5 per semplicità e usa solo la somma esatta.
-        # Se devi attenerti strettamente alla formula, devi ripristinare la gestione
-        # manuale del "busy_until", che è complessa e sconsigliata.
-
-        # Per coerenza con il modello e SimPy, usa SOLO la somma della coda.
-        # Oppure, se vuoi mantenere l'euristica del LaTeX, DEVI ripristinare il
-        # "busy_until" e la coda manuale (vedi nota finale).
-
-        # Scegliamo di usare solo la somma per disaccoppiare:
-        # Questo è l'approccio più SIMPY-FRIENDLY:
         return sum_q_demand
 
     def W_net(self, d_r_net):
@@ -322,31 +307,19 @@ class EdgeServer:
             self.record_rejected_task(task_id, task_type, arrival_time_system, "Orbital Sunset")
             return False, R, eps
 
-        # 2) Enqueue
-        if d_cpu_s > 0:
-            self.queue_cpu.append((task_id, d_cpu_s, prio, env.now, deadline))
-        if d_net_bytes > 0:
-            self.queue_net.append((task_id, d_net_svc, prio, env.now, deadline))
-
         # 3) CPU stage
         if d_cpu_s > 0:
             with self.cpu_dev.request() as req:
                 yield req
-                self.queue_cpu = [x for x in self.queue_cpu if x[0] != task_id]
-                self.cpu_busy_until = env.now + d_cpu_s
                 yield env.timeout(d_cpu_s)
-                self.cpu_busy_until = env.now
                 self.energy_reserved -= self.eps_cpu(d_cpu_s, C_sen)
 
         # 4) NET stage
         if d_net_bytes > 0:
             with self.net_dev.request() as req:
                 yield req
-                self.queue_net = [x for x in self.queue_net if x[0] != task_id]
                 t_tx = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
-                self.net_busy_until = env.now + t_tx
                 yield env.timeout(t_tx)
-                self.net_busy_until = env.now
                 self.energy_reserved -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
 
         return True, R, eps
