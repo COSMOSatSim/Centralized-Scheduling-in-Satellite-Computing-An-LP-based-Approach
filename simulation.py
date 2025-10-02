@@ -57,7 +57,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
         bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
         bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps else 0.0
 
-        Wc = selected_server.W_cpu(estimated_execution_time)
+        Wc = selected_server.W_cpu( )
         d_cpu = estimated_execution_time
         d_net = (image_size * (1024 ** 2)) / bw_Bps if bw_Bps > 0 else 0.0
         R = Wc + d_cpu + d_net
@@ -73,12 +73,16 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
                     req_cpu.task_data = task_OBS
             yield req_cpu
             time_in_queue = env.now - arrival_time_task_queue
+            selected_server.cpu_busy_until = env.now + estimated_execution_time
+
             yield env.timeout(estimated_execution_time)
+            selected_server.cpu_busy_until = env.now  # reset quando il task finisce
 
             selected_server.energy -= eps_cpu
             BANDWIDTH_TO_GU_BPS = config.get("Bandwidth_to_GU_Bps", 100000)
             file_size_bytes = image_size * (1024 ** 2)
             delay_to_transfer = file_size_bytes / BANDWIDTH_TO_GU_BPS
+
             yield env.timeout(delay_to_transfer)
         selected_server.energy_reserved -= eps_cpu
 
@@ -100,8 +104,8 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
         # Qui d_cpu e d_net sono i tempi di servizio per il task R
         d_cpu = estimated_execution_time
         d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
-        Wc = selected_server.W_cpu(d_cpu)
-        Wn = selected_server.W_net(d_net)
+        Wc = selected_server.W_cpu()
+        Wn = selected_server.W_net()
         R = Wc + d_cpu + Wn + d_net
         D_r = Tmax_H
         if R > D_r:
@@ -114,7 +118,10 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
                     req_cpu.task_data = task_OBS
             yield req_cpu
             Wc = env.now - arrival_time_task_queue
+            selected_server.cpu_busy_until = env.now + estimated_execution_time
             yield env.timeout(estimated_execution_time)
+            selected_server.cpu_busy_until = env.now  # reset quando il task finisce
+
             selected_server.energy -= eps_cpu
 
             with selected_server.net_dev.request() as req_net:
@@ -122,9 +129,11 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
                         req_net.task_data = task_OBS
                 yield req_net
                 Wn = env.now - arrival_time_task_queue
-
                 net_time = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
+                selected_server.net_busy_until = env.now + net_time
                 yield env.timeout(net_time)
+                selected_server.net_busy_until = env.now
+
                 selected_server.energy -= eps_net
 
                 time_in_queue = Wc + Wn
@@ -143,7 +152,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for NET")
             return
         d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
-        Wn = selected_server.W_net(d_net)
+        Wn = selected_server.W_net()
         R = Wn + d_net
         D_r = Tmax_H
         if R > D_r:
@@ -158,7 +167,11 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
             time_in_queue = env.now - arrival_time_task_queue
 
             net_time = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
+            selected_server.net_busy_until = env.now + net_time
+
             yield env.timeout(net_time)
+            selected_server.net_busy_until = env.now
+
             selected_server.energy -= eps_net
         selected_server.energy_reserved -= eps_net
 

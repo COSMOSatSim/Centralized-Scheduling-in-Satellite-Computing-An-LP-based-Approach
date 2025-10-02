@@ -37,10 +37,12 @@ class EdgeServer:
         self.bandwidth = {}
         self.server_queue = []
         self.completed_tasks = []
+        self.cpu_busy_until = 0.0
+        self.net_busy_until = 0.0
 
         # Nuove code CPU + NET per modello a 2 stadi
-        self.cpu_dev = simpy.Resource(env, capacity=5)
-        self.net_dev = simpy.Resource(env, capacity=5)
+        self.cpu_dev = simpy.Resource(env, capacity=1)
+        self.net_dev = simpy.Resource(env, capacity=1)
 
         self.energy_reserved = 0.0
 
@@ -249,17 +251,21 @@ class EdgeServer:
     def _remaining(self, busy_until, now):
         return max(0.0, busy_until - now)
 
-    def W_cpu(self, d_r_cpu):
+    def W_cpu(self):
         # W_r^cpu = [somma delle domande dei task in coda] + [0.5 * domanda del task in esecuzione]
         # NOTA: Per un Resource SimPy standard, non possiamo conoscere il tempo residuo
         # del task in esecuzione senza una gestione esplicita.
+
         sum_q_demand = self._get_queue_demand_sum(self.cpu_dev.queue)
+        residuo = self._remaining(self.cpu_busy_until, self.env.now)
 
-        return sum_q_demand
+        return sum_q_demand + residuo
 
-    def W_net(self, d_r_net):
+    def W_net(self):
         sum_q_demand = self._get_queue_demand_sum(self.net_dev.queue)
-        return sum_q_demand
+        residuo = self._remaining(self.net_busy_until, self.env.now)
+
+        return sum_q_demand + residuo
 
     def _get_queue_demand_sum(self, simpy_resource_queue):
         """
@@ -286,10 +292,10 @@ class EdgeServer:
         Simula l’esecuzione di un task sul server (CPU -> NET).
         """
         # 1) Ammissione
-        d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
+        d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0) if bw_to_obs_Bps and bw_to_obs_Bps>0 else float('inf')
 
-        Wc = self.W_cpu(env.now)
-        Wn = self.W_net(env.now)
+        Wc = self.W_cpu()
+        Wn = self.W_net()
         R = Wc + Wn + d_cpu_s + d_net_svc
 
         eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
@@ -395,11 +401,19 @@ class EdgeServer:
         Lo score è massimizzato: (Beneficio) - (Costo/Ritardo)
         """
         # 1. Calcola R e W predetti (usa le tue funzioni W_cpu/W_net modificate)
-        Wc = self.W_cpu(d_cpu)
-        Wn = self.W_net(d_net)
+        Wc = self.W_cpu()
+        Wn = self.W_net()
         R_predicted = Wc + d_cpu + Wn + d_net
 
-        # 2. Definisci il Beneficio (B_i) e il Costo (R) in base al tipo di task
+        max_r_acceptable = config.get("Tmax_H", 100.0)
+
+        # Se il tempo totale previsto (R) supera Tmax_H, il server non è idoneo.
+        # Restituiamo un punteggio molto basso (ad esempio, negativo infinito)
+        # per assicurarci che non venga scelto.
+        if R_predicted > max_r_acceptable:
+            return -float('inf')
+
+            # 2. Definisci il Beneficio (B_i) e il Costo (R) in base al tipo di task
 
         if task_type in ("Generic_Service", "CPU_Intensive"):
             # Criterio LaTeX: shortest W_r^cpu and the higher B_i.
