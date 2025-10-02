@@ -63,49 +63,85 @@ class EdgeServer:
 
     def export_state(self, env):
         """
-        Esporta lo stato corrente del satellite come dizionario, recuperando
-        i dettagli del task direttamente dagli eventi di richiesta di SimPy.
+        Esporta lo stato corrente del satellite come dizionario, includendo i task
+        in coda (.queue) e quelli attualmente in servizio (.users).
         """
         ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
 
-        # Recupera i dettagli dei task in coda CPU
+        # Funzione helper per raccogliere i dati da una lista di richieste SimPy
+        def get_tasks_data(resource_list, demand_type):
+            tasks_list = []
+            for req_or_user in resource_list:
+                # Se è una richiesta, potrebbe essere incapsulata in un wrapper SimPy
+                # In questo setup, assumiamo che l'oggetto request abbia task_data
+                if hasattr(req_or_user, 'task_data'):
+                    task_obj = req_or_user.task_data
+                    tasks_list.append({
+                        "task_id": task_obj.id,
+                        # Usa il tipo di domanda appropriato (d_cpu o d_net)
+                        "demand": getattr(task_obj, demand_type, 'N/A'),
+                        "deadline": getattr(task_obj, 'deadline', 'N/A'),
+                        "image_size_MB": getattr(task_obj, 'image_size_MB', 'N/A'),
+                    })
+            return tasks_list
+
+        tasks_in_cpu_queue = []
+        tasks_in_net_queue = []
+        tasks_in_cpu_service = []
+        tasks_in_net_service = []
+
         if ENABLE_MONITORING:
-            tasks_in_cpu_queue = []
-            for req in self.cpu_dev.queue:
-                # Controlla se l'attributo 'task_data' è stato allegato
-                if hasattr(req, 'task_data'):
-                    task_obj = req.task_data
-                    tasks_in_cpu_queue.append({
-                        "task_id": task_obj.id,
-                        "d_cpu": task_obj.d_cpu,
-                        "deadline": task_obj.deadline,
-                    })
+            # Code (In attesa di iniziare)
+            tasks_in_cpu_queue = get_tasks_data(self.cpu_dev.queue, 'd_cpu')
+            tasks_in_net_queue = get_tasks_data(self.net_dev.queue, 'd_net')
 
-            # Recupera i dettagli dei task in coda NET
-            tasks_in_net_queue = []
-            for req in self.net_dev.queue:
-                if hasattr(req, 'task_data'):
-                    task_obj = req.task_data
-                    tasks_in_net_queue.append({
-                        "task_id": task_obj.id,
-                        "d_net": task_obj.d_net,  # Assumi che 'd_net' sia un attributo di Task
-                        "deadline": task_obj.deadline,
-                    })
+            # Servizio (In esecuzione)
+            # Dobbiamo considerare i task che stanno usando la risorsa in questo istante
+            tasks_in_cpu_service = get_tasks_data(self.cpu_dev.users, 'd_cpu')
+            tasks_in_net_service = get_tasks_data(self.net_dev.users, 'd_net')
 
-            state = {
-                "time": env.now,
-                "satellite": self.name,
-                "in_listening_dome": self.elev_angle >= 40,
-                "elev_angle": self.elev_angle,
-                "energy_budget": self.energy,
-                "neighbors": [n.name for n in self.get_neighbors()],
-                "queue_cpu_len": len(self.cpu_dev.queue),
-                "queue_net_len": len(self.net_dev.queue),
-                "queue_cpu": tasks_in_cpu_queue,
-                "queue_net": tasks_in_net_queue
-            }
+        # --- Raccolta Dettagli Vicini (mantenuti dalla versione precedente) ---
+        neighbor_data = []
+        for neighbor_obj in self.get_neighbors():
+            neighbor_name = neighbor_obj.name
+            neighbor_data.append({
+                "name": neighbor_name,
+                "latency_s": self.latency.get(neighbor_obj, 'N/A'),
+                "bandwidth_MBps": self.bandwidth.get(neighbor_obj, 'N/A'),
+                "elev_angle": neighbor_obj.elev_angle,
+            })
+
+        # --- Assemblaggio dello Stato Completo ---
+        state = {
+            "time": env.now,
+            "satellite": self.name,
+            "in_listening_dome": self.elev_angle >= 40,
+            "elev_angle": self.elev_angle,
+            "energy_budget_J": self.energy,
+            "energy_reserved_J": self.energy_reserved,
+            "is_access_point": self.is_acc_point,
+
+            # Code e Task
+            "queue_cpu_len": len(tasks_in_cpu_queue),  # Conteggio solo i task in attesa
+            "queue_net_len": len(tasks_in_net_queue),  # Conteggio solo i task in attesa
+
+            # Nuovi campi per monitoraggio
+            "cpu_service_len": len(tasks_in_cpu_service),
+            "net_service_len": len(tasks_in_net_service),
+
+            "queue_cpu_waiting": tasks_in_cpu_queue,
+            "queue_net_waiting": tasks_in_net_queue,
+            "queue_cpu_service": tasks_in_cpu_service,
+            "queue_net_service": tasks_in_net_service,
+
+            # Vicini (dettagliati)
+            "neighbors_count": len(neighbor_data),
+            "neighbors_metrics": neighbor_data,
+        }
+
+        if ENABLE_MONITORING:
             return state
-
+        return None
     def record_rejected_task(self, task_id, task_type, arrival_time_system, rejection_reason ):
         """
         Registra un task scartato con la motivazione del rifiuto.

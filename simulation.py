@@ -36,6 +36,7 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
         task_OBS.d_cpu = estimated_execution_time
         task_OBS.d_net = (image_size * (1024**2)) / bw_Bps if bw_Bps > 0 else 0.0 # Usiamo la dimensione del dato come richiesta NET
         task_OBS.deadline = arrival_time_system + Tmax_H
+        task_OBS.image_size_MB = image_size  # Salva la dimensione dell'immagine (in MB)
 
     # L'energia del trasferimento viene sottratta e verificata in SearchNode
     yield env.timeout(transfer_time)
@@ -297,7 +298,8 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         "image_size": image_size,
         "exec_time": estimated_execution_time,
         "transfer_time": transfer_time,
-        "num_hops": hop
+        "num_hops": hop,
+        "execution_server": server.name
     }
     globals.gbl_generated_tasks_data.append(task_data)
     # Chiamo TaskAssignment sul server scelto
