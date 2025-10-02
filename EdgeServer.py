@@ -15,8 +15,6 @@ with open('config.json5') as config_file:
 BATMAN = config["Routing_algorithm"]["BATMAN"]
 GREEDY = config["Routing_algorithm"]["GREEDY"]
 
-total_time = 0  # Imposta il valore iniziale di total_time
-
 class EdgeServer:
     def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point, elev_angle):
         '''
@@ -35,14 +33,17 @@ class EdgeServer:
         self.neighbors = {}
         self.latency = {}
         self.bandwidth = {}
-        self.server_queue = []
         self.completed_tasks = []
         self.cpu_busy_until = 0.0
         self.net_busy_until = 0.0
 
         # Nuove code CPU + NET per modello a 2 stadi
-        self.cpu_dev = simpy.Resource(env, capacity=1)
-        self.net_dev = simpy.Resource(env, capacity=1)
+        cpu_capacity = config.get("cpu_capacity_queue", 5)
+        net_capacity = config.get("net_capacity_queue", 5)
+        self.cpu_dev = simpy.Resource(env, capacity=cpu_capacity)
+        self.net_dev = simpy.Resource(env, capacity=net_capacity)
+        self._cpu_capacity = cpu_capacity
+        self._net_capacity = net_capacity
 
         self.energy_reserved = 0.0
 
@@ -237,98 +238,116 @@ class EdgeServer:
         d = execution_time
         return d * e * (C_sen ** 3)
 
-    # Wrapper dedicati a CPU e NET
-    def eps_cpu(self, d_cpu_s, C_sen):
-        return self.compute_execution_energy(d_cpu_s, C_sen)
-
-    def eps_net(self, bytes_out, bw_Bps):
-        P = config.get("Ptrasm", 1.0)
-        return P * (bytes_out / bw_Bps) if bw_Bps > 0 else float('inf')
-
     # --------------------------------------------------
     # Waiting time (W^cpu, W^net)
     # --------------------------------------------------
-    def _remaining(self, busy_until, now):
-        return max(0.0, busy_until - now)
+
+    def _get_min_remaining(self, resource, kind='cpu'):
+        """
+        Ritorna il tempo minimo residuo tra i task in servizio (tempo fino al primo rilascio).
+        Se ci sono slot liberi, ritorna 0.0.
+        """
+        now = self.env.now
+        if len(resource.users) < resource.capacity:
+            return 0.0
+
+        min_remaining = float('inf')
+        for user in resource.users:
+            if hasattr(user, 'task_data'):
+                td = user.task_data
+                if kind == 'cpu':
+                    d = getattr(td, 'd_cpu', None)
+                    start = getattr(td, 'start_time_cpu', None)
+                    legacy_busy_until = getattr(self, 'cpu_busy_until', None)
+                else:
+                    d = getattr(td, 'd_net', None)
+                    start = getattr(td, 'start_time_net', None)
+                    legacy_busy_until = getattr(self, 'net_busy_until', None)
+
+                if d is None:
+                    continue
+
+                if start is not None:
+                    remaining = max(0.0, d - (now - start))
+                else:
+                    # fallback su busy_until se disponibile, altrimenti assumiamo d come upper bound
+                    if legacy_busy_until is not None:
+                        remaining = max(0.0, legacy_busy_until - now)
+                    else:
+                        remaining = d
+
+                min_remaining = min(min_remaining, remaining)
+
+        return min_remaining if min_remaining != float('inf') else 0.0
+    def _get_running_remaining_total(self, resource, kind='cpu'):
+        """
+        Somma del tempo residuo dei task attualmente in esecuzione (tutti i server).
+        Serve per calcolare il lavoro totale in corso.
+        """
+        now = self.env.now
+        running_sum = 0.0
+        for user in resource.users:
+            if hasattr(user, 'task_data'):
+                td = user.task_data
+                if kind == 'cpu':
+                    d = getattr(td, 'd_cpu', None)
+                    start = getattr(td, 'start_time_cpu', None)
+                    legacy_busy_until = getattr(self, 'cpu_busy_until', None)
+                else:
+                    d = getattr(td, 'd_net', None)
+                    start = getattr(td, 'start_time_net', None)
+                    legacy_busy_until = getattr(self, 'net_busy_until', None)
+
+                if d is None:
+                    continue
+
+                if start is not None:
+                    remaining = max(0.0, d - (now - start))
+                else:
+                    if legacy_busy_until is not None:
+                        remaining = max(0.0, legacy_busy_until - now)
+                    else:
+                        remaining = 0.5 * d  # fallback conservativo
+
+                running_sum += remaining
+
+        return running_sum
 
     def W_cpu(self):
-        # W_r^cpu = [somma delle domande dei task in coda] + [0.5 * domanda del task in esecuzione]
-        # NOTA: Per un Resource SimPy standard, non possiamo conoscere il tempo residuo
-        # del task in esecuzione senza una gestione esplicita.
+        queue_sum = self._get_queue_demand_sum(self.cpu_dev.queue, kind='cpu')
+        min_rem = self._get_min_remaining(self.cpu_dev, kind='cpu')
+        running_total = self._get_running_remaining_total(self.cpu_dev, kind='cpu')
+        capacity = max(1, getattr(self, '_cpu_capacity', 1))
 
-        sum_q_demand = self._get_queue_demand_sum(self.cpu_dev.queue)
-        residuo = self._remaining(self.cpu_busy_until, self.env.now)
-
-        return sum_q_demand + residuo
+        work_tot = running_total + queue_sum
+        # lavoro residuo dopo il primo intervallo min_rem (durante min_rem i c server producono c*min_rem lavoro)
+        work_after_first = max(0.0, work_tot - capacity * min_rem)
+        return min_rem + (work_after_first / capacity)
 
     def W_net(self):
-        sum_q_demand = self._get_queue_demand_sum(self.net_dev.queue)
-        residuo = self._remaining(self.net_busy_until, self.env.now)
+        queue_sum = self._get_queue_demand_sum(self.net_dev.queue, kind='net')
+        min_rem = self._get_min_remaining(self.net_dev, kind='net')
+        running_total = self._get_running_remaining_total(self.net_dev, kind='net')
+        capacity = max(1, getattr(self, '_net_capacity', 1))
 
-        return sum_q_demand + residuo
+        work_tot = running_total + queue_sum
+        work_after_first = max(0.0, work_tot - capacity * min_rem)
+        return min_rem + (work_after_first / capacity)
 
-    def _get_queue_demand_sum(self, simpy_resource_queue):
-        """
-        Calcola la somma delle domande di servizio (d_cpu o d_net) dei task
-        in coda al SimPy Resource.
-        """
+    def _get_queue_demand_sum(self, simpy_resource_queue, kind='cpu'):
         total_demand = 0.0
-        # self.cpu_dev.queue contiene oggetti Request (o Event)
         for req in simpy_resource_queue:
             if hasattr(req, 'task_data'):
                 task_obj = req.task_data
-                # Assumiamo che task_data.d_cpu e task_data.d_net siano i tempi di servizio
-                if simpy_resource_queue == self.cpu_dev.queue:
-                    total_demand += task_obj.d_cpu
-                elif simpy_resource_queue == self.net_dev.queue:
-                    total_demand += task_obj.d_net
+                if kind == 'cpu':
+                    total_demand += getattr(task_obj, 'd_cpu', 0.0)
+                else:
+                    total_demand += getattr(task_obj, 'd_net', 0.0)
         return total_demand
+
     # --------------------------------------------------
     # Pipeline CPU -> NET
     # --------------------------------------------------
-    def process_locally(self, env, task_id, prio, d_cpu_s, d_net_bytes,
-                        deadline, bw_to_obs_Bps, lat_to_obs_s, C_sen, task_type, arrival_time_system=0.0):
-        """
-        Simula l’esecuzione di un task sul server (CPU -> NET).
-        """
-        # 1) Ammissione
-        d_net_svc = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0) if bw_to_obs_Bps and bw_to_obs_Bps>0 else float('inf')
-
-        Wc = self.W_cpu()
-        Wn = self.W_net()
-        R = Wc + Wn + d_cpu_s + d_net_svc
-
-        eps = self.eps_cpu(d_cpu_s, C_sen) + self.eps_net(d_net_bytes, bw_to_obs_Bps)
-
-        if deadline is not None and R > deadline:
-            self.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
-            return False, R, eps
-
-        if self.energy < eps:
-            self.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy")
-            return False, R, eps
-        self.energy_reserved += eps
-
-        if self.orbitalSunset and (env.now + R) > self.orbitalSunset:
-            self.record_rejected_task(task_id, task_type, arrival_time_system, "Orbital Sunset")
-            return False, R, eps
-
-        # 3) CPU stage
-        if d_cpu_s > 0:
-            with self.cpu_dev.request() as req:
-                yield req
-                yield env.timeout(d_cpu_s)
-                self.energy_reserved -= self.eps_cpu(d_cpu_s, C_sen)
-
-        # 4) NET stage
-        if d_net_bytes > 0:
-            with self.net_dev.request() as req:
-                yield req
-                t_tx = (d_net_bytes / bw_to_obs_Bps) + (lat_to_obs_s or 0.0)
-                yield env.timeout(t_tx)
-                self.energy_reserved -= self.eps_net(d_net_bytes, bw_to_obs_Bps)
-
-        return True, R, eps
 
     def greedy_approach(self, env, task):
         dest_pos = globals.observer.getPositionVector(globals.instant_in_configuration)
