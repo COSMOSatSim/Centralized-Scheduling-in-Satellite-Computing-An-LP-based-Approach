@@ -16,7 +16,30 @@ except FileNotFoundError:
     print("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
     resolution_config = None
 
-def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, image_size,
+
+def network_metrics(config, image_size_MB, Volume_size_MB=0.0):
+    """
+    Calcola la larghezza di banda disponibile (in Bps) e la dimensione totale dei dati (in Byte).
+
+    Args:
+        config (dict): La configurazione globale.
+        image_size_MB (float): Dimensione dell'immagine in MB.
+        Volume_size_MB (float, optional): Dimensione aggiuntiva del volume in MB. Default a 0.0.
+
+    Returns:
+        tuple: (bw_Bps, data_bytes)
+    """
+    bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
+    # Converti la banda da MBps a Bps
+    bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
+
+    # Calcola la dimensione totale dei dati in MB e poi in Byte
+    total_data_MB = image_size_MB + Volume_size_MB
+    data_bytes = total_data_MB * (1024 ** 2)
+
+    return bw_Bps, data_bytes
+
+def TaskAssignment(env, selected_server, task_id, image_size,
                    arrival_time_system, num_hops, transfer_time,
                    estimated_execution_time, task_type):
     """
@@ -28,13 +51,12 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
 
     task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, task_type, image_size)
-    bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-    bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps else 0.0
+    bw_Bps, data_bytes = network_metrics(config, image_size)
 
     # Inizializza gli attributi solo se il monitoraggio è attivo
     if ENABLE_MONITORING:
         task_OBS.d_cpu = estimated_execution_time
-        task_OBS.d_net = (image_size * (1024**2)) / bw_Bps if bw_Bps > 0 else 0.0 # Usiamo la dimensione del dato come richiesta NET
+        task_OBS.d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
         task_OBS.deadline = arrival_time_system + Tmax_H
         task_OBS.image_size_MB = image_size  # Salva la dimensione dell'immagine (in MB)
 
@@ -55,12 +77,11 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
         if selected_server.energy - selected_server.energy_reserved < eps_cpu:
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for CPU")
             return
-        bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-        bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps else 0.0
+        bw_Bps, data_bytes = network_metrics(config, image_size)
 
         Wc = selected_server.W_cpu( )
         d_cpu = estimated_execution_time
-        d_net = (image_size * (1024 ** 2)) / bw_Bps if bw_Bps > 0 else 0.0
+        d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
         R = Wc + d_cpu + d_net
         D_r = Tmax_H
         if R > D_r:
@@ -92,10 +113,8 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
         e_coeff = config.get("energy_coefficient", 5e-26)
         eps_cpu = selected_server.compute_execution_energy(estimated_execution_time, C_sen, e=e_coeff)
 
-        bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-        bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
-        data_MB = image_size
-        data_bytes = data_MB * (1024 ** 2)
+        bw_Bps, data_bytes = network_metrics(config, image_size)
+
         eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
 
         if selected_server.energy - selected_server.energy_reserved < (eps_cpu + eps_net):
@@ -143,10 +162,8 @@ def TaskAssignment(env, selected_server, task_id, required_ram, required_disk, i
     elif task_type == "Batch":
         print('Arrivato task BATCH')
         # Solo coda Network
-        bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-        bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
-        data_MB = image_size
-        data_bytes = data_MB * (1024 ** 2)
+        bw_Bps, data_bytes = network_metrics(config, image_size)
+
         eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
 
         if selected_server.energy - selected_server.energy_reserved < eps_net:
@@ -215,17 +232,15 @@ def estimate_execution_time():
 def SearchNode(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
                 arrival_time_system,
                 initial_server_counter, different_server_counter, other_server_counter,
-               task_type):
+               task_type, max_energy):
 
     global hop
     estimated_execution_time = estimate_execution_time()
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
-    bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-    bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps else 0.0
-    data_bytes = (image_size + Volume_size) * (1024 ** 2)
+    bw_Bps, data_bytes = network_metrics(config, image_size)
+
     d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
-    max_energy = config.get("initial_energy", 10000.0)
 
     server_metrics = []
 
@@ -234,7 +249,8 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         bandwidth_to_server = server_selected.get_bandwidth(neighbor)
 
         if bandwidth_to_server is not None and latency_to_server is not None:
-            transfer_time = ((image_size + Volume_size) / bandwidth_to_server) + latency_to_server
+            bandwidth_to_server_Bps = bandwidth_to_server * (1024 ** 2)
+            transfer_time = ((image_size + Volume_size) * (1024 ** 2) / bandwidth_to_server_Bps) + latency_to_server
         else:
             transfer_time = 0.0
 
@@ -277,10 +293,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
         bw_MBps = server_selected.get_bandwidth(server)
         if bw_MBps is None:
-            bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-        bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
-        data_MB = (image_size + Volume_size)
-        data_bytes = data_MB * (1024 ** 2)
+            bw_Bps, data_bytes = network_metrics(config, image_size)
         if bw_Bps > 0:
             eps_net = server_selected.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
         else:
@@ -303,11 +316,11 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     }
     globals.gbl_generated_tasks_data.append(task_data)
     # Chiamo TaskAssignment sul server scelto
-    yield from TaskAssignment(env, server, task_id, required_ram, required_disk,image_size,
+    yield from TaskAssignment(env, server, task_id, image_size,
                                arrival_time_system, hop, transfer_time,
                               estimated_execution_time, task_type)
 
-def task(env, task_id, server, initial_server_counter, different_server_counter, other_server_counter, task_data):
+def task(env, task_id, server, initial_server_counter, different_server_counter, other_server_counter, task_data, max_energy):
     global hop
     hop = 0
     Volume_size = 0.0
@@ -332,7 +345,7 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
         initial_server_counter,
         different_server_counter,
         other_server_counter,
-        task_type
+        task_type, max_energy
     )
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):
@@ -341,8 +354,8 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
     print('Genero i task')
 
     task_id = 1
-    max_energy = config.get("initial_energy", 10000.0)
     while True:
+        max_energy = max(server.energy for server in globals.global_access_point)
         # Read the distribution type from the configuration
         distribution_type = config["generate_tasks"]["distribution"]
 
@@ -363,9 +376,8 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         # Recupera i dati necessari per la selezione:
         task_type = temp_task_data['type']
         estimated_execution_time = estimate_execution_time()
-        bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-        bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps else 0.0
-        data_bytes = temp_task_data['image_size'] * (1024 ** 2)
+        bw_Bps, data_bytes = network_metrics(config, temp_task_data['image_size'])
+
         d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
 
         best_server = None
@@ -392,7 +404,7 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         # Il resto dei dati del task sono contenuti in task_type_and_size_generator
         env.process(task(env, task_id, best_server,
                          initial_server_counter, different_server_counter, other_server_counter,
-                         temp_task_data))  # Passa i dati del task
+                         temp_task_data, max_energy))  # Passa i dati del task
 
         task_id += 1
 

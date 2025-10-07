@@ -17,12 +17,12 @@ GREEDY = config["Routing_algorithm"]["GREEDY"]
 
 class EdgeServer:
     def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point, elev_angle):
-        '''
+        """
         Initialize an EdgeServer instance.
 
         :param env: Simulation environment.
         :param name: Name of the edge server.
-        '''
+        """
 
         self.env = env
         self.name = name

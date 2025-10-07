@@ -146,7 +146,6 @@ if __name__ == "__main__":
             env,
             selected_server,
             batch_task_id,  # 3. task_id
-            required_ram, required_disk,  # 4. required_ram, 5. required_disk
             image_size,  # 6. image_size
             env.now,  # 7. arrival_time_system
             0,  # 8. num_hops
@@ -246,6 +245,7 @@ if __name__ == "__main__":
     print("-"*10)
     generate_Tasks_Status(csv_routing_task)
 
+
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:
         writer = csv.writer(f_out)
@@ -255,7 +255,7 @@ if __name__ == "__main__":
             "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
             "Queue length", "estimated_execution_time",
             "transfer_time", "TMAX_exceeded", "Exec_after_set",
-            "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]",
+            "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
             "Rejection Reason"
         ])
 
@@ -267,12 +267,13 @@ if __name__ == "__main__":
                     tmax_exc, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy
             ) in srv.completed_tasks:
                 time_in_system = et - arr_sys
+                remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100
                 writer.writerow([
                     tid, task_type, "Completed", arr_sys, arr_q, st, et,
                     ex_t, sv_t, time_in_system, tq, sel_srv, hops,
                     qlen, est_e, trf,
                     tmax_exc, exec_set,
-                    eps_cpu, eps_net, eps_tot, srv_rem_energy, "N/A"
+                    eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
                 ])
 
             # Scrivi i task scartati

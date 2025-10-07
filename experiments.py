@@ -1,5 +1,6 @@
 import numpy as np
 import json5
+import globals
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:

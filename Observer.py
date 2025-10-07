@@ -1,4 +1,3 @@
-
 from collections import OrderedDict
 from skyfield.api import wgs84
 import sys
