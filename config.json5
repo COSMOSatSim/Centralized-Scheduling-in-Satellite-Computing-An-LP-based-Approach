@@ -1,6 +1,6 @@
 {
   simulation_duration: 300,
-  enable_queue_monitoring: true,
+  enable_queue_monitoring: false,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,

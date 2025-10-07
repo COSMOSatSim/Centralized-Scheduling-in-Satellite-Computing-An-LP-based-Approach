@@ -315,6 +315,7 @@ class EdgeServer:
                 min_remaining = min(min_remaining, remaining)
 
         return min_remaining if min_remaining != float('inf') else 0.0
+
     def _get_running_remaining_total(self, resource, kind='cpu'):
         """
         Somma del tempo residuo dei task attualmente in esecuzione (tutti i server).
@@ -452,7 +453,7 @@ class EdgeServer:
 
     def get_selection_score(self, task_type, d_cpu, d_net, energy_budget_max=1.0):
         """
-        Calcola lo score di selezione in base all'euristica semplice del modello LaTeX.
+        Calcola lo score di selezione in base all'euristica semplice del modello.
         Lo score è massimizzato: (Beneficio) - (Costo/Ritardo)
         """
         # 1. Calcola R e W predetti (usa le tue funzioni W_cpu/W_net modificate)
@@ -461,21 +462,19 @@ class EdgeServer:
         R_predicted = Wc + d_cpu + Wn + d_net
 
         max_r_acceptable = config.get("Tmax_H", 100.0)
+        B_normalized = self.energy / energy_budget_max
 
         # Se il tempo totale previsto (R) supera Tmax_H, il server non è idoneo.
         # Restituiamo un punteggio molto basso (ad esempio, negativo infinito)
         # per assicurarci che non venga scelto.
         if R_predicted > max_r_acceptable:
             return -float('inf')
-
             # 2. Definisci il Beneficio (B_i) e il Costo (R) in base al tipo di task
 
         if task_type in ("Generic_Service", "CPU_Intensive"):
-            # Criterio LaTeX: shortest W_r^cpu and the higher B_i.
+            # shortest W_r^cpu and the higher B_i.
             # Score = Beneficio (B_i) - Costo (W_cpu)
             # R normalizzato rispetto a un massimo di R accettabile (ad esempio Tmax_H)
-            max_r_acceptable = config.get("Tmax_H", 100.0)
-            B_normalized = self.energy / energy_budget_max
             Wc_normalized = Wc / max_r_acceptable if max_r_acceptable > 0 else Wc
 
             # Se Wc è l'unico ritardo di coda, massimizza B e minimizza Wc
@@ -483,28 +482,24 @@ class EdgeServer:
             return B_normalized - Wc_normalized
 
         elif task_type == "Batch":
-            # Criterio LaTeX: shortest W_r^net and the higher B_i.
+            # shortest W_r^net and the higher B_i.
             # Score = Beneficio (B_i) - Costo (W_net)
-            max_r_acceptable = config.get("Tmax_H", 100.0)
-            B_normalized = self.energy / energy_budget_max
             Wn_normalized = Wn / max_r_acceptable if max_r_acceptable > 0 else Wn
 
             # Score = B_normalized - Wn_normalized
             return B_normalized - Wn_normalized
 
         elif task_type == "CPU_and_Data_Intensive":
-            # Criterio LaTeX: shortest W_r^net + W_r^cpu and higher B_i.
+            # shortest W_r^net + W_r^cpu and higher B_i.
             # Score = Beneficio (B_i) - Costo (W_tot)
             W_tot = Wc + Wn
-            max_r_acceptable = config.get("Tmax_H", 100.0)
-            B_normalized = self.energy / energy_budget_max
             W_tot_normalized = W_tot / max_r_acceptable if max_r_acceptable > 0 else W_tot
 
             # Score = B_normalized - W_tot_normalized
             return B_normalized - W_tot_normalized
 
         # Per il caso 'Generic Service' puro (solo energy budget):
-        # Criterio LaTeX: lower B_i (to use residual energy budget).
+        # lower B_i (to use residual energy budget).
         # Score = Costo (B_i) -> Minimizza B_i, quindi Score = -B_i
         # if task_type == "Generic_Service":
         #     return - (self.energy / energy_budget_max)
@@ -550,8 +545,6 @@ def sendTask(env, task, sender, receiver, algorithm):
             sender.energy -= energy_tx
             print(
                 f"[{task.id}] Energy routing consumed by {sender.name}: {energy_tx:.6f} J (remaining {sender.energy:.2f})")
-
-
         else:
             bandwidth = 10000 * (1024**2)  # da MB/s a Byte/s
             trasmission_time = getTransmissionTime(bandwidth, task.weight, 0)
