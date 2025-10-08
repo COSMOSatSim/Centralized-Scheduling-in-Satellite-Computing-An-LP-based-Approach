@@ -154,7 +154,7 @@ class EdgeServer:
     def task_completed(self, task_id, task_type, arrival_time_system, arrival_time_task_queue,
                        start_time, end_time, execution_time, service_time, time_in_queue,
                        selected_server, num_hops, lunghezza_coda, estimated_execution_time, transfer_time,
-                       TMAX_exceeded, exec_after_set,
+                       DeadLine, exec_after_set,
                        eps_cpu=0.0, eps_net=0.0):
         '''
         Record completed tasks, including energy metrics (CPU + NET) and task type.
@@ -171,7 +171,7 @@ class EdgeServer:
              start_time, end_time, execution_time, service_time, time_in_queue,
              selected_server, num_hops, lunghezza_coda,
              estimated_execution_time, transfer_time,
-             TMAX_exceeded, exec_after_set, eps_cpu, eps_net, total_energy, self.energy)
+             DeadLine, exec_after_set, eps_cpu, eps_net, total_energy, self.energy)
         )
 
         print(f"[Task {task_id}] COMPLETED on {self.name} {self.elev_angle} degrees | "

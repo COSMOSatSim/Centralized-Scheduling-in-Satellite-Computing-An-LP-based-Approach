@@ -251,7 +251,7 @@ if __name__ == "__main__":
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
             "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
             "Queue length", "estimated_execution_time",
-            "transfer_time", "TMAX_exceeded", "Exec_after_set",
+            "transfer_time", "DeadLine Exceded", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
             "Rejection Reason"
         ])
@@ -278,7 +278,7 @@ if __name__ == "__main__":
 
                     (tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
                      tq, sel_srv, hops, qlen, est_e, trf,
-                     tmax_exc, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+                     DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
 
                     time_in_system = (et - arr_sys) if (
                                 isinstance(et, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
@@ -290,7 +290,7 @@ if __name__ == "__main__":
                         tid, task_type, "Completed", arr_sys, arr_q, st, et,
                         ex_t, sv_t, time_in_system, tq, sel_srv, hops,
                         qlen, est_e, trf,
-                        tmax_exc, exec_set,
+                        DeadLine, exec_set,
                         eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
                     ])
 
@@ -338,7 +338,7 @@ if __name__ == "__main__":
         for entry in getattr(globals, 'gbl_batch_completed', []):
             (tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
              tq, sel_srv, hops, qlen, est_e, trf,
-             tmax_exc, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+             DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
             time_in_system = (et - arr_sys) if (
                         isinstance(et, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
             remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
@@ -347,7 +347,7 @@ if __name__ == "__main__":
                 tid, task_type, "Completed", arr_sys, arr_q, st, et,
                 ex_t, sv_t, time_in_system, tq, sel_srv, hops,
                 qlen, est_e, trf,
-                tmax_exc, exec_set,
+                DeadLine, exec_set,
                 eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
             ])
 
