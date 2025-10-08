@@ -9,6 +9,8 @@ other_server_counter = {}       # Tiene traccia di altre metriche per i server
 gbl_generated_tasks_data = [] # Lista per raccogliere i dettagli del task generato
 global_access_point = []    # Lista degli access point globali
 next_server_index = 0       # Indice del prossimo server a cui inviare un task
+gbl_batch_completed = []   # new global list for batch completions
+
 
 config_index = 0            # Indice che indica la configurazione corrente
 

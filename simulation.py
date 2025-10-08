@@ -41,7 +41,7 @@ def network_metrics(config, image_size_MB, Volume_size_MB=0.0):
 
 def TaskAssignment(env, selected_server, task_id, image_size,
                    arrival_time_system, num_hops, transfer_time,
-                   estimated_execution_time, task_type):
+                   task_type, d_cpu, deadline):
     """
     Processo SimPy che assegna un task al server selezionato e simula:
       - attesa nella coda CPU (cpu_dev)
@@ -64,9 +64,9 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
     # Inizializza gli attributi solo se il monitoraggio è attivo
     if ENABLE_MONITORING:
-        task_OBS.d_cpu = estimated_execution_time
+        task_OBS.d_cpu = d_cpu
         task_OBS.d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
-        task_OBS.deadline = arrival_time_system + Tmax_H
+        task_OBS.deadline = arrival_time_system + deadline
         task_OBS.image_size_MB = image_size  # Salva la dimensione dell'immagine (in MB)
 
     # L'energia del trasferimento viene sottratta e verificata in SearchNode
@@ -75,8 +75,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
     eps_cpu, eps_net, time_in_queue = 0.0, 0.0, 0.0 # energia stimata CPU / NET che useremo per riserve e sottrazioni
     start_time = env.now  # timestamp di inizio del processo
-    D_r = Tmax_H  # deadline massima (timestamp relativi alla policy)
-    d_cpu = estimated_execution_time  # tempo di esecuzione stimato in secondi
+    D_r = (1 + deadline) * d_cpu  # deadline massima (timestamp relativi alla policy) (1 + tmax )extimatedexecutiontime
 
     d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
     C_sen = config.get("C_sen", 1e9)  # parametro costante per il modello energetico CPU
@@ -90,7 +89,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     # Logica di routing basata sul tipo di task
     if task_type in ("Generic_Service", "CPU_Intensive"):
         # energia richiesta per eseguire il task sul server
-        eps_cpu = selected_server.compute_execution_energy(estimated_execution_time, C_sen, e=e_coeff)
+        eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
         # controllo se il server ha energia disponibile (tenendo conto delle riserve)
         if selected_server.energy - selected_server.energy_reserved < eps_cpu:
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for CPU")
@@ -110,9 +109,9 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             yield req_cpu
             # quando ottengo la CPU, registro il tempo passato in coda
             time_in_queue = env.now - arrival_time_task_queue
-            selected_server.cpu_busy_until = env.now + estimated_execution_time
+            selected_server.cpu_busy_until = env.now + d_cpu
 
-            yield env.timeout(estimated_execution_time)
+            yield env.timeout(d_cpu)
             selected_server.cpu_busy_until = env.now  # reset quando il task finisce
             # sottraggo l'energia CPU effettivamente consumata
             selected_server.energy -= eps_cpu
@@ -129,7 +128,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
     elif task_type in ("CPU_and_Data_Intensive"):
 
-        eps_cpu = selected_server.compute_execution_energy(estimated_execution_time, C_sen, e=e_coeff)
+        eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
         if selected_server.energy - selected_server.energy_reserved < (eps_cpu + eps_net):
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system,
                                                  "Insufficient Energy for CPU+NET")
@@ -146,8 +145,8 @@ def TaskAssignment(env, selected_server, task_id, image_size,
                     req_cpu.task_data = task_OBS
             yield req_cpu
             Wc = env.now - arrival_time_task_queue
-            selected_server.cpu_busy_until = env.now + estimated_execution_time
-            yield env.timeout(estimated_execution_time)
+            selected_server.cpu_busy_until = env.now + d_cpu
+            yield env.timeout(d_cpu)
             selected_server.cpu_busy_until = env.now  # reset quando il task finisce
             selected_server.energy -= eps_cpu
 
@@ -204,34 +203,47 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         task_id, task_type, arrival_time_system, arrival_time_task_queue,
         start_time, end_time, execution_time, service_time, time_in_queue,
         selected_server.name, num_hops, qlen,
-         estimated_execution_time, transfer_time,
+         d_cpu, transfer_time,
          TMAX_exceeded=False, exec_after_set=False,
         eps_cpu=eps_cpu, eps_net=eps_net
     )
-Tmax_H = config["Tmax_H"]
 
-def estimate_execution_time():
-    # Valori presi dal file di configurazione (già in secondi)
-    mean_seconds = config["CPU_timeout"]["mean"]
-    min_seconds = config["CPU_timeout"]["min"]
-    max_seconds = config["CPU_timeout"]["max"]
+def cpu_demand(task_type):
+    """
+    Ritorna d_cpu (secondi) in base al tipo task:
+      - Generic_Service: distribution 'gen' (mean ~ 0.01-0.1 s)
+      - CPU_Intensive / CPU_and_Data_Intensive: distribution 'cpui' (mean ~ 0.1-1 s)
+      - Batch: 0.0 (non usa la CPU)
+    Usa experiments.truncated_exponential già presente nel progetto.
+    """
+    if task_type == "Generic_Service":
+        params = config["CPU_timeout"].get("gen", config["CPU_timeout"]["default"])
+    elif task_type in ("CPU_Intensive", "CPU_and_Data_Intensive"):
+        params = config["CPU_timeout"].get("cpui", config["CPU_timeout"]["default"])
+    else:  # Batch o altri
+        return 0.0
 
-    estimated_time = experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds)
-    #print(f"Tempo di esecuzione stimato: {estimated_time:.2f} secondi")
-    return estimated_time
+    mean_seconds = params["mean"]
+    min_seconds = params["min"]
+    max_seconds = params["max"]
+
+    return experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds)
 
 
 def SearchNode(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
-                arrival_time_system,
-                initial_server_counter, different_server_counter, other_server_counter,
-               task_type, max_energy):
-
+               arrival_time_system,
+               initial_server_counter, different_server_counter, other_server_counter,
+               task_type, max_energy, d_cpu, deadline):
     global hop
-    estimated_execution_time = estimate_execution_time()
+
+    # NON ricampionare qui; usa il d_cpu passato
+    # estimated_execution_time = estimate_execution_time()  # rimosso
+
     neighbors_at_distance_one = server_selected.get_neighbors()
     neighbors_at_distance_one.append(server_selected)
-    bw_Bps, data_bytes = network_metrics(config, image_size)
 
+    # calcola bw e data_bytes per predire d_net
+    bw_Bps, data_bytes = network_metrics(config, image_size)
     d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
 
     server_metrics = []
@@ -246,20 +258,24 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         else:
             transfer_time = 0.0
 
-        # Calcola il punteggio di selezione in base al tipo di task
+        # calcola lo score passando d_cpu, d_net_predicted, deadline relativo e dati utili
         selection_score = neighbor.get_selection_score(
             task_type,
-            d_cpu=estimated_execution_time,
+            d_cpu=d_cpu,
             d_net=d_net_predicted,
-            energy_budget_max=max_energy
+            D_r=deadline,
+            energy_budget_max=max_energy,
+            file_size_bytes=data_bytes,
+            bandwidth_Bps=bw_Bps
         )
 
         server_metrics.append({
             'server': neighbor,
-            'selection_score': selection_score,  # Usa il nuovo punteggio di selezione
+            'selection_score': selection_score,
             'transfer_time': transfer_time,
             'orbitalSunset': neighbor.orbitalSunset,
         })
+
 
     # Filtra i server non validi
     server_metrics = [m for m in server_metrics
@@ -302,7 +318,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         "ram": required_ram,
         "disk": required_disk,
         "image_size": image_size,
-        "exec_time": estimated_execution_time,
+        "exec_time": d_cpu,
         "transfer_time": transfer_time,
         "num_hops": hop,
         "execution_server": server.name
@@ -311,13 +327,17 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     # Chiamo TaskAssignment sul server scelto
     yield from TaskAssignment(env, server, task_id, image_size,
                                arrival_time_system, hop, transfer_time,
-                              estimated_execution_time, task_type)
+                               task_type, d_cpu, deadline)
 
 def task(env, task_id, server, initial_server_counter, different_server_counter, other_server_counter, task_data, max_energy):
     global hop
     hop = 0
     Volume_size = 0.0
     arrival_time_system = env.now
+
+    # estrai d_cpu e deadline già calcolati in generate_tasks
+    d_cpu = task_data.get('d_cpu')  # fallback
+    deadline = task_data.get('deadline', config.get("Tmax_H", 400))  # relative deadline in seconds
 
     required_ram = task_data['required_ram']
     required_disk = task_data['required_disk']
@@ -338,8 +358,9 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
         initial_server_counter,
         different_server_counter,
         other_server_counter,
-        task_type, max_energy
+        task_type, max_energy, d_cpu, deadline
     )
+
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):
     global arrival_time
@@ -365,22 +386,32 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         # Stima dei parametri necessari per la selezione (richiama task per ottenere type e size)
         temp_task_data = task_type_and_size_generator()
 
-        # Recupera i dati necessari per la selezione:
-        task_type = temp_task_data['type']
-        estimated_execution_time = estimate_execution_time()
+        d_cpu = temp_task_data['d_cpu']
+        # stima per la preselezione: calcola d_net_predicted in secondi
         bw_Bps, data_bytes = network_metrics(config, temp_task_data['image_size'])
         d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
 
-        # seleziono il miglior server secondo l'euristica get_selection_score
+        # imposta deadline: D_r = (1 + delta_D) * (d_cpu + d_net)
+        delta_D = config.get("delta_D", 0.2)  # default 20% slack
+        D_r = (1.0 + delta_D) * (d_cpu + d_net_predicted)
+        temp_task_data['deadline'] = D_r
+
+        # stima d_cpu già in temp_task_data; non richiamare estimate_execution_time() qui per d_cpu.
+        # Ora pre-seleziona server usando i parametri d_cpu e d_net_predicted
         best_server = None
-        best_score = float('-inf')  # Massimizzazione dello score
+        best_score = float('-inf')
         for server in globals.global_access_point:
-            # Calcola score passando le domande stimate (per tener conto anche di d_cpu/d_net)
+            # ottieni bandwidth fra server e (se necessario) per passare a compute_routing_energy
+            # Nel selection passiamo d_net_predicted come tempo stimato (ma get_selection_score preferisce file_size+bandwidth)
             score = server.get_selection_score(
-                task_type,
-                d_cpu=estimated_execution_time,
+                temp_task_data['type'],
+                d_cpu=d_cpu,
                 d_net=d_net_predicted,
-                energy_budget_max=max_energy
+                D_r=D_r,
+                energy_budget_max=max_energy,
+                # opzionali: puoi passare anche file_size/data_bytes/bw_Bps se la funzione lo richiede
+                file_size_bytes=data_bytes,
+                bandwidth_Bps=bw_Bps
             )
             if score > best_score:
                 best_score = score
@@ -391,7 +422,6 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
             task_id += 1
             continue
 
-        temp_task_data['estimated_execution_time'] = estimated_execution_time
         # Il resto dei dati del task sono contenuti in task_type_and_size_generator
         env.process(task(env, task_id, best_server,
                          initial_server_counter, different_server_counter, other_server_counter,
@@ -450,9 +480,105 @@ def task_type_and_size_generator():
         else:
             image_size = globals.rnd.uniform(*batch_params["VH_range"])
 
+    d_cpu = cpu_demand(task_type)
+
     return {
         'type': task_type,
         'image_size': image_size,
         'required_ram': required_ram,
-        'required_disk': required_disk
+        'required_disk': required_disk,
+        'd_cpu': d_cpu
     }
+
+def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_system, deadline_relative):
+    """
+    Metti un task BATCH direttamente nella coda NET del server
+    (batch già nella network-queue quando il SEN entra nella dome).
+    Questo processo effettua: net_dev.request() -> rimane in coda -> quando servito esegue la trasmissione.
+    """
+    # Crea oggetto Task per monitoring / export_state
+    task_OBS = Task(task_id, server_obj.name, 'OBS', arrival_time_system, "Batch", image_size_MB)
+
+    # metriche di rete (predizione d_net in secondi)
+    bw_Bps, data_bytes = network_metrics(config, image_size_MB)
+    task_OBS.d_net = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
+    task_OBS.deadline = arrival_time_system + deadline_relative
+    task_OBS.image_size_MB = image_size_MB
+
+    # crea la richiesta: questo inserisce l'elemento in server_obj.net_dev.queue
+    req = server_obj.net_dev.request()
+    req.task_data = task_OBS  # utile per export_state / monitoring
+
+    # debug/log
+    print(f"[{env.now:.3f}] ENQUEUE BATCH id={task_id} on {server_obj.name} "
+          f"image_MB={image_size_MB:.2f} queue_len={len(server_obj.net_dev.queue)+1}")
+
+    # il processo rimane bloccato finché la risorsa NET non lo serve
+    yield req
+
+    # quando viene servito, simuliamo la trasmissione sulla risorsa NET
+    if bw_Bps > 0:
+        net_time = data_bytes / bw_Bps
+    else:
+        net_time = float('inf')
+
+    server_obj.net_busy_until = env.now + net_time
+    yield env.timeout(net_time)
+
+    # Calcola il tempo di coda
+    start_service_time = env.now - net_time
+    time_in_queue_batch = start_service_time - arrival_time_system  # Tempo di attesa nella net queue
+
+    server_obj.net_busy_until = env.now
+
+    # sottrai energia di trasmissione
+    eps_net = server_obj.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
+
+    # registra il completamento (usa task_completed come negli altri rami)
+    server_obj.task_completed(
+        task_id, "Batch", arrival_time_system, arrival_time_system,
+        start_service_time, env.now, net_time, net_time, time_in_queue_batch,  # <-- USA time_in_queue_batch
+        server_obj.name, 0, len(server_obj.net_dev.queue),
+        estimated_execution_time=0.0, transfer_time=0.0,
+        TMAX_exceeded=False, exec_after_set=False,
+        eps_cpu=0.0, eps_net=eps_net
+    )
+    server_obj.energy -= eps_net
+
+    # registra il completamento (usa task_completed come negli altri rami)
+    server_obj.task_completed(
+        task_id, "Batch", arrival_time_system, arrival_time_system,
+        env.now - net_time, env.now, net_time, net_time, 0.0,
+        server_obj.name, 0, len(server_obj.net_dev.queue),
+        estimated_execution_time=0.0, transfer_time=0.0,
+        TMAX_exceeded=False, exec_after_set=False,
+        eps_cpu=0.0, eps_net=eps_net
+    )
+    try:
+        completed_tuple = (
+            task_id,  # tid
+            "Batch",  # task_type
+            arrival_time_system,  # arr_sys
+            arrival_time_system,  # arr_q (qui uguale)
+            env.now - net_time,  # start_time
+            env.now,  # end_time
+            net_time,  # execution_time (NET)
+            net_time,  # service_time
+            0.0,  # time in queue (usiamo 0 visto che era subito nella net queue)
+            server_obj.name,  # sel_srv (o chi ha eseguito)
+            0,  # hops
+            len(server_obj.net_dev.queue),  # qlen
+            0.0,  # est_e
+            0.0,  # trf
+            False,  # tmax_exc
+            False,  # exec_set
+            0.0,  # eps_cpu
+            eps_net,  # eps_net
+            eps_net,  # eps_tot (cpu+net)
+            server_obj.energy  # remaining_energy
+        )
+        globals.gbl_batch_completed.append(completed_tuple)
+    except Exception as e:
+        print(f"ERROR saving batch completion to global list: {e}")
+
+    print(f"[{env.now:.3f}] BATCH id={task_id} served on {server_obj.name} net_time={net_time:.3f} eps_net={eps_net:.6f}")

@@ -48,7 +48,6 @@ def data_collector(env, interval, start_time, end_time):
 
         # Scansiona tutti i satelliti e raccogli i dati
         for sat_obj in globals.edge_servers:
-            # Assicurati che l'oggetto non sia nullo prima di esportare lo stato
             if sat_obj:
                 state = sat_obj.export_state(env)
                 snapshot["satellites"].append(state)
@@ -103,7 +102,7 @@ if __name__ == "__main__":
 
     globals.observer = Observer(env, getObserverObj())  # Singleton Observer
     env.process(periodic_recall_Routing_monitor(env))
-    # Avvia il nuovo processo per la raccolta dei dati (es. ogni 5 secondi)
+    # Avvia il nuovo processo per la raccolta dei dati tra gli intervalli
     env.process(data_collector(env, interval=1, start_time=100, end_time=200))
 
     if not globals.data_configurations:
@@ -117,44 +116,46 @@ if __name__ == "__main__":
     globals.other_server_counter = {
         server.name: 0 for server in globals.edge_servers}
 
-    # 3) Aggiungi i task batch alle code di rete dei server
-    batch_task_id = 0.1
-    # numero di task batch è tra 0 e 3
-    for _ in range(globals.rnd.randint(1, 4)):
-        batch_task_id += 0.1
-        # Scegli un server a cui assegnare il task batch
-        selected_server = globals.rnd.choice(globals.global_access_point)
+    #3 batch in rete
+    batch_task_id = 1000  # base id per batch
+    for server in globals.edge_servers:
+        n_batches = globals.rnd.randint(0, 3)  # uno o più batch per server (range 0..3)
+        for _ in range(n_batches):
+            batch_task_id += 1000
 
-        # Genera i requisiti del task batch
-        required_ram = globals.rnd.randint(config["required_ram"]["min"], config["required_ram"]["max"])
-        required_disk = globals.rnd.randint(config["required_disk"]["min"], config["required_disk"]["max"])
-        # Assegna i requisiti di dimensione file come specificato per i task batch
-        ranges = resolution_config["size_ranges_MB"]
-        batch_params = ranges["BATCH_TASK"]
-        r = globals.rnd.random()
-        if r < batch_params["gamma_H_weight"]:
-            image_size = globals.rnd.uniform(*batch_params["H_range"])
-        else:
-            image_size = globals.rnd.uniform(*batch_params["VH_range"])
+            # requisiti (ram/disk) se vuoi tenerli
+            required_ram = globals.rnd.randint(config["required_ram"]["min"], config["required_ram"]["max"])
+            required_disk = globals.rnd.randint(config["required_disk"]["min"], config["required_disk"]["max"])
 
-        # Poiché i task batch non usano la CPU, il tempo stimato di esecuzione CPU è 0
-        estimated_execution_time = 0.0
-        transfer_time = 0.0  # Non c'è tempo di trasferimento iniziale
+            # scegli image_size in base alle regole BATCH del tuo resolution_config
+            ranges = resolution_config["size_ranges_MB"]
+            batch_params = ranges["BATCH_TASK"]
+            r = globals.rnd.random()
+            if r < batch_params["gamma_H_weight"]:
+                image_size = globals.rnd.uniform(*batch_params["H_range"])
+            else:
+                image_size = globals.rnd.uniform(*batch_params["VH_range"])
 
-        # Avvia un processo SimPy per il task batch che lo mette direttamente nella coda di rete
-        env.process(simulation.TaskAssignment(
-            env,
-            selected_server,
-            batch_task_id,  # 3. task_id
-            image_size,  # 6. image_size
-            env.now,  # 7. arrival_time_system
-            0,  # 8. num_hops
-            transfer_time,  # 9. transfer_time
-            estimated_execution_time,  # 10. estimated_execution_time
-            task_type="Batch"  # 11. task_type
-        ))
+            # d_cpu = 0 per batch
+            d_cpu_batch = 0.0
 
-        print("Batch task creation loop finished.")
+            # stima d_net e deadline coerente con LaTeX: D_r = (1+delta_D)*(d_cpu + d_net)
+            bw_Bps, data_bytes = simulation.network_metrics(config, image_size)
+            d_net_batch = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
+            delta_D = config.get("delta_D", 0.2)
+            deadline_batch = (1.0 + delta_D) * (d_cpu_batch + d_net_batch)
+
+            # avvia il processo che mette il batch davvero nella net queue del server
+            env.process(simulation.enqueue_batch_in_net(
+                env,
+                server,
+                batch_task_id,
+                image_size,
+                env.now,
+                deadline_batch
+            ))
+
+    print("Batch tasks for all servers scheduled (0..3 per server).")
 
     # 4) Avvia la generazione dei task
     env.process(generate_tasks(
@@ -174,7 +175,7 @@ if __name__ == "__main__":
     if req_dist == "0_0_0":
         req_dist = "RR"
     atime                 = config["arrival_time_exponential"]
-    cpu_mean              = config["CPU_timeout"]["mean"]
+    cpu_mean              = config["CPU_timeout"]["gen"]["mean"]
 
     # Cartella base: include modalità, AP e seed
     base_dir = f"{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
@@ -195,8 +196,6 @@ if __name__ == "__main__":
     )
     csv_routing_task = build_task_csv_path(task_dir, atime, cpu_mean)
 
-    log_file = f"{base_dir}/log_{gen_dist}_AT_{atime}.log"
-
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
     with open('config.json5', 'w') as wf:
@@ -207,7 +206,6 @@ if __name__ == "__main__":
     print(f"Cartella: {base_dir}")
     print(f"CSV tasks: {csv_task}")
     print(f"CSV migrazioni: {csv_mig}")
-    print(f"Log: {log_file}")
 
     # 6) Esecuzione simulazione
     env.run(config['simulation_duration'])
@@ -245,7 +243,6 @@ if __name__ == "__main__":
     print("-"*10)
     generate_Tasks_Status(csv_routing_task)
 
-
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:
         writer = csv.writer(f_out)
@@ -259,80 +256,99 @@ if __name__ == "__main__":
             "Rejection Reason"
         ])
 
-        for srv in globals.edge_servers:
-            # Scrivi i task completati
-            for (
-                    tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
-                    tq, sel_srv, hops, qlen, est_e, trf,
-                    tmax_exc, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy
-            ) in srv.completed_tasks:
-                time_in_system = et - arr_sys
-                remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100
-                writer.writerow([
-                    tid, task_type, "Completed", arr_sys, arr_q, st, et,
-                    ex_t, sv_t, time_in_system, tq, sel_srv, hops,
-                    qlen, est_e, trf,
-                    tmax_exc, exec_set,
-                    eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
-                ])
+        # ---------------------------------------------------------------------
+        # Scrittura CSV: iteriamo su tutti i server rilevanti (edge_servers + global_access_point)
+        #
+        # ---------------------------------------------------------------------
+        # Build unique list of servers (by name) from both collections
 
-            # Scrivi i task scartati
-            for (
-                    tid, task_type, arr_sys, reason
-            ) in srv.rejected_tasks:
-                writer.writerow([
-                    tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
-                    "N/A", "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", "N/A", srv.energy, reason
-                ])
+        all_servers_by_name = {}
+        for s in (globals.edge_servers or []) + (globals.global_access_point or []):
+            if s is None:
+                continue
+            all_servers_by_name[s.name] = s
+        all_servers = list(all_servers_by_name.values())
 
-            # --- Task Residui (non completati: in coda CPU o NET) ---
-            residual_tasks = []
+        for srv in all_servers:
+                # completed tasks
+                for entry in getattr(srv, 'completed_tasks', []):
+                    if len(entry) < 20:
+                        print(f"WARNING: unexpected completed_tasks entry len {len(entry)} for {srv.name}: {entry}")
+                        continue
 
-            # I task in coda si trovano nelle liste custom srv.queue_cpu e srv.queue_net.
-            # I dati disponibili sono: (tid, demand, prio, arrival_time_queue, deadline)
+                    (tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
+                     tq, sel_srv, hops, qlen, est_e, trf,
+                     tmax_exc, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
 
-            # 1. Tasks in coda CPU (in attesa di esecuzione CPU)
-            for req in srv.cpu_dev.queue:
-                if hasattr(req, 'task_data'):
-                    task_obj = req.task_data
-                    residual_tasks.append({
-                        "tid": task_obj.id,
-                        "type": "CPU_Waiting",
-                        "demand": task_obj.d_cpu,  # Tempo di esecuzione stimato
-                    })
+                    time_in_system = (et - arr_sys) if (
+                                isinstance(et, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
+                    remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
+                                                                                                        (int,
+                                                                                                         float)) else "N/A"
 
-            # 2. Tasks in coda NET (in attesa di trasmissione)
-            for req in srv.net_dev.queue:
-                if hasattr(req, 'task_data'):
-                    task_obj = req.task_data
-                    residual_tasks.append({
-                        "tid": task_obj.id,
-                        "type": "NET_Waiting",
-                        "demand": task_obj.d_net,  # Tempo di trasmissione stimato
-                    })
+                    writer.writerow([
+                        tid, task_type, "Completed", arr_sys, arr_q, st, et,
+                        ex_t, sv_t, time_in_system, tq, sel_srv, hops,
+                        qlen, est_e, trf,
+                        tmax_exc, exec_set,
+                        eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
+                    ])
 
-            # Scrivi i task residui nel CSV
-            total_residual_count = len(residual_tasks)
-            for task_data in residual_tasks:
-                tid = task_data["tid"]
+                # rejected tasks (come prima)
+                remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
+                                                                                                    (int,
+                                                                                                     float)) else "N/A"
+                for (tid, task_type, arr_sys, reason) in getattr(srv, 'rejected_tasks', []):
+                    writer.writerow([
+                        tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
+                        "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
+                        "N/A", "N/A", "N/A", "N/A",
+                        "N/A", "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason
+                    ])
 
-                # I valori dei tempi precisi (arr_q, arr_sys, ecc.) non sono disponibili
-                # dalle code SimPy alla chiusura della simulazione; usiamo "N/A".
+                # residual tasks: CPU queue & NET queue
+                residual_tasks = []
+                for req in getattr(srv, 'cpu_dev').queue:
+                    if hasattr(req, 'task_data'):
+                        td = req.task_data
+                        residual_tasks.append(
+                            {"tid": td.id, "type": "CPU_Waiting", "demand": getattr(td, 'd_cpu', 'N/A')})
+                for req in getattr(srv, 'net_dev').queue:
+                    if hasattr(req, 'task_data'):
+                        td = req.task_data
+                        residual_tasks.append(
+                            {"tid": td.id, "type": "NET_Waiting", "demand": getattr(td, 'd_net', 'N/A')})
 
-                task_type_label = f"Residual ({task_data['type']})"
+                total_residual_count = len(residual_tasks)
+                for task_data in residual_tasks:
+                    tid = task_data["tid"]
+                    task_type_label = f"Residual ({task_data['type']})"
+                    demand = task_data["demand"]
+                    execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
+                    service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
 
-                # Colonna 8 (Execution time) e 9 (Service Time) usa la domanda richiesta
-                demand = task_data["demand"]
-                execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
-                service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
+                    writer.writerow([
+                        tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
+                        execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
+                        total_residual_count, "N/A", "N/A",
+                        "N/A", "N/A", "N/A", "N/A",
+                        "N/A", srv.energy, "In Queue at End"
+                    ])
+        # dump also global batch completions (if any)
+        for entry in getattr(globals, 'gbl_batch_completed', []):
+            (tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
+             tq, sel_srv, hops, qlen, est_e, trf,
+             tmax_exc, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+            time_in_system = (et - arr_sys) if (
+                        isinstance(et, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
+            remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
+                                                                                                (int, float)) else "N/A"
+            writer.writerow([
+                tid, task_type, "Completed", arr_sys, arr_q, st, et,
+                ex_t, sv_t, time_in_system, tq, sel_srv, hops,
+                qlen, est_e, trf,
+                tmax_exc, exec_set,
+                eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
+            ])
 
-                writer.writerow([
-                    tid, task_type_label, "In Queue", arr_sys, "N/A", "N/A", "N/A",  # 7 valori
-                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A",  # 6 valori
-                    total_residual_count, "N/A", "N/A",  # 3 valori
-                    "N/A", "N/A", "N/A", "N/A",  # 4 valori (Energy_CPU, Energy_NET, Energy_TOTAL, Remaining_energy)
-                    "N/A", srv.energy, "In Queue at End"  # 2 valori (Remaining_energy e Rejection Reason)
-                ])
         print(f"Simulation results saved to: {csv_task}")

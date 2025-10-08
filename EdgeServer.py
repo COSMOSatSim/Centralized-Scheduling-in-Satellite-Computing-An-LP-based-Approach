@@ -351,24 +351,73 @@ class EdgeServer:
         return running_sum
 
     def W_cpu(self):
+        """
+        Stima il tempo di attesa (tempo residuo in coda) per un nuovo task
+        nella coda CPU (W_cpu). Utilizza il principio del lavoro totale
+        residuo diviso per la capacità di servizio (tempo di servizio medio).
+        """
+
+        # 1. Calcola la somma dei d_cpu di tutti i task attualmente in coda
         queue_sum = self._get_queue_demand_sum(self.cpu_dev.queue, kind='cpu')
+
+        # 2. Ottiene il tempo residuo minimo di esecuzione del task attualmente servito.
+        #    Questo è il tempo che manca al completamento del task in servizio che ha la domanda minima.
+        #    Se la CPU è libera, sarà 0.0.
         min_rem = self._get_min_remaining(self.cpu_dev, kind='cpu')
+
+        # 3. Ottiene la somma del tempo residuo di tutti i task attualmente in servizio.
+        #    Questo include il tempo del task che definisce min_rem più gli altri task in servizio.
         running_total = self._get_running_remaining_total(self.cpu_dev, kind='cpu')
+
+        # 4. Determina la capacità del server (numero di CPU)
         capacity = max(1, getattr(self, '_cpu_capacity', 1))
 
+        # 5. Calcola il lavoro totale da completare prima che il nuovo task sia servito.
+        #    (Lavoro residuo sui task in esecuzione + Lavoro dei task in attesa)
         work_tot = running_total + queue_sum
-        # lavoro residuo dopo il primo intervallo min_rem (durante min_rem i c server producono c*min_rem lavoro)
+
+        # 6. Lavoro residuo dopo il completamento del primo intervallo (min_rem).
+        #    Durante l'intervallo min_rem, 'capacity' unità di lavoro (i server)
+        #    sono processate, consumando (capacity * min_rem) lavoro totale.
+        #    work_after_first è il lavoro residuo che deve essere gestito dopo che
+        #    almeno un server si è liberato.
         work_after_first = max(0.0, work_tot - capacity * min_rem)
+
+        # 7. Stima finale del tempo di attesa (W_cpu):
+        #    tempo di completamento del task più vicino (min_rem)
+        #    + tempo per processare il lavoro restante (work_after_first / capacity,
+        #      poiché ora 'capacity' server gestiranno il resto del lavoro).
         return min_rem + (work_after_first / capacity)
 
     def W_net(self):
+        """
+        Stima il tempo di attesa (tempo residuo in coda) per un nuovo task
+        nella coda Network (W_net). La logica è identica a W_cpu, ma applicata
+        alla risorsa di rete (net_dev).
+        """
+
+        # 1. Calcola la somma dei d_net di tutti i task attualmente in coda
         queue_sum = self._get_queue_demand_sum(self.net_dev.queue, kind='net')
+
+        # 2. Ottiene il tempo residuo minimo di esecuzione del task attualmente servito
         min_rem = self._get_min_remaining(self.net_dev, kind='net')
+
+        # 3. Ottiene la somma del tempo residuo di tutti i task attualmente in servizio
         running_total = self._get_running_remaining_total(self.net_dev, kind='net')
+
+        # 4. Determina la capacità del server di rete (di solito 1)
         capacity = max(1, getattr(self, '_net_capacity', 1))
 
+        # 5. Calcola il lavoro totale da completare prima che il nuovo task sia servito.
         work_tot = running_total + queue_sum
+
+        # 6. Lavoro residuo dopo il completamento del primo intervallo (min_rem).
+        #    work_tot - (capacity * min_rem) è la quantità di lavoro residuo
+        #    che i 'capacity' server devono ancora processare.
         work_after_first = max(0.0, work_tot - capacity * min_rem)
+
+        # 7. Stima finale del tempo di attesa (W_net):
+        #    (tempo di completamento del task più vicino) + (tempo per processare il lavoro restante)
         return min_rem + (work_after_first / capacity)
 
     def _get_queue_demand_sum(self, simpy_resource_queue, kind='cpu'):
@@ -451,60 +500,66 @@ class EdgeServer:
         # print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
         # print("Task IDs:", [task.id for task in self.tasks])
 
-    def get_selection_score(self, task_type, d_cpu, d_net, energy_budget_max=1.0):
+    def get_selection_score(self, task_type, d_cpu, d_net, D_r,
+                            energy_budget_max=1.0,
+                            file_size_bytes=None, bandwidth_Bps=None,
+                            w_e=None, w_R=None):
         """
-        Calcola lo score di selezione in base all'euristica semplice del modello.
-        Lo score è massimizzato: (Beneficio) - (Costo/Ritardo)
+        Calcola lo score.
+        - d_cpu: tempo CPU richiesto (s)
+        - d_net: tempo rete stimato (s) (usato nel R_pred). Se vuoi eps_net corretto, passa file_size_bytes e bandwidth_Bps.
+        - D_r: deadline del task (s)
+        - file_size_bytes, bandwidth_Bps: opzionali, necessari per compute_routing_energy
+        - w_e, w_R: pesi per energia/ritardo (se None prendono valori da config o default 0.5/0.5)
         """
-        # 1. Calcola R e W predetti (usa le tue funzioni W_cpu/W_net modificate)
+
+        # pesi (fallback)
+        if w_e is None or w_R is None:
+            w_e = config.get("weight_energy", 0.5)
+            w_R = config.get("weight_response", 0.5)
+        # 1) predizione tempi
         Wc = self.W_cpu()
         Wn = self.W_net()
         R_predicted = Wc + d_cpu + Wn + d_net
 
-        max_r_acceptable = config.get("Tmax_H", 100.0)
+        # 2) stima energia CPU (richiede C_sen)
+        C_sen = getattr(self, 'C_sen', config.get("C_sen", None))
+        if C_sen is None:
+            # fallback: usa valore globale config se l'oggetto non ha C_sen
+            C_sen = config.get("C_sen", 1e9)
+
+        eps_cpu = self.compute_execution_energy(d_cpu, C_sen, e=config.get("energy_coefficient", 5e-26))
+
+        # 3) stima energia NET: richiede file_size_bytes e bandwidth_Bps
+        if file_size_bytes is None or bandwidth_Bps is None:
+            # se non forniti, cerca di ricavarli (o metti eps_net=0 come fallback)
+            eps_net = 0.0
+        else:
+            eps_net = self.compute_routing_energy(file_size_bytes, bandwidth_Bps, config.get("Ptrasm", 1.0))
+
+        # 4) verifica vincoli (deadline e energia disponibile)
+        if R_predicted > D_r or (eps_cpu + eps_net) > self.energy:
+            return -float('inf')  # non accettabile
+
+        # 5) normalizzazione
+        # Normalizziamo B_i rispetto a energy_budget_max
         B_normalized = self.energy / energy_budget_max
 
-        # Se il tempo totale previsto (R) supera Tmax_H, il server non è idoneo.
-        # Restituiamo un punteggio molto basso (ad esempio, negativo infinito)
-        # per assicurarci che non venga scelto.
-        if R_predicted > max_r_acceptable:
-            return -float('inf')
-            # 2. Definisci il Beneficio (B_i) e il Costo (R) in base al tipo di task
-
+        # normalizziamo W rispetto alla deadline D_r (evita divisione per zero)
+        denom = D_r if D_r > 0 else 1.0
         if task_type in ("Generic_Service", "CPU_Intensive"):
-            # shortest W_r^cpu and the higher B_i.
-            # Score = Beneficio (B_i) - Costo (W_cpu)
-            # R normalizzato rispetto a un massimo di R accettabile (ad esempio Tmax_H)
-            Wc_normalized = Wc / max_r_acceptable if max_r_acceptable > 0 else Wc
-
-            # Se Wc è l'unico ritardo di coda, massimizza B e minimizza Wc
-            # Score = B_normalized - Wc_normalized
-            return B_normalized - Wc_normalized
-
+            W_norm = Wc / denom
         elif task_type == "Batch":
-            # shortest W_r^net and the higher B_i.
-            # Score = Beneficio (B_i) - Costo (W_net)
-            Wn_normalized = Wn / max_r_acceptable if max_r_acceptable > 0 else Wn
-
-            # Score = B_normalized - Wn_normalized
-            return B_normalized - Wn_normalized
-
+            W_norm = Wn / denom
         elif task_type == "CPU_and_Data_Intensive":
-            # shortest W_r^net + W_r^cpu and higher B_i.
-            # Score = Beneficio (B_i) - Costo (W_tot)
-            W_tot = Wc + Wn
-            W_tot_normalized = W_tot / max_r_acceptable if max_r_acceptable > 0 else W_tot
+            W_norm = (Wc + Wn) / denom
+        else:
+            W_norm = 0.0
 
-            # Score = B_normalized - W_tot_normalized
-            return B_normalized - W_tot_normalized
+        # 6) score pesato: vogliamo massimizzare beneficio (B_normalized) e minimizzare ritardo (W_norm)
+        score = w_e * B_normalized - w_R * W_norm
+        return score
 
-        # Per il caso 'Generic Service' puro (solo energy budget):
-        # lower B_i (to use residual energy budget).
-        # Score = Costo (B_i) -> Minimizza B_i, quindi Score = -B_i
-        # if task_type == "Generic_Service":
-        #     return - (self.energy / energy_budget_max)
-
-        return 0.0  # Score di default
 
 def getTransmissionTime(bandwidht, weight, latency):
     return (weight/bandwidht) + latency
