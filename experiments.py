@@ -1,116 +1,51 @@
-import numpy as np
-import json5
 import globals
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+# Carica config solo se ti serve localmente (puoi comunque leggere da globals.config)
+config = globals.config
 
 
-def priority_combination(high, med, low):
+
+def exponential(_=None):
     """
-        Generate a priority based on the specified weights.
-
-        Parameters:
-        - high: High priority.
-        - low: Low priority.
-
-        Returns:
-        - The generated priority.
-
-        """
-
-    numero_casuale = globals.rnd.uniform(0, 1)
-
-    if numero_casuale < (high / 100):
-        priority_weights = 1  # "alta"
-    else:
-        priority_weights = 100  # return "bassa"
-    return priority_weights
-
-
-def request_distribution(high, med, low):
-    global random_server
-    numero_casuale = globals.rnd.uniform(0, 1)
-
-    if numero_casuale < (high / 100):
-        random_server = 1
-    elif (high / 100) <= numero_casuale < (high / 100 + med / 100):
-        random_server = 3
-    elif (high / 100 + med / 100) <= numero_casuale < (1):
-        random_server = 8
-    return random_server
-
-
-def generate_random_numbers():
-    # Genera 5 numeri casuali non uguali tra 0 e 25
-    random_numbers = []
-    global random_number
-    while len(random_numbers) < 5:
-        random_number = globals.rnd.randint(0, 25)
-        if random_number not in random_numbers:
-            random_numbers.append(random_number)
-    return random_number
-
-
-def exponential(description):
+    Distribuzione esponenziale: la chiamata può ricevere un argomento (es. 'Task'),
+    che viene ignorato per compatibilità.
+    Usa globals.rnd_np per riproducibilità.
     """
-    Distribuzione esponenziale con parametro lambda=2.0.
-    tasso di arrivo di 2.0 significa che, in media, si verifica
-    un evento ogni 0.5 unità di tempo.
-    λ = 2.0, è l'inverso del valore atteso (o della media) della distribuzione quindi 1/λ = 0.5 .
+    mean = config.get("arrival_time_exponential", 1.5)
+    # globals.rnd_np può essere un Generator (default_rng) o RandomState fallback
+    try:
+        return float(globals.rnd_np.exponential(scale=mean))
+    except AttributeError:
+        # fallback RandomState
+        return float(globals.rnd_np.exponential(mean))
+
+
+# --- truncated_exponential: due versioni disponibili ---
+def truncated_exponential_trunc(mean, lower, upper):
     """
-    config_arrival_time = config["arrival_time_exponential"]
-    arrival_time = np.random.exponential(config_arrival_time)
-    # print(f'{description} arrival rate distribution: exponential')
-    return arrival_time
-
-
-def normal(description):
-    ## Distribuzione Normale
-    # Parametri della distribuzione normale (media e deviazione standard)
-    media = 2.0  # Media della distribuzione normale. Tasso medio di arrivo 2 sec
-    deviazione_standard = 0.5  # Deviazione standard della distribuzione normale
-    arrival_time = np.random.normal(media, deviazione_standard)
-    # print(f'{description} arrival rate distribution: normal')
-    return arrival_time
-
-
-def lognormal(description):
-    ## Distribuzione Log-Normale
-    # Parametri della distribuzione log-normale (media e deviazione standard del logaritmo)
-    media_log = 1.0  # Media del logaritmo della distribuzione log-normale
-    deviazione_standard_log = 0.2  # Deviazione standard del logaritmo della distribuzione log-normale
-    log_arrival_time = np.random.normal(media_log, deviazione_standard_log)
-    arrival_time = np.exp(log_arrival_time)
-
-    # print(f'{description} arrival rate distribution: log-normal')
-    return arrival_time
-
-
-def weibull(description):
+    Versione TRONCATA (come avevi prima) ma usa globals.rnd_np.
     """
-    Distribuzione Weibull
-    Parametri della distribuzione Weibull (forma e scala)
+    # se globals.rnd_np è Generator:
+    try:
+        while True:
+            value = float(globals.rnd_np.exponential(scale=mean))
+            if lower <= value <= upper:
+                return value
+    except AttributeError:
+        # fallback RandomState
+        while True:
+            value = float(globals.rnd_np.exponential(mean))
+            if lower <= value <= upper:
+                return value
 
-    Parametri:
-        - shape: Parametro di forma della distribuzione Weibull
-        - scale: tasso medio di arrivo 1/scale = 1/2 = 0,5
+
+def truncated_exponential_unbounded(mean, lower=None, upper=None):
     """
-    shape = 2.0
-    scale = 2.0
-
-    # Genera campioni da una distribuzione Weibull
-    arrival_time = np.random.weibull(shape) * scale
-
-    # print(f'{description} arrival rate distribution: Weibull')
-    return arrival_time
-
-
-# Genera un numero con distribuzione esponenziale troncata tra 10 e 25 minuti
-def truncated_exponential(mean, lower, upper):
-    #return np.random.exponential(scale=mean)
-     while True:
-        value = np.random.exponential(scale=mean)
-        if lower <= value <= upper:
-            return value
+    Versione NON TRONCATA per i CPU times (ritorna esponenziale senza limiti).
+    Usa 'mean' come parametro di scala.
+    Se vuoi un comportamento diverso, cambia qui.
+    """
+    try:
+        return float(globals.rnd_np.exponential(scale=mean))
+    except AttributeError:
+        return float(globals.rnd_np.exponential(mean))

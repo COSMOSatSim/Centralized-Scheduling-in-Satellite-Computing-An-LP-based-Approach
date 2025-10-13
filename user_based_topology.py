@@ -1,10 +1,10 @@
 import json, json5
 from math import sqrt
-import numpy as np
 from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
 from Satellite import Satellite
 import sys
+import globals
 
 with open('config.json5') as config_file:
     config = json5.load(config_file)
@@ -184,8 +184,8 @@ def filterSatellitesInView(satellite, t):
     velocity = sys.velocity    
 
     r = sys.position.km                             # r è la posizione relativa del SAT rispetto all'observer
-    r_unit = r / np.linalg.norm(r)                  # Vettore unitario 
-    v_rel = np.dot(velocity.km_per_s, r_unit)       # Calcoliamo la velocità calcolando il prodotto scalare tra r e r_unit
+    r_unit = r / globals.rnd_np.linalg.norm(r)                  # Vettore unitario
+    v_rel = globals.rnd_np.dot(velocity.km_per_s, r_unit)       # Calcoliamo la velocità calcolando il prodotto scalare tra r e r_unit
     
     return True if v_rel < 0 else False
 

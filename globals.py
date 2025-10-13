@@ -11,7 +11,6 @@ global_access_point = []    # Lista degli access point globali
 next_server_index = 0       # Indice del prossimo server a cui inviare un task
 gbl_batch_completed = []   # new global list for batch completions
 
-
 config_index = 0            # Indice che indica la configurazione corrente
 
 edge_servers = []           # Lista dei server globali totali
@@ -25,9 +24,15 @@ with open('config.json5') as config_file:
     config = json5.load(config_file)
 
 # Imposta seme e ambiente
-rnd = _random.Random()
-rnd.seed(config["seed"])
-np.random.seed(config["seed"])
+_seed = int(config.get("seed", 42))
+
+# Python stdlib RNG (con API Random) — per funzioni che usano `random` builtin
+rnd = _random.Random(_seed)
+np.random.seed(_seed) ##questa si potrebbe rimuovere
+
+# NumPy Generator: for exponential sampling, uniform, etc.
+# Use the new Generator API so behavior is deterministic across NumPy versions
+rnd_np = np.random.default_rng(_seed)
 
 gbl_tasks = []                  # Lista che mantiene tutti i Task creati per il Routing
 

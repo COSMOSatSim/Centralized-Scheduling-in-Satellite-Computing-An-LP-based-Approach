@@ -221,14 +221,11 @@ def cpu_demand(task_type):
         params = config["CPU_timeout"].get("gen", config["CPU_timeout"]["default"])
     elif task_type in ("CPU_Intensive", "CPU_and_Data_Intensive"):
         params = config["CPU_timeout"].get("cpui", config["CPU_timeout"]["default"])
-    else:  # Batch o altri
+    else:
         return 0.0
 
     mean_seconds = params["mean"]
-    min_seconds = params["min"]
-    max_seconds = params["max"]
-
-    return experiments.truncated_exponential(mean=mean_seconds, lower=min_seconds, upper=max_seconds)
+    return experiments.truncated_exponential_unbounded(mean_seconds)
 
 
 def SearchNode(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
