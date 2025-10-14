@@ -557,7 +557,7 @@ class EdgeServer:
             W_norm = 0.0
 
         # 6) score pesato: vogliamo massimizzare beneficio (B_normalized) e minimizzare ritardo (W_norm)
-        score = w_e * B_normalized - w_R * W_norm
+        score = w_e * B_normalized + w_R * W_norm
         return score
 
 

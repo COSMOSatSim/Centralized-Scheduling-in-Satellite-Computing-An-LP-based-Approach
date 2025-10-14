@@ -10,10 +10,12 @@
   arrival_time_exponential: 1.5,
   DeadLine: 400,
   initial_energy: 150000,
-  C_sen: 1000000000.0,
+  C_sen: 10000000.0,
   energy_coefficient: 5e-26,
+  weight_energy: 0.7,
+  weight_response: 0.3,
   Ptrasm: 1.0,
-  Bandwidth_to_GU_Bps: 10000,
+  Bandwidth_to_GU_Bps: 35000000,
   CPU_timeout: {
     gen: {
       mean: 0.05,
