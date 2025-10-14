@@ -14,6 +14,7 @@ from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
 from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
+
 import globals
 
 # Leggi il file di configurazione JSON
@@ -68,10 +69,12 @@ if __name__ == "__main__":
     if config.get("Build_Configurations", False):
 
         tle_data = saveTLEOnFile()
-        tot_config = int((config["simulation_duration"] + config["adding_time"]) / 2)
+        config_interval = config["Interval_between_Configurations_in_seconds"]
+        tot_config = int((config["simulation_duration"] + config["adding_time"]) / config_interval)
+
         configurations = genConfigs(
             get_current_time(),
-            config["Interval_between_Configurations_in_seconds"],
+            config_interval,
             tot_config,
             tle_data
         )
@@ -102,8 +105,6 @@ if __name__ == "__main__":
 
     globals.observer = Observer(env, getObserverObj())  # Singleton Observer
     env.process(periodic_recall_Routing_monitor(env))
-    # Avvia il nuovo processo per la raccolta dei dati tra gli intervalli
-    env.process(data_collector(env, interval=1, start_time=100, end_time=200))
 
     if not globals.data_configurations:
         sys.exit("Errore: il file delle configurazioni è vuoto.")

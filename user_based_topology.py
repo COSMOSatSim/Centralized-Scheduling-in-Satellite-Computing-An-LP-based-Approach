@@ -1,4 +1,4 @@
-import json, json5
+import json5
 from math import sqrt
 from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
@@ -6,6 +6,7 @@ from Satellite import Satellite
 import sys
 import globals
 
+# Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
 

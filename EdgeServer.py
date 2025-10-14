@@ -1,11 +1,16 @@
+import globals
+import sys
 import json5
 from math import sqrt
-import simpy
+import simpy, copy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
+from routing_Manager import forward_packet_DSR
 from user_based_topology import getSystemFromSat
 from Task import Task
-import globals
+
+from packet import Packet
+from utils import sendTask
 
 
 # Leggi il file di configurazione JSON
@@ -14,6 +19,7 @@ with open('config.json5') as config_file:
 
 BATMAN = config["Routing_algorithm"]["BATMAN"]
 GREEDY = config["Routing_algorithm"]["GREEDY"]
+DSR = config["Routing_algorithm"]["DSR"]
 
 class EdgeServer:
     def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point, elev_angle):
@@ -60,6 +66,18 @@ class EdgeServer:
         self.ogm_table = {}
         self.OGMs_History = OrderedDict()
         self.OGMs_History_dim = 2046
+        self.ogm_sequence = 0           # Contatore OGM emessi
+        self.OGMs = []                  # OGM to process
+        self.OGMs_NP = []               # OGM received and Not-Processed
+        self.ogm_table = {}             # OGMs Table {'originator': { 'neighbor': 'count'
+
+        self.OGMs_History = OrderedDict()# Lista OGM visionati in passato (FIFO)
+        self.OGMs_History_dim = 2046     # Limite dimensione History OGM
+
+        self.routes = {}            # Dizionario di Percorsi arrivati
+        self.packets = []           # Lista di pacchetti da smaltire
+        self.packets_seq = 0        # contatore pacchetti spediti
+        self.pkt_history = []
 
     def export_state(self, env):
         """
@@ -455,10 +473,17 @@ class EdgeServer:
         if best_server:
             yield from sendTask(env, task, self, best_server, 'SIMPLE_GREEDY')
 
+
+
+
     def deliver_to_Observer(self, env, mode, task):
         print(f"[MODE: {mode}]")
         task.routingEndTime = env.now
         yield from sendTask(env, task, self, globals.observer, 'DIRECT')
+
+
+
+
 
     def forward_packet(self, env):
         if len(self.neighbors) > 0:
@@ -495,6 +520,7 @@ class EdgeServer:
 
                     elif GREEDY:
                         yield from self.greedy_approach(env, task)
+
 
         # else:
         # print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
@@ -564,11 +590,9 @@ class EdgeServer:
 def getTransmissionTime(bandwidht, weight, latency):
     return (weight/bandwidht) + latency
 
+
 def sendTask(env, task, sender, receiver, algorithm):
-
     """
-    Transfers a task from a sender satellite to a receiver satellite, updating its state and attributes.
-
     Args:
         task (Task): The task object to be transferred. It contains attributes such as `hop`, `ttl`,
                      `id`, `current_server`, and `satellite_destination`.
@@ -693,4 +717,6 @@ def build_task_csv_path(folder, at, cpu):
         csv_routing_task = f"{folder}/BATMAN_AT_{at}_CPU_{cpu}.csv"
     elif GREEDY:
         csv_routing_task = f"{folder}/GREEDY_AT_{at}_CPU_{cpu}.csv"
+    elif DSR:
+        csv_routing_task = f"{folder}/DSR_AT_{at}_CPU_{cpu}.csv"
     return csv_routing_task

@@ -1,5 +1,6 @@
-import json5, csv
 import globals
+import json5, csv
+import os
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
@@ -17,7 +18,7 @@ class Task:
     def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, task_type, image_size):
 
         self.id = task_id  
-        self.ttl = 20                           # Time to live
+        self.ttl = 20                           # Time to live in HOP
         self.hop = 0                            # num_hop
         self.arrived = False                    # Arrived Flag                                        
         self.routingInitTime = routingInitTime  # Tempo di partenza
@@ -27,19 +28,26 @@ class Task:
         # PARAMETRI DEL TASK (ora puliti)
         self.task_type = task_type  # Es: "CPU_Intensive"
         self.weight = image_size  # Dimensione Immagine (MB)
+        self.source = current_node              # Nodo di partenza
+        self.resolution = category              # Categoria Risoluzione Immagine
+        self.weight = resolution                # Dimensione Immagine
 
         self.current_node = current_node        # Server sul quale si trova
         self.dest_node = dest_node              # Nodo di destinazione
 
-        #self.visited: set[str] = {current_node} # Set Server precedente
+        #self.visited: set[str] = {current_node}# Set Server precedente
         self.visited = set()                    # Set Server precedente
-        self.visited.add(current_node)                # Aggiungo il primo server (il nome!)
+        self.visited.add(current_node)          # Aggiungo il primo server (il nome!)
 
         self.algorithms_used = {}               # Dizionario degli algoritmi utilizzati
 
-        self.hop_History = [current_node]             # Lista di satelliti sui quali sono stato
+        self.hop_History = [current_node]       # Lista di satelliti sui quali sono stato
 
-
+        # DSR
+        self.source_DSR = current_node
+        self.routeRequestIst = None             # Timestamp start route Request
+        self.RouteReply = False                 # Bool allow reply
+        self.selected_route = []                # Lista percorso da seguire
 
     def __str__(self):
         """
@@ -48,18 +56,70 @@ class Task:
         """
         lista = []
         for s in self.hop_History:
-            try:
-                lista.append(s.name)
-            except AttributeError:
-                lista.append(s)  # Se è già una stringa
+            lista.append(s.name)
 
-        return f"|HISTORY:{lista}\t|CURRENT:{self.current_node}\t|TTL:{self.ttl}|Hop:{self.hop}"
+        return f"|HISTORY:{lista}\t|CURRENT:{self.current_server}\t|TTL:{self.ttl}|Hop:{self.hop}"
 
     def add_algorithm(self, algo_name: str):
         """Incrementa il contatore per l'algoritmo usato"""
         if algo_name not in self.algorithms_used:
             self.algorithms_used[algo_name] = 0
         self.algorithms_used[algo_name] += 1
+
+def assign_resolution(required_ram, required_disk):
+    
+    # Normalizzazione pesata
+    norm_ram = required_ram / config["required_ram"]["max"]
+    norm_disk = required_disk / config["required_disk"]["max"]
+    weight = 0.5 * norm_ram + 0.5 * norm_disk
+    
+    # Mappatura del peso a una categoria
+    if weight <= 0.25:
+        category = "Low"
+    elif weight <= 0.5:
+        category = "Medium"
+    elif weight <= 0.75:
+        category = "High"
+    else:
+        category = "Very High"
+
+    min_value = resolution[category]["min"]
+    max_value = resolution[category]["max"]
+
+    min_byte = dim_to_Byte(min_value["dim"], min_value["value"])
+    max_byte = dim_to_Byte(max_value["dim"], max_value["value"])
+
+    resolution_value = globals.rnd.randint(min_byte, max_byte)   # Valore di Ritorno in Byte
+    return category, resolution_value
+
+def dim_to_Byte(dim, value):
+    """
+    Converts megabytes (MB) or kilobytes (KB) to bytes.
+    :param dim: Dimension unit ('MB' or 'KB').
+    :param value: Value in the given unit.
+    :return: Value in bytes.
+    """
+    if dim == 'MB': 
+        return int(value * 1000 * 1000)
+    if dim == 'KB':
+        return int(value * 1000)
+
+def byte_to_dim(byte_value):
+    """
+    Converts bytes to the most suitable unit (MB, KB, or B) and returns a formatted string.
+    :param byte_value: Value in bytes.
+    :return: String in the format "value unit" (e.g., "2.5 MB").
+    """
+    if byte_value >= 1000 * 1000:
+        value = byte_value / (1000 * 1000)
+        unit = 'MB'
+    elif byte_value >= 1000:
+        value = byte_value / 1000
+        unit = 'KB'
+    else:
+        value = byte_value
+        unit = 'B'
+    return f"{value:.2f} {unit}"
 
 def get_algo_percentages(t):
     """
@@ -73,7 +133,38 @@ def get_algo_percentages(t):
             algo_perc[algo] = round((count / total) * 100, 2)
     return algo_perc  # se non ci sono algoritmi rimane {}
 
-def generate_Tasks_Status(csv_filename):
+def colorize(text: str, color: str) -> str:
+    """
+    Colora una stringa con i codici ANSI per il terminale.
+
+    Args:
+        text (str): La stringa da colorare.
+        color (str): Il colore (es: "red", "green", "yellow", "blue", "magenta", "cyan", "white").
+
+    Returns:
+        str: La stringa colorata con codici ANSI.
+    """
+    colors = {
+        "black": "\033[30m",
+        "red": "\033[91m",
+        "green": "\033[92m",
+        "yellow": "\033[93m",
+        "blue": "\033[94m",
+        "magenta": "\033[95m",
+        "cyan": "\033[96m",
+        "white": "\033[97m",
+        "reset": "\033[0m",
+        "orange": "\033[33m"
+    }
+
+    start = colors.get(color.lower(), "")
+    end = colors["reset"] if start else ""
+    return f"{start}{text}{end}"
+
+
+
+
+def generate_Tasks_Status(csv_filename = "DSR_Execution.csv"):
     """
         Questa funzione salva in un file CSV le informazioni sui Task
     """
@@ -108,23 +199,54 @@ def generate_Tasks_Status(csv_filename):
     # FASE DI SORTING
     total_tasks.sort(key=lambda x: x[0])
 
+    TArr, TExp, Tsob, ToS = 0,0,0,0
+
     # FASE DI STAMPA FORMATTATA
     print(f"TOT TASK IN ROUTING SYS: {len(total_tasks)}\n")
-    print(" id     | CurrentNode          | Hop | Label           | Task Type              | Start Routing (s) | End Routing (s) | duration      | Algorithms")
+    print(" id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
     for elem in total_tasks:
         id_, current_node, hop, label, task_type, routing_start, routing_end, durata, algorithms = elem
         algorithms_str = ', '.join([f"{k}:{v}%" for k, v in algorithms.items()]) if algorithms else "-"
         
-        # Colora di verde se routing_start e routing_end sono entrambi presenti
-        if routing_start is not None and routing_end is not None:
-            color_start = "\033[92m"  # Verde
-            color_end = "\033[0m"     # Reset
+        row = (
+            f"{id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | "
+            f"{resolution_cat:<13} | {routing_start:<17} | {str(routing_end):<15} | "
+            f"{str(durata):<13} | {algorithms_str}"
+        )
+
+        if label == "TASK_ARRIVED":
+            row = colorize(row, "green")
+            TArr += 1
+        elif label == "TTL_EXPIRED":
+            row = colorize(row, "red")
+            TExp += 1
+        elif label == "SEN_OUT_OF_BUFF":
+            row = colorize(row, "orange")
+            Tsob += 1
         else:
-            color_start = ""
-            color_end = ""
+            ToS += 1
         
         print(f"{color_start} {id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | {task_type:<22} | {routing_start:<17} | {str(routing_end):<15} | {str(durata):<13} | {algorithms_str}{color_end}")
    
+        print(row)
+
+    # ! Scrittura delle informazioni nel file csv
+    summary_filename = "tasks_summary.csv"
+
+    # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
+    summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
+
+    # Se il file non esiste, crea il file e scrivi l'intestazione
+    file_exists = os.path.isfile(summary_filename)
+    with open(summary_filename, mode="a", newline="") as summary_file:
+        writer = csv.writer(summary_file)
+        if not file_exists:
+            writer.writerow(["Seed", "TotalTasks", "Arrived", "Expired", "OutOfBuff", "OnSim"])
+        writer.writerow(summary_row)
+    print(f"Summary info saved to: {summary_filename}")
+
+    # ! Fine scrittura
+
     print()  # Riga vuota alla fine per separare dall'output successivo
 
     # FASE DI SCRITTURA CSV
@@ -133,9 +255,15 @@ def generate_Tasks_Status(csv_filename):
         "RoutingInitTime", "RoutingEndTime", "Duration", "Algorithms"
     ]
 
+    # Crea il file se non esiste
+    if not os.path.exists(csv_filename):
+        open(csv_filename, "w").close()
+
     with open(csv_filename, mode="w", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(headers)  # intestazioni
         writer.writerows(total_tasks)
 
     print(f"Task info saved to: {csv_filename}")
+    print(f"TASK GLOBALI {len(globals.gbl_tasks)} \n",)
+    print(f"TASK CONSEGNATI:{TArr} EXP:{TExp} SOB:{Tsob} OnSim:{ToS}")

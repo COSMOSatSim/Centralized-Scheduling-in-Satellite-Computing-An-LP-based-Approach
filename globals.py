@@ -1,6 +1,16 @@
-import threading, os, json, json5
+import threading, os, json5, json
 import random as _random
 import numpy as np
+
+# Leggi il file di configurazione JSON
+with open('config.json5') as config_file:
+    config = json5.load(config_file)
+
+# Imposta seme e ambiente
+rnd = _random.Random()
+rnd.seed(config["seed"])
+np.random.seed(config["seed"])
+
 
 # Variabili globali per i server
 initial_server_counter = {}     # Tiene traccia dei task inizializzati su ogni server
@@ -17,7 +27,7 @@ edge_servers = []           # Lista dei server globali totali
 edge_servers_topology = []  # Edge Servers nella topologia nella configurazione 
 
 observer = None
-instant_in_configuration = None
+ist_in_conf = None#Istante nella configurazione attuale
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
@@ -34,7 +44,8 @@ np.random.seed(_seed) ##questa si potrebbe rimuovere
 # Use the new Generator API so behavior is deterministic across NumPy versions
 rnd_np = np.random.default_rng(_seed)
 
-gbl_tasks = []                  # Lista che mantiene tutti i Task creati per il Routing
+gbl_tasks = []              # Lista che mantiene tutti i Task creati per il Routing
+gbl_packet = []             # Lista globale dei pacchetti che girano nel simulatore
 
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
 
