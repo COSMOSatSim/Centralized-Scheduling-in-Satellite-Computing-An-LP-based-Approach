@@ -90,9 +90,10 @@
   OGMs_redistribution: 20,
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: false,
+  Routing_Interval: 1,
   Routing_algorithm: {
-    BATMAN: false,
+    BATMAN: true,
     GREEDY: false,
-    DSR: true,
+    DSR: false,
   },
 }

@@ -159,8 +159,6 @@ def manage_ogm_test(ogm_map, t):
     return ogm_tables_snapshot, ogm_position_dict
 
 def saveInfoInFile(file ,value_dictionary, N_config):
-    
-    
     try:
         with open(file, "r") as f:
             print(f"file {file} loaded.\n")
@@ -174,8 +172,6 @@ def saveInfoInFile(file ,value_dictionary, N_config):
 
     with open(file, "w") as f:
         json.dump(data, f, indent=4)
-
-
 
 def transmission_failure_probability(distance):
     # Probabilità di fallimento cresce linearmente con la distanza
@@ -273,10 +269,6 @@ def startRouteReply(source, neighbors, pkt: Packet):
             print(f"{pkt.id} Rimosso da {source.name}")
             source.packets.remove(pkt)
 
-
-
-
-
 def sendPkt(source, dest, pkt:Packet):
     if dest == None:
         sys.exit("ERRORE: destination = None")
@@ -299,7 +291,6 @@ def sendPkt(source, dest, pkt:Packet):
 def forward_packet_DSR(env, node):
 
     # ? Gestione dei vicini
-    neighbors = None
     if node.name != 'OBS':
         neighbors = list(node.neighbors.keys()) # Vicini Nodo Normale
         if node.is_acc_point:
@@ -346,7 +337,6 @@ def forward_packet_DSR(env, node):
                 #     print(f"Nessun task trovato con id {pkt.taskID} in node.tasks")
 
                 #print(f"CONTROLLO HISTORY DI [{pkt.taskID}] pktID: {pkt.id} time: {env.now} IMPIEGATO: {env.now - task.routeRequestIst}")
-
 
             else:
                 # Lo mando al prossimo nodo della rete
@@ -418,7 +408,7 @@ def forward_packet_DSR(env, node):
                 node.arrived_tasks.append(task)
                 node.tasks.remove(task)
                 task.routingEndTime = env.now
-                print(f"[{task.id}] CONSEGNATO! LABEL: {task.label}")
+                print(f"[{task.id}] CONSEGNATO! ")
 
             else:
                 # $ Devo rispedire il task
@@ -445,29 +435,6 @@ def forward_packet_DSR(env, node):
                     #print("MODIFICHE EFFETTUATE:")
                     #print(f"\t\t ReqIST (dopo) : {task.routeRequestIst}\n\t\tROUTE: {task.selected_route}\n\t\t source: {task.source_DSR}")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # | Secondi | Millisecondi |
 # | ------- | ------------ |
 # | 1       | 1000 ms      |
@@ -476,13 +443,13 @@ def forward_packet_DSR(env, node):
 # | 0,01    | 10 ms        |
 # | 0,001   | 1 ms         |
 
-def periodic_recall_Routing_monitor(env, interval = 0.1):
+def periodic_recall_Routing_monitor(env):
     """
     Questa funzione dovrà scorrere costantemente tutti i task dentro
     la lista dei globali, e costantemente spingerli verso la destinazione.
     """
+    interval = config["Routing_Interval"]
     while True:
-        print(f"ENV TIME: {env.now}")
 
         if DSR:
             for node in globals.edge_servers:

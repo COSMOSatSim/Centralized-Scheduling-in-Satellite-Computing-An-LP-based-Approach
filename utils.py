@@ -1,3 +1,4 @@
+import globals
 
 def sendTask(env, task, sender, receiver, algorithm):
 
@@ -27,7 +28,10 @@ def sendTask(env, task, sender, receiver, algorithm):
     if task.ttl > 0:
         # Gestione dell'attesa nell'env
         if receiver.name != 'OBS':
-            bandwidth = sender.bandwidth[receiver] * (1024**2)  # da MB/s a Byte/s
+            #bandwidth = sender.bandwidth[receiver] * (1024**2)  # da MB/s a Byte/s
+            bandwidth = globals.rnd.randint(globals.config["available_bandwidth"]["min"], globals.config["available_bandwidth"]["max"])
+            bandwidth = bandwidth * (1024 ** 2) if bandwidth is not None else 0.0
+
             trasmission_time = getTransmissionTime(bandwidth, task.weight, sender.latency[receiver])
             print(f"[{task.id}][{algorithm}] {sender.name} -> {receiver.name} | Tramission-time: {trasmission_time}")
 
@@ -35,10 +39,11 @@ def sendTask(env, task, sender, receiver, algorithm):
             sender.energy -= energy_tx
             print(
                 f"[{task.id}] Energy routing consumed by {sender.name}: {energy_tx:.6f} J (remaining {sender.energy:.2f})")
-
-
         else:
-            bandwidth = 10000 * (1024**2)  # da MB/s a Byte/s
+            bandwidth = globals.rnd.randint(globals.config["available_bandwidth"]["min"],
+                                            globals.config["available_bandwidth"]["max"])
+            bandwidth = bandwidth * (1024 ** 2) if bandwidth is not None else 0.0
+
             trasmission_time = getTransmissionTime(bandwidth, task.weight, 0)
             print(f"[{task.id}][{algorithm}] CONSEGNATO! {sender.name} -> {receiver.name} | Tramission-time: {trasmission_time}")
 
@@ -53,8 +58,7 @@ def sendTask(env, task, sender, receiver, algorithm):
         receiver.tasks.append(task)         # Inviamo il task al Receiver
         
         task.current_node = receiver.name   # Modifichiamo le informazioni sul task
-        print(f"Durante la spedizione del Task {task.id} questa è la route: {task.selected_route}")
-        
+
         if task.dest_node == receiver.name:
             task.arrived = True
             task.label = 'TASK_ARRIVED'

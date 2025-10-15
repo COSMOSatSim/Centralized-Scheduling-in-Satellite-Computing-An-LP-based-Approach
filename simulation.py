@@ -189,7 +189,6 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     execution_time = end_time - start_time
     service_time = execution_time + transfer_time
 
-    print(f"Task {task_id} Routing Start")
     selected_server.tasks.append(task_OBS)
     globals.gbl_tasks.append(task_OBS)
 
@@ -208,6 +207,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
          DeadLine=False, exec_after_set=False,
         eps_cpu=eps_cpu, eps_net=eps_net
     )
+    print(f"Task {task_id} Routing Start")
 
 def cpu_demand(task_type):
     """

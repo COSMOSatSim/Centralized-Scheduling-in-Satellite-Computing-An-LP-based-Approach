@@ -74,13 +74,23 @@ class Observer(metaclass = ObserverMeta):
 
         return self.getLocation(altitude = 0).at(t).position.km.tolist()
     
+
     def print_task_summary(self):
         """
         Stampa un riassunto formattato dei task arrivati con successo all'Observer
         """
         print(f"TASK ARRIVATI CON SUCCESSO ALL'OBS: {len(self.tasks)}:\n")
-        print(" id     | weight        | resolution               | Start Routing (s) | End Routing (s) | duration      | hop |")
+        print(" id     | weight        | resolution    | Start Routing (s) | End Routing (s) | duration      | hop |")
         for task in self.tasks:
-            print(f" {task.id:<6} | {format_mb(task.weight):<13} | {task.task_type:<24} | {round(task.routingInitTime, 2):<17} | {round(task.routingEndTime, 2):<15} | {round(task.routingEndTime - task.routingInitTime, 2):<13} | {task.hop:<3} |")
 
+            initTime = round(task.routingInitTime, 2)
+            if task.routingEndTime is None:
+                endTime = "N/A"
+                duration = "N/A"
+            else:
+                endTime = round(task.routingEndTime, 2)
+                duration = round(task.routingEndTime - task.routingInitTime, 2)
 
+            print(
+                f" {task.id:<6} | {format_mb(task.weight):<13} | {task.task_type:<13} | {initTime:<17} | {endTime:<15} | {duration:<13} | {task.hop:<3} |")
+        print()  # Riga vuota alla fine per separare dall'output successivo

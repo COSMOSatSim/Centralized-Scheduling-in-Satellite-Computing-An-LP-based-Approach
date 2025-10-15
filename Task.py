@@ -1,5 +1,5 @@
 import globals
-import json, json5, csv
+import json5, csv
 import os
 
 # Leggi il file di configurazione JSON
@@ -11,7 +11,7 @@ with open('img_resolution.json5') as resolution_file:
 
 class Task:
 
-    def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, category, resolution):
+    def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, task_type, image_size):
 
         self.id = task_id
         self.ttl = 20  # Time to live in HOP
@@ -20,9 +20,11 @@ class Task:
         self.routingInitTime = routingInitTime  # Tempo di partenza
         self.routingEndTime = None  # Tempo di fine
         self.label = 'ON_SIMULATION'  # Failure Label
+
+        self.task_type = task_type  # Es: "CPU_Intensive"
+        self.weight = image_size  # Dimensione Immagine (MB)
+
         self.source = current_node  # Nodo di partenza
-        self.resolution = category  # Categoria Risoluzione Immagine
-        self.weight = resolution  # Dimensione Immagine
 
         self.current_node = current_node  # Server sul quale si trova
         self.dest_node = dest_node  # Nodo di destinazione
@@ -181,7 +183,7 @@ def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
             t.current_node,  # Nodo corrente
             t.hop,  # Numero di hop
             t.label,  # Etichetta di stato
-            t.resolution,  # Categoria di risoluzione
+            t.task_type,  # Categoria di task_type
             round(t.routingInitTime, 2),  # Tempo di inizio routing arrotondato
             routing_end,  # Tempo di fine routing arrotondato (se presente)
             durata,  # Durata del routing (se presente)
@@ -200,12 +202,12 @@ def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
     print(
         " id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
     for elem in total_tasks:
-        id_, current_node, hop, label, resolution_cat, routing_start, routing_end, durata, algorithms = elem
+        id_, current_node, hop, label, task_type, routing_start, routing_end, durata, algorithms = elem
         algorithms_str = ', '.join([f"{k}:{v}%" for k, v in algorithms.items()]) if algorithms else "-"
 
         row = (
             f"{id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | "
-            f"{resolution_cat:<13} | {routing_start:<17} | {str(routing_end):<15} | "
+            f"{task_type:<13} | {routing_start:<17} | {str(routing_end):<15} | "
             f"{str(durata):<13} | {algorithms_str}"
         )
 

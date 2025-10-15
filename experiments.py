@@ -3,8 +3,6 @@ import globals
 # Carica config solo se ti serve localmente (puoi comunque leggere da globals.config)
 config = globals.config
 
-
-
 def exponential(_=None):
     """
     Distribuzione esponenziale: la chiamata può ricevere un argomento (es. 'Task'),
