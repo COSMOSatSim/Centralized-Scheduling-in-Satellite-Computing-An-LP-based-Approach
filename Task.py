@@ -1,53 +1,45 @@
 import globals
-import json5, csv
+import json, json5, csv
 import os
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
     config = json5.load(config_file)
-try:
-    with open('img_resolution.json5') as resolution_file:
-        # Carica il config completo per usarlo come riferimento
-        RESOLUTION_CONFIG = json5.load(resolution_file)["TASK_GENERATOR_PARAMS"]
-except FileNotFoundError:
-    print("ATTENZIONE: File 'img_resolution.json5' non trovato.")
-    RESOLUTION_CONFIG = {}
+with open('img_resolution.json5') as resolution_file:
+    resolution = json5.load(resolution_file)
+
 
 class Task:
 
-    def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, task_type, image_size):
+    def __init__(self, task_id: int, current_node: str, dest_node: str, routingInitTime, category, resolution):
 
-        self.id = task_id  
-        self.ttl = 20                           # Time to live in HOP
-        self.hop = 0                            # num_hop
-        self.arrived = False                    # Arrived Flag                                        
+        self.id = task_id
+        self.ttl = 20  # Time to live in HOP
+        self.hop = 0  # num_hop
+        self.arrived = False  # Arrived Flag
         self.routingInitTime = routingInitTime  # Tempo di partenza
-        self.routingEndTime = None              # Tempo di fine
-        self.label = 'ON_SIMULATION'            # Failure Label 
+        self.routingEndTime = None  # Tempo di fine
+        self.label = 'ON_SIMULATION'  # Failure Label
+        self.source = current_node  # Nodo di partenza
+        self.resolution = category  # Categoria Risoluzione Immagine
+        self.weight = resolution  # Dimensione Immagine
 
-        # PARAMETRI DEL TASK (ora puliti)
-        self.task_type = task_type  # Es: "CPU_Intensive"
-        self.weight = image_size  # Dimensione Immagine (MB)
-        self.source = current_node              # Nodo di partenza
-        self.resolution = category              # Categoria Risoluzione Immagine
-        self.weight = resolution                # Dimensione Immagine
+        self.current_node = current_node  # Server sul quale si trova
+        self.dest_node = dest_node  # Nodo di destinazione
 
-        self.current_node = current_node        # Server sul quale si trova
-        self.dest_node = dest_node              # Nodo di destinazione
+        # self.visited: set[str] = {current_node}# Set Server precedente
+        self.visited = set()  # Set Server precedente
+        self.visited.add(current_node)  # Aggiungo il primo server (il nome!)
 
-        #self.visited: set[str] = {current_node}# Set Server precedente
-        self.visited = set()                    # Set Server precedente
-        self.visited.add(current_node)          # Aggiungo il primo server (il nome!)
+        self.algorithms_used = {}  # Dizionario degli algoritmi utilizzati
 
-        self.algorithms_used = {}               # Dizionario degli algoritmi utilizzati
-
-        self.hop_History = [current_node]       # Lista di satelliti sui quali sono stato
+        self.hop_History = [current_node]  # Lista di satelliti sui quali sono stato
 
         # DSR
         self.source_DSR = current_node
-        self.routeRequestIst = None             # Timestamp start route Request
-        self.RouteReply = False                 # Bool allow reply
-        self.selected_route = []                # Lista percorso da seguire
+        self.routeRequestIst = None  # Timestamp start route Request
+        self.RouteReply = False  # Bool allow reply
+        self.selected_route = []  # Lista percorso da seguire
 
     def __str__(self):
         """
@@ -66,13 +58,13 @@ class Task:
             self.algorithms_used[algo_name] = 0
         self.algorithms_used[algo_name] += 1
 
+
 def assign_resolution(required_ram, required_disk):
-    
     # Normalizzazione pesata
     norm_ram = required_ram / config["required_ram"]["max"]
     norm_disk = required_disk / config["required_disk"]["max"]
     weight = 0.5 * norm_ram + 0.5 * norm_disk
-    
+
     # Mappatura del peso a una categoria
     if weight <= 0.25:
         category = "Low"
@@ -89,8 +81,9 @@ def assign_resolution(required_ram, required_disk):
     min_byte = dim_to_Byte(min_value["dim"], min_value["value"])
     max_byte = dim_to_Byte(max_value["dim"], max_value["value"])
 
-    resolution_value = globals.rnd.randint(min_byte, max_byte)   # Valore di Ritorno in Byte
+    resolution_value = globals.rnd.randint(min_byte, max_byte)  # Valore di Ritorno in Byte
     return category, resolution_value
+
 
 def dim_to_Byte(dim, value):
     """
@@ -99,10 +92,11 @@ def dim_to_Byte(dim, value):
     :param value: Value in the given unit.
     :return: Value in bytes.
     """
-    if dim == 'MB': 
+    if dim == 'MB':
         return int(value * 1000 * 1000)
     if dim == 'KB':
         return int(value * 1000)
+
 
 def byte_to_dim(byte_value):
     """
@@ -121,6 +115,7 @@ def byte_to_dim(byte_value):
         unit = 'B'
     return f"{value:.2f} {unit}"
 
+
 def get_algo_percentages(t):
     """
     Calcola le percentuali di utilizzo degli algoritmi per un Task.
@@ -132,6 +127,7 @@ def get_algo_percentages(t):
         for algo, count in t.algorithms_used.items():
             algo_perc[algo] = round((count / total) * 100, 2)
     return algo_perc  # se non ci sono algoritmi rimane {}
+
 
 def colorize(text: str, color: str) -> str:
     """
@@ -162,16 +158,14 @@ def colorize(text: str, color: str) -> str:
     return f"{start}{text}{end}"
 
 
-
-
-def generate_Tasks_Status(csv_filename = "DSR_Execution.csv"):
+def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
     """
         Questa funzione salva in un file CSV le informazioni sui Task
     """
-    
+
     total_tasks = []
-    print(f"TASK GLOBALI {len(globals.gbl_tasks)} \n",)
-    
+    print(f"TASK GLOBALI {len(globals.gbl_tasks)} \n", )
+
     for t in globals.gbl_tasks:
         # Se il task ha un tempo di fine routing, calcola la durata e arrotonda i valori
         if t.routingEndTime is not None:
@@ -183,31 +177,32 @@ def generate_Tasks_Status(csv_filename = "DSR_Execution.csv"):
 
         # Crea una lista con le informazioni principali del task
         elem = [
-            t.id,                # ID del task
-            t.current_node,      # Nodo corrente
-            t.hop,               # Numero di hop
-            t.label,             # Etichetta di stato
-            t.task_type,        # Categoria di task_type
+            t.id,  # ID del task
+            t.current_node,  # Nodo corrente
+            t.hop,  # Numero di hop
+            t.label,  # Etichetta di stato
+            t.resolution,  # Categoria di risoluzione
             round(t.routingInitTime, 2),  # Tempo di inizio routing arrotondato
-            routing_end,         # Tempo di fine routing arrotondato (se presente)
-            durata,              # Durata del routing (se presente)
+            routing_end,  # Tempo di fine routing arrotondato (se presente)
+            durata,  # Durata del routing (se presente)
             get_algo_percentages(t)
         ]
         # Aggiungi le informazioni del task alla lista totale
         total_tasks.append(elem)
-    
+
     # FASE DI SORTING
     total_tasks.sort(key=lambda x: x[0])
 
-    TArr, TExp, Tsob, ToS = 0,0,0,0
+    TArr, TExp, Tsob, ToS = 0, 0, 0, 0
 
     # FASE DI STAMPA FORMATTATA
     print(f"TOT TASK IN ROUTING SYS: {len(total_tasks)}\n")
-    print(" id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
+    print(
+        " id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
     for elem in total_tasks:
-        id_, current_node, hop, label, task_type, routing_start, routing_end, durata, algorithms = elem
+        id_, current_node, hop, label, resolution_cat, routing_start, routing_end, durata, algorithms = elem
         algorithms_str = ', '.join([f"{k}:{v}%" for k, v in algorithms.items()]) if algorithms else "-"
-        
+
         row = (
             f"{id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | "
             f"{resolution_cat:<13} | {routing_start:<17} | {str(routing_end):<15} | "
@@ -225,9 +220,7 @@ def generate_Tasks_Status(csv_filename = "DSR_Execution.csv"):
             Tsob += 1
         else:
             ToS += 1
-        
-        print(f"{color_start} {id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | {task_type:<22} | {routing_start:<17} | {str(routing_end):<15} | {str(durata):<13} | {algorithms_str}{color_end}")
-   
+
         print(row)
 
     # ! Scrittura delle informazioni nel file csv
@@ -251,7 +244,7 @@ def generate_Tasks_Status(csv_filename = "DSR_Execution.csv"):
 
     # FASE DI SCRITTURA CSV
     headers = [
-        "TaskID", "CurrentNode", "Hop", "Label", "TaskType",
+        "TaskID", "CurrentNode", "Hop", "Label", "Resolution",
         "RoutingInitTime", "RoutingEndTime", "Duration", "Algorithms"
     ]
 
@@ -265,5 +258,5 @@ def generate_Tasks_Status(csv_filename = "DSR_Execution.csv"):
         writer.writerows(total_tasks)
 
     print(f"Task info saved to: {csv_filename}")
-    print(f"TASK GLOBALI {len(globals.gbl_tasks)} \n",)
+    print(f"TASK GLOBALI {len(globals.gbl_tasks)} \n", )
     print(f"TASK CONSEGNATI:{TArr} EXP:{TExp} SOB:{Tsob} OnSim:{ToS}")

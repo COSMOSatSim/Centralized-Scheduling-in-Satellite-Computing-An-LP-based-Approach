@@ -1,12 +1,11 @@
 import json, json5
 from utils import sendTask
 from packet import Mode, Packet
-from user_based_topology import get_orbit_proximity, getSystemFromSat
+from user_based_topology import get_orbit_proximity
 from Ogm import Ogm
 from Observer import Observer
 import globals
 import sys
-import os
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:

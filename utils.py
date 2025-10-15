@@ -1,4 +1,3 @@
-import sys
 
 def sendTask(env, task, sender, receiver, algorithm):
 
@@ -62,16 +61,13 @@ def sendTask(env, task, sender, receiver, algorithm):
 
         #task.hop_History.append(receiver.name)     # Aggiorno la History
         task.visited.add(receiver.name)            # Aggiorno i visitati
-        
-        
-        
+
     else:
         # Rimuoviamo il task
         print(f"[{task.id}] RIMOZIONE TASK DA {sender.name}, TTL finito")
         task.label = 'TTL_EXPIRED'
         sender.dead_tasks.append(task)
         sender.tasks.remove(task)
-
 
 def getTransmissionTime(bandwidht, weight, latency):
     return (weight/bandwidht) + latency

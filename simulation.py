@@ -3,8 +3,6 @@ import experiments
 import globals
 from Task import Task
 
-from Task import Task, assign_resolution
-
 hop = 0  # Inizializza la variabile hop a zero
 
 # Leggi il file di configurazione JSON

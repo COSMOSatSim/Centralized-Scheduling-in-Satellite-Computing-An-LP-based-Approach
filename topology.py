@@ -75,7 +75,7 @@ def create_topology_dome(env, time=get_current_time()):
         for n in neighbor:
             # print(type(n[0]), " n -> ", n[0])
             current_server.add_neighbor(n[0], 1, getLatency(n[1]),
-                                        uniform(config["available_bandwidth"]["min"],
+                                        globals.rnd.uniform(config["available_bandwidth"]["min"],
                                                        config["available_bandwidth"]["max"]))
         # print(current_server.name)
     return edge_servers

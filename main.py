@@ -14,8 +14,8 @@ from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
 from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
-
 import globals
+import time
 
 # Leggi il file di configurazione JSON
 with open('config.json5') as config_file:
@@ -62,6 +62,7 @@ def data_collector(env, interval, start_time, end_time):
 
 if __name__ == "__main__":
     # Imposta seme e ambiente
+    start_time_simulation_real = time.time()
     env = simpy.Environment()
     MaxTry = config.get("max_try", 10)
 
@@ -351,5 +352,7 @@ if __name__ == "__main__":
                 DeadLine, exec_set,
                 eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
             ])
-
+        end_time_simulation_real = time.time()
+        duration_simulation = end_time_simulation_real - start_time_simulation_real
         print(f"Simulation results saved to: {csv_task}")
+        print(f"Tempo di esecuzione REALE della simulazione {duration_simulation:.4f}secondi")

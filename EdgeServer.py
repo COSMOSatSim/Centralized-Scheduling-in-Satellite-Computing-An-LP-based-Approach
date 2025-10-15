@@ -1,15 +1,11 @@
 import globals
-import sys
 import json5
 from math import sqrt
 import simpy, copy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
-from routing_Manager import forward_packet_DSR
 from user_based_topology import getSystemFromSat
 from Task import Task
-
-from packet import Packet
 from utils import sendTask
 
 
@@ -473,17 +469,10 @@ class EdgeServer:
         if best_server:
             yield from sendTask(env, task, self, best_server, 'SIMPLE_GREEDY')
 
-
-
-
     def deliver_to_Observer(self, env, mode, task):
         print(f"[MODE: {mode}]")
         task.routingEndTime = env.now
         yield from sendTask(env, task, self, globals.observer, 'DIRECT')
-
-
-
-
 
     def forward_packet(self, env):
         if len(self.neighbors) > 0:
@@ -520,7 +509,6 @@ class EdgeServer:
 
                     elif GREEDY:
                         yield from self.greedy_approach(env, task)
-
 
         # else:
         # print(f"{self.name} NON HA PIù VICINI AI QUALI TRASMETTERE elev: {self.elev_angle}°")
@@ -583,81 +571,8 @@ class EdgeServer:
             W_norm = 0.0
 
         # 6) score pesato: vogliamo massimizzare beneficio (B_normalized) e minimizzare ritardo (W_norm)
-        score = w_e * B_normalized + w_R * W_norm
+        score = w_e * B_normalized - w_R * W_norm
         return score
-
-
-def getTransmissionTime(bandwidht, weight, latency):
-    return (weight/bandwidht) + latency
-
-
-def sendTask(env, task, sender, receiver, algorithm):
-    """
-    Args:
-        task (Task): The task object to be transferred. It contains attributes such as `hop`, `ttl`,
-                     `id`, `current_server`, and `satellite_destination`.
-        sender (Satellite): The satellite currently holding the task. It must have a `remove_task` method.
-        receiver (Satellite): The satellite to which the task is being sent. It must have an `add_task` method.
-
-    Behavior:
-        - Increments the `hop` count of the task by 1 to track the number of hops.
-        - Decrements the `ttl` (time-to-live) of the task by 1 to reflect its remaining lifespan.
-        - Removes the task from the sender using `sender.remove_task(task.id)`.
-        - Adds the task to the receiver using `receiver.add_task(task)`.
-        - Updates the `current_server` attribute of the task to the receiver.
-        - Checks if the receiver is the task's `satellite_destination`. If so, marks the task as arrived by
-          setting `task.arrived` to `True`.
-        - Logs the transfer operation in the format: "[task.id] sender.name -> receiver.name".
-
-    Note:
-        This function assumes that the `task`, `sender`, and `receiver` objects are properly defined and
-        implement the required attributes and methods.
-    """
-    if task.ttl > 0:
-        # Gestione dell'attesa nell'env
-        if receiver.name != 'OBS':
-            bandwidth = sender.bandwidth[receiver] * (1024**2)  # da MB/s a Byte/s
-            trasmission_time = getTransmissionTime(bandwidth, task.weight, sender.latency[receiver])
-            print(f"[{task.id}][{algorithm}] {sender.name} -> {receiver.name} | Tramission-time: {trasmission_time}")
-
-            energy_tx = sender.compute_routing_energy(task.weight, bandwidth)
-            sender.energy -= energy_tx
-            print(
-                f"[{task.id}] Energy routing consumed by {sender.name}: {energy_tx:.6f} J (remaining {sender.energy:.2f})")
-        else:
-            bandwidth = 10000 * (1024**2)  # da MB/s a Byte/s
-            trasmission_time = getTransmissionTime(bandwidth, task.weight, 0)
-            print(f"[{task.id}][{algorithm}] CONSEGNATO! {sender.name} -> {receiver.name} | Tramission-time: {trasmission_time}")
-
-        yield env.timeout(trasmission_time)
-
-        task.hop += 1
-        task.ttl -= 1
-
-        task.add_algorithm(algorithm)   # Contiamo quale algoritmo abbiamo usato
-
-        # Rimuoviamo il task dal Sender
-        sender.tasks.remove(task)
-        # Inviamo il task al Receiver
-        receiver.tasks.append(task)
-        print(f"TASK {task.id} {sender.name} -> {receiver.name}")
-        # Modifichiamo le informazioni sul task
-        task.current_node = receiver.name
-
-        # ! USIAMO SOLO I NOMI E NON PROPRIO L'oggetto
-        if task.dest_node == receiver.name:
-            task.arrived = True
-            task.label = 'TASK_ARRIVED'
-
-        task.hop_History.append(receiver.name)     # Aggiorno la History
-        task.visited.add(receiver.name)            # Aggiorno i visitati
-
-    else:
-        # Rimuoviamo il task
-        print(f"[{task.id}] RIMOZIONE TASK DA {sender.name}, TTL finito")
-        task.label = 'TTL_EXPIRED'
-        sender.dead_tasks.append(task)
-        sender.tasks.remove(task)
 
 def find_OGM_intersection(ogm_table, neighbors, task):
     """
