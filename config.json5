@@ -92,8 +92,8 @@
   AP_routing_bidirectional: false,
   Routing_Interval: 1,
   Routing_algorithm: {
-    BATMAN: true,
-    GREEDY: false,
+    BATMAN: false,
+    GREEDY: true,
     DSR: false,
   },
 }
