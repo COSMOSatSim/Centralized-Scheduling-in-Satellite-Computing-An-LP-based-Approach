@@ -1,11 +1,10 @@
+import globals
 from collections import OrderedDict
 from skyfield.api import wgs84
 import sys
 import json5
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 
 def format_mb(mb_value):
     """

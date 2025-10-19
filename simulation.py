@@ -1,13 +1,11 @@
+import globals
 import json5
 import experiments
-import globals
 from Task import Task
 
 hop = 0  # Inizializza la variabile hop a zero
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 
 try:
     with open('img_resolution.json5') as res_file:

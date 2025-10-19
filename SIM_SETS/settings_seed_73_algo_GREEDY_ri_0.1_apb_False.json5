@@ -1,0 +1,92 @@
+{
+    simulation_duration: 300,
+    adding_time: 30,
+    max_try: 5,
+    seed: 73,
+    access_point: 5,
+    arrival_time_exponential: 1.5,
+    Tmax_H: 400,
+    initial_energy: 1000,
+    C_sen: 1000000000.0,
+    energy_coefficient: 5e-26,
+    Ptrasm: 1.0,
+    CPU_timeout: {
+        min: 10,
+        mean: 135.1679389312977,
+        max: 176,
+    },
+    mode_name: "DTS-base",
+    request_distribution: {
+        distribution: "OrbitAware Utility",
+    },
+    DTS: true,
+    AP_selection: "optimal",
+    SearchNode: "ERT",
+    SEN_selection: "maxSunset",
+    required_ram: {
+        min: 50,
+        max: 500,
+    },
+    required_disk: {
+        min: 50,
+        max: 1000,
+    },
+    image_size: {
+        min: 50,
+        max: 300,
+    },
+    Volume_size: {
+        min: 500,
+        max: 1000,
+    },
+    available_bandwidth: {
+        min: 10000,
+        max: 10000,
+    },
+    restart_time: {
+        min: 0.1,
+        max: 1,
+    },
+    generate_tasks: {
+        distribution: "exponential",
+    },
+    priority_combination: {
+        distribution: "20_0_80",
+    },
+    csv_name: {
+        name: "OrbitAware Utility-sim_SystemAP5/seed_13/results_20_0_80_exponential_REQ-OrbitAware Utility_AT_1.5_CPU_135.1679389312977.csv",
+    },
+    simulation_location: "Roma",
+    locations: {
+        Roma: {
+            lat: 41.8967,
+            lon: 12.4822,
+            alt: 0,
+        },
+        "Polo Nord": {
+            lat: 90.0,
+            lon: 135.0,
+            alt: 0,
+        },
+    },
+    LEO_orbit: 300,
+    Phi_max: 40,
+    Phi_buffer: 15,
+    Laser_Communication_Range: 659,
+    Build_Configurations: false,
+    Load_Configuration: true,
+    redistribuite_OGM: true,
+    Interval_between_Configurations_in_seconds: 2,
+    Number_of_Configurations: 45,
+    Interval_future_event_prediction: 15,
+    Interval_past_event_prediction: 10,
+    OGMs_redistribution: 20,
+    sphere_altitude_km: 500000.0,
+    AP_routing_bidirectional: false,
+    Routing_Interval: 0.1,
+    Routing_algorithm: {
+        BATMAN: false,
+        GREEDY: true,
+        DSR: false,
+    },
+}

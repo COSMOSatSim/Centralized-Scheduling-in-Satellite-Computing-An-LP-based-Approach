@@ -7,8 +7,7 @@ import sys
 import globals
 
 # Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 
 ts = load.timescale()                                   # ts : time management with astronomical time
 time_now = ts.now()

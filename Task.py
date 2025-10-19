@@ -1,12 +1,17 @@
+import sys
 import globals
 import json5, csv
 import os
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 with open('img_resolution.json5') as resolution_file:
     resolution = json5.load(resolution_file)
+
+config = globals.config
+
+BATMAN = config["Routing_algorithm"]["BATMAN"]
+GREEDY = config["Routing_algorithm"]["GREEDY"]
+DSR = config["Routing_algorithm"]["DSR"]
 
 
 class Task:
@@ -159,6 +164,43 @@ def colorize(text: str, color: str) -> str:
     end = colors["reset"] if start else ""
     return f"{start}{text}{end}"
 
+def findAlgorithm():
+
+    if BATMAN and GREEDY and not DSR:
+        return "DINAMICO"
+    elif BATMAN and not GREEDY and not DSR:
+        return "BATMAN"
+    elif GREEDY and not BATMAN and not DSR:
+        return "GREEDY"
+    elif DSR and not BATMAN and not GREEDY:
+        return "DSR"
+    else:
+        sys.exit(
+            f"C'è un problema con gli algoritmi: DSR:{DSR} GREEDY:{GREEDY} BATMAN:{BATMAN}")
+
+
+
+def makeSummary(TArr, TExp, Tsob, ToS):
+
+    summary_dir = f"RESULTS_TASKS_SIMULATIONS/Summary/"
+    file = f"AP_BIDIR_{config['AP_routing_bidirectional']}_[{findAlgorithm()}]_interval_{config['Routing_Interval']}tasks_summary.csv"
+    path = os.path.join(summary_dir, file)
+
+    # Crea la directory se non esiste
+    os.makedirs(summary_dir, exist_ok=True)
+
+    # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
+    summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
+
+    # Controllo file
+    file_exists = os.path.isfile(path)
+    with open(path, mode="a", newline="") as summary_file:
+        writer = csv.writer(summary_file)
+        if not file_exists:
+            writer.writerow(["Seed", "TotalTasks", "Arrived", "Expired", "OutOfBuff", "OnSim"])
+        writer.writerow(summary_row)
+
+    print(f"Summary info saved to: {path}")
 
 def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
     """
@@ -225,22 +267,7 @@ def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
 
         print(row)
 
-    # ! Scrittura delle informazioni nel file csv
-    summary_filename = "tasks_summary.csv"
-
-    # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
-    summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
-
-    # Se il file non esiste, crea il file e scrivi l'intestazione
-    file_exists = os.path.isfile(summary_filename)
-    with open(summary_filename, mode="a", newline="") as summary_file:
-        writer = csv.writer(summary_file)
-        if not file_exists:
-            writer.writerow(["Seed", "TotalTasks", "Arrived", "Expired", "OutOfBuff", "OnSim"])
-        writer.writerow(summary_row)
-    print(f"Summary info saved to: {summary_filename}")
-
-    # ! Fine scrittura
+    makeSummary(TArr, TExp, Tsob, ToS)  # Genera il Summary
 
     print()  # Riga vuota alla fine per separare dall'output successivo
 

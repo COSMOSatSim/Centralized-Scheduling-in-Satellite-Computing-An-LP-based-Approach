@@ -17,9 +17,6 @@ from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_co
 import globals
 import time
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
 try:
     with open('img_resolution.json5') as res_file:
         resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
@@ -64,6 +61,7 @@ if __name__ == "__main__":
     # Imposta seme e ambiente
     start_time_simulation_real = time.time()
     env = simpy.Environment()
+    config = globals.config
     MaxTry = config.get("max_try", 10)
 
     # 1) Costruzione configurazioni
@@ -181,7 +179,8 @@ if __name__ == "__main__":
 
     # Cartella base: include modalità, AP e seed
     base_dir = f"{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
-    task_dir = f"{req_dist}-Task_Result{ap}/seed_{seed_val}"
+    task_dir = f"RESULTS_TASKS_SIMULATIONS/{req_dist}-Task_Result{ap}/seed_{seed_val}/"
+
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(task_dir, exist_ok=True)
 

@@ -8,9 +8,7 @@ from routing_Manager import periodic_recall_Routing_monitor
 
 import time
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 
 ADDING_TIME = config["adding_time"] # secondi di aggiunta al  
 CONFIG_RIEMPI = ADDING_TIME // 2    # configurazioni aggiuntive da rimuovere
