@@ -450,11 +450,11 @@ class EdgeServer:
     # --------------------------------------------------
 
     def greedy_approach(self, env, task):
-        dest_pos = globals.observer.getPositionVector(globals.instant_in_configuration)
+        dest_pos = globals.observer.getPositionVector(globals.ist_in_conf)
         ranker_neighbors = []
 
         for server in self.neighbors:
-            neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.instant_in_configuration))
+            neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.ist_in_conf))
             t = (server, neighbor_distance, server.is_acc_point)
             ranker_neighbors.append(t)
 

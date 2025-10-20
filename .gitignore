@@ -35,3 +35,6 @@
 /data/
 /Test/
 __pycache__/
+OrbitAware-Task_Result5/seed_13/GREEDY_AT_1.5_CPU_0.05.csv
+OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_0.05.csv
+tasks_summary.csv

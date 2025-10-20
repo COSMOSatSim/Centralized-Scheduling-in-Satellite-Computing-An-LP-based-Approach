@@ -1,6 +1,6 @@
 {
   simulation_duration: 300,
-  enable_queue_monitoring: false,
+  enable_queue_monitoring: true,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
@@ -92,8 +92,17 @@
   AP_routing_bidirectional: false,
   Routing_Interval: 1,
   Routing_algorithm: {
-    BATMAN: true,
-    GREEDY: false,
+    BATMAN: false,
+    GREEDY: true,
     DSR: false,
+  },
+  routing_policy: "ILP",
+  ilp_weights: {
+    w_e: 0.7,
+    w_R: 0.3,
+  },
+  ilp_alpha: {
+    alpha_cpu: 1.0,
+    alpha_net_J_per_MB: 0.000465,
   },
 }
