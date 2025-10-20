@@ -1,7 +1,7 @@
 import globals
 import json5
 from math import sqrt
-import simpy, copy
+import simpy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
 from user_based_topology import getSystemFromSat
