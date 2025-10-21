@@ -17,13 +17,6 @@ from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_co
 import globals
 import time
 
-try:
-    with open('img_resolution.json5') as res_file:
-        resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
-except FileNotFoundError:
-    print("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
-    resolution_config = None
-
 simulation_dataset = []
 
 # Aggiungi il nuovo processo di raccolta dati
@@ -61,7 +54,8 @@ if __name__ == "__main__":
     # Imposta seme e ambiente
     start_time_simulation_real = time.time()
     env = simpy.Environment()
-    config = globals.config
+    config, resolution_config = globals.config, globals.resolution_config
+     
     MaxTry = config.get("max_try", 10)
 
     # 1) Costruzione configurazioni

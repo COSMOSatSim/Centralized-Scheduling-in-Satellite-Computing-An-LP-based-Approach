@@ -4,10 +4,8 @@ import json5, csv
 import os
 
 config = globals.config
-with open('img_resolution.json5') as resolution_file:
-    resolution = json5.load(resolution_file)
+resolution = globals.resolution_config
 
-config = globals.config
 
 BATMAN = config["Routing_algorithm"]["BATMAN"]
 GREEDY = config["Routing_algorithm"]["GREEDY"]
@@ -242,14 +240,14 @@ def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
     # FASE DI STAMPA FORMATTATA
     print(f"TOT TASK IN ROUTING SYS: {len(total_tasks)}\n")
     print(
-        " id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
+        "id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algo")
     for elem in total_tasks:
         id_, current_node, hop, label, task_type, routing_start, routing_end, durata, algorithms = elem
         algorithms_str = ', '.join([f"{k}:{v}%" for k, v in algorithms.items()]) if algorithms else "-"
 
         row = (
             f"{id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | "
-            f"{task_type:<13} | {routing_start:<17} | {str(routing_end):<15} | "
+            f"{task_type:<22}| {routing_start:<17} | {str(routing_end):<15} | "
             f"{str(durata):<13} | {algorithms_str}"
         )
 

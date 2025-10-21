@@ -5,29 +5,42 @@ import time
 import sys
 
 # Funzione per determinare il file di configurazione
-def get_config_file():
-    if len(sys.argv) >= 4:
-        # Se abbiamo 4 parametri, usa il file specifico
-        seed, algorithm, ri, apb = sys.argv[1:5]
-        
-        config_file = f"SIM_SETS/settings_seed_{seed}_algo_{algorithm}_ri_{ri}_apb_{apb}.json5"
-        
-        if os.path.exists(config_file):
-            print(f"Caricando configurazione specifica: {config_file}")
-            time.sleep(5)
-            return config_file
+def get_param_file():
+    default_config = 'config.json5'
+    default_img = 'img_resolution.json5'
+
+    if len(sys.argv) == 3:
+        config_file, img_file = sys.argv[1], sys.argv[2]
+
+        if os.path.exists(config_file) and os.path.exists(img_file):
+            return config_file, img_file
         else:
-            print(f"Errore: il file {config_file} non esiste. Usando config.json5 di default.")
-    
-    # Fallback al file di configurazione normale
-    print("Caricando configurazione di default: config.json5")
-    return 'config.json5'
+            sys.exit("Errore nel caricamento dei File.")
+    else:
+        print(" Prendo gli Argomenti di Deafult!")
+    return default_config, default_img
 
 # Carica il file di configurazione appropriato
-config_file_path = get_config_file()
+config_file_path, img_resolution = get_param_file()
+
 # Leggi il file di configurazione JSON
-with open(config_file_path) as config_file:
-    config = json5.load(config_file)
+try:
+    with open(config_file_path) as config_file:
+        config = json5.load(config_file)
+except FileNotFoundError:
+    config = None
+    sys.exit("ERRORE: Impossibile trovare 'config.json5'. Assicurati che il file esista.")
+
+
+try:
+    with open(img_resolution) as res_file:
+        resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
+except FileNotFoundError:
+    resolution_config = None
+    sys.exit("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
+
+
+
 
 # Imposta seme e ambiente
 _seed = int(config.get("seed", 42))
