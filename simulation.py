@@ -2,7 +2,7 @@ import json5
 import experiments
 import globals
 from Task import Task
-from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask
+from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics
 
 
 hop = 0  # Inizializza la variabile hop a zero
@@ -333,7 +333,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
                initial_server_counter, different_server_counter, other_server_counter,
                task_type, max_energy, d_cpu, deadline):
     """
-    Se config['routing_policy'] == 'ILP' usa il tuo modello per scegliere il server su Ek={k}+neighbors[k],
+    Se config['SearchNode'] == 'ILP' usa il tuo modello per scegliere il server su Ek={k}+neighbors[k],
     altrimenti usa la selezione euristica esistente.
     """
     global hop
@@ -350,7 +350,7 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     # =========================
     # BRANCH: ILP
     # =========================
-    if str(config.get("routing_policy", "")).upper() == "ILP":
+    if str(config.get("SearchNode", "")).upper() == "ILP":
         # d_net per l'ILP è in MB (non in secondi)
         d_net_MB_req = float(image_size + (Volume_size or 0.0))
         
@@ -369,14 +369,25 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             config=config
         )
 
-        # Parametri ILP
+        # --- Coefficienti fisici dal config ---
+        P_net = float(config.get("Ptrasm", 1.0))  # W = J/s
+        bw_MBps_min = float(config.get("available_bandwidth", {}).get("min", 2150.0))  # MB/s
+        bw_Bps = bw_MBps_min * (1024 ** 2)  # converto in Byte/s
+
+        C_sen = float(config.get("C_sen", 1e7))
+        e_coef = float(config.get("energy_coefficient", 5e-26))
+
+        # Calcolo fisico tramite funzione comune
+        alpha_cpu, alpha_net_J_per_byte = alpha_from_physics(C_sen, e_coef, P_net, bw_Bps)
+
+        # Conversione: da J/byte a J/MB per l’ILP
+        alpha_net = alpha_net_J_per_byte * (1024 ** 2)
+
+        # Pesi dal config
         w_e = float(config.get("ilp_weights", {}).get("w_e", 0.5))
         w_R = float(config.get("ilp_weights", {}).get("w_R", 0.5))
-        alpha_cpu = float(config.get("ilp_alpha", {}).get("alpha_cpu", 1.0))
-        alpha_net = float(config.get("ilp_alpha", {}).get("alpha_net_J_per_MB", 0.000465))
+        default_bw_MBps = bw_MBps_min
 
-        # (dopo)
-        default_bw_MBps = float(config.get("available_bandwidth", {}).get("min", 3000.0))
 
         def _extract_chosen_server(ilp_res, task_id):
             tid = str(task_id)

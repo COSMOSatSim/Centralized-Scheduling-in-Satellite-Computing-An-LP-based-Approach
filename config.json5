@@ -39,7 +39,7 @@
   },
   DTS: true,
   AP_selection: "optimal",
-  SearchNode: "ERT",
+  SearchNode: "ILP",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -96,7 +96,6 @@
     GREEDY: true,
     DSR: false,
   },
-  routing_policy: "ILP",
   ilp_weights: {
     w_e: 0.7,
     w_R: 0.3,

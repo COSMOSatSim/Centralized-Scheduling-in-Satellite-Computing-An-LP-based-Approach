@@ -643,6 +643,8 @@ def main():
             alpha_net = calc_alpha_net if not bool(args.from_prof_files) else args.P_net
             # Nota: se i file del prof hanno d_net in secondi (tasks_from_prof=True),
             # allora epsilon_net = P_net * d_net -> usa alpha_net = P_net.
+        
+        # DA VEDERE
         else:
             alpha_cpu = args.alpha_cpu
             alpha_net = args.alpha_net
