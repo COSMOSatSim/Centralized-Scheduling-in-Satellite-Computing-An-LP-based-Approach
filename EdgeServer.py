@@ -5,7 +5,7 @@ import simpy
 from skyfield.api import EarthSatellite
 from collections import OrderedDict
 from user_based_topology import getSystemFromSat
-from Task import Task
+from Task import Task, findAlgorithm
 from utils import sendTask
 
 
@@ -466,18 +466,20 @@ class EdgeServer:
                 break
 
         if best_server:
-            yield from sendTask(env, task, self, best_server, 'SIMPLE_GREEDY')
+            yield from sendTask(env, task, self, best_server, 'GREEDY')
 
     def deliver_to_Observer(self, env, mode, task):
         print(f"[MODE: {mode}]")
         task.routingEndTime = env.now
-        yield from sendTask(env, task, self, globals.observer, 'DIRECT')
+        algo = findAlgorithm()
+        yield from sendTask(env, task, self, globals.observer, algo)
 
     def forward_packet(self, env):
         if len(self.neighbors) > 0:
             for task in self.tasks:
 
                 if not task.arrived:
+
                     if config["AP_routing_bidirectional"]:
                         # Bidirezionale, mandiamo il task verso gli access Point
                         if self.is_acc_point:
