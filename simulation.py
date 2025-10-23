@@ -242,8 +242,14 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         if bandwidth_to_server is not None and latency_to_server is not None:
             bandwidth_to_server_Bps = bandwidth_to_server * (1024 ** 2)
             transfer_time = ((image_size + Volume_size) * (1024 ** 2) / bandwidth_to_server_Bps) + latency_to_server
+            # tempo di servizio rete stimato per il file su quel link (secondi)
+            if bandwidth_to_server_Bps > 0:
+                d_net_on_link = (image_size + Volume_size) * (1024 ** 2) / bandwidth_to_server_Bps
+            else:
+                d_net_on_link = float('inf')
         else:
             transfer_time = 0.0
+            d_net_on_link = float('inf')
 
         # calcola lo score passando d_cpu, d_net_predicted, deadline relativo e dati utili
         selection_score = neighbor.get_selection_score(
@@ -255,12 +261,34 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             file_size_bytes=data_bytes,
             bandwidth_Bps=bw_Bps
         )
+        # stima tempo di attesa in coda sul neighbor:
+        # prova a usare metodi esistenti (W_cpu, W_net) o fallback a attributi pubblici
+        try:
+            waiting_cpu = neighbor.W_cpu()
+        except Exception:
+            waiting_cpu = getattr(neighbor, "waiting_time", 0.0)
+
+        try:
+            waiting_net = neighbor.W_net()
+        except Exception:
+            waiting_net = 0.0
+
+        # tempo totale stimato per completare il task su questo neighbor:
+        # attesa in coda (cpu e net) + esecuzione CPU + trasmissione dati sul link + eventuale latenza trasferimento
+        # d_cpu è l'esecuzione stimata (passata alla funzione)
+        estimated_execution_time = d_cpu
+        estimated_net_time = d_net_on_link  # tempo di trasmissione previsto sul link al neighbor
+        waiting_time_adjusted = waiting_cpu + waiting_net
+
+        expected_completion_time = waiting_time_adjusted + estimated_execution_time + estimated_net_time + transfer_time
 
         server_metrics.append({
             'server': neighbor,
             'selection_score': selection_score,
             'transfer_time': transfer_time,
             'orbitalSunset': neighbor.orbitalSunset,
+            'Sunset': neighbor.elev_angle,
+            'expected_completion_time': expected_completion_time
         })
 
     # Filtra i server non validi
@@ -274,9 +302,28 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     # Ordina i server in base al nuovo punteggio di selezione, in ordine decrescente
     sorted_servers = sorted(server_metrics, key=lambda x: x['selection_score'], reverse=True)
 
-    chosen = sorted_servers.pop(0)
-    server = chosen['server']
-    transfer_time = chosen['transfer_time']   # tempo di trasmissione stimato per andare al server scelto
+    distribution = config.get("request_distribution", {}).get("distribution", "")
+    if distribution in ("DTS-base", "DTS-AP optimal"):
+        print('Versione originale: DTS-TMAX')
+        # filtriamo i dizionari che rispettano la deadline
+        server_metrics_sorted = [m for m in sorted_servers if m['expected_completion_time'] < deadline]
+    else:
+        print('versione mod: OrbitAware')
+        server_metrics_sorted = [
+            m for m in sorted_servers
+            if m['expected_completion_time'] < deadline
+               and m['expected_completion_time'] < m['orbitalSunset']
+               and m['orbitalSunset'] not in (0, None)
+        ]
+
+    if not server_metrics_sorted:
+        print(f"[Task {task_id}] Nessun server rimasto dopo i filtri (deadline/sunset).")
+        return
+
+    # scegli il primo dizionario (metriche) e ricava server/transfer_time da lì
+    chosen_metric = server_metrics_sorted.pop(0)
+    server = chosen_metric['server']
+    transfer_time = chosen_metric.get('transfer_time', 0.0)  # tempo di trasmissione stimato per andare al server scelto
 
     # Aggiorna contatori
     initial_server_counter[server_selected.name] += 1
