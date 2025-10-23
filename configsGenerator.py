@@ -2,23 +2,26 @@ import os
 import json5
 
 seeds = [13, 23, 33, 43, 53]                            # SEEDS
-algorithms = ["GREEDY", "BATMAN", "DINAMICO", "DSR"]    # Algo
+#algorithms = ["GREEDY", "BATMAN", "DINAMICO", "DSR"]   # Algo
+routing_algorithms = ["GREEDY"]
 routing_interval = [1, 0.1]                             # Intervallo di Routing
 apBIDIR = [True, False]                                 # Access Point Bidirezionali
+mu = [1]                                                # mu
+dts_algorithm = ["DTS-base"]                            # Algoritmo di selezione AP, searchNode e selezione SEN
+ap_selection = ["base"]                                 # Selezione AP 
+arrival_rate = [1]
 
-beta_list = [(0.5, 0.3, 0.2), (0.4, 0.35, 0.25)]             
-alpha_list = [(0.3, 0.5, 0.2)]
-gamma_list = [(0.7, 0.3)]                        
 
-# step = 0.10  
-# values = [round(i * step, 2) for i in range(int(1/step) + 1)]
+beta_list = [(0.5, 0.3, 0.2), (0.4, 0.35, 0.25)]        # Beta      
+alpha_list = [(0.3, 0.5, 0.2)]                          # Alpha
+gamma_list = [(0.7, 0.3)]                               # Gamma
+
 
 
 OUTPUT_DIR_CONFIG = "SIMS_SETS"
 OUTPUT_DIR_IMG_RESOLUTION = "SIMS_IMG_RESOLUTIONS"
 os.makedirs(OUTPUT_DIR_CONFIG, exist_ok=True)  # Controllo l'esistenza del PATH
 os.makedirs(OUTPUT_DIR_IMG_RESOLUTION, exist_ok=True)  # Controllo l'esistenza del PATH
-
 
 
 # Apro la configurazione Base
@@ -30,40 +33,57 @@ with open('img_resolution.json5') as img_resolution:
 
 # GENERATORE
 def gen_configs():
-    for s in seeds:
-        for a in algorithms:
-            
-            greedy, batman, dsr = None, None, None
-            if a == "GREEDY":
-                greedy, batman, dsr = True, False, False
-            elif a == "BATMAN":
-                greedy, batman, dsr = False, True, False
-            elif a == "DINAMICO":
-                greedy, batman, dsr = True, True, False
-            elif a == "DSR":
-                greedy, batman, dsr = False, False, True
-            
-            
-            for r in routing_interval:
-                for apb in apBIDIR:
-                    cfg = CONFIG.copy()
+    for m in mu:
+        for dts in dts_algorithm:
+            for aps in ap_selection:
+                for ar in arrival_rate:
+                    for s in seeds:
+                        for a in routing_algorithms:
+                            
+                            greedy, batman, dsr = None, None, None
+                            if a == "GREEDY":
+                                greedy, batman, dsr = True, False, False
+                            elif a == "BATMAN":
+                                greedy, batman, dsr = False, True, False
+                            elif a == "DINAMICO":
+                                greedy, batman, dsr = True, True, False
+                            elif a == "DSR":
+                                greedy, batman, dsr = False, False, True
+                            
+                            
+                            for r in routing_interval:
+                                for apb in apBIDIR:
+                                    cfg = CONFIG.copy()
 
-                    cfg["seed"] = s
-                    cfg["Routing_algorithm"] = {
-                        "BATMAN": batman,
-                        "GREEDY": greedy,
-                        "DSR": dsr,
-                    }
-                    cfg["Routing_Interval"] = r
-                    cfg["AP_routing_bidirectional"] = apb
+                                    cfg["seed"] = s
+                                    cfg["Routing_algorithm"] = {
+                                        "BATMAN": batman,
+                                        "GREEDY": greedy,
+                                        "DSR": dsr,
+                                    }
+                                    cfg["Routing_Interval"] = r
+                                    cfg["AP_routing_bidirectional"] = apb
+
+                                    # Mu
+                                    cfg["CPU_timeout"]["gen"]["mean"] = m
+                                    cfg["CPU_timeout"]["cpui"]["mean"] = m
+
+                                    #DTS Algorithm
+                                    cfg["mode_name"] = dts
+
+                                    #AP Selection
+                                    cfg["AP_selection"] = aps
+
+                                    # Arrival Rate
+                                    cfg["arrival_time_exponential"] = ar
 
 
-                    filename = os.path.join(OUTPUT_DIR_CONFIG, f"settings_seed_{s}_algo_{a}_ri_{r}_apb_{apb}.json5")
-                    
-                    with open(filename, "w") as f:
-                        json5.dump(cfg, f, indent=4)
+                                    filename = os.path.join(OUTPUT_DIR_CONFIG, f"settings_seed_{s}_algo_{a}_ri_{r}_apb_{apb}.json5")
+                                    
+                                    with open(filename, "w") as f:
+                                        json5.dump(cfg, f, indent=4)
 
-                    print(f"Creato: {filename}")
+                                    print(f"Creato: {filename}")    
 
 
 
