@@ -47,8 +47,6 @@ def TaskAssignment(env, selected_server, task_id, image_size,
       - image_size: dimensione immagine in MB
       - transfer_time: tempo di trasferimento dal nodo sorgente a questo server (già calcolato)
     """
-
-    # Leggi il flag di configurazione
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
 
     task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, task_type, image_size)
@@ -59,27 +57,48 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         task_OBS.d_cpu = d_cpu
         task_OBS.d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
         task_OBS.deadline = arrival_time_system + deadline
-        task_OBS.image_size_MB = image_size  # Salva la dimensione dell'immagine (in MB)
+        task_OBS.image_size_MB = image_size
 
-    # L'energia del trasferimento viene sottratta e verificata in SearchNode
+    # aspetta il trasferimento iniziale verso il selected_server
     yield env.timeout(transfer_time)
     arrival_time_task_queue = env.now
 
+    # helper per contare utenti + queue. calcola il numero totale di task associati a una risorsa in un preciso istante, sommando sia i task in servizio sia quelli in coda
+    def _res_len_with_users(res):
+        #numero di task che stanno attualmente utilizzando la risorsa (res.users)
+        users_len = len(getattr(res, "users", []))
+        #numero di task che sono attualmente in attesa nella coda (res.queue)
+        queue_len = len(getattr(res, "queue", []))
+        return users_len + queue_len
+
+    # inizializza variabili di coda per reporting
+    qlen_on_enqueue_cpu = None
+    qlen_on_enqueue_net = None
+
     eps_cpu, eps_net, time_in_queue = 0.0, 0.0, 0.0 # energia stimata CPU / NET che useremo per riserve e sottrazioni
-    start_time = env.now  # timestamp di inizio del processo
-    #D_r = (1 + deadline) * d_cpu  # deadline massima  (1 + DeadLine )extimatedexecutiontime
-    D_r = deadline # deadline massima  (1 + DeadLine )extimatedexecutiontime
+    start_time = env.now
+    D_r = deadline
 
     d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
     C_sen = config.get("C_sen", 1e9)  # parametro costante per il modello energetico CPU
     e_coeff = config.get("energy_coefficient", 5e-26)  # coefficiente energetico (esempio numerico)
     eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
     net_time = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
-    # Wn e Wc sono latenze di attesa stimate nelle code (metodi del server)
-    Wn = selected_server.W_net()
-    Wc = selected_server.W_cpu()
 
-    # Logica di routing basata sul tipo di task
+    # stime di attesa (metodi del server; se non esistono, fallback a 0). Wn e Wc sono latenze di attesa stimate nelle code (metodi del server)
+    try:
+        Wn = selected_server.W_net()
+    except Exception:
+        Wn = getattr(selected_server, "W_net", lambda: 0.0)()
+
+    try:
+        Wc = selected_server.W_cpu()
+    except Exception:
+        Wc = getattr(selected_server, "W_cpu", lambda: 0.0)()
+
+    # ---------------------------
+    # Branch: Generic / CPU_Intensive (solo CPU)
+    # ---------------------------
     if task_type in ("Generic_Service", "CPU_Intensive"):
         # energia richiesta per eseguire il task sul server
         eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
@@ -93,90 +112,124 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             # se la stima supera la deadline configurata, rifiuta il task
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
             return
-        # riservo energia per evitare race condition con altri task
+            # riservo energia per evitare race condition con altri task
         selected_server.energy_reserved += eps_cpu
+
         # richiedo la risorsa CPU (SimPy Resource) - il server tiene una coda interna
-        with selected_server.cpu_dev.request() as req_cpu:
-            if ENABLE_MONITORING:
-                    req_cpu.task_data = task_OBS
-            yield req_cpu
-            # quando ottengo la CPU, registro il tempo passato in coda
-            time_in_queue = env.now - arrival_time_task_queue
-            selected_server.cpu_busy_until = env.now + d_cpu
+        req_cpu = selected_server.cpu_dev.request()
+        qlen_on_enqueue_cpu = _res_len_with_users(selected_server.cpu_dev)
+        if ENABLE_MONITORING:
+            req_cpu.task_data = task_OBS
+            print(f"[{env.now:.3f}] Task {task_id} enqueued on CPU {selected_server.name} qlen_enqueue={qlen_on_enqueue_cpu}")
 
-            yield env.timeout(d_cpu)
-            selected_server.cpu_busy_until = env.now  # reset quando il task finisce
-            # sottraggo l'energia CPU effettivamente consumata
-            selected_server.energy -= eps_cpu
+        # attendi servizio CPU
+        yield req_cpu
+        # quando ottengo la CPU, registro il tempo passato in coda
+        time_in_queue = env.now - arrival_time_task_queue
+        selected_server.cpu_busy_until = env.now + d_cpu
 
-            # -------------------------
-            # Downlink verso Ground User: si assume che l'output abbia dimensione = image_size
-            # -------------------------
-            BANDWIDTH_TO_GU_BPS = config.get("Bandwidth_to_GU_Bps", 100000)  # ATTENZIONE: unità devono essere B/s
-            file_size_bytes = image_size * (1024 ** 2)  # conversione MB -> byte
-            delay_to_transfer = file_size_bytes / BANDWIDTH_TO_GU_BPS  # tempo di trasmissione verso GU
+        # esecuzione CPU
+        yield env.timeout(d_cpu)
+        selected_server.cpu_busy_until = env.now  # reset quando il task finisce
+        # sottraggo l'energia CPU effettivamente consumata
+        selected_server.energy -= eps_cpu
 
+        # -------------------------
+        # Downlink verso Ground User: si assume che l'output abbia dimensione = image_size
+        # -------------------------
+        BANDWIDTH_TO_GU_BPS = config.get("Bandwidth_to_GU_Bps", 100000)  # ATTENZIONE: unità devono essere B/s
+        file_size_bytes = image_size * (1024 ** 2)  # conversione MB -> byte
+        delay_to_transfer = file_size_bytes / BANDWIDTH_TO_GU_BPS  # tempo di trasmissione verso GU
+
+        # rilascio riserva dopo tutte le operazioni che dipendono dalla CPU
         yield env.timeout(delay_to_transfer)
         selected_server.energy_reserved -= eps_cpu
 
+    # ---------------------------
+    # Branch: CPU_and_Data_Intensive (CPU + NET)
+    # ---------------------------
     elif task_type in ("CPU_and_Data_Intensive"):
-
         eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
+
         if selected_server.energy - selected_server.energy_reserved < (eps_cpu + eps_net):
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system,
-                                                 "Insufficient Energy for CPU+NET")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for CPU+NET")
             return
         # Qui d_cpu e d_net sono i tempi di servizio per il task R
         R = Wc + d_cpu + Wn + d_net
         if R > D_r:
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
             return
+
+        # riservo energia totale (CPU + NET)
         selected_server.energy_reserved += (eps_cpu + eps_net)
 
-        with selected_server.cpu_dev.request() as req_cpu:
-            if ENABLE_MONITORING:
-                    req_cpu.task_data = task_OBS
-            yield req_cpu
-            Wc = env.now - arrival_time_task_queue
-            selected_server.cpu_busy_until = env.now + d_cpu
-            yield env.timeout(d_cpu)
-            selected_server.cpu_busy_until = env.now  # reset quando il task finisce
-            selected_server.energy -= eps_cpu
+        # enqueue sulla CPU
+        req_cpu = selected_server.cpu_dev.request()
+        qlen_on_enqueue_cpu = _res_len_with_users(selected_server.cpu_dev)
+        if ENABLE_MONITORING:
+            req_cpu.task_data = task_OBS
+        print(f"[{env.now:.3f}] Task {task_id} enqueued on CPU {selected_server.name} qlen_enqueue={qlen_on_enqueue_cpu}")
 
-            with selected_server.net_dev.request() as req_net:
-                if ENABLE_MONITORING:
-                        req_net.task_data = task_OBS
-                yield req_net
-                Wn = env.now - arrival_time_task_queue
-                selected_server.net_busy_until = env.now + net_time
-                yield env.timeout(net_time)
-                selected_server.net_busy_until = env.now
-                selected_server.energy -= eps_net
-                time_in_queue = Wc + Wn
+        # attendi la CPU
+        yield req_cpu
+        Wc = env.now - arrival_time_task_queue
+        selected_server.cpu_busy_until = env.now + d_cpu
+
+        # esecuzione CPU
+        yield env.timeout(d_cpu)
+        selected_server.cpu_busy_until = env.now
+        selected_server.energy -= eps_cpu
+
+        # ora enqueue sulla NET (se richiesto)
+        req_net = selected_server.net_dev.request()
+        qlen_on_enqueue_net = _res_len_with_users(selected_server.net_dev)
+        if ENABLE_MONITORING:
+            req_net.task_data = task_OBS
+        print(f"[{env.now:.3f}] Task {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
+
+        yield req_net
+        Wn = env.now - arrival_time_task_queue
+        selected_server.net_busy_until = env.now + net_time
+
+        yield env.timeout(net_time)
+        selected_server.net_busy_until = env.now
+        selected_server.energy -= eps_net
+
+        time_in_queue = Wc + Wn
         selected_server.energy_reserved -= (eps_cpu + eps_net)
 
+    # ---------------------------
+    # Branch: Batch (solo NET)
+    # ---------------------------
     elif task_type == "Batch":
-        print('Arrivato task BATCH')
         # Solo coda Network
         if selected_server.energy - selected_server.energy_reserved < eps_net:
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for NET")
             return
+
         R = Wn + d_net
         if R > D_r:
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
             return
+
         selected_server.energy_reserved += eps_net
-        with selected_server.net_dev.request() as req_net:
-            if ENABLE_MONITORING:
-                    req_net.task_data = task_OBS
-            yield req_net
-            time_in_queue = env.now - arrival_time_task_queue
-            selected_server.net_busy_until = env.now + net_time
-            yield env.timeout(net_time)
-            selected_server.net_busy_until = env.now
-            selected_server.energy -= eps_net
+
+        req_net = selected_server.net_dev.request()
+        qlen_on_enqueue_net = _res_len_with_users(selected_server.net_dev)
+        if ENABLE_MONITORING:
+            req_net.task_data = task_OBS
+        print(f"[{env.now:.3f}] Batch {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
+
+        yield req_net
+        time_in_queue = env.now - arrival_time_task_queue
+        selected_server.net_busy_until = env.now + net_time
+
+        yield env.timeout(net_time)
+        selected_server.net_busy_until = env.now
+        selected_server.energy -= eps_net
         selected_server.energy_reserved -= eps_net
 
+    # Fine dei branch: calcola metriche finali e registra il completamento
     end_time = env.now
     execution_time = end_time - start_time
     service_time = execution_time + transfer_time
@@ -186,20 +239,26 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
     if selected_server.elev_angle < config["Phi_max"] - config["Phi_buffer"]:
         task_OBS.label = 'SEN_OUT_OF_BUFF'
-        print(f"{selected_server} {selected_server.elev_angle}° {task_OBS.id} set as {task_OBS.label}")
+        if ENABLE_MONITORING:
+            print(f"{selected_server} {selected_server.elev_angle}° {task_OBS.id} set as {task_OBS.label}")
 
-    qlen = len(selected_server.cpu_dev.queue) + len(selected_server.net_dev.queue)
+    # fallback per qlen: usa i valori di enqueue catturati, altrimenti misura lo stato attuale
+    cpu_q = qlen_on_enqueue_cpu if qlen_on_enqueue_cpu is not None else _res_len_with_users(selected_server.cpu_dev)
+    net_q = qlen_on_enqueue_net if qlen_on_enqueue_net is not None else _res_len_with_users(selected_server.net_dev)
+    qlen = cpu_q + net_q
 
     # Passa il tipo di task e i valori energetici
     selected_server.task_completed(
         task_id, task_type, arrival_time_system, arrival_time_task_queue,
         start_time, end_time, execution_time, service_time, time_in_queue,
-        selected_server.name, num_hops, qlen,
-         d_cpu, transfer_time,
-         DeadLine=False, exec_after_set=False,
+        selected_server.name, num_hops, qlen, transfer_time,
+        DeadLine=False, exec_after_set=False,
         eps_cpu=eps_cpu, eps_net=eps_net
     )
-    print(f"Task {task_id} Routing Start")
+
+    if ENABLE_MONITORING:
+        print(f"[{env.now:.3f}] Task {task_id} served on {selected_server.name} qlen_enqueue_cpu={qlen_on_enqueue_cpu} qlen_enqueue_net={qlen_on_enqueue_net} time_in_queue={time_in_queue:.3f}")
+
 
 def cpu_demand(task_type):
     """
@@ -563,7 +622,7 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
         task_id, "Batch", arrival_time_system, arrival_time_system,
         start_service_time, env.now, net_time, net_time, time_in_queue_batch,  # <-- USA time_in_queue_batch
         server_obj.name, 0, len(server_obj.net_dev.queue),
-        estimated_execution_time=0.0, transfer_time=0.0,
+        transfer_time=0.0,
         DeadLine=False, exec_after_set=False,
         eps_cpu=0.0, eps_net=eps_net
     )
@@ -583,7 +642,6 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
             server_obj.name,  # sel_srv (o chi ha eseguito)
             0,  # hops
             len(server_obj.net_dev.queue),  # qlen
-            0.0,  # est_e
             0.0,  # trf
             False,  # DeadLine
             False,  # exec_set
