@@ -165,7 +165,6 @@ if __name__ == "__main__":
     ))
 
     # 5) Preparazione dei nomi di cartella e file
-    # Prendo direttamente mode_name scritto dal runner in config.json
     mode_name             = config.get("mode_name", "UnknownMode").replace(" ", "_")
     ap                    = config.get("access_point", 0)
     seed_val              = config["seed"]
@@ -224,7 +223,6 @@ if __name__ == "__main__":
 
         try:
             with open(output_path, 'w') as f:
-                # Usa json5.dump per mantenere il formato json5, o json.dump per JSON standard
                 json5.dump(globals.gbl_generated_tasks_data, f, indent=4)
             print("Salvataggio completato con successo.")
         except Exception as e:
@@ -248,21 +246,6 @@ if __name__ == "__main__":
     # 7) Scrittura risultati su CSV (Task completati/rifiutati/residui)
     # ---------------------------------------------------------------------
 
-    with open(csv_task, mode='w', newline='') as f_out:
-        writer = csv.writer(f_out)
-        writer.writerow([
-            "Task ID", "Task Type", "Status", "Arrival Time (System)",
-            "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
-            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Num Hops Routing",
-            "Queue length", "transfer_time", "DeadLine Exceded", "Exec_after_set",
-            "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
-            "Rejection Reason", "Routing Init Time", "Routing End Time", "Routing Duration"
-        ])
-
-        # ---------------------------------------------------------------------
-        # Scrittura CSV: iteriamo su tutti i server rilevanti (edge_servers + global_access_point)
-        # ---------------------------------------------------------------------
-
     # Raccogli tutti i server in un'unica lista per l'iterazione
     all_servers_by_name = {}
     for s in (globals.edge_servers or []) + (globals.global_access_point or []):
@@ -273,13 +256,18 @@ if __name__ == "__main__":
 
     with open(csv_task, mode='w', newline='') as f_out:
         writer = csv.writer(f_out)
+        # Intestazione aggiornata a 27 colonne
         writer.writerow([
             "Task ID", "Task Type", "Status", "Arrival Time (System)",
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
-            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Num Hops Routing",
-            "Queue length", "transfer_time", "DeadLine Exceded", "Exec_after_set",
+            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
+            "Num Hops Routing",  # <-- Nuova colonna
+            "Queue length", "transfer_time", "Image_Size_MB", "DeadLine Exceded", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
-            "Rejection Reason", "Routing Init Time", "Routing End Time", "Routing Duration"
+            "Rejection Reason",
+            "Routing Init Time", # <-- Nuova colonna
+            "Routing End Time",  # <-- Nuova colonna
+            "Routing Duration"   # <-- Nuova colonna
         ])
 
         initial_energy_for_percent = config.get("initial_energy", 0.0)
@@ -299,13 +287,24 @@ if __name__ == "__main__":
                 if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
                     remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
-                r_hops, r_init_time, r_end_time, r_duration = task_dict[tid].get_stat_csv()writer.writerow([
+                # Ottieni i dati di routing dal dizionario
+                r_hops, r_init_time, r_end_time, r_duration = "N/A", "N/A", "N/A", "N/A" # Default
+                if tid in task_dict:
+                    try:
+                        r_hops, r_init_time, r_end_time, r_duration = task_dict[tid].get_stat_csv()
+                    except Exception as e:
+                        print(f"Warning: could not get routing stats for task {tid}: {e}")
+
+                writer.writerow([
                     tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
-                    ex_t, service_t, time_in_system, time_q, sel_srv, hops,r_hops,
+                    ex_t, service_t, time_in_system, time_q, sel_srv, hops,
+                    r_hops, # <-- Valore Routing Hops
                     qlen, tranfer_t, image_size, DeadLine, exec_set,
                     eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
-                r_init_time, r_end_time, r_duration
-                    ])
+                    r_init_time, # <-- Valore Routing Init Time
+                    r_end_time,  # <-- Valore Routing End Time
+                    r_duration   # <-- Valore Routing Duration
+                ])
 
             # rejected tasks (come prima)
             remaining_percent = "N/A"
@@ -313,13 +312,17 @@ if __name__ == "__main__":
                 remaining_percent = (srv.energy / initial_energy_for_percent) * 100
 
             for (tid, task_type, arr_sys, reason) in getattr(srv, 'rejected_tasks', []):
+                # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
                 writer.writerow([
                     tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A","N/A"
+                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
+                    "N/A", # Num Hops Routing
                     "N/A", "N/A", "N/A", "N/A", "N/A",
                     "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason,
-                "N/A", "N/A", "N/A"
-                    ])
+                    "N/A", # Routing Init Time
+                    "N/A", # Routing End Time
+                    "N/A"  # Routing Duration
+                ])
 
             # residual tasks: CPU queue & NET queue
             residual_tasks = []
@@ -342,13 +345,18 @@ if __name__ == "__main__":
                 execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
                 service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
 
+                # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
                 writer.writerow([
                     tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
-                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A","N/A",
-                    total_residual_count, "N/A", "N/A",
-                    "N/A", "N/A", "N/A", "N/A",
-                    "N/A", srv.energy, "In Queue at End",
-                "N/A", "N/A", "N/A"])
+                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
+                    "N/A", # Num Hops Routing
+                    total_residual_count, "N/A", "N/A", "N/A", "N/A",
+                    "N/A", "N/A", "N/A", srv.energy, "N/A", "In Queue at End",
+                    "N/A", # Routing Init Time
+                    "N/A", # Routing End Time
+                    "N/A"  # Routing Duration
+                ])
+
         # dump also global batch completions (if any)
         for entry in getattr(globals, 'gbl_batch_completed', []):
             (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
@@ -362,19 +370,23 @@ if __name__ == "__main__":
             if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
                 remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
+            # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
             writer.writerow([
                 tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
-                ex_t, service_t, time_in_system, tq, sel_srv, hops, "N/A",
+                ex_t, service_t, time_in_system, tq, sel_srv, hops,
+                "N/A", # Num Hops Routing
                 qlen, trf, image_size,
                 DeadLine, exec_set,
                 eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
-                "N/A","N/A","N/A"
+                "N/A", # Routing Init Time
+                "N/A", # Routing End Time
+                "N/A"  # Routing Duration
             ])
 
     print(f"Simulation results saved to: {csv_task}")
 
     # --------------------------------------------------
-    # 8) Scrittura Statistiche Energetiche (BLOCCO RISCRITTO)
+    # 8) Scrittura Statistiche Energetiche e Task Counts
     # --------------------------------------------------
 
     csv_energy_stats = (
@@ -383,7 +395,7 @@ if __name__ == "__main__":
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
 
-    print(f"\nSalvataggio statistiche energetiche su: {csv_energy_stats}")
+    print(f"\nSalvataggio statistiche energetiche e conteggi task su: {csv_energy_stats}")
 
     try:
         # Prendi l'energia iniziale dal config per calcolare la percentuale
@@ -407,7 +419,7 @@ if __name__ == "__main__":
         for srv in all_servers:
             for entry in getattr(srv, 'completed_tasks', []):
                 task_type = entry[1]  # Indice 1 per task_type
-                energy = entry[18]  # Indice 18 per eps_tot
+                energy = entry[18]    # Indice 18 per eps_tot
 
                 if task_type in stats_per_server[srv.name]["task_counts"]:
                     stats_per_server[srv.name]["task_counts"][task_type] += 1
@@ -418,8 +430,8 @@ if __name__ == "__main__":
         # 3. Popola le statistiche dai task BATCH (da globals.gbl_batch_completed)
         for entry in getattr(globals, 'gbl_batch_completed', []):
             server_name = entry[9]  # Indice 9 per sel_srv
-            task_type = entry[1]  # Indice 1 per task_type
-            energy = entry[18]  # Indice 18 per eps_tot
+            task_type = entry[1]    # Indice 1 per task_type
+            energy = entry[18]      # Indice 18 per eps_tot
 
             if server_name in stats_per_server and task_type == "Batch":
                 stats_per_server[server_name]["task_counts"]["Batch"] += 1

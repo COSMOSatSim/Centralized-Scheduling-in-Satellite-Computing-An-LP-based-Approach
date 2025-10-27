@@ -234,7 +234,7 @@ def getAllSatOnMe(t, tle_data, serializable = False, Phi_max = config["Phi_max"]
         elif config["AP_selection"] == "optimal":
             can_take = (counter < Num_Access_point and filterSatellitesInView(sat.satellite, t))
         else:
-            sys.exit(f"AP_selection errato : {config["AP_selection"]}")
+            sys.exit(f"AP_selection errato : {config['AP_selection']}")
 
         if can_take:
             sat.is_acc_point = True
