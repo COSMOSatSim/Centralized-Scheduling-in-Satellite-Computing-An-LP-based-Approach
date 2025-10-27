@@ -7,9 +7,7 @@ from Observer import Observer
 import globals
 import sys
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 
 DSR = config["Routing_algorithm"]["DSR"]
 # Leggi il file di configurazione JSON (Contiene le configurazioni salvate)

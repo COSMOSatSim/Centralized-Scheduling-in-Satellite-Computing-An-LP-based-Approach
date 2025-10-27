@@ -6,7 +6,7 @@ import simpy
 import json
 from EdgeServer import build_task_csv_path
 import simulation
-from Task import generate_Tasks_Status
+from Task import generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, \
     updateTaskValue, string_to_skyfield_time
@@ -17,16 +17,6 @@ from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
 import globals
 import time
-
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
-try:
-    with open('img_resolution.json5') as res_file:
-        resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
-except FileNotFoundError:
-    print("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
-    resolution_config = None
 
 simulation_dataset = []
 
@@ -66,6 +56,8 @@ if __name__ == "__main__":
     # Imposta seme e ambiente
     start_time_simulation_real = time.time()
     env = simpy.Environment()
+    config, resolution_config = globals.config, globals.resolution_config
+
     MaxTry = config.get("max_try", 10)
 
     # 1) Costruzione configurazioni
@@ -174,19 +166,20 @@ if __name__ == "__main__":
 
     # 5) Preparazione dei nomi di cartella e file
     # Prendo direttamente mode_name scritto dal runner in config.json
-    mode_name = config.get("mode_name", "UnknownMode").replace(" ", "_")
-    ap = config.get("access_point", 0)
-    seed_val = config["seed"]
-    gen_dist = config["generate_tasks"]["distribution"]
-    req_dist = config["request_distribution"]["distribution"]
+    mode_name             = config.get("mode_name", "UnknownMode").replace(" ", "_")
+    ap                    = config.get("access_point", 0)
+    seed_val              = config["seed"]
+    gen_dist              = config["generate_tasks"]["distribution"]
+    req_dist              = config["request_distribution"]["distribution"]
     if req_dist == "0_0_0":
         req_dist = "RR"
-    atime = config["arrival_time_exponential"]
-    cpu_mean = config["CPU_timeout"]["gen"]["mean"]
+    atime                 = config["arrival_time_exponential"]
+    cpu_mean              = config["CPU_timeout"]["gen"]["mean"]
 
     # Cartella base: include modalità, AP e seed
     base_dir = f"{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
-    task_dir = f"{req_dist}-Task_Result{ap}/seed_{seed_val}"
+    task_dir = f"RESULTS_TASKS_SIMULATIONS/{req_dist}-Task_Result{ap}/seed_{seed_val}/"
+
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(task_dir, exist_ok=True)
 
@@ -249,10 +242,26 @@ if __name__ == "__main__":
     globals.observer.print_task_summary()
     print("-" * 10)
     generate_Tasks_Status(csv_routing_task)
+    task_dict = convert_task_list_in_dict(globals.gbl_tasks)
 
     # ---------------------------------------------------------------------
     # 7) Scrittura risultati su CSV (Task completati/rifiutati/residui)
     # ---------------------------------------------------------------------
+
+    with open(csv_task, mode='w', newline='') as f_out:
+        writer = csv.writer(f_out)
+        writer.writerow([
+            "Task ID", "Task Type", "Status", "Arrival Time (System)",
+            "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
+            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Num Hops Routing",
+            "Queue length", "transfer_time", "DeadLine Exceded", "Exec_after_set",
+            "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
+            "Rejection Reason", "Routing Init Time", "Routing End Time", "Routing Duration"
+        ])
+
+        # ---------------------------------------------------------------------
+        # Scrittura CSV: iteriamo su tutti i server rilevanti (edge_servers + global_access_point)
+        # ---------------------------------------------------------------------
 
     # Raccogli tutti i server in un'unica lista per l'iterazione
     all_servers_by_name = {}
@@ -267,10 +276,10 @@ if __name__ == "__main__":
         writer.writerow([
             "Task ID", "Task Type", "Status", "Arrival Time (System)",
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
-            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
-            "Queue length", "transfer_time", "Image_Size_MB", "DeadLine Exceded", "Exec_after_set",
+            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Num Hops Routing",
+            "Queue length", "transfer_time", "DeadLine Exceded", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
-            "Rejection Reason"
+            "Rejection Reason", "Routing Init Time", "Routing End Time", "Routing Duration"
         ])
 
         initial_energy_for_percent = config.get("initial_energy", 0.0)
@@ -290,12 +299,13 @@ if __name__ == "__main__":
                 if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
                     remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
-                writer.writerow([
+                r_hops, r_init_time, r_end_time, r_duration = task_dict[tid].get_stat_csv()writer.writerow([
                     tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
-                    ex_t, service_t, time_in_system, time_q, sel_srv, hops,
+                    ex_t, service_t, time_in_system, time_q, sel_srv, hops,r_hops,
                     qlen, tranfer_t, image_size, DeadLine, exec_set,
-                    eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
-                ])
+                    eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
+                r_init_time, r_end_time, r_duration
+                    ])
 
             # rejected tasks (come prima)
             remaining_percent = "N/A"
@@ -305,10 +315,11 @@ if __name__ == "__main__":
             for (tid, task_type, arr_sys, reason) in getattr(srv, 'rejected_tasks', []):
                 writer.writerow([
                     tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
+                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A","N/A"
                     "N/A", "N/A", "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason
-                ])
+                    "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason,
+                "N/A", "N/A", "N/A"
+                    ])
 
             # residual tasks: CPU queue & NET queue
             residual_tasks = []
@@ -333,12 +344,11 @@ if __name__ == "__main__":
 
                 writer.writerow([
                     tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
-                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
+                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A","N/A",
                     total_residual_count, "N/A", "N/A",
                     "N/A", "N/A", "N/A", "N/A",
-                    "N/A", srv.energy, "In Queue at End"
-                ])
-
+                    "N/A", srv.energy, "In Queue at End",
+                "N/A", "N/A", "N/A"])
         # dump also global batch completions (if any)
         for entry in getattr(globals, 'gbl_batch_completed', []):
             (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
@@ -354,10 +364,11 @@ if __name__ == "__main__":
 
             writer.writerow([
                 tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
-                ex_t, service_t, time_in_system, tq, sel_srv, hops,
+                ex_t, service_t, time_in_system, tq, sel_srv, hops, "N/A",
                 qlen, trf, image_size,
                 DeadLine, exec_set,
-                eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
+                eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
+                "N/A","N/A","N/A"
             ])
 
     print(f"Simulation results saved to: {csv_task}")

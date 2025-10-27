@@ -1,12 +1,16 @@
+import sys
 import globals
 import json5, csv
 import os
+from pprint import pprint
 
-# Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
-with open('img_resolution.json5') as resolution_file:
-    resolution = json5.load(resolution_file)
+config = globals.config
+resolution = globals.resolution_config
+
+
+BATMAN = config["Routing_algorithm"]["BATMAN"]
+GREEDY = config["Routing_algorithm"]["GREEDY"]
+DSR = config["Routing_algorithm"]["DSR"]
 
 
 class Task:
@@ -42,17 +46,14 @@ class Task:
         self.routeRequestIst = None  # Timestamp start route Request
         self.RouteReply = False  # Bool allow reply
         self.selected_route = []  # Lista percorso da seguire
-
+    
     def __str__(self):
         """
         String representation of the Task object.
-        :return: String representation of the Task object.
         """
-        lista = []
-        for s in self.hop_History:
-            lista.append(s.name)
-
-        return f"|HISTORY:{lista}\t|CURRENT:{self.current_server}\t|TTL:{self.ttl}|Hop:{self.hop}"
+        if self.routingEndTime:
+            duration = self.routingEndTime - self.routingInitTime
+            return f"|ID:{self.id}\t|Hop:{self.hop}|Init:{self.routingInitTime}|Endt:{self.routingEndTime}|dur:{duration}"
 
     def add_algorithm(self, algo_name: str):
         """Incrementa il contatore per l'algoritmo usato"""
@@ -60,6 +61,12 @@ class Task:
             self.algorithms_used[algo_name] = 0
         self.algorithms_used[algo_name] += 1
 
+    def get_stat_csv(self) -> tuple:
+        if self.routingEndTime:
+            duration = self.routingEndTime - self.routingInitTime 
+            return self.hop, self.routingInitTime, self.routingEndTime, duration
+        else:
+            return self.hop, self.routingInitTime, "N/A", "N/A"
 
 def assign_resolution(required_ram, required_disk):
     # Normalizzazione pesata
@@ -159,6 +166,63 @@ def colorize(text: str, color: str) -> str:
     end = colors["reset"] if start else ""
     return f"{start}{text}{end}"
 
+def findAlgorithm():
+
+    if BATMAN and GREEDY and not DSR:
+        return "DINAMICO"
+    elif BATMAN and not GREEDY and not DSR:
+        return "BATMAN"
+    elif GREEDY and not BATMAN and not DSR:
+        return "GREEDY"
+    elif DSR and not BATMAN and not GREEDY:
+        return "DSR"
+    else:
+        sys.exit(
+            f"C'è un problema con gli algoritmi: DSR:{DSR} GREEDY:{GREEDY} BATMAN:{BATMAN}")
+
+
+
+def makeSummary(TArr, TExp, Tsob, ToS):
+
+    summary_dir = f"RESULTS_TASKS_SIMULATIONS/Summary/"
+    file = f"AP_BIDIR_{config['AP_routing_bidirectional']}_[{findAlgorithm()}]_interval_{config['Routing_Interval']}tasks_summary.csv"
+    path = os.path.join(summary_dir, file)
+
+    # Crea la directory se non esiste
+    os.makedirs(summary_dir, exist_ok=True)
+
+    # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
+    summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
+
+    # Controllo file
+    file_exists = os.path.isfile(path)
+    with open(path, mode="a", newline="") as summary_file:
+        writer = csv.writer(summary_file)
+        if not file_exists:
+            writer.writerow(["Seed", "TotalTasks", "Arrived", "Expired", "OutOfBuff", "OnSim"])
+        writer.writerow(summary_row)
+
+    print(f"Summary info saved to: {path}")
+
+def convert_task_list_in_dict(task_list : list) -> dict:
+    result = {}
+    for elem in task_list:
+        # supporta sia oggetti con attributo .id che dict con chiave 'id'
+        if isinstance(elem, dict):
+            key = elem.get("id")
+        else:
+            key = getattr(elem, "id", None)
+
+        if key is None:
+            continue
+
+        result[key] = elem
+        # stampa lo stato corrente del dizionario dopo ogni inserimento
+    return result
+
+def get_routing_hop_tasks(task_id: int) -> int:
+    pass
+
 
 def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
     """
@@ -200,14 +264,14 @@ def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
     # FASE DI STAMPA FORMATTATA
     print(f"TOT TASK IN ROUTING SYS: {len(total_tasks)}\n")
     print(
-        " id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algorithms")
+        "id     | CurrentNode          | Hop | Label           | Resolution    | Start Routing (s) | End Routing (s) | duration      | Algo")
     for elem in total_tasks:
         id_, current_node, hop, label, task_type, routing_start, routing_end, durata, algorithms = elem
         algorithms_str = ', '.join([f"{k}:{v}%" for k, v in algorithms.items()]) if algorithms else "-"
 
         row = (
             f"{id_:<6} | {str(current_node):<20} | {hop:<3} | {label:<15} | "
-            f"{task_type:<13} | {routing_start:<17} | {str(routing_end):<15} | "
+            f"{task_type:<22}| {routing_start:<17} | {str(routing_end):<15} | "
             f"{str(durata):<13} | {algorithms_str}"
         )
 
@@ -225,22 +289,7 @@ def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
 
         print(row)
 
-    # ! Scrittura delle informazioni nel file csv
-    summary_filename = "tasks_summary.csv"
-
-    # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
-    summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
-
-    # Se il file non esiste, crea il file e scrivi l'intestazione
-    file_exists = os.path.isfile(summary_filename)
-    with open(summary_filename, mode="a", newline="") as summary_file:
-        writer = csv.writer(summary_file)
-        if not file_exists:
-            writer.writerow(["Seed", "TotalTasks", "Arrived", "Expired", "OutOfBuff", "OnSim"])
-        writer.writerow(summary_row)
-    print(f"Summary info saved to: {summary_filename}")
-
-    # ! Fine scrittura
+    makeSummary(TArr, TExp, Tsob, ToS)  # Genera il Summary
 
     print()  # Riga vuota alla fine per separare dall'output successivo
 

@@ -12,8 +12,7 @@ from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
 
 # Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 
 # Gestione thread
 lock = threading.Lock()  # Meccanismo di lock

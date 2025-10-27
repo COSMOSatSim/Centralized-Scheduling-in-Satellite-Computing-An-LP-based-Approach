@@ -7,8 +7,7 @@ import sys
 import globals
 
 # Leggi il file di configurazione JSON
-with open('config.json5') as config_file:
-    config = json5.load(config_file)
+config = globals.config
 
 ts = load.timescale()                                   # ts : time management with astronomical time
 time_now = ts.now()
@@ -230,10 +229,12 @@ def getAllSatOnMe(t, tle_data, serializable = False, Phi_max = config["Phi_max"]
     # Determino Access Points
     for sat in sat_sort_dome:
         # Decido se eseguire il filtro o meno
-        if config["AP_selection"] == "distance_based":
+        if config["AP_selection"] == "base":
             can_take = (counter < Num_Access_point)
-        else:
+        elif config["AP_selection"] == "optimal":
             can_take = (counter < Num_Access_point and filterSatellitesInView(sat.satellite, t))
+        else:
+            sys.exit(f"AP_selection errato : {config["AP_selection"]}")
 
         if can_take:
             sat.is_acc_point = True
