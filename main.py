@@ -6,7 +6,7 @@ import simpy
 import json
 from EdgeServer import build_task_csv_path
 import simulation
-from Task import generate_Tasks_Status
+from Task import generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, string_to_skyfield_time
 from user_based_topology import get_current_time, getObserverObj
@@ -237,6 +237,7 @@ if __name__ == "__main__":
     globals.observer.print_task_summary()
     print("-"*10)
     generate_Tasks_Status(csv_routing_task)
+    task_dict = convert_task_list_in_dict(globals.gbl_tasks)
 
     # 7) Scrittura risultati su CSV
     with open(csv_task, mode='w', newline='') as f_out:
@@ -244,10 +245,10 @@ if __name__ == "__main__":
         writer.writerow([
             "Task ID", "Task Type", "Status", "Arrival Time (System)",
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
-            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
+            "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops", "Num Hops Routing",
             "Queue length", "transfer_time", "DeadLine Exceded", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
-            "Rejection Reason"
+            "Rejection Reason", "Routing Init Time", "Routing End Time", "Routing Duration"
         ])
 
         # ---------------------------------------------------------------------
@@ -274,11 +275,13 @@ if __name__ == "__main__":
                     remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
                                                                                                         (int,
                                                                                                          float)) else "N/A"
+                    r_hops, r_init_time, r_end_time, r_duration = task_dict[tid].get_stat_csv()
                     writer.writerow([
                         tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
-                        ex_t, service_t, time_in_system, time_q, sel_srv, hops,
+                        ex_t, service_t, time_in_system, time_q, sel_srv, hops, r_hops, 
                         qlen, tranfer_t, DeadLine, exec_set,
-                        eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
+                        eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
+                        r_init_time, r_end_time, r_duration
                     ])
 
                 # rejected tasks (come prima)
@@ -288,9 +291,10 @@ if __name__ == "__main__":
                 for (tid, task_type, arr_sys, reason) in getattr(srv, 'rejected_tasks', []):
                     writer.writerow([
                         tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
-                        "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
+                        "N/A", "N/A", "N/A", "N/A", srv.name, "N/A", "N/A"
                         "N/A", "N/A", "N/A", "N/A",
-                        "N/A",  "N/A", "N/A", srv.energy, remaining_percent, reason
+                        "N/A",  "N/A", "N/A", srv.energy, remaining_percent, reason,
+                        "N/A", "N/A", "N/A"
                     ])
 
                 # residual tasks: CPU queue & NET queue
@@ -316,10 +320,11 @@ if __name__ == "__main__":
 
                     writer.writerow([
                         tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
-                        execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
+                        execution_time, service_time, "N/A", "N/A", srv.name, "N/A", "N/A",
                         total_residual_count, "N/A", "N/A",
                         "N/A",  "N/A", "N/A",
-                        "N/A", srv.energy, "In Queue at End"
+                        "N/A", srv.energy, "In Queue at End",
+                        "N/A", "N/A", "N/A"
                     ])
         # dump also global batch completions (if any)
         for entry in getattr(globals, 'gbl_batch_completed', []):
@@ -333,10 +338,11 @@ if __name__ == "__main__":
                                                                                                 (int, float)) else "N/A"
             writer.writerow([
                 tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
-                ex_t, service_t, time_in_system, tq, sel_srv, hops,
+                ex_t, service_t, time_in_system, tq, sel_srv, hops, "N/A",
                 qlen, trf,
                 DeadLine, exec_set,
-                eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
+                eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
+                "N/A","N/A","N/A"
             ])
         end_time_simulation_real = time.time()
         duration_simulation = end_time_simulation_real - start_time_simulation_real

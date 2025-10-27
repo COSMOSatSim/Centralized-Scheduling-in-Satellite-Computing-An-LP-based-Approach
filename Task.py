@@ -2,6 +2,7 @@ import sys
 import globals
 import json5, csv
 import os
+from pprint import pprint
 
 config = globals.config
 resolution = globals.resolution_config
@@ -45,17 +46,14 @@ class Task:
         self.routeRequestIst = None  # Timestamp start route Request
         self.RouteReply = False  # Bool allow reply
         self.selected_route = []  # Lista percorso da seguire
-
+    
     def __str__(self):
         """
         String representation of the Task object.
-        :return: String representation of the Task object.
         """
-        lista = []
-        for s in self.hop_History:
-            lista.append(s.name)
-
-        return f"|HISTORY:{lista}\t|CURRENT:{self.current_server}\t|TTL:{self.ttl}|Hop:{self.hop}"
+        if self.routingEndTime:
+            duration = self.routingEndTime - self.routingInitTime
+            return f"|ID:{self.id}\t|Hop:{self.hop}|Init:{self.routingInitTime}|Endt:{self.routingEndTime}|dur:{duration}"
 
     def add_algorithm(self, algo_name: str):
         """Incrementa il contatore per l'algoritmo usato"""
@@ -63,6 +61,12 @@ class Task:
             self.algorithms_used[algo_name] = 0
         self.algorithms_used[algo_name] += 1
 
+    def get_stat_csv(self) -> tuple:
+        if self.routingEndTime:
+            duration = self.routingEndTime - self.routingInitTime 
+            return self.hop, self.routingInitTime, self.routingEndTime, duration
+        else:
+            return self.hop, self.routingInitTime, "N/A", "N/A"
 
 def assign_resolution(required_ram, required_disk):
     # Normalizzazione pesata
@@ -199,6 +203,26 @@ def makeSummary(TArr, TExp, Tsob, ToS):
         writer.writerow(summary_row)
 
     print(f"Summary info saved to: {path}")
+
+def convert_task_list_in_dict(task_list : list) -> dict:
+    result = {}
+    for elem in task_list:
+        # supporta sia oggetti con attributo .id che dict con chiave 'id'
+        if isinstance(elem, dict):
+            key = elem.get("id")
+        else:
+            key = getattr(elem, "id", None)
+
+        if key is None:
+            continue
+
+        result[key] = elem
+        # stampa lo stato corrente del dizionario dopo ogni inserimento
+    return result
+
+def get_routing_hop_tasks(task_id: int) -> int:
+    pass
+
 
 def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
     """
