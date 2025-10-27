@@ -167,7 +167,7 @@ class EdgeServer:
 
     def task_completed(self, task_id, task_type, arrival_time_system, arrival_time_task_queue,
                        start_time, end_time, execution_time, service_time, time_in_queue,
-                       selected_server, num_hops, lunghezza_coda, estimated_execution_time, transfer_time,
+                       selected_server, num_hops, lunghezza_coda, transfer_time,
                        DeadLine, exec_after_set,
                        eps_cpu=0.0, eps_net=0.0):
         '''
@@ -184,7 +184,7 @@ class EdgeServer:
             (task_id,  task_type, arrival_time_system, arrival_time_task_queue,
              start_time, end_time, execution_time, service_time, time_in_queue,
              selected_server, num_hops, lunghezza_coda,
-             estimated_execution_time, transfer_time,
+             transfer_time,
              DeadLine, exec_after_set, eps_cpu, eps_net, total_energy, self.energy)
         )
 

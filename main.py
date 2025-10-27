@@ -252,17 +252,14 @@ if __name__ == "__main__":
             "Task ID", "Task Type", "Status", "Arrival Time (System)",
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
             "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
-            "Queue length", "estimated_execution_time",
-            "transfer_time", "DeadLine Exceded", "Exec_after_set",
+            "Queue length", "transfer_time", "DeadLine Exceded", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
             "Rejection Reason"
         ])
 
         # ---------------------------------------------------------------------
         # Scrittura CSV: iteriamo su tutti i server rilevanti (edge_servers + global_access_point)
-        #
         # ---------------------------------------------------------------------
-        # Build unique list of servers (by name) from both collections
 
         all_servers_by_name = {}
         for s in (globals.edge_servers or []) + (globals.global_access_point or []):
@@ -274,25 +271,20 @@ if __name__ == "__main__":
         for srv in all_servers:
                 # completed tasks
                 for entry in getattr(srv, 'completed_tasks', []):
-                    if len(entry) < 20:
-                        print(f"WARNING: unexpected completed_tasks entry len {len(entry)} for {srv.name}: {entry}")
-                        continue
 
-                    (tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
-                     tq, sel_srv, hops, qlen, est_e, trf,
+                    (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
+                     time_q, sel_srv, hops, qlen, tranfer_t,
                      DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
 
-                    time_in_system = (et - arr_sys) if (
-                                isinstance(et, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
+                    time_in_system = (end_t - arr_sys) if (
+                            isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
                     remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
                                                                                                         (int,
                                                                                                          float)) else "N/A"
-
                     writer.writerow([
-                        tid, task_type, "Completed", arr_sys, arr_q, st, et,
-                        ex_t, sv_t, time_in_system, tq, sel_srv, hops,
-                        qlen, est_e, trf,
-                        DeadLine, exec_set,
+                        tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
+                        ex_t, service_t, time_in_system, time_q, sel_srv, hops,
+                        qlen, tranfer_t, DeadLine, exec_set,
                         eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
                     ])
 
@@ -305,7 +297,7 @@ if __name__ == "__main__":
                         tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
                         "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
                         "N/A", "N/A", "N/A", "N/A",
-                        "N/A", "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason
+                        "N/A",  "N/A", "N/A", srv.energy, remaining_percent, reason
                     ])
 
                 # residual tasks: CPU queue & NET queue
@@ -333,22 +325,23 @@ if __name__ == "__main__":
                         tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
                         execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
                         total_residual_count, "N/A", "N/A",
-                        "N/A", "N/A", "N/A", "N/A",
+                        "N/A",  "N/A", "N/A",
                         "N/A", srv.energy, "In Queue at End"
                     ])
         # dump also global batch completions (if any)
         for entry in getattr(globals, 'gbl_batch_completed', []):
-            (tid, task_type, arr_sys, arr_q, st, et, ex_t, sv_t,
-             tq, sel_srv, hops, qlen, est_e, trf,
+            (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
+             tq, sel_srv, hops, qlen, trf,
              DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
-            time_in_system = (et - arr_sys) if (
-                        isinstance(et, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
+            time_in_system = (end_t - arr_sys) if (
+                    isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
+
             remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
                                                                                                 (int, float)) else "N/A"
             writer.writerow([
-                tid, task_type, "Completed", arr_sys, arr_q, st, et,
-                ex_t, sv_t, time_in_system, tq, sel_srv, hops,
-                qlen, est_e, trf,
+                tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
+                ex_t, service_t, time_in_system, tq, sel_srv, hops,
+                qlen, trf,
                 DeadLine, exec_set,
                 eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
             ])
