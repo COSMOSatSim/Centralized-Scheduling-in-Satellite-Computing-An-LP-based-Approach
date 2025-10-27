@@ -2,7 +2,7 @@ import json5
 import experiments
 import globals
 from Task import Task
-from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics
+from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics, solve_on_Ek_hierarchical
 
 
 hop = 0  # Inizializza la variabile hop a zero
@@ -444,20 +444,38 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
 
 
         # ====== QUI CHIAMI IL SOLVER ======
-        ilp_res = solve_on_Ek(
-            snapshot=snap,
-            k=server_selected.name,
-            picked_tasks=[str(task_id)],
-            w_energy=w_e,
-            w_time=w_R,
-            alpha_cpu=alpha_cpu,
-            alpha_net=alpha_net,                 # J/MB
-            solver_name="AUTO",
-            use_node_Rmax_norm=False,
-            default_net_bw_MBps=default_bw_MBps, # MB/s
-            debug=False,
-            tasks_from_prof=False
-        )
+        objective_mode = str(config.get("ilp_objective", "weighted")).lower()
+        if objective_mode == "hierarchical":
+            # Approccio lessicografico (ε-constraint)
+            ilp_res = solve_on_Ek_hierarchical(
+                snapshot=snap,
+                k=server_selected.name,
+                picked_tasks=[str(task_id)],
+                primary=str(config.get("lexi_primary", "energy")).lower(),  # 'energy' o 'time'
+                tol=float(config.get("lexi_tol", 0.10)),
+                alpha_cpu=alpha_cpu,
+                alpha_net=alpha_net,                  # J/MB
+                solver_name=str(config.get("ilp_solver", "AUTO")),
+                default_net_bw_MBps=default_bw_MBps,  # MB/s
+                debug=bool(config.get("ilp_debug", False)),
+                tasks_from_prof=False                 # True se d_net già in secondi nei task
+            )
+        else:
+            # Ramo legacy: obiettivo pesato
+            ilp_res = solve_on_Ek(
+                snapshot=snap,
+                k=server_selected.name,
+                picked_tasks=[str(task_id)],
+                w_energy=w_e,
+                w_time=w_R,
+                alpha_cpu=alpha_cpu,
+                alpha_net=alpha_net,                 # J/MB
+                solver_name="AUTO",
+                use_node_Rmax_norm=False,
+                default_net_bw_MBps=default_bw_MBps, # MB/s
+                debug=False,
+                tasks_from_prof=False
+            )
 
         # DEBUG (utile per capire subito il formato reale)
         print(f"[ILP] res_type={type(ilp_res).__name__} value_preview={str(ilp_res)[:160]}")

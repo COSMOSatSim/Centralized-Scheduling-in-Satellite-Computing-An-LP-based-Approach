@@ -446,20 +446,7 @@ def solve_on_Ek(snapshot: Snapshot, k: str, picked_tasks: List[str],
 
 
     # Normalizzazione R     ------ modificata 2025-10-15 ------
-    
-    
-    # if use_node_Rmax_norm:
-    #     # usa il valore di snapshot.sen[i].Rmax_norm se > 0, altrimenti fallback al max calcolato
-    #     Rnorm = {}
-    #     for i in Ek:
-    #         if snapshot.sen[i].Rmax_norm and snapshot.sen[i].Rmax_norm > 0:
-    #             Rnorm[i] = float(snapshot.sen[i].Rmax_norm)
-    #         else:
-    #             Rnorm[i] = max(1e-9, max(R[r][i] for r in tasks))
-    # else:
-    #     # normalizza rispetto al max R calcolato per nodo
-    #     Rnorm = {i: max(1e-9, max(R[r][i] for r in tasks)) for i in Ek}
-    
+    # (Ora normalizziamo R per-task)
     Rnorm_ref = {r: max(1e-9, max(R[r][i] for i in Ek)) for r in tasks}
 
     # Costruzione ILP
@@ -471,20 +458,14 @@ def solve_on_Ek(snapshot: Snapshot, k: str, picked_tasks: List[str],
     
     # --- traccia delle componenti normalizzate per ricostruire f fuori dal solver ---
     obj_terms_E = {}  # (r,i) -> E_normalizzato = E[r][i] / B_max[i]
-    obj_terms_R = {}  # (r,i) -> R_normalizzato = R[r][i] / Rnorm[i]
+    obj_terms_R = {}  # (r,i) -> R_normalizzato = R[r][i] / Rnorm_ref[r]
 
-    # for r in tasks:
-    #     for i in Ek:
-    #         Enorm = E[r][i] / max(snapshot.sen[i].B_max, 1e-9)
-    #         Rnormed = R[r][i] / max(Rnorm[i], 1e-9)
-    #         objective_terms.append(x[r][i] * (w_energy * Enorm + w_time * Rnormed))
-    
     for r in tasks:
         for i in Ek:
             Enorm = E[r][i] / max(snapshot.sen[i].B_max, 1e-9)
-            Rnormed = R[r][i] / Rnorm_ref[r]   # <-- per-task   ----- modifica 2025-10-15 -----
+            Rnormed = R[r][i] / Rnorm_ref[r]   # <-- per-task
 
-            # salva le componenti (servono DOPO la solve per ricostruire l'obiettivo selezionato)
+            # salva le componenti
             obj_terms_E[(r, i)] = Enorm
             obj_terms_R[(r, i)] = Rnormed
 
@@ -498,8 +479,7 @@ def solve_on_Ek(snapshot: Snapshot, k: str, picked_tasks: List[str],
 
     # Vincoli: budget energetico per nodo
     for i in Ek:
-        # Nell’allegato aggiornato l’impostazione corretta è proprio “somma di tutti i task assegnati ≤ B_i”
-        prob += pl.lpSum(x[r][i] * E[r][i] for r in tasks) <= snapshot.sen[i].B, f"energy_budget_{i}" # MODIFICA DEL FILE CHIESTA DAL PROF
+        prob += pl.lpSum(x[r][i] * E[r][i] for r in tasks) <= snapshot.sen[i].B, f"energy_budget_{i}"
 
     # Vincoli: deadline con big-M
     M = 10 ** 6
@@ -548,6 +528,201 @@ def solve_on_Ek(snapshot: Snapshot, k: str, picked_tasks: List[str],
     }
 
 
+# ----------------------------- approccio ε-constraint/gerarchico
+def solve_on_Ek_hierarchical(
+    snapshot: Snapshot,
+    k: str,
+    picked_tasks: List[str],
+    primary: str = "energy",        # "energy" oppure "time"
+    tol: float = 0.10,               # tolleranza in [0,1], es. 0.10 = +10%
+    alpha_cpu: float = 1.0,
+    alpha_net: float = 5000.0,
+    solver_name: str = "AUTO",
+    default_net_bw_MBps: float = 3125.0,
+    debug: bool = False,
+    tasks_from_prof: bool = False
+) -> dict:
+    """
+    Approccio gerarchico (ε-constraint):
+    - Se primary="energy": 
+        1) min sum E (fase A)  
+        2) min sum R con vincolo sum E <= (1+tol)*E_opt (fase B)
+    - Se primary="time": 
+        1) min sum R (fase A)
+        2) min sum E con vincolo sum R <= (1+tol)*R_opt (fase B)
+    Tutti i vincoli originali restano attivi in entrambe le fasi.
+    """
+    # ---- Prepara Ek e (R,E) identico a solve_on_Ek ---------------------------------
+    if k not in snapshot.sen:
+        raise ValueError(f"Il SEN '{k}' non esiste nello snapshot.")
+
+    Ek = [k] + snapshot.neighbors.get(k, [])
+    Ek = [sid for sid in Ek if sid in snapshot.sen]
+    if not Ek:
+        raise ValueError(f"Nessun nodo in Ek per '{k}'. Controlla neighbors nel JSON.")
+
+    tasks_map: Dict[str, QueueTask] = {t.task_id: t for t in snapshot.requests}
+    missing = [tid for tid in picked_tasks if tid not in tasks_map]
+    if missing:
+        raise ValueError(f"Task non trovati nello snapshot: {missing}")
+    tasks = {tid: tasks_map[tid] for tid in picked_tasks}
+
+    R: Dict[str, Dict[str, float]] = {}
+    E: Dict[str, Dict[str, float]] = {}
+    for r_id, t in tasks.items():
+        R[r_id] = {}
+        E[r_id] = {}
+        for i in Ek:
+            s = snapshot.sen[i]
+            preR = snapshot.pre_R.get(r_id, {}).get(i)
+            preE = snapshot.pre_E.get(r_id, {}).get(i)
+            R[r_id][i] = compute_R_ri(
+                t, s, preR,
+                default_net_bw_MBps=default_net_bw_MBps,
+                task_dnet_is_seconds=False,
+                queues_dnet_is_seconds=False
+            )
+            E[r_id][i] = compute_E_ri(t, preE, alpha_cpu, alpha_net)
+
+    # Utility per costruire un problema con vincoli "di base"
+    def _build_base_lp(minimize: str):
+        prob = pl.LpProblem("SEC_Hierarchical", pl.LpMinimize)
+        x = pl.LpVariable.dicts("x", (list(tasks.keys()), Ek), lowBound=0, upBound=1, cat=pl.LpBinary)
+
+        # Obiettivo primario semplice (NON normalizzato): sum E oppure sum R
+        if minimize == "energy":
+            prob += pl.lpSum(x[r][i] * E[r][i] for r in tasks for i in Ek), "MinEnergy"
+        elif minimize == "time":
+            prob += pl.lpSum(x[r][i] * R[r][i] for r in tasks for i in Ek), "MinTime"
+        else:
+            raise ValueError("minimize deve essere 'energy' o 'time'")
+
+        # Vincoli: assegnazione unica
+        for r in tasks:
+            prob += pl.lpSum(x[r][i] for i in Ek) == 1, f"assign_once_{r}"
+
+        # Vincoli: budget energetico per nodo
+        for i in Ek:
+            prob += pl.lpSum(x[r][i] * E[r][i] for r in tasks) <= snapshot.sen[i].B, f"energy_budget_{i}"
+
+        # Vincoli: deadline con big-M
+        M = 10 ** 6
+        for r, t in tasks.items():
+            for i in Ek:
+                prob += R[r][i] <= t.D + M * (1 - x[r][i]), f"deadline_{r}_{i}"
+
+        return prob, x
+
+    # ------------------- Fase A: ottimo primario -------------------
+    primary = (primary or "energy").lower()
+    if primary not in ("energy", "time"):
+        raise ValueError("primary deve essere 'energy' o 'time'")
+
+    probA, xA = _build_base_lp("energy" if primary == "energy" else "time")
+    solver = pick_solver(solver_name)
+    probA.solve(solver)
+    statusA = pl.LpStatus[probA.status]
+
+    # valore ottimo primario (se disponibile)
+    optA_val = float(pl.value(probA.objective)) if pl.value(probA.objective) is not None else None
+
+    if statusA != "Optimal":
+        # ritorna subito se non ottimo (o infeasible)
+        return {
+            "stage": "A",
+            "status": statusA,
+            "primary": primary,
+            "tol": tol,
+            "opt_primary": optA_val,
+            "objective_primary": optA_val,
+            "objective": optA_val,  # alias per compatibilità col main
+            "assignments": [],
+            "Ek": Ek,
+            "solver": solver.__class__.__name__,
+            "note": "Prima fase non ottimale; impossibile procedere alla fase B."
+        }
+
+    # valore ottimo primario
+    opt_primary = optA_val
+
+    # ------------------- Fase B: ottimo secondario con vincolo ε -------------------
+    # ricostruisci base LP con obiettivo secondario
+    secondary = "time" if primary == "energy" else "energy"
+    probB, xB = _build_base_lp(secondary)
+
+    # aggiungi vincolo ε-constraint
+    if primary == "energy":
+        # sum E <= (1 + tol) * E_opt
+        probB += pl.lpSum(xB[r][i] * E[r][i] for r in tasks for i in Ek) <= (1.0 + tol) * opt_primary, "epsilon_energy"
+    else:
+        # sum R <= (1 + tol) * R_opt
+        probB += pl.lpSum(xB[r][i] * R[r][i] for r in tasks for i in Ek) <= (1.0 + tol) * opt_primary, "epsilon_time"
+
+    probB.solve(solver)
+    statusB = pl.LpStatus[probB.status]
+    objB_val = float(pl.value(probB.objective)) if pl.value(probB.objective) is not None else None
+
+    # DEBUG -------------
+    sumE_B = sum(
+        E[r][i] for r in tasks for i in Ek
+        if (pl.value(xB[r][i]) is not None and pl.value(xB[r][i]) > 0.5)
+    )
+    sumR_B = sum(
+        R[r][i] for r in tasks for i in Ek
+        if (pl.value(xB[r][i]) is not None and pl.value(xB[r][i]) > 0.5)
+    )
+
+    if primary == "energy":
+        rhs = (1.0 + tol) * opt_primary  # opt_primary = E_opt
+        active = abs(sumE_B - rhs) < 1e-6 or sumE_B > 0.999999 * rhs
+        print(f"[ε-constraint energy] sumE_B={sumE_B:.6f}  bound={rhs:.6f}  active={active}")
+    else:  # primary == "time"
+        rhs = (1.0 + tol) * opt_primary  # opt_primary = R_opt
+        active = abs(sumR_B - rhs) < 1e-6 or sumR_B > 0.999999 * rhs
+        print(f"[ε-constraint time]   sumR_B={sumR_B:.6f}  bound={rhs:.6f}  active={active}")
+    # -------------------
+        
+
+    # Estrai assegnazioni e metriche dalla fase B (se fattibile), altrimenti dalla fase A
+    use_prob, use_x, use_status = (probB, xB, statusB) if statusB in ("Optimal", "Feasible") else (probA, xA, statusA)
+    assignments = []
+    sumE = 0.0
+    sumR = 0.0
+    for r in tasks:
+        for i in Ek:
+            val = pl.value(use_x[r][i])
+            if val is not None and val > 0.5:
+                assignments.append({
+                    "task": r,
+                    "sen": i,
+                    "R": float(R[r][i]),
+                    "E": float(E[r][i]),
+                })
+                sumE += float(E[r][i])
+                sumR += float(R[r][i])
+
+    # costruisci risultato + alias compatibilità
+    result = {
+        "stage": "B" if use_prob is probB else "A",
+        "status": use_status,
+        "primary": primary,
+        "tol": tol,
+        "opt_primary": opt_primary,
+        "objective_secondary": objB_val if use_prob is probB else None,
+        "sumE": float(sumE),
+        "sumR": float(sumR),
+        "assignments": assignments,
+        "Ek": Ek,
+        "solver": solver.__class__.__name__,
+    }
+    # alias 'objective' per compatibilità con main:
+    # - se abbiamo usato B: objective = objective_secondary
+    # - se siamo rimasti in A: objective = opt_primary
+    result["objective"] = result["objective_secondary"] if use_prob is probB else opt_primary
+    return result
+
+
+
 # -----------------------------
 # CLI interface
 # -----------------------------
@@ -587,6 +762,9 @@ def main():
                     help="Costante e (J/Hz^3) per alpha_cpu se --auto-alpha.")
     ap.add_argument("--P-net", type=float, default=1.0,
                     help="Potenza di rete (W) per alpha_net se --auto-alpha.")
+    ap.add_argument("--lexi", choices=["off","energy","time"], default="off",
+                help="Approccio gerarchico: off=disabilitato; energy=time secondario; time=energy secondario")
+    ap.add_argument("--tol", type=float, default=0.10, help="Tolleranza gerarchica (0..1)")
 
 
 
@@ -613,9 +791,6 @@ def main():
         snap = load_snapshot(args.snapshot)
 
     
-    # print("DEBUG: tasks in snapshot.requests:", [r.task_id for r in snap.requests])
-    
-
     # Se non specificati i task, prendi i primi 1 o 3
     if args.tasks and len(args.tasks) > 0:
         picked = args.tasks
@@ -644,25 +819,40 @@ def main():
             # Nota: se i file del prof hanno d_net in secondi (tasks_from_prof=True),
             # allora epsilon_net = P_net * d_net -> usa alpha_net = P_net.
         
-        # DA VEDERE
         else:
             alpha_cpu = args.alpha_cpu
             alpha_net = args.alpha_net
 
-        res = solve_on_Ek(
-            snapshot=snap,
-            k=args.sen_id,
-            picked_tasks=picked,
-            w_energy=args.w_energy,
-            w_time=args.w_time,
-            alpha_cpu=alpha_cpu,
-            alpha_net=alpha_net,
-            solver_name=args.solver,
-            use_node_Rmax_norm=args.use_node_Rmax_norm,
-            default_net_bw_MBps=args.net_bw,
-            debug=args.debug,
-            tasks_from_prof=tasks_from_prof_flag
-        )
+        if args.lexi != "off":
+            res = solve_on_Ek_hierarchical(
+                snapshot=snap,
+                k=args.sen_id,
+                picked_tasks=picked,
+                primary=args.lexi,
+                tol=args.tol,
+                alpha_cpu=alpha_cpu,
+                alpha_net=alpha_net,
+                solver_name=args.solver,
+                default_net_bw_MBps=args.net_bw,
+                debug=args.debug,
+                tasks_from_prof=tasks_from_prof_flag
+            )
+        else:
+            res = solve_on_Ek(
+                snapshot=snap,
+                k=args.sen_id,
+                picked_tasks=picked,
+                w_energy=args.w_energy,
+                w_time=args.w_time,
+                alpha_cpu=alpha_cpu,
+                alpha_net=alpha_net,
+                solver_name=args.solver,
+                use_node_Rmax_norm=args.use_node_Rmax_norm,
+                default_net_bw_MBps=args.net_bw,
+                debug=args.debug,
+                tasks_from_prof=tasks_from_prof_flag
+            )
+
 
     except Exception as e:
         print("[ERRORE] Risoluzione fallita:", e)
@@ -672,29 +862,46 @@ def main():
     print(f"Time snapshot: {snap.time}")
     print(f"SEN k: {args.sen_id} | Ek: {res['Ek']}")
     print(f"Solver: {res['solver']}")
-    print("Status:", res["status"])
-    print("Objective:", res["objective"]) # indice di performance globale dell'assegnazione
+    print("Status:", res.get("status"))
+    print("Objective:", res.get("objective"))  # compatibile con pesato e gerarchico
+
+    # Extra info per gerarchico
+    if args.lexi != "off":
+        print(f"[Hierarchical] primary={res.get('primary')} tol={res.get('tol')}")
+        if res.get("opt_primary") is not None:
+            print(f"  Opt(primary): {res.get('opt_primary')}")
+        if res.get("objective_secondary") is not None:
+            print(f"  Objective(secondary): {res.get('objective_secondary')}")
+        if (res.get("sumE") is not None) and (res.get("sumR") is not None):
+            print(f"  Totals -> E: {res.get('sumE')}  R: {res.get('sumR')}")
+
     print("Assignments:")
-    if not res["assignments"]:
+    if not res.get("assignments"):
         print("  [nessuna assegnazione trovata]")
-    for a in res["assignments"]:
-        print(f"  - {a['task']} -> {a['sen']} | R={a['R']:.3f} | E={a['E']:.6f} | "
-              f"Rnorm={a['Rnormed']:.6f} | Enorm={a['Enorm']:.6f}")
+    else:
+        for a in res["assignments"]:
+            # campi base
+            line = f"  - {a['task']} -> {a['sen']} | R={a['R']:.3f} | E={a['E']:.6f}"
+            # campi opzionali (solo obiettivo pesato)
+            if "Rnormed" in a:
+                line += f" | Rnorm={a['Rnormed']:.6f}"
+            if "Enorm" in a:
+                line += f" | Enorm={a['Enorm']:.6f}"
+            print(line)
 
 if __name__ == "__main__":
     main()
 
+
 """
-python sec_ilp_snapshot_v3.py --from-prof-files --sim-file simulation_dataset.json --time 150 --sen-id "STARLINK-4491"  --tasks-file generated_tasks_seed13_dur300.json5 --use-task-ids 9 --mode single --solver AUTO
 
-python sec_ilp_snapshot_v3.py --from-prof-files --sim-file simulation_dataset.json --time 150 --sen-id "STARLINK-4491"  --tasks-file generated_tasks_seed13_dur300.json5 --use-task-ids 7 15 62 --mode triple --solver AUTO
-
-
-
-
-python sec_ilp_snapshot_v3.py --from-prof-files --sim-file simulation_dataset.json --time 150 --sen-id "STARLINK-4491" --tasks-file generated_tasks_seed13_dur300.json5 --use-task-ids 9 --mode single --solver AUTO --net-bw 3125 --w-energy 0.5 --w-time 0.5
+python sec_ilp_snapshot_v3.py --from-prof-files --sim-file simulation_dataset.json --time 150 --sen-id "STARLINK-4491" --tasks-file generated_tasks_seed13_dur300.json5 --mode single --use-task-ids 5 --solver AUTO --net-bw 3125 --w-energy 0.5 --w-time 0.5
 
 
 python sec_ilp_snapshot_v3.py --from-prof-files --sim-file simulation_dataset.json --time 150 --sen-id "STARLINK-4491" --tasks-file generated_tasks_seed13_dur300.json5 --use-task-ids 84 9 45 --mode triple --solver AUTO --net-bw 3125 --w-energy 0.5 --w-time 0.5
+
+
+python sec_ilp_snapshot_v3.py --from-prof-files --sim-file simulation_dataset.json --time 150 --sen-id "STARLINK-4491" --tasks-file generated_tasks_seed13_dur300.json5 --mode single --lexi energy --tol 0.10 --use-task-ids 5 --solver AUTO --net-bw 3125
+
 
 """
