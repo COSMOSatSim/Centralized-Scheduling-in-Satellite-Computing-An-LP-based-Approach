@@ -8,7 +8,8 @@ from EdgeServer import build_task_csv_path
 import simulation
 from Task import generate_Tasks_Status
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, updateTaskValue, string_to_skyfield_time
+from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, \
+    updateTaskValue, string_to_skyfield_time
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
@@ -28,6 +29,7 @@ except FileNotFoundError:
     resolution_config = None
 
 simulation_dataset = []
+
 
 # Aggiungi il nuovo processo di raccolta dati
 def data_collector(env, interval, start_time, end_time):
@@ -98,8 +100,11 @@ if __name__ == "__main__":
     # 2) Caricamento o creazione topologia
     if config.get("Load_Configuration", False):
         print("Carico le configurazioni dal file...")
-        globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations, globals.OGMs_tables, globals.positions_vectors)
-        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables, globals.positions_vectors))
+        globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
+                                                                              globals.OGMs_tables,
+                                                                              globals.positions_vectors)
+        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables,
+                                                     globals.positions_vectors))
     else:
         print("Creo la topologia DOMEv2...")
         globals.edge_servers = create_topology_dome(env)
@@ -118,7 +123,7 @@ if __name__ == "__main__":
     globals.other_server_counter = {
         server.name: 0 for server in globals.edge_servers}
 
-    #3 batch in rete
+    # 3 batch in rete
     batch_task_id = 1000  # base id per batch
     for server in globals.edge_servers:
         n_batches = globals.rnd.randint(0, 3)  # uno o più batch per server (range 0..3)
@@ -169,15 +174,15 @@ if __name__ == "__main__":
 
     # 5) Preparazione dei nomi di cartella e file
     # Prendo direttamente mode_name scritto dal runner in config.json
-    mode_name             = config.get("mode_name", "UnknownMode").replace(" ", "_")
-    ap                    = config.get("access_point", 0)
-    seed_val              = config["seed"]
-    gen_dist              = config["generate_tasks"]["distribution"]
-    req_dist              = config["request_distribution"]["distribution"]
+    mode_name = config.get("mode_name", "UnknownMode").replace(" ", "_")
+    ap = config.get("access_point", 0)
+    seed_val = config["seed"]
+    gen_dist = config["generate_tasks"]["distribution"]
+    req_dist = config["request_distribution"]["distribution"]
     if req_dist == "0_0_0":
         req_dist = "RR"
-    atime                 = config["arrival_time_exponential"]
-    cpu_mean              = config["CPU_timeout"]["gen"]["mean"]
+    atime = config["arrival_time_exponential"]
+    cpu_mean = config["CPU_timeout"]["gen"]["mean"]
 
     # Cartella base: include modalità, AP e seed
     base_dir = f"{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
@@ -242,110 +247,256 @@ if __name__ == "__main__":
 
     # Stampa il riassunto dei task usando la funzione dell'Observer
     globals.observer.print_task_summary()
-    print("-"*10)
+    print("-" * 10)
     generate_Tasks_Status(csv_routing_task)
 
-    # 7) Scrittura risultati su CSV
+    # ---------------------------------------------------------------------
+    # 7) Scrittura risultati su CSV (Task completati/rifiutati/residui)
+    # ---------------------------------------------------------------------
+
+    # Raccogli tutti i server in un'unica lista per l'iterazione
+    all_servers_by_name = {}
+    for s in (globals.edge_servers or []) + (globals.global_access_point or []):
+        if s is None:
+            continue
+        all_servers_by_name[s.name] = s
+    all_servers = list(all_servers_by_name.values())
+
     with open(csv_task, mode='w', newline='') as f_out:
         writer = csv.writer(f_out)
         writer.writerow([
             "Task ID", "Task Type", "Status", "Arrival Time (System)",
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
             "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
-            "Queue length", "transfer_time", "DeadLine Exceded", "Exec_after_set",
+            "Queue length", "transfer_time", "Image_Size_MB", "DeadLine Exceded", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
             "Rejection Reason"
         ])
 
-        # ---------------------------------------------------------------------
-        # Scrittura CSV: iteriamo su tutti i server rilevanti (edge_servers + global_access_point)
-        # ---------------------------------------------------------------------
-
-        all_servers_by_name = {}
-        for s in (globals.edge_servers or []) + (globals.global_access_point or []):
-            if s is None:
-                continue
-            all_servers_by_name[s.name] = s
-        all_servers = list(all_servers_by_name.values())
+        initial_energy_for_percent = config.get("initial_energy", 0.0)
 
         for srv in all_servers:
-                # completed tasks
-                for entry in getattr(srv, 'completed_tasks', []):
+            # completed tasks
+            for entry in getattr(srv, 'completed_tasks', []):
 
-                    (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
-                     time_q, sel_srv, hops, qlen, tranfer_t,
-                     DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+                (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
+                 time_q, sel_srv, hops, qlen, tranfer_t, image_size,
+                 DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
 
-                    time_in_system = (end_t - arr_sys) if (
-                            isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
-                    remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
-                                                                                                        (int,
-                                                                                                         float)) else "N/A"
-                    writer.writerow([
-                        tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
-                        ex_t, service_t, time_in_system, time_q, sel_srv, hops,
-                        qlen, tranfer_t, DeadLine, exec_set,
-                        eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
-                    ])
+                time_in_system = (end_t - arr_sys) if (
+                        isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
 
-                # rejected tasks (come prima)
-                remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
-                                                                                                    (int,
-                                                                                                     float)) else "N/A"
-                for (tid, task_type, arr_sys, reason) in getattr(srv, 'rejected_tasks', []):
-                    writer.writerow([
-                        tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
-                        "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
-                        "N/A", "N/A", "N/A", "N/A",
-                        "N/A",  "N/A", "N/A", srv.energy, remaining_percent, reason
-                    ])
+                remaining_percent = "N/A"
+                if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
+                    remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
-                # residual tasks: CPU queue & NET queue
-                residual_tasks = []
-                for req in getattr(srv, 'cpu_dev').queue:
-                    if hasattr(req, 'task_data'):
-                        td = req.task_data
-                        residual_tasks.append(
-                            {"tid": td.id, "type": "CPU_Waiting", "demand": getattr(td, 'd_cpu', 'N/A')})
-                for req in getattr(srv, 'net_dev').queue:
-                    if hasattr(req, 'task_data'):
-                        td = req.task_data
-                        residual_tasks.append(
-                            {"tid": td.id, "type": "NET_Waiting", "demand": getattr(td, 'd_net', 'N/A')})
+                writer.writerow([
+                    tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
+                    ex_t, service_t, time_in_system, time_q, sel_srv, hops,
+                    qlen, tranfer_t, image_size, DeadLine, exec_set,
+                    eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
+                ])
 
-                total_residual_count = len(residual_tasks)
-                for task_data in residual_tasks:
-                    tid = task_data["tid"]
-                    task_type_label = f"Residual ({task_data['type']})"
-                    demand = task_data["demand"]
-                    execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
-                    service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
+            # rejected tasks (come prima)
+            remaining_percent = "N/A"
+            if isinstance(srv.energy, (int, float)) and initial_energy_for_percent > 0:
+                remaining_percent = (srv.energy / initial_energy_for_percent) * 100
 
-                    writer.writerow([
-                        tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
-                        execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
-                        total_residual_count, "N/A", "N/A",
-                        "N/A",  "N/A", "N/A",
-                        "N/A", srv.energy, "In Queue at End"
-                    ])
+            for (tid, task_type, arr_sys, reason) in getattr(srv, 'rejected_tasks', []):
+                writer.writerow([
+                    tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
+                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
+                    "N/A", "N/A", "N/A", "N/A", "N/A",
+                    "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason
+                ])
+
+            # residual tasks: CPU queue & NET queue
+            residual_tasks = []
+            for req in getattr(srv, 'cpu_dev').queue:
+                if hasattr(req, 'task_data'):
+                    td = req.task_data
+                    residual_tasks.append(
+                        {"tid": td.id, "type": "CPU_Waiting", "demand": getattr(td, 'd_cpu', 'N/A')})
+            for req in getattr(srv, 'net_dev').queue:
+                if hasattr(req, 'task_data'):
+                    td = req.task_data
+                    residual_tasks.append(
+                        {"tid": td.id, "type": "NET_Waiting", "demand": getattr(td, 'd_net', 'N/A')})
+
+            total_residual_count = len(residual_tasks)
+            for task_data in residual_tasks:
+                tid = task_data["tid"]
+                task_type_label = f"Residual ({task_data['type']})"
+                demand = task_data["demand"]
+                execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
+                service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
+
+                writer.writerow([
+                    tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
+                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
+                    total_residual_count, "N/A", "N/A",
+                    "N/A", "N/A", "N/A", "N/A",
+                    "N/A", srv.energy, "In Queue at End"
+                ])
+
         # dump also global batch completions (if any)
         for entry in getattr(globals, 'gbl_batch_completed', []):
             (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
-             tq, sel_srv, hops, qlen, trf,
+             tq, sel_srv, hops, qlen, trf, image_size,
              DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+
             time_in_system = (end_t - arr_sys) if (
                     isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
 
-            remaining_percent = (srv_rem_energy / config["initial_energy"]) * 100 if isinstance(srv_rem_energy,
-                                                                                                (int, float)) else "N/A"
+            remaining_percent = "N/A"
+            if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
+                remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
+
             writer.writerow([
                 tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
                 ex_t, service_t, time_in_system, tq, sel_srv, hops,
-                qlen, trf,
+                qlen, trf, image_size,
                 DeadLine, exec_set,
                 eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A"
             ])
-        end_time_simulation_real = time.time()
-        duration_simulation = end_time_simulation_real - start_time_simulation_real
-        print(f"Simulation results saved to: {csv_task}")
-        print(f"Tempo di esecuzione REALE della simulazione {duration_simulation:.4f}secondi")
+
+    print(f"Simulation results saved to: {csv_task}")
+
+    # --------------------------------------------------
+    # 8) Scrittura Statistiche Energetiche (BLOCCO RISCRITTO)
+    # --------------------------------------------------
+
+    csv_energy_stats = (
+        f"{base_dir}/energy_stats_"
+        f"{gen_dist}_REQ-{req_dist}_"
+        f"AT_{atime}_CPU_{cpu_mean}.csv"
+    )
+
+    print(f"\nSalvataggio statistiche energetiche su: {csv_energy_stats}")
+
+    try:
+        # Prendi l'energia iniziale dal config per calcolare la percentuale
+        initial_energy = config.get("initial_energy", 0.0)
+
+        # 1. Inizializza un dizionario per raccogliere le statistiche
+        stats_per_server = {}
+        for srv in all_servers:
+            stats_per_server[srv.name] = {
+                "server_obj": srv,
+                "energy_consumptions": [],
+                "task_counts": {
+                    "Generic_Service": 0,
+                    "CPU_Intensive": 0,
+                    "CPU_and_Data_Intensive": 0,
+                    "Batch": 0
+                }
+            }
+
+        # 2. Popola le statistiche dai task NON-BATCH (da srv.completed_tasks)
+        for srv in all_servers:
+            for entry in getattr(srv, 'completed_tasks', []):
+                task_type = entry[1]  # Indice 1 per task_type
+                energy = entry[18]  # Indice 18 per eps_tot
+
+                if task_type in stats_per_server[srv.name]["task_counts"]:
+                    stats_per_server[srv.name]["task_counts"][task_type] += 1
+
+                if isinstance(energy, (int, float)) and energy > 0.0:
+                    stats_per_server[srv.name]["energy_consumptions"].append(energy)
+
+        # 3. Popola le statistiche dai task BATCH (da globals.gbl_batch_completed)
+        for entry in getattr(globals, 'gbl_batch_completed', []):
+            server_name = entry[9]  # Indice 9 per sel_srv
+            task_type = entry[1]  # Indice 1 per task_type
+            energy = entry[18]  # Indice 18 per eps_tot
+
+            if server_name in stats_per_server and task_type == "Batch":
+                stats_per_server[server_name]["task_counts"]["Batch"] += 1
+                if isinstance(energy, (int, float)) and energy > 0.0:
+                    stats_per_server[server_name]["energy_consumptions"].append(energy)
+
+        # 4. Scrivi il file CSV
+        with open(csv_energy_stats, mode='w', newline='') as f_stats:
+            writer_stats = csv.writer(f_stats)
+
+            # Scrivi l'intestazione
+            writer_stats.writerow([
+                "Server_Name",
+                "Total_Tasks_Completed",
+                "Generic_Service_Count",
+                "CPU_Intensive_Count",
+                "CPU_Data_Intensive_Count",
+                "Batch_Count",
+                "Generic_Service_%",
+                "CPU_Intensive_%",
+                "CPU_Data_Intensive_%",
+                "Batch_%",
+                "Total_Energy_Consumed_J",
+                "Total_Energy_Consumed_%",
+                "Min_Energy_Consumed_J",
+                "Max_Energy_Consumed_J",
+                "Avg_Energy_Consumed_J",
+                "Final_Remaining_Energy_J"
+            ])
+
+            # 5. Calcola le statistiche finali e scrivi le righe
+            for server_name, stats in stats_per_server.items():
+
+                task_counts = stats["task_counts"]
+                energy_consumptions = stats["energy_consumptions"]
+
+                total_tasks_completed = sum(task_counts.values())
+
+                # Calcolo percentuali per tipo di task
+                if total_tasks_completed > 0:
+                    percent_generic = (task_counts["Generic_Service"] / total_tasks_completed) * 100
+                    percent_cpu = (task_counts["CPU_Intensive"] / total_tasks_completed) * 100
+                    percent_cpu_data = (task_counts["CPU_and_Data_Intensive"] / total_tasks_completed) * 100
+                    percent_batch = (task_counts["Batch"] / total_tasks_completed) * 100
+                else:
+                    percent_generic = 0.0
+                    percent_cpu = 0.0
+                    percent_cpu_data = 0.0
+                    percent_batch = 0.0
+
+                # Calcolo statistiche energetiche
+                if energy_consumptions:
+                    total_e = sum(energy_consumptions)
+                    min_e = min(energy_consumptions)
+                    max_e = max(energy_consumptions)
+                    avg_e = total_e / len(energy_consumptions)
+                    total_e_percent = (total_e / initial_energy) * 100 if initial_energy > 0 else 0.0
+                else:
+                    total_e = 0.0
+                    min_e = 0.0
+                    max_e = 0.0
+                    avg_e = 0.0
+                    total_e_percent = 0.0
+
+                # Scrivi la riga
+                writer_stats.writerow([
+                    server_name,
+                    total_tasks_completed,
+                    task_counts["Generic_Service"],
+                    task_counts["CPU_Intensive"],
+                    task_counts["CPU_and_Data_Intensive"],
+                    task_counts["Batch"],
+                    percent_generic,
+                    percent_cpu,
+                    percent_cpu_data,
+                    percent_batch,
+                    total_e,
+                    total_e_percent,
+                    min_e,
+                    max_e,
+                    avg_e,
+                    stats["server_obj"].energy  # Energia finale rimasta
+                ])
+
+    except Exception as e:
+        print(f"ERRORE during writing the energy stats file: {e}")
+
+    # Calcolo tempo reale di esecuzione
+    end_time_simulation_real = time.time()
+    duration_simulation = end_time_simulation_real - start_time_simulation_real
+    print(f"Tempo di esecuzione REALE della simulazione {duration_simulation:.4f} secondi")

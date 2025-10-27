@@ -260,7 +260,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         task_id, task_type, arrival_time_system, arrival_time_task_queue,
         start_time, end_time, execution_time, service_time, time_in_queue,
         selected_server.name, num_hops, qlen, transfer_time,
-        DeadLine=False, exec_after_set=False,
+        image_size, DeadLine=False, exec_after_set=False,
         eps_cpu=eps_cpu, eps_net=eps_net
     )
 
@@ -628,9 +628,9 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
     # registra il completamento (usa task_completed come negli altri rami)
     server_obj.task_completed(
         task_id, "Batch", arrival_time_system, arrival_time_system,
-        start_service_time, env.now, net_time, net_time, time_in_queue_batch,  # <-- USA time_in_queue_batch
+        start_service_time, env.now, net_time, net_time, time_in_queue_batch,
         server_obj.name, 0, len(server_obj.net_dev.queue),
-        transfer_time=0.0,
+        0.0, image_size_MB,
         DeadLine=False, exec_after_set=False,
         eps_cpu=0.0, eps_net=eps_net
     )
@@ -651,6 +651,7 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
             0,  # hops
             len(server_obj.net_dev.queue),  # qlen
             0.0,  # trf
+            image_size_MB,  # <-- AGGIUNGI QUESTO
             False,  # DeadLine
             False,  # exec_set
             0.0,  # eps_cpu
