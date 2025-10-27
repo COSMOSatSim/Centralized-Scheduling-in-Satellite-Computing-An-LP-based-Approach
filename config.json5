@@ -10,7 +10,7 @@
   arrival_time_exponential: 1.5,
   DeadLine: 400,
   initial_energy: 150000,
-  C_sen: 10000000.0,
+  C_sen: 10000000000.0,
   energy_coefficient: 5e-26,
   weight_energy: 0.7,
   weight_response: 0.3,

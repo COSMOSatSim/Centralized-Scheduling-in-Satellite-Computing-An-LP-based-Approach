@@ -240,7 +240,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     # Fine dei branch: calcola metriche finali e registra il completamento
     end_time = env.now
     execution_time = end_time - start_time
-    service_time = execution_time + transfer_time
+    service_time = execution_time + transfer_time + time_in_queue
 
     selected_server.tasks.append(task_OBS)
     globals.gbl_tasks.append(task_OBS)
