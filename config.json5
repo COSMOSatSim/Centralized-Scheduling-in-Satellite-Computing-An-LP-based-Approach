@@ -7,8 +7,8 @@
   adding_time: 30,
   seed: 13,
   access_point: 5,
-  arrival_time_exponential: 1.5,
-  DeadLine: 400,
+  arrival_time_exponential: 0.1,
+  DeadLine: 0.2,
   initial_energy: 150000,
   C_sen: 10000000000.0,
   energy_coefficient: 5e-26,
@@ -61,7 +61,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_1.csv",
+    name: "OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_0.1_CPU_1.csv",
   },
   simulation_location: "Roma",
   locations: {

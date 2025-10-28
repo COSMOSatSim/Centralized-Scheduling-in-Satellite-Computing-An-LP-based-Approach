@@ -1,5 +1,4 @@
 import globals
-import json5
 import experiments
 from Task import Task
 
@@ -8,7 +7,7 @@ hop = 0  # Inizializza la variabile hop a zero
 config = globals.config
 resolution_config = globals.resolution_config
 
-
+#D_r = 0
 def network_metrics(config, image_size_MB, Volume_size_MB=0.0):
     """
     Calcola la larghezza di banda disponibile (in Bps) e la dimensione totale dei dati (in Byte).
@@ -33,7 +32,7 @@ def network_metrics(config, image_size_MB, Volume_size_MB=0.0):
 
 def TaskAssignment(env, selected_server, task_id, image_size,
                    arrival_time_system, num_hops, transfer_time,
-                   task_type, d_cpu, deadline):
+                   task_type, d_cpu, D_r):
     """
     Processo SimPy che assegna un task al server selezionato e simula:
       - attesa nella coda CPU (cpu_dev)
@@ -56,7 +55,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     if ENABLE_MONITORING:
         task_OBS.d_cpu = d_cpu
         task_OBS.d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
-        task_OBS.deadline = arrival_time_system + deadline
+        task_OBS.deadline = arrival_time_system + D_r
         task_OBS.image_size_MB = image_size
 
     # aspetta il trasferimento iniziale verso il selected_server
@@ -77,7 +76,6 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
     eps_cpu, eps_net, time_in_queue = 0.0, 0.0, 0.0 # energia stimata CPU / NET che useremo per riserve e sottrazioni
     start_time = env.now
-    D_r = deadline
 
     d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
     C_sen = config.get("C_sen", 1e9)  # parametro costante per il modello energetico CPU
@@ -108,6 +106,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             return
         # controllo se il server ha energia disponibile (tenendo conto delle riserve)
         R = Wc + d_cpu + d_net
+        print('valore di R confreontato con deadline', R, 'deadline', D_r)
         if R > D_r:
             # se la stima supera la deadline configurata, rifiuta il task
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
@@ -353,9 +352,12 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     # Filtra i server non validi
     server_metrics = [m for m in server_metrics
                       if m['orbitalSunset'] not in (None, 0)]
-
+    reason = "No suitable server found after deadline/sunset filters"
     if not server_metrics:
         print(f"[Task {task_id}] Nessun server valido trovato.")
+        server_selected.record_rejected_task(
+            task_id, task_type, arrival_time_system, 'Invalid orbitalSunset'
+        )
         return
 
     # Ordina i server in base al nuovo punteggio di selezione, in ordine decrescente
@@ -372,11 +374,13 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
             m for m in sorted_servers
             if m['expected_completion_time'] < deadline
                and m['expected_completion_time'] < m['orbitalSunset']
-               and m['orbitalSunset'] not in (0, None)
         ]
 
     if not server_metrics_sorted:
         print(f"[Task {task_id}] Nessun server rimasto dopo i filtri (deadline/sunset).")
+        server_selected.record_rejected_task(
+            task_id, task_type, arrival_time_system, reason
+        )
         return
 
     # scegli il primo dizionario (metriche) e ricava server/transfer_time da lì
@@ -429,12 +433,13 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
 
     # estrai d_cpu e deadline già calcolati in generate_tasks
     d_cpu = task_data.get('d_cpu')  # fallback
-    deadline = task_data.get('deadline', config.get("DeadLine", 400))  # relative deadline in seconds
+    #deadline = task_data.get('deadline', config.get("DeadLine", 400))  # relative deadline in seconds
 
     required_ram = task_data['required_ram']
     required_disk = task_data['required_disk']
     task_type = task_data['type']
     image_size = task_data['image_size']
+    deadline = task_data['deadline']
 
     print(f"---> Task {task_id} (Type: {task_type}) arriva in {arrival_time_system:.2f}")
 

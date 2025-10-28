@@ -9,7 +9,7 @@ def exponential(_=None):
     che viene ignorato per compatibilità.
     Usa globals.rnd_np per riproducibilità.
     """
-    mean = config.get("arrival_time_exponential", 1.5)
+    mean = config.get("arrival_time_exponential", 0.5)
     # globals.rnd_np può essere un Generator (default_rng) o RandomState fallback
     try:
         return float(globals.rnd_np.exponential(scale=mean))
