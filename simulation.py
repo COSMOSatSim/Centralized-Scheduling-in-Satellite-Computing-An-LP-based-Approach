@@ -718,7 +718,7 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
                 snapshot=snap, k=server_selected.name, picked_tasks=[str(task_id)],
                 w_energy=w_e, w_time=w_R,
                 alpha_cpu=alpha_cpu, alpha_net=alpha_net,
-                solver_name="AUTO", use_node_Rmax_norm=False,
+                solver_name="CBC", use_node_Rmax_norm=False,
                 default_net_bw_MBps=bw_MBps,
                 debug=False, tasks_from_prof=False
             )
