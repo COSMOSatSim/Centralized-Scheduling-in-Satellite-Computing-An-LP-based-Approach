@@ -174,10 +174,11 @@ if __name__ == "__main__":
         req_dist = "RR"
     atime                 = config["arrival_time_exponential"]
     cpu_mean              = config["CPU_timeout"]["gen"]["mean"]
+    solver                = config["SearchNode"]
 
     # Cartella base: include modalità, AP e seed
-    base_dir = f"{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
-    task_dir = f"RESULTS_TASKS_SIMULATIONS/{req_dist}-Task_Result{ap}/seed_{seed_val}/"
+    base_dir = f"{solver}_{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
+    task_dir = f"RESULTS_TASKS_SIMULATIONS/{solver}_{req_dist}-Task_Result{ap}/seed_{seed_val}/"
 
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(task_dir, exist_ok=True)

@@ -708,7 +708,7 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
                 primary=str(config.get("lexi_primary", "energy")).lower(),
                 tol=float(config.get("lexi_tol", 0.10)),
                 alpha_cpu=alpha_cpu, alpha_net=alpha_net,
-                solver_name=str(config.get("ilp_solver", "AUTO")),
+                solver_name=str(config.get("ilp_solver", "CBC")),
                 default_net_bw_MBps=bw_MBps,
                 debug=bool(config.get("ilp_debug", False)),
                 tasks_from_prof=False
