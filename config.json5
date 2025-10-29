@@ -1,6 +1,6 @@
 {
   simulation_duration: 300,
-  enable_queue_monitoring: false,
+  enable_queue_monitoring: true,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
@@ -39,7 +39,7 @@
   },
   DTS: true,
   AP_selection: "base",
-  SearchNode: "ERT",
+  SearchNode: "ILP",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -61,7 +61,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_1.csv",
+    name: "ILP_OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_1.csv",
   },
   simulation_location: "Roma",
   locations: {
