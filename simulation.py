@@ -134,6 +134,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         selected_server.cpu_busy_until = env.now  # reset quando il task finisce
         # sottraggo l'energia CPU effettivamente consumata
         selected_server.energy -= eps_cpu
+        selected_server.cpu_dev.release(req_cpu)
 
         # -------------------------
         # Downlink verso Ground User: si assume che l'output abbia dimensione = image_size
@@ -175,6 +176,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
         # attendi la CPU
         yield req_cpu
+
         Wc = env.now - arrival_time_task_queue
         selected_server.cpu_busy_until = env.now + d_cpu
 
@@ -182,6 +184,9 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         yield env.timeout(d_cpu)
         selected_server.cpu_busy_until = env.now
         selected_server.energy -= eps_cpu
+        selected_server.cpu_dev.release(req_cpu)
+
+        cpu_service_end = env.now
 
         # ora enqueue sulla NET (se richiesto)
         req_net = selected_server.net_dev.request()
@@ -192,12 +197,17 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             f"[{env.now:.3f}] Task {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
 
         yield req_net
-        Wn = env.now - arrival_time_task_queue
+
+        Wn = env.now - cpu_service_end
+        if Wn < 0:
+            Wn = 0.0
+
         selected_server.net_busy_until = env.now + net_time
 
         yield env.timeout(net_time)
         selected_server.net_busy_until = env.now
         selected_server.energy -= eps_net
+        selected_server.net_dev.release(req_net)
 
         time_in_queue = Wc + Wn
         selected_server.energy_reserved -= (eps_cpu + eps_net)
@@ -233,6 +243,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         selected_server.net_busy_until = env.now
         selected_server.energy -= eps_net
         selected_server.energy_reserved -= eps_net
+        selected_server.net_dev.release(req_net)
 
     # Fine dei branch: calcola metriche finali e registra il completamento
     end_time = env.now
@@ -771,7 +782,7 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
 
     # estrai d_cpu e deadline già calcolati in generate_tasks
     d_cpu = task_data.get('d_cpu')
-    deadline = task_data.get('deadline', config.get("DeadLine", 400))
+    deadline = task_data.get('deadline')
 
     required_ram = task_data['required_ram']
     required_disk = task_data['required_disk']
@@ -797,7 +808,7 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
         task_type, max_energy, d_cpu, deadline
     )
 
-    if policy == "IPL":
+    if policy == "ILP":
         print(f"--- [{env.now:.2f}] Task {task_id} using SearchNode Policy: v2_ilp_hybrid ---")
         yield from SearchNode_ILP_Hybrid_v2(*search_node_args)
     else:  # Default a v1_heuristic
@@ -832,14 +843,30 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         temp_task_data = task_type_and_size_generator()
 
         d_cpu = temp_task_data['d_cpu']
+
+        # Ottieni delta_D (slack percentuale). Default 0.2 = 20%
+        raw_delta = config.get("deadline", 0.2)
+
+        # Normalizza: se 10 (int) -> interpretiamo come 10% -> 0.10
+        try:
+            delta_D = float(raw_delta)
+            if delta_D >= 1.0:  # es. 10 -> 0.10, 100 -> 1.0
+                delta_D = delta_D / 100.0
+        except Exception:
+            delta_D = 0.2
+
+        # Safety clamp: assicuriamoci che delta_D sia nell'intervallo [0,1]
+        if delta_D < 0.0:
+            delta_D = 0.0
+        elif delta_D > 1.0:
+            delta_D = 1.0
+
         # stima per la preselezione: calcola d_net_predicted in secondi
         bw_Bps, data_bytes = network_metrics( temp_task_data['image_size'])
         d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
 
         # imposta deadline: D_r = (1 + delta_D) * (d_cpu + d_net)
-        ##delta_D = config.get("delta_D", 0.2)  # default 20% slack
-        deadline = config.get("DeadLine")
-        D_r = (1.0 + deadline) * (d_cpu + d_net_predicted)
+        D_r = (1.0 + delta_D) * (d_cpu + d_net_predicted)
         temp_task_data['deadline'] = D_r
 
         # stima d_cpu già in temp_task_data;
@@ -967,6 +994,7 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
 
     server_obj.net_busy_until = env.now + net_time
     yield env.timeout(net_time)
+
 
     # Calcola il tempo di coda
     start_service_time = env.now - net_time

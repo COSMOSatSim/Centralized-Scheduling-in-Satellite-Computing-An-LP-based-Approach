@@ -8,7 +8,7 @@
   seed: 13,
   access_point: 5,
   arrival_time_exponential: 1.5,
-  DeadLine: 400,
+  deadline: 10,
   initial_energy: 150000,
   C_sen: 10000000000.0,
   energy_coefficient: 5e-26,
@@ -89,7 +89,7 @@
   Interval_past_event_prediction: 10,
   OGMs_redistribution: 20,
   sphere_altitude_km: 500000.0,
-  AP_routing_bidirectional: false,
+  AP_routing_bidirectional: true,
   Routing_Interval: 1,
   Routing_algorithm: {
     BATMAN: false,
