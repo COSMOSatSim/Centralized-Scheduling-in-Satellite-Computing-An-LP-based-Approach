@@ -92,8 +92,19 @@
   AP_routing_bidirectional: true,
   Routing_Interval: 1,
   Routing_algorithm: {
-    BATMAN: false,
-    GREEDY: true,
+    BATMAN: true,
+    GREEDY: false,
     DSR: false,
   },
+  ilp_weights: {
+    w_e: 0.7,
+    w_R: 0.3,
+  },
+  ilp_alpha: {
+    alpha_cpu: 1.0,
+    alpha_net_J_per_MB: 0.000465,
+  },
+  ilp_objective: "hierarchical",
+  lexi_primary: "energy",
+  lexi_tol: 0.1,
 }

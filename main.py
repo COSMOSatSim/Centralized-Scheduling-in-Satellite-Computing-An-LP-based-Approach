@@ -206,6 +206,9 @@ if __name__ == "__main__":
     print(f"CSV tasks: {csv_task}")
     print(f"CSV migrazioni: {csv_mig}")
 
+    # esempio: ogni 2s, dal secondo 100 al 200
+    env.process(data_collector(env, interval=2, start_time=100, end_time=200))
+
     # 6) Esecuzione simulazione
     env.run(config['simulation_duration'])
 
