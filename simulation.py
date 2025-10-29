@@ -1,13 +1,16 @@
 import globals
 import experiments
 from Task import Task
+# Import aggiunti da File 2 per il risolutore ILP
+from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics, solve_on_Ek_hierarchical
 
 hop = 0  # Inizializza la variabile hop a zero
 
 config = globals.config
 resolution_config = globals.resolution_config
 
-#D_r = 0
+
+# D_r = 0
 def network_metrics(config, image_size_MB, Volume_size_MB=0.0):
     """
     Calcola la larghezza di banda disponibile (in Bps) e la dimensione totale dei dati (in Byte).
@@ -29,6 +32,7 @@ def network_metrics(config, image_size_MB, Volume_size_MB=0.0):
     data_bytes = total_data_MB * (1024 ** 2)
 
     return bw_Bps, data_bytes
+
 
 def TaskAssignment(env, selected_server, task_id, image_size,
                    arrival_time_system, num_hops, transfer_time,
@@ -64,9 +68,9 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
     # helper per contare utenti + queue. calcola il numero totale di task associati a una risorsa in un preciso istante, sommando sia i task in servizio sia quelli in coda
     def _res_len_with_users(res):
-        #numero di task che stanno attualmente utilizzando la risorsa (res.users)
+        # numero di task che stanno attualmente utilizzando la risorsa (res.users)
         users_len = len(getattr(res, "users", []))
-        #numero di task che sono attualmente in attesa nella coda (res.queue)
+        # numero di task che sono attualmente in attesa nella coda (res.queue)
         queue_len = len(getattr(res, "queue", []))
         return users_len + queue_len
 
@@ -74,7 +78,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     qlen_on_enqueue_cpu = None
     qlen_on_enqueue_net = None
 
-    eps_cpu, eps_net, time_in_queue = 0.0, 0.0, 0.0 # energia stimata CPU / NET che useremo per riserve e sottrazioni
+    eps_cpu, eps_net, time_in_queue = 0.0, 0.0, 0.0  # energia stimata CPU / NET che useremo per riserve e sottrazioni
     start_time = env.now
 
     d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
@@ -119,7 +123,8 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         qlen_on_enqueue_cpu = _res_len_with_users(selected_server.cpu_dev)
         if ENABLE_MONITORING:
             req_cpu.task_data = task_OBS
-            print(f"[{env.now:.3f}] Task {task_id} enqueued on CPU {selected_server.name} qlen_enqueue={qlen_on_enqueue_cpu}")
+            print(
+                f"[{env.now:.3f}] Task {task_id} enqueued on CPU {selected_server.name} qlen_enqueue={qlen_on_enqueue_cpu}")
 
         # attendi servizio CPU
         yield req_cpu
@@ -151,7 +156,8 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
 
         if selected_server.energy - selected_server.energy_reserved < (eps_cpu + eps_net):
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for CPU+NET")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system,
+                                                 "Insufficient Energy for CPU+NET")
             return
         # Qui d_cpu e d_net sono i tempi di servizio per il task R
         R = Wc + d_cpu + Wn + d_net
@@ -167,7 +173,8 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         qlen_on_enqueue_cpu = _res_len_with_users(selected_server.cpu_dev)
         if ENABLE_MONITORING:
             req_cpu.task_data = task_OBS
-        print(f"[{env.now:.3f}] Task {task_id} enqueued on CPU {selected_server.name} qlen_enqueue={qlen_on_enqueue_cpu}")
+        print(
+            f"[{env.now:.3f}] Task {task_id} enqueued on CPU {selected_server.name} qlen_enqueue={qlen_on_enqueue_cpu}")
 
         # attendi la CPU
         yield req_cpu
@@ -184,7 +191,8 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         qlen_on_enqueue_net = _res_len_with_users(selected_server.net_dev)
         if ENABLE_MONITORING:
             req_net.task_data = task_OBS
-        print(f"[{env.now:.3f}] Task {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
+        print(
+            f"[{env.now:.3f}] Task {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
 
         yield req_net
         Wn = env.now - arrival_time_task_queue
@@ -217,7 +225,8 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         qlen_on_enqueue_net = _res_len_with_users(selected_server.net_dev)
         if ENABLE_MONITORING:
             req_net.task_data = task_OBS
-        print(f"[{env.now:.3f}] Batch {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
+        print(
+            f"[{env.now:.3f}] Batch {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
 
         yield req_net
         time_in_queue = env.now - arrival_time_task_queue
@@ -256,7 +265,8 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     )
 
     if ENABLE_MONITORING:
-        print(f"[{env.now:.3f}] Task {task_id} served on {selected_server.name} qlen_enqueue_cpu={qlen_on_enqueue_cpu} qlen_enqueue_net={qlen_on_enqueue_net} time_in_queue={time_in_queue:.3f}")
+        print(
+            f"[{env.now:.3f}] Task {task_id} served on {selected_server.name} qlen_enqueue_cpu={qlen_on_enqueue_cpu} qlen_enqueue_net={qlen_on_enqueue_net} time_in_queue={time_in_queue:.3f}")
 
 
 def cpu_demand(task_type):
@@ -278,10 +288,118 @@ def cpu_demand(task_type):
     return experiments.truncated_exponential_unbounded(mean_seconds)
 
 
-def SearchNode(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
-               arrival_time_system,
-               initial_server_counter, different_server_counter, other_server_counter,
-               task_type, max_energy, d_cpu, deadline):
+# ---------------------------------------------------------------------------
+# FUNZIONI HELPER PER ILP (da File 2)
+# ---------------------------------------------------------------------------
+
+def _merge_queues_for_ilp(sat_state: dict):
+    """
+    Unisce waiting+service per CPU/NET e mappa i task nel formato atteso dall'ILP.
+    - CPU: usa 'demand' -> d_cpu (s)
+    - NET: usa image_size_MB come d_net (MB) quando disponibile; come fallback usa 'demand' (MB)
+    Ritorna: (cpu_queue, net_queue)
+    """
+    cpu_q = []
+    net_q = []
+
+    # CPU
+    for key in ("queue_cpu_waiting", "queue_cpu_service"):
+        for t in sat_state.get(key, []):
+            cpu_q.append(QueueTask(
+                task_id=str(t.get("task_id")),
+                d_cpu=float(t.get("demand", 0.0) or 0.0),
+                d_net=0.0,  # non usato per la coda CPU
+                D=float(t.get("deadline", 300.0) or 300.0)
+            ))
+
+    # NET
+    for key in ("queue_net_waiting", "queue_net_service"):
+        for t in sat_state.get(key, []):
+            d_net_MB = t.get("image_size_MB", None)
+            if d_net_MB is None or d_net_MB == 'N/A':
+                # fallback: prendi 'demand' come MB
+                d_net_MB = float(t.get("demand", 0.0) or 0.0)
+            net_q.append(QueueTask(
+                task_id=str(t.get("task_id")),
+                d_cpu=0.0,
+                d_net=float(d_net_MB),
+                D=float(t.get("deadline", 300.0) or 300.0)
+            ))
+
+    return cpu_q, net_q
+
+
+def _build_snapshot_Ek(env, center_server, candidate_servers, current_task_id, d_cpu_req, d_net_MB_req, deadline_req,
+                       config):
+    """
+    Costruisce un oggetto Snapshot minimale per solve_on_Ek su Ek={k}+neighbors[k].
+    - d_net del *task corrente* è espresso in MB (l'ILP lo converte in secondi con la banda).
+    - B = energia corrente; B_max = initial_energy (fallback dal config).
+    """
+    sen_map = {}
+    neighbors_map = {}
+    listening = []
+
+    # costruisci mappe SEN e vicinato
+    for srv in candidate_servers:
+        st = srv.export_state(env)  # richiede enable_queue_monitoring=true
+        B = float(st.get("energy_budget_J", getattr(srv, "energy", 0.0)))
+        B_max = float(config.get("initial_energy", B if B > 0 else 1.0))
+
+        cpu_q, net_q = _merge_queues_for_ilp(st)
+
+        # NOTA: l'ILP usa default_net_bw_MBps, quindi non è obbligatorio impostare s.net_bw_MBps
+        # ma se vuoi puoi passare un valore medio per nodo come attributo add-on:
+        s_state = SENState(
+            B=B,
+            B_max=B_max,
+            Rmax_norm=1.0,
+            cpu_queue=cpu_q,
+            net_queue=net_q,
+            in_service_cpu=None,
+            in_service_net=None,
+            net_bw_bps=None  # lasciamo None -> userà default_net_bw_MBps
+        )
+        sen_map[srv.name] = s_state
+
+        # vicini: basta la lista dei nomi
+        neigh_names = []
+        for n in srv.get_neighbors():
+            neigh_names.append(n.name)
+        neighbors_map[srv.name] = neigh_names
+
+        # listening dome (se serve per policy): lo prendiamo dallo state
+        if st.get("in_listening_dome", False):
+            listening.append(srv.name)
+
+    # richieste: SOLO il task corrente
+    req = QueueTask(
+        task_id=str(current_task_id),
+        d_cpu=float(d_cpu_req),
+        d_net=float(d_net_MB_req),  # MB!
+        D=float(deadline_req)
+    )
+
+    snap = Snapshot(
+        time=float(env.now),
+        listening_dome=listening,
+        neighbors=neighbors_map,
+        sen=sen_map,
+        requests=[req],
+        pre_R={},  # niente precomputation
+        pre_E={}
+    )
+    return snap
+
+
+# ---------------------------------------------------------------------------
+# VERSIONE 1: SearchNode (Dal tuo file originale - File 1)
+# ---------------------------------------------------------------------------
+
+def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
+                            arrival_time_system,
+                            initial_server_counter, different_server_counter, other_server_counter,
+                            task_type, max_energy, d_cpu, deadline):
     global hop
 
     neighbors_at_distance_one = server_selected.get_neighbors()
@@ -398,7 +516,8 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
         # se ho inoltrato ad un altro server, calcolo l'energia di routing e la sottraggo al nodo mittente
         bw_MBps = server_selected.get_bandwidth(server)
         if bw_MBps is None:
-            bw_Bps, data_bytes = network_metrics(config, image_size)
+            # bw_Bps e data_bytes sono già stati calcolati all'inizio della funzione
+            pass
         if bw_Bps > 0:
             eps_net = server_selected.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
         else:
@@ -422,28 +541,352 @@ def SearchNode(env, server_selected, task_id, required_ram, required_disk, image
     globals.gbl_generated_tasks_data.append(task_data)
     # Chiamo TaskAssignment sul server scelto
     yield from TaskAssignment(env, server, task_id, image_size,
-                               arrival_time_system, hop, transfer_time,
-                               task_type, d_cpu, deadline)
+                              arrival_time_system, hop, transfer_time,
+                              task_type, d_cpu, deadline)
 
-def task(env, task_id, server, initial_server_counter, different_server_counter, other_server_counter, task_data, max_energy):
+
+# ---------------------------------------------------------------------------
+# VERSIONE 2: SearchNode (Dal file del collega - File 2)
+# ---------------------------------------------------------------------------
+
+def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
+                             arrival_time_system,
+                             initial_server_counter, different_server_counter, other_server_counter,
+                             task_type, max_energy, d_cpu, deadline):
+    """
+    Se config['SearchNode'] == 'ILP' usa il modello ILP per scegliere il server su Ek={k}+neighbors[k],
+    altrimenti usa la selezione euristica (semplice) interna a questa funzione.
+    """
+    global hop
+
+    # --- Costruisci Ek (self + vicini 1-hop) ---
+    neighbors_at_distance_one = list(server_selected.get_neighbors())
+    if server_selected not in neighbors_at_distance_one:
+        neighbors_at_distance_one.append(server_selected)
+
+    # Banda e dati "di base" per stime e per energia di inoltro
+    bw_Bps_global, data_bytes_global = network_metrics(config, image_size, Volume_size_MB=Volume_size)
+    d_net_predicted = (data_bytes_global / bw_Bps_global) if bw_Bps_global > 0 else float('inf')
+
+    # =========================
+    # BRANCH: ILP (Logica interna a v2)
+    # =========================
+    if str(config.get("SearchNode", "")).upper() == "ILP":
+        # d_net per l'ILP è in MB (non in secondi)
+        d_net_MB_req = float(image_size + (Volume_size or 0.0))
+
+        # DEBUG: segnala ingresso nel branch ILP
+        print(f"[{env.now:.2f}] [Task {task_id}] Entering ILP branch (v2)")
+
+        # Snapshot locale e risoluzione
+        snap = _build_snapshot_Ek(
+            env=env,
+            center_server=server_selected,
+            candidate_servers=neighbors_at_distance_one,
+            current_task_id=task_id,
+            d_cpu_req=float(d_cpu),
+            d_net_MB_req=float(d_net_MB_req),
+            deadline_req=float(deadline),
+            config=config
+        )
+
+        # --- Coefficienti fisici dal config ---
+        P_net = float(config.get("Ptrasm", 1.0))  # W = J/s
+        bw_MBps_min = float(config.get("available_bandwidth", {}).get("min", 2150.0))  # MB/s
+        bw_Bps = bw_MBps_min * (1024 ** 2)  # converto in Byte/s
+
+        C_sen = float(config.get("C_sen", 1e7))
+        e_coef = float(config.get("energy_coefficient", 5e-26))
+
+        # Calcolo fisico tramite funzione comune
+        alpha_cpu, alpha_net_J_per_byte = alpha_from_physics(C_sen, e_coef, P_net, bw_Bps)
+
+        # Conversione: da J/byte a J/MB per l’ILP
+        alpha_net = alpha_net_J_per_byte * (1024 ** 2)
+
+        # Pesi dal config
+        w_e = float(config.get("ilp_weights", {}).get("w_e", 0.5))
+        w_R = float(config.get("ilp_weights", {}).get("w_R", 0.5))
+        default_bw_MBps = bw_MBps_min
+
+        def _extract_chosen_server(ilp_res, task_id):
+            tid = str(task_id)
+
+            # Caso dizionario
+            if isinstance(ilp_res, dict):
+                a = ilp_res.get("assignments")
+                # assignments come LISTA di dict
+                if isinstance(a, list):
+                    # cerca per task id
+                    for item in a:
+                        if str(item.get("task") or item.get("task_id") or item.get("id")) == tid:
+                            sen = item.get("sen") or item.get("server")
+                            if sen:
+                                return str(sen)
+                    # edge case: se c'è un solo assignment, prendilo
+                    if len(a) == 1 and isinstance(a[0], dict):
+                        sen = a[0].get("sen") or a[0].get("server")
+                        if sen:
+                            return str(sen)
+                # (compat) assignments come dict {tid: sen}
+                if isinstance(a, dict):
+                    v = a.get(tid)
+                    if v is not None:
+                        return str(v)
+
+                # prova altre chiavi note ricorsivamente
+                for key in ("solution", "assignments_list", "result", "x"):
+                    if key in ilp_res:
+                        v = _extract_chosen_server(ilp_res[key], task_id)
+                        if v:
+                            return v
+
+            # Caso lista (coppie o dict)
+            if isinstance(ilp_res, list):
+                for item in ilp_res:
+                    if isinstance(item, (tuple, list)) and len(item) >= 2 and str(item[0]) == tid:
+                        return str(item[1])
+                    if isinstance(item, dict):
+                        itid = str(item.get("task_id") or item.get("task") or item.get("id") or "")
+                        if itid == tid:
+                            sen = item.get("sen") or item.get("server") or item.get("assignment") or item.get("value")
+                            if sen:
+                                return str(sen)
+                if len(ilp_res) == 1 and isinstance(ilp_res[0], str):
+                    return ilp_res[0]
+
+            # Caso stringa
+            if isinstance(ilp_res, str):
+                return ilp_res
+
+            return None
+
+        # ====== QUI CHIAMI IL SOLVER ======
+        objective_mode = str(config.get("ilp_objective", "weighted")).lower()
+        if objective_mode == "hierarchical":
+            # Approccio lessicografico (ε-constraint)
+            ilp_res = solve_on_Ek_hierarchical(
+                snapshot=snap,
+                k=server_selected.name,
+                picked_tasks=[str(task_id)],
+                primary=str(config.get("lexi_primary", "energy")).lower(),  # 'energy' o 'time'
+                tol=float(config.get("lexi_tol", 0.10)),
+                alpha_cpu=alpha_cpu,
+                alpha_net=alpha_net,  # J/MB
+                solver_name=str(config.get("ilp_solver", "AUTO")),
+                default_net_bw_MBps=default_bw_MBps,  # MB/s
+                debug=bool(config.get("ilp_debug", False)),
+                tasks_from_prof=False  # True se d_net già in secondi nei task
+            )
+        else:
+            # Ramo legacy: obiettivo pesato
+            ilp_res = solve_on_Ek(
+                snapshot=snap,
+                k=server_selected.name,
+                picked_tasks=[str(task_id)],
+                w_energy=w_e,
+                w_time=w_R,
+                alpha_cpu=alpha_cpu,
+                alpha_net=alpha_net,  # J/MB
+                solver_name="AUTO",
+                use_node_Rmax_norm=False,
+                default_net_bw_MBps=default_bw_MBps,  # MB/s
+                debug=False,
+                tasks_from_prof=False
+            )
+
+        # DEBUG (utile per capire subito il formato reale)
+        print(f"[ILP] res_type={type(ilp_res).__name__} value_preview={str(ilp_res)[:160]}")
+
+        # Normalizza: estrai il server scelto per questo task
+        chosen_server_name = _extract_chosen_server(ilp_res, task_id)
+
+        if chosen_server_name:
+
+            # DEBUG: segnala il server scelto dall'ILP
+            print(f"[{env.now:.2f}] [Task {task_id}] ILP chose server: {chosen_server_name}")
+
+            # Oggetto EdgeServer del prescelto
+            server = next((s for s in neighbors_at_distance_one if s.name == chosen_server_name), server_selected)
+            # Transfer time stimato sul link selezionato (se disponibile), altrimenti globale
+            lat = server_selected.get_latency(server)
+            bw_MBps_link = server_selected.get_bandwidth(server)
+            if (lat is not None) and (bw_MBps_link is not None) and bw_MBps_link > 0:
+                transfer_time = ((image_size + Volume_size) * (1024 ** 2) / (bw_MBps_link * (1024 ** 2))) + lat
+                bw_Bps_for_energy = bw_MBps_link * (1024 ** 2)
+                data_bytes_for_energy = (image_size + Volume_size) * (1024 ** 2)
+            else:
+                transfer_time = 0.0
+                bw_Bps_for_energy = bw_Bps_global
+                data_bytes_for_energy = data_bytes_global
+
+            # Aggiorna contatori + energia di routing se inoltri
+            initial_server_counter[server_selected.name] += 1
+            if server is not server_selected:
+                different_server_counter[server_selected.name] += 1
+                other_server_counter[server.name] += 1
+                hop += 1
+
+                # Energia di inoltro (usa link specifico se disponibile, altrimenti globale)
+                Ptrasm = config.get("Ptrasm", 1.0)
+                eps_net = server_selected.compute_routing_energy(data_bytes_for_energy, bw_Bps_for_energy,
+                                                                 Ptrasm) if bw_Bps_for_energy > 0 else 0.0
+                server_selected.energy -= eps_net
+                print(f"[{env.now:.2f}] [Task {task_id}] ILP Routed {server_selected.name} -> {server.name} | "
+                      f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
+            else:
+                # Nessun inoltro
+                pass
+
+            # Log per runner/grafici
+            globals.gbl_generated_tasks_data.append({
+                "task_id": task_id,
+                "arrival_time": arrival_time_system,
+                "type": task_type,
+                "ram": required_ram,
+                "disk": required_disk,
+                "image_size": image_size,
+                "exec_time": d_cpu,
+                "transfer_time": transfer_time,
+                "num_hops": hop,
+                "execution_server": server.name
+            })
+
+            # Vai all'assegnazione vera e propria
+            yield from TaskAssignment(env, server, task_id, image_size,
+                                      arrival_time_system, hop, transfer_time,
+                                      task_type, d_cpu, deadline)
+            return
+        else:
+            print(f"[{env.now:.2f}] [Task {task_id}] ILP infeasible/none → fallback euristico (v2).")
+            # Se ILP fallisce, *cade* nel blocco 'else' sottostante
+
+    # =========================
+    # BRANCH: EURISTICA (fallback v2 o policy ≠ ILP)
+    # =========================
+
+    # DEBUG: segnala ingresso nel branch euristico (fallback o policy diversa da ILP)
+    print(f"[{env.now:.2f}] [Task {task_id}] Entering HEURISTIC branch (v2)")
+
+    server_metrics = []
+    for neighbor in neighbors_at_distance_one:
+        latency_to_server = server_selected.get_latency(neighbor)
+        bandwidth_to_server = server_selected.get_bandwidth(neighbor)
+
+        if bandwidth_to_server is not None and latency_to_server is not None and bandwidth_to_server > 0:
+            bandwidth_to_server_Bps = bandwidth_to_server * (1024 ** 2)
+            transfer_time = ((image_size + Volume_size) * (1024 ** 2) / bandwidth_to_server_Bps) + latency_to_server
+        else:
+            transfer_time = 0.0  # non possiamo stimarlo
+
+        selection_score = neighbor.get_selection_score(
+            task_type,
+            d_cpu=d_cpu,
+            d_net=d_net_predicted,
+            D_r=deadline,
+            energy_budget_max=max_energy,
+            file_size_bytes=data_bytes_global,
+            bandwidth_Bps=bw_Bps_global
+        )
+
+        server_metrics.append({
+            'server': neighbor,
+            'selection_score': selection_score,
+            'transfer_time': transfer_time,
+            'orbitalSunset': neighbor.orbitalSunset,
+        })
+
+    # Filtra i server non validi
+    server_metrics = [m for m in server_metrics if m['orbitalSunset'] not in (None, 0)]
+    if not server_metrics:
+        print(f"[Task {task_id}] Nessun server valido trovato (euristica v2).")
+        # Rifiuta il task se nessun server è valido
+        server_selected.record_rejected_task(
+            task_id, task_type, arrival_time_system, 'Invalid orbitalSunset (v2 heuristic)'
+        )
+        return
+
+    # Ordina per score decrescente
+    chosen_info = sorted(server_metrics, key=lambda x: x['selection_score'], reverse=True)[0]
+    server = chosen_info['server']
+    transfer_time = chosen_info['transfer_time']
+
+    # Aggiorna contatori ed energia inoltro (se serve)
+    initial_server_counter[server_selected.name] += 1
+    if server != server_selected:
+        different_server_counter[server_selected.name] += 1
+        other_server_counter[server.name] += 1
+        hop += 1
+
+        # energia routing (link specifico se disponibile, altrimenti globale)
+        bw_MBps_link = server_selected.get_bandwidth(server)
+        if bw_MBps_link is not None and bw_MBps_link > 0:
+            bw_Bps_link = bw_MBps_link * (1024 ** 2)
+            data_bytes_link = (image_size + Volume_size) * (1024 ** 2)
+            bw_for_energy = bw_Bps_link
+            data_for_energy = data_bytes_link
+        else:
+            bw_for_energy = bw_Bps_global
+            data_for_energy = data_bytes_global
+
+        Ptrasm = config.get("Ptrasm", 1.0)
+        eps_net = server_selected.compute_routing_energy(data_for_energy, bw_for_energy,
+                                                         Ptrasm) if bw_for_energy > 0 else 0.0
+        server_selected.energy -= eps_net
+
+        print(f"[{env.now:.2f}] [Task {task_id}] Routed (v2) {server_selected.name} -> {server.name} | "
+              f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
+
+    # Log per runner/grafici
+    globals.gbl_generated_tasks_data.append({
+        "task_id": task_id,
+        "arrival_time": arrival_time_system,
+        "type": task_type,
+        "ram": required_ram,
+        "disk": required_disk,
+        "image_size": image_size,
+        "exec_time": d_cpu,
+        "transfer_time": transfer_time,
+        "num_hops": hop,
+        "execution_server": server.name
+    })
+
+    # Esegue l'assegnazione
+    yield from TaskAssignment(env, server, task_id, image_size,
+                              arrival_time_system, hop, transfer_time,
+                              task_type, d_cpu, deadline)
+
+
+# ---------------------------------------------------------------------------
+# FUNZIONI CORE (task e generate_tasks)
+# ---------------------------------------------------------------------------
+
+def task(env, task_id, server, initial_server_counter, different_server_counter, other_server_counter, task_data,
+         max_energy):
     global hop
     hop = 0
     Volume_size = 0.0
     arrival_time_system = env.now
 
     # estrai d_cpu e deadline già calcolati in generate_tasks
-    d_cpu = task_data.get('d_cpu')  # fallback
-    #deadline = task_data.get('deadline', config.get("DeadLine", 400))  # relative deadline in seconds
+    d_cpu = task_data.get('d_cpu')
+    # Usa la logica di fallback di File 2 per la deadline
+    deadline = task_data.get('deadline', config.get("DeadLine", 400))
 
     required_ram = task_data['required_ram']
     required_disk = task_data['required_disk']
     task_type = task_data['type']
     image_size = task_data['image_size']
-    deadline = task_data['deadline']
 
     print(f"---> Task {task_id} (Type: {task_type}) arriva in {arrival_time_system:.2f}")
 
-    yield from SearchNode(
+    # --- LOGICA DI SMISTAMENTO (DISPATCHER) ---
+    # Scegli quale versione di SearchNode usare in base al config
+    # 'v1_heuristic' = la tua versione (File 1)
+    # 'v2_ilp_hybrid' = la versione del collega (File 2)
+    policy = config.get("search_node_version", "v1_heuristic")  # Default alla tua v1
+
+    search_node_args = (
         env, server,
         task_id,
         required_ram,
@@ -453,6 +896,17 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
         arrival_time_system, initial_server_counter, different_server_counter, other_server_counter,
         task_type, max_energy, d_cpu, deadline
     )
+
+    if policy == "v2_ilp_hybrid":
+        print(f"--- [{env.now:.2f}] Task {task_id} using SearchNode Policy: v2_ilp_hybrid ---")
+        yield from SearchNode_ILP_Hybrid_v2(*search_node_args)
+    else:  # Default a v1_heuristic
+        if policy != "v1_heuristic":
+            print(
+                f"--- [{env.now:.2f}] Task {task_id} WARNING: Unknown policy '{policy}'. Defaulting to v1_heuristic ---")
+        print(f"--- [{env.now:.2f}] Task {task_id} using SearchNode Policy: v1_heuristic ---")
+        yield from SearchNode_Heuristic_v1(*search_node_args)
+
 
 def generate_tasks(env, initial_server_counter, different_server_counter, other_server_counter):
     global arrival_time
@@ -578,6 +1032,7 @@ def task_type_and_size_generator():
         'd_cpu': d_cpu
     }
 
+
 def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_system, deadline_relative):
     """
     Metti un task BATCH direttamente nella coda NET del server
@@ -599,7 +1054,7 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
 
     # debug/log
     print(f"[{env.now:.3f}] ENQUEUE BATCH id={task_id} on {server_obj.name} "
-          f"image_MB={image_size_MB:.2f} queue_len={len(server_obj.net_dev.queue)+1}")
+          f"image_MB={image_size_MB:.2f} queue_len={len(server_obj.net_dev.queue) + 1}")
 
     # il processo rimane bloccato finché la risorsa NET non lo serve
     yield req
@@ -619,13 +1074,16 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
 
     server_obj.net_busy_until = env.now
 
+    # Calcolo del tempo di servizio totale
+    total_service_time = net_time + time_in_queue_batch
+
     # sottrai energia di trasmissione
     eps_net = server_obj.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
 
     # registra il completamento (usa task_completed come negli altri rami)
     server_obj.task_completed(
         task_id, "Batch", arrival_time_system, arrival_time_system,
-        start_service_time, env.now, net_time, net_time, time_in_queue_batch,
+        start_service_time, env.now, net_time, total_service_time, time_in_queue_batch,
         server_obj.name, 0, len(server_obj.net_dev.queue),
         0.0, image_size_MB,
         DeadLine=False, exec_after_set=False,
@@ -642,13 +1100,13 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
             env.now - net_time,  # start_time
             env.now,  # end_time
             net_time,  # execution_time (NET)
-            net_time,  # service_time
-            0.0,  # time in queue (usiamo 0 visto che era subito nella net queue)
+            total_service_time,  # service_time
+            time_in_queue_batch,  # time in queue
             server_obj.name,  # sel_srv (o chi ha eseguito)
             0,  # hops
             len(server_obj.net_dev.queue),  # qlen
             0.0,  # trf
-            image_size_MB,  # <-- AGGIUNGI QUESTO
+            image_size_MB,
             False,  # DeadLine
             False,  # exec_set
             0.0,  # eps_cpu
@@ -660,4 +1118,5 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
     except Exception as e:
         print(f"ERROR saving batch completion to global list: {e}")
 
-    print(f"[{env.now:.3f}] BATCH id={task_id} served on {server_obj.name} net_time={net_time:.3f} eps_net={eps_net:.6f}")
+    print(
+        f"[{env.now:.3f}] BATCH id={task_id} served on {server_obj.name} net_time={net_time:.3f} eps_net={eps_net:.6f}")
