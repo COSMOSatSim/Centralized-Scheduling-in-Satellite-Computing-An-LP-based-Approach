@@ -1,7 +1,6 @@
 import globals
 import experiments
 from Task import Task
-# Import aggiunti da File 2 per il risolutore ILP
 from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics, solve_on_Ek_hierarchical
 
 hop = 0  # Inizializza la variabile hop a zero
@@ -9,23 +8,22 @@ hop = 0  # Inizializza la variabile hop a zero
 config = globals.config
 resolution_config = globals.resolution_config
 
+C_sen = config.get("C_sen", 1e9)  # parametro costante per il modello energetico CPU
+bw_MBps = float(config.get("available_bandwidth", {}).get("min", 2150.0))
+bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
+e_coeff = config.get("energy_coefficient", 5e-26)  # coefficiente energetico (esempio numerico)
 
-# D_r = 0
-def network_metrics(config, image_size_MB, Volume_size_MB=0.0):
+def network_metrics(image_size_MB, Volume_size_MB=0.0):
     """
     Calcola la larghezza di banda disponibile (in Bps) e la dimensione totale dei dati (in Byte).
 
     Args:
-        config (dict): La configurazione globale.
         image_size_MB (float): Dimensione dell'immagine in MB.
         Volume_size_MB (float, optional): Dimensione aggiuntiva del volume in MB. Default a 0.0.
 
     Returns:
         tuple: (bw_Bps, data_bytes)
     """
-    bw_MBps = config.get("available_bandwidth", {}).get("min", 0)
-    # Converti la banda da MBps a Bps  (1 MB = 1024**2 byte)
-    bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
 
     # Calcola la dimensione totale dei dati in MB e poi in Byte
     total_data_MB = image_size_MB + Volume_size_MB
@@ -53,7 +51,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
 
     task_OBS = Task(task_id, selected_server.name, 'OBS', env.now, task_type, image_size)
-    bw_Bps, data_bytes = network_metrics(config, image_size)
+    bw_Bps, data_bytes = network_metrics(image_size)
 
     # Inizializza gli attributi solo se il monitoraggio è attivo
     if ENABLE_MONITORING:
@@ -82,8 +80,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     start_time = env.now
 
     d_net = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
-    C_sen = config.get("C_sen", 1e9)  # parametro costante per il modello energetico CPU
-    e_coeff = config.get("energy_coefficient", 5e-26)  # coefficiente energetico (esempio numerico)
+
     eps_net = selected_server.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
     net_time = data_bytes / bw_Bps if bw_Bps > 0 else 0.0
 
@@ -106,14 +103,14 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
         # controllo se il server ha energia disponibile (tenendo conto delle riserve)
         if selected_server.energy - selected_server.energy_reserved < eps_cpu:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for CPU")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Insufficient Energy for CPU")
             return
         # controllo se il server ha energia disponibile (tenendo conto delle riserve)
         R = Wc + d_cpu + d_net
         print('valore di R confreontato con deadline', R, 'deadline', D_r)
         if R > D_r:
             # se la stima supera la deadline configurata, rifiuta il task
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded")
             return
             # riservo energia per evitare race condition con altri task
         selected_server.energy_reserved += eps_cpu
@@ -156,13 +153,13 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
 
         if selected_server.energy - selected_server.energy_reserved < (eps_cpu + eps_net):
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system,
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
                                                  "Insufficient Energy for CPU+NET")
             return
         # Qui d_cpu e d_net sono i tempi di servizio per il task R
         R = Wc + d_cpu + Wn + d_net
         if R > D_r:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded")
             return
 
         # riservo energia totale (CPU + NET)
@@ -211,12 +208,12 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     elif task_type == "Batch":
         # Solo coda Network
         if selected_server.energy - selected_server.energy_reserved < eps_net:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Insufficient Energy for NET")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Insufficient Energy for NET")
             return
 
         R = Wn + d_net
         if R > D_r:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded")
             return
 
         selected_server.energy_reserved += eps_net
@@ -289,7 +286,7 @@ def cpu_demand(task_type):
 
 
 # ---------------------------------------------------------------------------
-# FUNZIONI HELPER PER ILP (da File 2)
+# FUNZIONI HELPER PER ILP
 # ---------------------------------------------------------------------------
 
 def _merge_queues_for_ilp(sat_state: dict):
@@ -392,69 +389,54 @@ def _build_snapshot_Ek(env, center_server, candidate_servers, current_task_id, d
     return snap
 
 
-# ---------------------------------------------------------------------------
-# VERSIONE 1: SearchNode (Dal tuo file originale - File 1)
-# ---------------------------------------------------------------------------
-
-def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
-                            arrival_time_system,
-                            initial_server_counter, different_server_counter, other_server_counter,
-                            task_type, max_energy, d_cpu, deadline):
-    global hop
-
-    neighbors_at_distance_one = server_selected.get_neighbors()
-    neighbors_at_distance_one.append(server_selected)
-
-    # calcola bw e data_bytes per predire d_net
-    bw_Bps, data_bytes = network_metrics(config, image_size)
-    d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
-
+def _calculate_heuristic_metrics(neighbors_at_distance_one, server_selected,
+                                 image_size, Volume_size, task_type, d_cpu, deadline, max_energy,
+                                 d_net_predicted, data_bytes_global, bw_Bps_global):
+    """
+    Calcola le metriche euristiche per tutti i server candidati.
+    Questo è il ciclo 'for neighbor...' estratto.
+    """
     server_metrics = []
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
         bandwidth_to_server = server_selected.get_bandwidth(neighbor)
 
-        if bandwidth_to_server is not None and latency_to_server is not None:
+        total_data_MB = image_size + Volume_size
+        total_data_bytes = total_data_MB * (1024 ** 2)
+
+        if bandwidth_to_server is not None and latency_to_server is not None and bandwidth_to_server > 0:
             bandwidth_to_server_Bps = bandwidth_to_server * (1024 ** 2)
-            transfer_time = ((image_size + Volume_size) * (1024 ** 2) / bandwidth_to_server_Bps) + latency_to_server
-            # tempo di servizio rete stimato per il file su quel link (secondi)
-            if bandwidth_to_server_Bps > 0:
-                d_net_on_link = (image_size + Volume_size) * (1024 ** 2) / bandwidth_to_server_Bps
-            else:
-                d_net_on_link = float('inf')
+            transfer_time = (total_data_bytes / bandwidth_to_server_Bps) + latency_to_server
+            d_net_on_link = total_data_bytes / bandwidth_to_server_Bps
         else:
             transfer_time = 0.0
             d_net_on_link = float('inf')
 
-        # calcola lo score passando d_cpu, d_net_predicted, deadline relativo e dati utili
+        # calcola lo score
         selection_score = neighbor.get_selection_score(
             task_type,
             d_cpu=d_cpu,
             d_net=d_net_predicted,
             D_r=deadline,
             energy_budget_max=max_energy,
-            file_size_bytes=data_bytes,
-            bandwidth_Bps=bw_Bps
+            file_size_bytes=data_bytes_global,
+            bandwidth_Bps=bw_Bps_global
         )
-        # stima tempo di attesa in coda sul neighbor:
-        # prova a usare metodi esistenti (W_cpu, W_net) o fallback a attributi pubblici
+
+        # stima tempo di attesa in coda sul neighbor
         try:
             waiting_cpu = neighbor.W_cpu()
         except Exception:
             waiting_cpu = getattr(neighbor, "waiting_time", 0.0)
-
         try:
             waiting_net = neighbor.W_net()
         except Exception:
             waiting_net = 0.0
 
-        # tempo totale stimato per completare il task su questo neighbor:
-        # attesa in coda (cpu e net) + esecuzione CPU + trasmissione dati sul link + eventuale latenza trasferimento
-        # d_cpu è l'esecuzione stimata (passata alla funzione)
-        estimated_execution_time = d_cpu
-        estimated_net_time = d_net_on_link  # tempo di trasmissione previsto sul link al neighbor
         waiting_time_adjusted = waiting_cpu + waiting_net
+        estimated_execution_time = d_cpu
+        estimated_net_time = d_net_on_link
 
         expected_completion_time = waiting_time_adjusted + estimated_execution_time + estimated_net_time + transfer_time
 
@@ -463,69 +445,105 @@ def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, require
             'selection_score': selection_score,
             'transfer_time': transfer_time,
             'orbitalSunset': neighbor.orbitalSunset,
-            'Sunset': neighbor.elev_angle,
+            'Sunset': neighbor.elev_angle,  # Mantenuto da v1
             'expected_completion_time': expected_completion_time
         })
 
-    # Filtra i server non validi
-    server_metrics = [m for m in server_metrics
-                      if m['orbitalSunset'] not in (None, 0)]
+    return server_metrics
+
+
+def _filter_and_select_best_server(server_metrics, deadline, task_id, task_type,
+                                   arrival_time_system, image_size, server_selected, config):
+    """
+    Filtra la lista di metriche (sunset, deadline) e seleziona il server migliore.
+    """
+
+    # 1. Filtra i server non validi (orbitalSunset)
+    server_metrics_filtered = [m for m in server_metrics
+                               if m['orbitalSunset'] not in (None, 0)]
+
     reason = "No suitable server found after deadline/sunset filters"
-    if not server_metrics:
-        print(f"[Task {task_id}] Nessun server valido trovato.")
+    if not server_metrics_filtered:
+        print(f"[Task {task_id}] Nessun server valido trovato (filtro orbitalSunset).")
         server_selected.record_rejected_task(
-            task_id, task_type, arrival_time_system, 'Invalid orbitalSunset'
+            task_id, task_type, arrival_time_system, image_size, 'Invalid orbitalSunset'
         )
-        return
+        return None, reason  # Ritorna None se fallisce
 
-    # Ordina i server in base al nuovo punteggio di selezione, in ordine decrescente
-    sorted_servers = sorted(server_metrics, key=lambda x: x['selection_score'], reverse=True)
+    # 2. Ordina i server in base allo score
+    sorted_servers = sorted(server_metrics_filtered, key=lambda x: x['selection_score'], reverse=True)
 
+    # 3. Applica il blocco di filtro (DTS-base vs OrbitAware)
     distribution = config.get("request_distribution", {}).get("distribution", "")
     if distribution in ("DTS-base", "DTS-AP optimal"):
-        print('Versione originale: DTS-TMAX')
+        print(f'[{task_id}] Filtro euristico: DTS-TMAX')
         # filtriamo i dizionari che rispettano la deadline
         server_metrics_sorted = [m for m in sorted_servers if m['expected_completion_time'] < deadline]
     else:
-        print('versione mod: OrbitAware')
+        print(f'[{task_id}] Filtro euristico: OrbitAware')
         server_metrics_sorted = [
             m for m in sorted_servers
             if m['expected_completion_time'] < deadline
                and m['expected_completion_time'] < m['orbitalSunset']
         ]
 
+    # 4. Controlla se sono rimasti server
     if not server_metrics_sorted:
         print(f"[Task {task_id}] Nessun server rimasto dopo i filtri (deadline/sunset).")
         server_selected.record_rejected_task(
-            task_id, task_type, arrival_time_system, reason
+            task_id, task_type, arrival_time_system, image_size, reason
         )
-        return
+        return None, reason  # Ritorna None se fallisce
 
-    # scegli il primo dizionario (metriche) e ricava server/transfer_time da lì
+    # 5. Scegli il migliore
     chosen_metric = server_metrics_sorted.pop(0)
-    server = chosen_metric['server']
-    transfer_time = chosen_metric.get('transfer_time', 0.0)  # tempo di trasmissione stimato per andare al server scelto
+    return chosen_metric, None  # Ritorna la metrica scelta
+
+
+def _finalize_and_assign_task(env, server_selected, server, task_id,
+                              image_size, Volume_size, arrival_time_system,
+                              transfer_time, task_type, d_cpu, deadline,
+                              required_ram, required_disk,
+                              initial_server_counter, different_server_counter, other_server_counter):
+    """
+    Blocco finale: aggiorna contatori, calcola energia di routing,
+    registra i dati globali e chiama TaskAssignment.
+    """
+    global hop
 
     # Aggiorna contatori
     initial_server_counter[server_selected.name] += 1
+
+    data_bytes_global = (image_size + Volume_size) * (1024 ** 2)
+    bw_Bps_global = bw_Bps
+
     if server != server_selected:
         different_server_counter[server_selected.name] += 1
         other_server_counter[server.name] += 1
         hop += 1
 
-        # se ho inoltrato ad un altro server, calcolo l'energia di routing e la sottraggo al nodo mittente
-        bw_MBps = server_selected.get_bandwidth(server)
-        if bw_MBps is None:
-            # bw_Bps e data_bytes sono già stati calcolati all'inizio della funzione
-            pass
-        if bw_Bps > 0:
-            eps_net = server_selected.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
+        # Calcola l'energia di routing e la sottrae al nodo mittente
+        # Usa il link specifico se disponibile, altrimenti il globale
+        bw_MBps_link = server_selected.get_bandwidth(server)
+
+        if bw_MBps_link is not None and bw_MBps_link > 0:
+            bw_Bps_for_energy = bw_MBps_link * (1024 ** 2)
+            data_bytes_for_energy = data_bytes_global
+        else:
+            bw_Bps_for_energy = bw_Bps_global if bw_Bps_global > 0 else 0
+            data_bytes_for_energy = data_bytes_global
+
+        if bw_Bps_for_energy > 0:
+            Ptrasm = config.get("Ptrasm", 1.0)
+            eps_net = server_selected.compute_routing_energy(data_bytes_for_energy, bw_Bps_for_energy, Ptrasm)
         else:
             eps_net = 0.0
-        server_selected.energy -= eps_net
 
+        server_selected.energy -= eps_net
         print(f"[{env.now:.2f}] [Task {task_id}] Routed {server_selected.name} -> {server.name} | "
               f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
+
+    # Log per runner/grafici
     task_data = {
         "task_id": task_id,
         "arrival_time": arrival_time_system,
@@ -539,6 +557,7 @@ def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, require
         "execution_server": server.name
     }
     globals.gbl_generated_tasks_data.append(task_data)
+
     # Chiamo TaskAssignment sul server scelto
     yield from TaskAssignment(env, server, task_id, image_size,
                               arrival_time_system, hop, transfer_time,
@@ -546,7 +565,52 @@ def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, require
 
 
 # ---------------------------------------------------------------------------
-# VERSIONE 2: SearchNode (Dal file del collega - File 2)
+# VERSIONE 1: SearchNode
+# ---------------------------------------------------------------------------
+
+def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
+                            arrival_time_system,
+                            initial_server_counter, different_server_counter, other_server_counter,
+                            task_type, max_energy, d_cpu, deadline):
+    # 1. Ottieni i vicini
+    neighbors_at_distance_one = server_selected.get_neighbors()
+    neighbors_at_distance_one.append(server_selected)
+
+    # 2. Calcola metriche globali per l'euristica
+    bw_Bps_global, data_bytes_global = network_metrics( image_size, Volume_size_MB=Volume_size)
+    d_net_predicted = data_bytes_global / bw_Bps_global if bw_Bps_global > 0 else float('inf')
+
+    # 3. Calcola metriche per ogni server
+    server_metrics = _calculate_heuristic_metrics(
+        neighbors_at_distance_one, server_selected,
+        image_size, Volume_size, task_type, d_cpu, deadline, max_energy,
+        d_net_predicted, data_bytes_global, bw_Bps_global
+    )
+
+    # 4. Filtra e seleziona il server migliore
+    chosen_metric, reason = _filter_and_select_best_server(
+        server_metrics, deadline, task_id, task_type,
+        arrival_time_system, image_size, server_selected, config
+    )
+
+    if chosen_metric is None:
+        return  # Task già rifiutato dentro la funzione helper
+
+    # 5. Estrai i dati e finalizza
+    server = chosen_metric['server']
+    transfer_time = chosen_metric.get('transfer_time', 0.0)
+
+    yield from _finalize_and_assign_task(
+        env, server_selected, server, task_id,
+        image_size, Volume_size, arrival_time_system,
+        transfer_time, task_type, d_cpu, deadline,
+        required_ram, required_disk,
+        initial_server_counter, different_server_counter, other_server_counter
+    )
+
+
+# ---------------------------------------------------------------------------
+# VERSIONE 2: SearchNode IPL
 # ---------------------------------------------------------------------------
 
 def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
@@ -554,29 +618,21 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
                              initial_server_counter, different_server_counter, other_server_counter,
                              task_type, max_energy, d_cpu, deadline):
     """
-    Se config['SearchNode'] == 'ILP' usa il modello ILP per scegliere il server su Ek={k}+neighbors[k],
-    altrimenti usa la selezione euristica (semplice) interna a questa funzione.
+    Wrapper: Prova ILP se configurato in config["SearchNode"].
+    Altrimenti, o in caso di fallimento, esegue SearchNode_Heuristic_v1.
     """
-    global hop
 
-    # --- Costruisci Ek (self + vicini 1-hop) ---
-    neighbors_at_distance_one = list(server_selected.get_neighbors())
-    if server_selected not in neighbors_at_distance_one:
-        neighbors_at_distance_one.append(server_selected)
-
-    # Banda e dati "di base" per stime e per energia di inoltro
-    bw_Bps_global, data_bytes_global = network_metrics(config, image_size, Volume_size_MB=Volume_size)
-    d_net_predicted = (data_bytes_global / bw_Bps_global) if bw_Bps_global > 0 else float('inf')
-
-    # =========================
-    # BRANCH: ILP (Logica interna a v2)
-    # =========================
     if str(config.get("SearchNode", "")).upper() == "ILP":
-        # d_net per l'ILP è in MB (non in secondi)
-        d_net_MB_req = float(image_size + (Volume_size or 0.0))
 
-        # DEBUG: segnala ingresso nel branch ILP
+        # --- Inizio blocco ILP  ---
         print(f"[{env.now:.2f}] [Task {task_id}] Entering ILP branch (v2)")
+
+        # 1. Ottieni i vicini (necessario per ILP)
+        neighbors_at_distance_one = list(server_selected.get_neighbors())
+        if server_selected not in neighbors_at_distance_one:
+            neighbors_at_distance_one.append(server_selected)
+
+        d_net_MB_req = float(image_size + (Volume_size or 0.0))
 
         # Snapshot locale e risoluzione
         snap = _build_snapshot_Ek(
@@ -590,58 +646,34 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
             config=config
         )
 
-        # --- Coefficienti fisici dal config ---
-        P_net = float(config.get("Ptrasm", 1.0))  # W = J/s
-        bw_MBps_min = float(config.get("available_bandwidth", {}).get("min", 2150.0))  # MB/s
-        bw_Bps = bw_MBps_min * (1024 ** 2)  # converto in Byte/s
-
-        C_sen = float(config.get("C_sen", 1e7))
-        e_coef = float(config.get("energy_coefficient", 5e-26))
-
-        # Calcolo fisico tramite funzione comune
-        alpha_cpu, alpha_net_J_per_byte = alpha_from_physics(C_sen, e_coef, P_net, bw_Bps)
-
-        # Conversione: da J/byte a J/MB per l’ILP
-        alpha_net = alpha_net_J_per_byte * (1024 ** 2)
-
-        # Pesi dal config
+        # --- Coefficienti fisici ---
+        P_net = float(config.get("Ptrasm", 1.0))
+        alpha_cpu, alpha_net_J_per_byte = alpha_from_physics(C_sen, e_coeff, P_net, bw_Bps)
+        alpha_net = alpha_net_J_per_byte * (1024 ** 2)  # J/MB
         w_e = float(config.get("ilp_weights", {}).get("w_e", 0.5))
         w_R = float(config.get("ilp_weights", {}).get("w_R", 0.5))
-        default_bw_MBps = bw_MBps_min
 
+        # --- Funzione interna per estrarre risultati ---
         def _extract_chosen_server(ilp_res, task_id):
+            # ... (la tua logica di estrazione è corretta) ...
             tid = str(task_id)
-
-            # Caso dizionario
             if isinstance(ilp_res, dict):
                 a = ilp_res.get("assignments")
-                # assignments come LISTA di dict
                 if isinstance(a, list):
-                    # cerca per task id
                     for item in a:
                         if str(item.get("task") or item.get("task_id") or item.get("id")) == tid:
                             sen = item.get("sen") or item.get("server")
-                            if sen:
-                                return str(sen)
-                    # edge case: se c'è un solo assignment, prendilo
+                            if sen: return str(sen)
                     if len(a) == 1 and isinstance(a[0], dict):
                         sen = a[0].get("sen") or a[0].get("server")
-                        if sen:
-                            return str(sen)
-                # (compat) assignments come dict {tid: sen}
+                        if sen: return str(sen)
                 if isinstance(a, dict):
                     v = a.get(tid)
-                    if v is not None:
-                        return str(v)
-
-                # prova altre chiavi note ricorsivamente
+                    if v is not None: return str(v)
                 for key in ("solution", "assignments_list", "result", "x"):
                     if key in ilp_res:
                         v = _extract_chosen_server(ilp_res[key], task_id)
-                        if v:
-                            return v
-
-            # Caso lista (coppie o dict)
+                        if v: return v
             if isinstance(ilp_res, list):
                 for item in ilp_res:
                     if isinstance(item, (tuple, list)) and len(item) >= 2 and str(item[0]) == tid:
@@ -650,212 +682,81 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
                         itid = str(item.get("task_id") or item.get("task") or item.get("id") or "")
                         if itid == tid:
                             sen = item.get("sen") or item.get("server") or item.get("assignment") or item.get("value")
-                            if sen:
-                                return str(sen)
+                            if sen: return str(sen)
                 if len(ilp_res) == 1 and isinstance(ilp_res[0], str):
                     return ilp_res[0]
-
-            # Caso stringa
             if isinstance(ilp_res, str):
                 return ilp_res
-
             return None
 
-        # ====== QUI CHIAMI IL SOLVER ======
+        # ====== CHIAMATA AL SOLVER ======
         objective_mode = str(config.get("ilp_objective", "weighted")).lower()
         if objective_mode == "hierarchical":
-            # Approccio lessicografico (ε-constraint)
             ilp_res = solve_on_Ek_hierarchical(
-                snapshot=snap,
-                k=server_selected.name,
-                picked_tasks=[str(task_id)],
-                primary=str(config.get("lexi_primary", "energy")).lower(),  # 'energy' o 'time'
+                snapshot=snap, k=server_selected.name, picked_tasks=[str(task_id)],
+                primary=str(config.get("lexi_primary", "energy")).lower(),
                 tol=float(config.get("lexi_tol", 0.10)),
-                alpha_cpu=alpha_cpu,
-                alpha_net=alpha_net,  # J/MB
+                alpha_cpu=alpha_cpu, alpha_net=alpha_net,
                 solver_name=str(config.get("ilp_solver", "AUTO")),
-                default_net_bw_MBps=default_bw_MBps,  # MB/s
+                default_net_bw_MBps=bw_MBps,
                 debug=bool(config.get("ilp_debug", False)),
-                tasks_from_prof=False  # True se d_net già in secondi nei task
-            )
-        else:
-            # Ramo legacy: obiettivo pesato
-            ilp_res = solve_on_Ek(
-                snapshot=snap,
-                k=server_selected.name,
-                picked_tasks=[str(task_id)],
-                w_energy=w_e,
-                w_time=w_R,
-                alpha_cpu=alpha_cpu,
-                alpha_net=alpha_net,  # J/MB
-                solver_name="AUTO",
-                use_node_Rmax_norm=False,
-                default_net_bw_MBps=default_bw_MBps,  # MB/s
-                debug=False,
                 tasks_from_prof=False
             )
+        else:
+            ilp_res = solve_on_Ek(
+                snapshot=snap, k=server_selected.name, picked_tasks=[str(task_id)],
+                w_energy=w_e, w_time=w_R,
+                alpha_cpu=alpha_cpu, alpha_net=alpha_net,
+                solver_name="AUTO", use_node_Rmax_norm=False,
+                default_net_bw_MBps=bw_MBps,
+                debug=False, tasks_from_prof=False
+            )
 
-        # DEBUG (utile per capire subito il formato reale)
         print(f"[ILP] res_type={type(ilp_res).__name__} value_preview={str(ilp_res)[:160]}")
-
-        # Normalizza: estrai il server scelto per questo task
         chosen_server_name = _extract_chosen_server(ilp_res, task_id)
 
+        # --- Finalizzazione ILP (se ha successo) ---
         if chosen_server_name:
-
-            # DEBUG: segnala il server scelto dall'ILP
             print(f"[{env.now:.2f}] [Task {task_id}] ILP chose server: {chosen_server_name}")
 
-            # Oggetto EdgeServer del prescelto
             server = next((s for s in neighbors_at_distance_one if s.name == chosen_server_name), server_selected)
-            # Transfer time stimato sul link selezionato (se disponibile), altrimenti globale
+
             lat = server_selected.get_latency(server)
             bw_MBps_link = server_selected.get_bandwidth(server)
             if (lat is not None) and (bw_MBps_link is not None) and bw_MBps_link > 0:
                 transfer_time = ((image_size + Volume_size) * (1024 ** 2) / (bw_MBps_link * (1024 ** 2))) + lat
-                bw_Bps_for_energy = bw_MBps_link * (1024 ** 2)
-                data_bytes_for_energy = (image_size + Volume_size) * (1024 ** 2)
             else:
-                transfer_time = 0.0
-                bw_Bps_for_energy = bw_Bps_global
-                data_bytes_for_energy = data_bytes_global
+                transfer_time = 0.0  # Fallback
 
-            # Aggiorna contatori + energia di routing se inoltri
-            initial_server_counter[server_selected.name] += 1
-            if server is not server_selected:
-                different_server_counter[server_selected.name] += 1
-                other_server_counter[server.name] += 1
-                hop += 1
+            # Usiamo l'helper di finalizzazione comune
+            yield from _finalize_and_assign_task(
+                env, server_selected, server, task_id,
+                image_size, Volume_size, arrival_time_system,
+                transfer_time, task_type, d_cpu, deadline,
+                required_ram, required_disk,
+                initial_server_counter, different_server_counter, other_server_counter
+            )
+            return  # Fine, ILP ha avuto successo
 
-                # Energia di inoltro (usa link specifico se disponibile, altrimenti globale)
-                Ptrasm = config.get("Ptrasm", 1.0)
-                eps_net = server_selected.compute_routing_energy(data_bytes_for_energy, bw_Bps_for_energy,
-                                                                 Ptrasm) if bw_Bps_for_energy > 0 else 0.0
-                server_selected.energy -= eps_net
-                print(f"[{env.now:.2f}] [Task {task_id}] ILP Routed {server_selected.name} -> {server.name} | "
-                      f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
-            else:
-                # Nessun inoltro
-                pass
-
-            # Log per runner/grafici
-            globals.gbl_generated_tasks_data.append({
-                "task_id": task_id,
-                "arrival_time": arrival_time_system,
-                "type": task_type,
-                "ram": required_ram,
-                "disk": required_disk,
-                "image_size": image_size,
-                "exec_time": d_cpu,
-                "transfer_time": transfer_time,
-                "num_hops": hop,
-                "execution_server": server.name
-            })
-
-            # Vai all'assegnazione vera e propria
-            yield from TaskAssignment(env, server, task_id, image_size,
-                                      arrival_time_system, hop, transfer_time,
-                                      task_type, d_cpu, deadline)
-            return
         else:
-            print(f"[{env.now:.2f}] [Task {task_id}] ILP infeasible/none → fallback euristico (v2).")
-            # Se ILP fallisce, *cade* nel blocco 'else' sottostante
+            print(f"[{env.now:.2f}] [Task {task_id}] ILP infeasible/none → fallback a euristica v1.")
 
     # =========================
-    # BRANCH: EURISTICA (fallback v2 o policy ≠ ILP)
+    # BRANCH: EURISTICA (chiamata a v1)
+    # Motivi per essere qui:
+    # 1. config["SearchNode"] non era "ILP"
+    # 2. config["SearchNode"] era "ILP" ma il solver ha fallito
     # =========================
 
-    # DEBUG: segnala ingresso nel branch euristico (fallback o policy diversa da ILP)
-    print(f"[{env.now:.2f}] [Task {task_id}] Entering HEURISTIC branch (v2)")
+    print(f"[{env.now:.2f}] [Task {task_id}] Entering HEURISTIC branch (v2) -> calling v1")
 
-    server_metrics = []
-    for neighbor in neighbors_at_distance_one:
-        latency_to_server = server_selected.get_latency(neighbor)
-        bandwidth_to_server = server_selected.get_bandwidth(neighbor)
-
-        if bandwidth_to_server is not None and latency_to_server is not None and bandwidth_to_server > 0:
-            bandwidth_to_server_Bps = bandwidth_to_server * (1024 ** 2)
-            transfer_time = ((image_size + Volume_size) * (1024 ** 2) / bandwidth_to_server_Bps) + latency_to_server
-        else:
-            transfer_time = 0.0  # non possiamo stimarlo
-
-        selection_score = neighbor.get_selection_score(
-            task_type,
-            d_cpu=d_cpu,
-            d_net=d_net_predicted,
-            D_r=deadline,
-            energy_budget_max=max_energy,
-            file_size_bytes=data_bytes_global,
-            bandwidth_Bps=bw_Bps_global
-        )
-
-        server_metrics.append({
-            'server': neighbor,
-            'selection_score': selection_score,
-            'transfer_time': transfer_time,
-            'orbitalSunset': neighbor.orbitalSunset,
-        })
-
-    # Filtra i server non validi
-    server_metrics = [m for m in server_metrics if m['orbitalSunset'] not in (None, 0)]
-    if not server_metrics:
-        print(f"[Task {task_id}] Nessun server valido trovato (euristica v2).")
-        # Rifiuta il task se nessun server è valido
-        server_selected.record_rejected_task(
-            task_id, task_type, arrival_time_system, 'Invalid orbitalSunset (v2 heuristic)'
-        )
-        return
-
-    # Ordina per score decrescente
-    chosen_info = sorted(server_metrics, key=lambda x: x['selection_score'], reverse=True)[0]
-    server = chosen_info['server']
-    transfer_time = chosen_info['transfer_time']
-
-    # Aggiorna contatori ed energia inoltro (se serve)
-    initial_server_counter[server_selected.name] += 1
-    if server != server_selected:
-        different_server_counter[server_selected.name] += 1
-        other_server_counter[server.name] += 1
-        hop += 1
-
-        # energia routing (link specifico se disponibile, altrimenti globale)
-        bw_MBps_link = server_selected.get_bandwidth(server)
-        if bw_MBps_link is not None and bw_MBps_link > 0:
-            bw_Bps_link = bw_MBps_link * (1024 ** 2)
-            data_bytes_link = (image_size + Volume_size) * (1024 ** 2)
-            bw_for_energy = bw_Bps_link
-            data_for_energy = data_bytes_link
-        else:
-            bw_for_energy = bw_Bps_global
-            data_for_energy = data_bytes_global
-
-        Ptrasm = config.get("Ptrasm", 1.0)
-        eps_net = server_selected.compute_routing_energy(data_for_energy, bw_for_energy,
-                                                         Ptrasm) if bw_for_energy > 0 else 0.0
-        server_selected.energy -= eps_net
-
-        print(f"[{env.now:.2f}] [Task {task_id}] Routed (v2) {server_selected.name} -> {server.name} | "
-              f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
-
-    # Log per runner/grafici
-    globals.gbl_generated_tasks_data.append({
-        "task_id": task_id,
-        "arrival_time": arrival_time_system,
-        "type": task_type,
-        "ram": required_ram,
-        "disk": required_disk,
-        "image_size": image_size,
-        "exec_time": d_cpu,
-        "transfer_time": transfer_time,
-        "num_hops": hop,
-        "execution_server": server.name
-    })
-
-    # Esegue l'assegnazione
-    yield from TaskAssignment(env, server, task_id, image_size,
-                              arrival_time_system, hop, transfer_time,
-                              task_type, d_cpu, deadline)
-
+    # Passiamo tutti gli argomenti originali a v1, che è funzione euristica standard.
+    yield from SearchNode_Heuristic_v1(
+        env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
+        arrival_time_system,
+        initial_server_counter, different_server_counter, other_server_counter,
+        task_type, max_energy, d_cpu, deadline
+    )
 
 # ---------------------------------------------------------------------------
 # FUNZIONI CORE (task e generate_tasks)
@@ -870,7 +771,6 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
 
     # estrai d_cpu e deadline già calcolati in generate_tasks
     d_cpu = task_data.get('d_cpu')
-    # Usa la logica di fallback di File 2 per la deadline
     deadline = task_data.get('deadline', config.get("DeadLine", 400))
 
     required_ram = task_data['required_ram']
@@ -882,9 +782,9 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
 
     # --- LOGICA DI SMISTAMENTO (DISPATCHER) ---
     # Scegli quale versione di SearchNode usare in base al config
-    # 'v1_heuristic' = la tua versione (File 1)
-    # 'v2_ilp_hybrid' = la versione del collega (File 2)
-    policy = config.get("search_node_version", "v1_heuristic")  # Default alla tua v1
+    # 'v1_heuristic'
+    # 'v2_ilp_hybrid'
+    policy = config.get("SearchNode", "ERT")
 
     search_node_args = (
         env, server,
@@ -897,11 +797,11 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
         task_type, max_energy, d_cpu, deadline
     )
 
-    if policy == "v2_ilp_hybrid":
+    if policy == "IPL":
         print(f"--- [{env.now:.2f}] Task {task_id} using SearchNode Policy: v2_ilp_hybrid ---")
         yield from SearchNode_ILP_Hybrid_v2(*search_node_args)
     else:  # Default a v1_heuristic
-        if policy != "v1_heuristic":
+        if policy != "ERT":
             print(
                 f"--- [{env.now:.2f}] Task {task_id} WARNING: Unknown policy '{policy}'. Defaulting to v1_heuristic ---")
         print(f"--- [{env.now:.2f}] Task {task_id} using SearchNode Policy: v1_heuristic ---")
@@ -933,7 +833,7 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
 
         d_cpu = temp_task_data['d_cpu']
         # stima per la preselezione: calcola d_net_predicted in secondi
-        bw_Bps, data_bytes = network_metrics(config, temp_task_data['image_size'])
+        bw_Bps, data_bytes = network_metrics( temp_task_data['image_size'])
         d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
 
         # imposta deadline: D_r = (1 + delta_D) * (d_cpu + d_net)
@@ -1043,7 +943,7 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
     task_OBS = Task(task_id, server_obj.name, 'OBS', arrival_time_system, "Batch", image_size_MB)
 
     # metriche di rete (predizione d_net in secondi)
-    bw_Bps, data_bytes = network_metrics(config, image_size_MB)
+    bw_Bps, data_bytes = network_metrics( image_size_MB)
     task_OBS.d_net = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
     task_OBS.deadline = arrival_time_system + deadline_relative
     task_OBS.image_size_MB = image_size_MB

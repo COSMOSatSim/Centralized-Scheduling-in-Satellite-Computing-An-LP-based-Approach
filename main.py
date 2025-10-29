@@ -139,7 +139,7 @@ if __name__ == "__main__":
             d_cpu_batch = 0.0
 
             # stima d_net e deadline coerente con LaTeX: D_r = (1+delta_D)*(d_cpu + d_net)
-            bw_Bps, data_bytes = simulation.network_metrics(config, image_size)
+            bw_Bps, data_bytes = simulation.network_metrics(image_size)
             d_net_batch = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
             delta_D = config.get("delta_D", 0.2)
             deadline_batch = (1.0 + delta_D) * (d_cpu_batch + d_net_batch)
@@ -314,13 +314,13 @@ if __name__ == "__main__":
             if isinstance(srv.energy, (int, float)) and initial_energy_for_percent > 0:
                 remaining_percent = (srv.energy / initial_energy_for_percent) * 100
 
-            for (tid, task_type, arr_sys, reason) in getattr(srv, 'rejected_tasks', []):
+            for (tid, task_type, arr_sys, img_size, reason) in getattr(srv, 'rejected_tasks', []):
                 # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
                 writer.writerow([
                     tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
                     "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
                     "N/A", # Num Hops Routing
-                    "N/A", "N/A", "N/A", "N/A", "N/A",
+                    "N/A", "N/A", img_size, "N/A", "N/A",
                     "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason,
                     "N/A", # Routing Init Time
                     "N/A", # Routing End Time
