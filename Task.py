@@ -182,14 +182,14 @@ def findAlgorithm():
 
 
 
-def makeSummary(summary_dir,TArr, TExp, Tsob, ToS):
+def makeSummary(folder,TArr, TExp, Tsob, ToS):
 
     #summary_dir = f"RESULTS_TASKS_SIMULATIONS/Summary/"
-    file = f"[{findAlgorithm()}]_Rout_interval_{config['Routing_Interval']}_summary.csv"
-    path = os.path.join(summary_dir, file)
+    file = f"SUMMARY[{findAlgorithm()}]_Rout_interval_{config['Routing_Interval']}.csv"
+    path = os.path.join(folder, file)
 
     # Crea la directory se non esiste
-    os.makedirs(summary_dir, exist_ok=True)
+    os.makedirs(folder, exist_ok=True)
 
     # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
     summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
@@ -224,7 +224,7 @@ def get_routing_hop_tasks(task_id: int) -> int:
     pass
 
 
-def generate_Tasks_Status(csv_filename, summary_dir):
+def generate_Tasks_Status(csv_filename, folder):
     """
         Questa funzione salva in un file CSV le informazioni sui Task
     """
@@ -289,7 +289,7 @@ def generate_Tasks_Status(csv_filename, summary_dir):
 
         print(row)
 
-    makeSummary(summary_dir, TArr, TExp, Tsob, ToS)  # Genera il Summary
+    makeSummary(folder, TArr, TExp, Tsob, ToS)  # Genera il Summary
 
     print()  # Riga vuota alla fine per separare dall'output successivo
 

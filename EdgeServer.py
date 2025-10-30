@@ -628,11 +628,11 @@ def get_pos_proximity(pos1, pos2):
 def build_task_csv_path(folder, at, cpu):
     csv_routing_task = ""
     if BATMAN and GREEDY:
-        csv_routing_task = f"{folder}/BATMAN_GREEDY_AT_{at}_CPU_{cpu}.csv"
+        csv_routing_task = f"{folder}/[DINAMICO]_AT_{at}_CPU_{cpu}.csv"
     elif BATMAN:
-        csv_routing_task = f"{folder}/BATMAN_AT_{at}_CPU_{cpu}.csv"
+        csv_routing_task = f"{folder}/[BATMAN]_AT_{at}_CPU_{cpu}.csv"
     elif GREEDY:
-        csv_routing_task = f"{folder}/GREEDY_AT_{at}_CPU_{cpu}.csv"
+        csv_routing_task = f"{folder}/[GREEDY]_AT_{at}_CPU_{cpu}.csv"
     elif DSR:
-        csv_routing_task = f"{folder}/DSR_AT_{at}_CPU_{cpu}.csv"
+        csv_routing_task = f"{folder}/[DSR]_AT_{at}_CPU_{cpu}.csv"
     return csv_routing_task

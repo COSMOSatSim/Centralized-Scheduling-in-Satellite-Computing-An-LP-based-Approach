@@ -188,12 +188,7 @@ if __name__ == "__main__":
 
     # Cartella base: include modalità, AP e seed
     base_dir = f"{solver}_{req_dist}-sim_SystemAP{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}"
-    task_dir = f"Result_Tasks_Simulations/{solver}_{req_dist}-Task_Result{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/"
-    summary_dir = f"Result_Tasks_Simulations/Summary/{solver}_{req_dist}-Task_Result{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/"
-    
     os.makedirs(base_dir, exist_ok=True)
-    os.makedirs(task_dir, exist_ok=True)
-    os.makedirs(summary_dir, exist_ok=True)
 
     # File CSV e log con nomenclatura completa
     csv_task = (
@@ -206,7 +201,7 @@ if __name__ == "__main__":
         f"{gen_dist}_REQ-{req_dist}_"
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
-    csv_routing_task = build_task_csv_path(task_dir, atime, cpu_mean)
+    csv_routing_task = build_task_csv_path(base_dir, atime, cpu_mean)
 
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
@@ -255,7 +250,7 @@ if __name__ == "__main__":
     # Stampa il riassunto dei task usando la funzione dell'Observer
     globals.observer.print_task_summary()
     print("-" * 10)
-    generate_Tasks_Status(csv_routing_task, summary_dir)
+    generate_Tasks_Status(csv_routing_task, base_dir)
     task_dict = convert_task_list_in_dict(globals.gbl_tasks)
 
     # ---------------------------------------------------------------------
