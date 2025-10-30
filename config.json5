@@ -1,16 +1,16 @@
 {
   simulation_duration: 300,
-  enable_queue_monitoring: true,
+  enable_queue_monitoring: false,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
   adding_time: 30,
   seed: 13,
   access_point: 5,
-  arrival_time_exponential: 1.5,
-  deadline: 10,
+  arrival_time_exponential: 0.5,
+  DeadLine: 400,
   initial_energy: 150000,
-  C_sen: 10000000000.0,
+  C_sen: 10000000.0,
   energy_coefficient: 5e-26,
   weight_energy: 0.7,
   weight_response: 0.3,
@@ -39,7 +39,7 @@
   },
   DTS: true,
   AP_selection: "base",
-  SearchNode: "ILP",
+  SearchNode: "ERT",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -61,7 +61,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "ILP_OrbitAware-sim_SystemAP5/seed_13/results_exponential_REQ-OrbitAware_AT_1.5_CPU_1.csv",
+    name: "ERT_OrbitAware-sim_SystemAP5/IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3/Routing_bidirectional_True/seed_13/results_exponential_REQ-OrbitAware_AT_0.5_CPU_1.csv",
   },
   simulation_location: "Roma",
   locations: {
@@ -90,21 +90,10 @@
   OGMs_redistribution: 20,
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
-  Routing_Interval: 1,
+  Routing_Interval: 0.1,
   Routing_algorithm: {
     BATMAN: false,
     GREEDY: true,
     DSR: false,
   },
-  ilp_weights: {
-    w_e: 0.7,
-    w_R: 0.3,
-  },
-  ilp_alpha: {
-    alpha_cpu: 1.0,
-    alpha_net_J_per_MB: 0.000465,
-  },
-  ilp_objective: "hierarchical",
-  lexi_primary: "energy",
-  lexi_tol: 0.1,
 }

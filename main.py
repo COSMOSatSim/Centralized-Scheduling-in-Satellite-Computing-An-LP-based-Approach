@@ -175,13 +175,25 @@ if __name__ == "__main__":
     atime                 = config["arrival_time_exponential"]
     cpu_mean              = config["CPU_timeout"]["gen"]["mean"]
     solver                = config["SearchNode"]
+    ap_dir_bidir          = config["AP_routing_bidirectional"]      # (Booleano) AP_Routing 
+
+    # BETA, ALPHA, GAMMA
+    beta = resolution_config["beta_probabilities"]
+    bg, bcpui,bcpudi = beta["Generic_Service"], beta["CPU_Intensive"], beta["CPU_and_Data_Intensive"]
+    alpha = resolution_config["size_ranges_MB"]["CPU_DATA_INTENSIVE"]
+    am, ah, avh = alpha["alpha_M_weight"], alpha["alpha_H_weight"], alpha["alpha_VH_weight"]
+    gamma = resolution_config["size_ranges_MB"]["BATCH_TASK"]
+    gh, gvh = gamma["gamma_H_weight"], gamma["gamma_VH_weight"]
+    img_res_dir = f"IMG_RES_bg_{bg}_bcpui_{bcpui}_bcpudi_{bcpudi}_am_{am}ah_{ah}_avh_{avh}_gh_{gh}_gvh_{gvh}"
 
     # Cartella base: include modalità, AP e seed
-    base_dir = f"{solver}_{req_dist}-sim_SystemAP{ap}/seed_{seed_val}"
-    task_dir = f"RESULTS_TASKS_SIMULATIONS/{solver}_{req_dist}-Task_Result{ap}/seed_{seed_val}/"
-
+    base_dir = f"{solver}_{req_dist}-sim_SystemAP{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}"
+    task_dir = f"Result_Tasks_Simulations/{solver}_{req_dist}-Task_Result{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/"
+    summary_dir = f"Result_Tasks_Simulations/Summary/{solver}_{req_dist}-Task_Result{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/"
+    
     os.makedirs(base_dir, exist_ok=True)
     os.makedirs(task_dir, exist_ok=True)
+    os.makedirs(summary_dir, exist_ok=True)
 
     # File CSV e log con nomenclatura completa
     csv_task = (
@@ -243,7 +255,7 @@ if __name__ == "__main__":
     # Stampa il riassunto dei task usando la funzione dell'Observer
     globals.observer.print_task_summary()
     print("-" * 10)
-    generate_Tasks_Status(csv_routing_task)
+    generate_Tasks_Status(csv_routing_task, summary_dir)
     task_dict = convert_task_list_in_dict(globals.gbl_tasks)
 
     # ---------------------------------------------------------------------

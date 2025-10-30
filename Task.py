@@ -182,10 +182,10 @@ def findAlgorithm():
 
 
 
-def makeSummary(TArr, TExp, Tsob, ToS):
+def makeSummary(summary_dir,TArr, TExp, Tsob, ToS):
 
-    summary_dir = f"RESULTS_TASKS_SIMULATIONS/Summary/"
-    file = f"AP_BIDIR_{config['AP_routing_bidirectional']}_[{findAlgorithm()}]_interval_{config['Routing_Interval']}tasks_summary.csv"
+    #summary_dir = f"RESULTS_TASKS_SIMULATIONS/Summary/"
+    file = f"[{findAlgorithm()}]_Rout_interval_{config['Routing_Interval']}_summary.csv"
     path = os.path.join(summary_dir, file)
 
     # Crea la directory se non esiste
@@ -224,7 +224,7 @@ def get_routing_hop_tasks(task_id: int) -> int:
     pass
 
 
-def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
+def generate_Tasks_Status(csv_filename, summary_dir):
     """
         Questa funzione salva in un file CSV le informazioni sui Task
     """
@@ -289,7 +289,7 @@ def generate_Tasks_Status(csv_filename="DSR_Execution.csv"):
 
         print(row)
 
-    makeSummary(TArr, TExp, Tsob, ToS)  # Genera il Summary
+    makeSummary(summary_dir, TArr, TExp, Tsob, ToS)  # Genera il Summary
 
     print()  # Riga vuota alla fine per separare dall'output successivo
 
