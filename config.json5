@@ -33,9 +33,8 @@
       max: 1.0,
     },
   },
-  mode_name: "DTS-base",
   request_distribution: {
-    distribution: "OrbitAware",
+    distribution: "DTS-base",
   },
   DTS: true,
   AP_selection: "base",
@@ -61,7 +60,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "ERT_OrbitAware-sim_SystemAP5/IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3/Routing_bidirectional_True/seed_13/results_exponential_REQ-OrbitAware_AT_0.5_CPU_1.csv",
+    name: "ERT_DTS-base-sim_SystemAP5/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_13/results_exponential_REQ-DTS-base_AT_0.5_CPU_1.csv",
   },
   simulation_location: "Roma",
   locations: {
