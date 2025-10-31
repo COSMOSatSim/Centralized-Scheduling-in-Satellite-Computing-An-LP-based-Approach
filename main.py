@@ -273,18 +273,18 @@ if __name__ == "__main__":
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
             "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
             "Num Hops Routing",  # <-- Nuova colonna
-            "Queue length", "transfer_time", "Image_Size_MB", "DeadLine Exceded", "Exec_after_set",
+            "Queue length", "transfer_time", "Image_Size_MB", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
             "Rejection Reason",
-            "Routing Init Time", # <-- Nuova colonna
+            "Routing Init Time",  # <-- Nuova colonna
             "Routing End Time",  # <-- Nuova colonna
-            "Routing Duration"   # <-- Nuova colonna
+            "Routing Duration"  # <-- Nuova colonna
         ])
 
         initial_energy_for_percent = config.get("initial_energy", 0.0)
 
         for srv in all_servers:
-            # completed tasks
+            # completed tasks (Questa sezione era già corretta)
             for entry in getattr(srv, 'completed_tasks', []):
 
                 (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
@@ -299,7 +299,7 @@ if __name__ == "__main__":
                     remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
                 # Ottieni i dati di routing dal dizionario
-                r_hops, r_init_time, r_end_time, r_duration = "N/A", "N/A", "N/A", "N/A" # Default
+                r_hops, r_init_time, r_end_time, r_duration = "N/A", "N/A", "N/A", "N/A"  # Default
                 if tid in task_dict:
                     try:
                         r_hops, r_init_time, r_end_time, r_duration = task_dict[tid].get_stat_csv()
@@ -309,70 +309,119 @@ if __name__ == "__main__":
                 writer.writerow([
                     tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
                     ex_t, service_t, time_in_system, time_q, sel_srv, hops,
-                    r_hops, # <-- Valore Routing Hops
-                    qlen, tranfer_t, image_size, DeadLine, exec_set,
+                    r_hops,  # <-- Valore Routing Hops
+                    qlen, tranfer_t, image_size, exec_set,
                     eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
-                    r_init_time, # <-- Valore Routing Init Time
+                    r_init_time,  # <-- Valore Routing Init Time
                     r_end_time,  # <-- Valore Routing End Time
-                    r_duration   # <-- Valore Routing Duration
+                    r_duration  # <-- Valore Routing Duration
                 ])
 
-            # rejected tasks (come prima)
+            # rejected tasks
+            # Calcola la percentuale di energia rimanente per i task rifiutati
             remaining_percent = "N/A"
             if isinstance(srv.energy, (int, float)) and initial_energy_for_percent > 0:
                 remaining_percent = (srv.energy / initial_energy_for_percent) * 100
 
             for (tid, task_type, arr_sys, img_size, reason) in getattr(srv, 'rejected_tasks', []):
-                # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
+                # --- INIZIO BLOCCO CORRETTO PER REJECTED ---
                 writer.writerow([
-                    tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
-                    "N/A", # Num Hops Routing
-                    "N/A", "N/A", img_size, "N/A", "N/A",
-                    "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason,
-                    "N/A", # Routing Init Time
-                    "N/A", # Routing End Time
+                    tid,  # Task ID
+                    task_type,  # Task Type
+                    "Rejected",  # Status
+                    arr_sys,  # Arrival Time (System)
+                    "N/A",  # Arrival Time (Queue)
+                    "N/A",  # Start Time
+                    "N/A",  # End Time
+                    0.0,  # Execution time (Corretto)
+                    0.0,  # Service Time (Corretto)
+                    0.0,  # Time in system (Corretto)
+                    0.0,  # Time in queue (Corretto)
+                    srv.name,  # Server Name
+                    0,  # Num Hops (Corretto)
+                    "N/A",  # Num Hops Routing
+                    "N/A",  # Queue length
+                    0.0,  # transfer_time (Corretto)
+                    img_size,  # Image_Size_MB
+                    False,  # Exec_after_set (Corretto)
+                    0.0,  # Energy_CPU [J] (Corretto)
+                    0.0,  # Energy_NET [J] (Corretto)
+                    0.0,  # Energy_TOTAL [J] (Corretto)
+                    srv.energy,  # Remaining_energy [J]
+                    remaining_percent,  # Remaining_energy [%]
+                    reason,  # Rejection Reason
+                    "N/A",  # Routing Init Time
+                    "N/A",  # Routing End Time
                     "N/A"  # Routing Duration
                 ])
 
             # residual tasks: CPU queue & NET queue
             residual_tasks = []
-            for req in getattr(srv, 'cpu_dev').queue:
-                if hasattr(req, 'task_data'):
-                    td = req.task_data
-                    residual_tasks.append(
-                        {"tid": td.id, "type": "CPU_Waiting", "demand": getattr(td, 'd_cpu', 'N/A')})
-            for req in getattr(srv, 'net_dev').queue:
-                if hasattr(req, 'task_data'):
-                    td = req.task_data
-                    residual_tasks.append(
-                        {"tid": td.id, "type": "NET_Waiting", "demand": getattr(td, 'd_net', 'N/A')})
+            if ENABLE_MONITORING:  # Controlla solo se il monitoring è attivo
+                for req in getattr(srv, 'cpu_dev').queue:
+                    if hasattr(req, 'task_data'):
+                        td = req.task_data
+                        residual_tasks.append(
+                            {"tid": td.id, "type": "CPU_Waiting", "demand": getattr(td, 'd_cpu', 'N/A')})
+                for req in getattr(srv, 'net_dev').queue:
+                    if hasattr(req, 'task_data'):
+                        td = req.task_data
+                        residual_tasks.append(
+                            {"tid": td.id, "type": "NET_Waiting", "demand": getattr(td, 'd_net', 'N/A')})
 
             total_residual_count = len(residual_tasks)
+            # Calcola la percentuale rimanente anche per i task residui (usa la stessa di rejected)
+            remaining_percent = "N/A"
+            if isinstance(srv.energy, (int, float)) and initial_energy_for_percent > 0:
+                remaining_percent = (srv.energy / initial_energy_for_percent) * 100
+
             for task_data in residual_tasks:
                 tid = task_data["tid"]
                 task_type_label = f"Residual ({task_data['type']})"
                 demand = task_data["demand"]
-                execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
-                service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
+                # Se la domanda è nota, usala, altrimenti 0.0
+                execution_time = demand if task_data["type"] == "CPU_Waiting" and isinstance(demand,
+                                                                                             (int, float)) else 0.0
+                service_time = demand if task_data["type"] == "NET_Waiting" and isinstance(demand,
+                                                                                           (int, float)) else 0.0
 
-                # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
+                # --- INIZIO BLOCCO CORRETTO PER RESIDUAL ---
                 writer.writerow([
-                    tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
-                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
-                    "N/A", # Num Hops Routing
-                    total_residual_count, "N/A", "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", srv.energy, "N/A", "In Queue at End",
-                    "N/A", # Routing Init Time
-                    "N/A", # Routing End Time
+                    tid,  # Task ID
+                    task_type_label,  # Task Type
+                    "In Queue",  # Status
+                    "N/A",  # Arrival Time (System)
+                    "N/A",  # Arrival Time (Queue)
+                    "N/A",  # Start Time
+                    "N/A",  # End Time
+                    execution_time,  # Execution time (dal demand)
+                    service_time,  # Service Time (dal demand)
+                    "N/A",  # Time in system
+                    "N/A",  # Time in queue
+                    srv.name,  # Server Name
+                    "N/A",  # Num Hops
+                    "N/A",  # Num Hops Routing
+                    total_residual_count,  # Queue length
+                    "N/A",  # transfer_time (Corretto)
+                    "N/A",  # Image_Size_MB (Corretto)
+                    False,  # Exec_after_set (Corretto)
+                    0.0,  # Energy_CPU [J] (Corretto)
+                    0.0,  # Energy_NET [J] (Corretto)
+                    0.0,  # Energy_TOTAL [J] (Corretto)
+                    srv.energy,  # Remaining_energy [J]
+                    remaining_percent,  # Remaining_energy [%]
+                    "In Queue at End",  # Rejection Reason
+                    "N/A",  # Routing Init Time
+                    "N/A",  # Routing End Time
                     "N/A"  # Routing Duration
                 ])
 
         # dump also global batch completions (if any)
+        # (Questa sezione sembrava già corretta)
         for entry in getattr(globals, 'gbl_batch_completed', []):
             (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
              tq, sel_srv, hops, qlen, trf, image_size,
-             DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+             exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
 
             time_in_system = (end_t - arr_sys) if (
                     isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
@@ -381,20 +430,19 @@ if __name__ == "__main__":
             if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
                 remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
-            # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
             writer.writerow([
                 tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
                 ex_t, service_t, time_in_system, tq, sel_srv, hops,
-                "N/A", # Num Hops Routing
+                "N/A",  # Num Hops Routing
                 qlen, trf, image_size,
-                DeadLine, exec_set,
-                eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
-                "N/A", # Routing Init Time
-                "N/A", # Routing End Time
+                exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
+                "N/A",  # Routing Init Time
+                "N/A",  # Routing End Time
                 "N/A"  # Routing Duration
             ])
 
     print(f"Simulation results saved to: {csv_task}")
+
 
     # --------------------------------------------------
     # 8) Scrittura Statistiche Energetiche e Task Counts

@@ -7,10 +7,14 @@
   adding_time: 30,
   seed: 13,
   access_point: 5,
-  arrival_time_exponential: 1.5,
+  arrival_time_exponential: 0.1,
   deadline: 10,
   initial_energy: 150000,
-  C_sen: 10000000000.0,
+  C_sen2: 10000000000.0,
+  C_sen: {
+    min: 10000000.0,
+    max: 10000000000.0,
+  },
   energy_coefficient: 5e-26,
   weight_energy: 0.7,
   weight_response: 0.3,
@@ -38,7 +42,7 @@
   },
   DTS: true,
   AP_selection: "base",
-  SearchNode: "ILP",
+  SearchNode: "ERT",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -60,7 +64,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "ILP_DTS-base-sim_SystemAP5/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_13/results_exponential_REQ-DTS-base_AT_1.5_CPU_1.csv",
+    name: "ERT_DTS-base-sim_SystemAP5/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_13/results_exponential_REQ-DTS-base_AT_0.1_CPU_1.csv",
   },
   simulation_location: "Roma",
   locations: {

@@ -8,7 +8,14 @@ hop = 0  # Inizializza la variabile hop a zero
 config = globals.config
 resolution_config = globals.resolution_config
 
-C_sen = config.get("C_sen", 1e9)  # parametro costante per il modello energetico CPU
+c_sen_config_global = config.get("C_sen", 1e9)
+if isinstance(c_sen_config_global, dict):
+    c_min = c_sen_config_global.get("min", 1e9)
+    c_max = c_sen_config_global.get("max", 1e9)
+    C_sen = globals.rnd.uniform(c_min, c_max)
+else:
+    C_sen = float(c_sen_config_global)
+
 bw_MBps = float(config.get("available_bandwidth", {}).get("min", 2150.0))
 bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
 e_coeff = config.get("energy_coefficient", 5e-26)  # coefficiente energetico (esempio numerico)
@@ -337,7 +344,7 @@ def _merge_queues_for_ilp(sat_state: dict):
     return cpu_q, net_q
 
 
-def _build_snapshot_Ek(env, center_server, candidate_servers, current_task_id, d_cpu_req, d_net_MB_req, deadline_req,
+def _build_snapshot_Ek(env, candidate_servers, current_task_id, d_cpu_req, d_net_MB_req, deadline_req,
                        config):
     """
     Costruisce un oggetto Snapshot minimale per solve_on_Ek su Ek={k}+neighbors[k].
@@ -366,7 +373,7 @@ def _build_snapshot_Ek(env, center_server, candidate_servers, current_task_id, d
             net_queue=net_q,
             in_service_cpu=None,
             in_service_net=None,
-            net_bw_bps=None  # lasciamo None -> userà default_net_bw_MBps
+            net_bw_bps=None,  # lasciamo None -> userà default_net_bw_MBps
         )
         sen_map[srv.name] = s_state
 
@@ -648,7 +655,6 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
         # Snapshot locale e risoluzione
         snap = _build_snapshot_Ek(
             env=env,
-            center_server=server_selected,
             candidate_servers=neighbors_at_distance_one,
             current_task_id=task_id,
             d_cpu_req=float(d_cpu),
@@ -1035,7 +1041,6 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
             len(server_obj.net_dev.queue),  # qlen
             0.0,  # trf
             image_size_MB,
-            False,  # DeadLine
             False,  # exec_set
             0.0,  # eps_cpu
             eps_net,  # eps_net

@@ -51,6 +51,12 @@ class EdgeServer:
         self.rejected_tasks = []  # Lista per i task scartati
         self.energy = config.get("initial_energy", 10000.0)  # J (valore più alto)
 
+        C_sen_cfg = config.get("C_sen", {"min": 1e7, "max": 1e10})
+        self.C_sen_min = C_sen_cfg.get("min", 1e7)
+        self.C_sen_max = C_sen_cfg.get("max", 1e10)
+
+        self.C_sen = globals.rnd.uniform(self.C_sen_min, self.C_sen_max)
+
         self.tasks = []  # Lista task da Spedire
         self.dead_tasks = []  # Lista dei Task Morti (TTL = 0)
         self.OGMs_position = {}  # Dizionario delle posizioni dei vicini
@@ -538,10 +544,8 @@ class EdgeServer:
         R_predicted = Wc + d_cpu + Wn + d_net
 
         # 2) stima energia CPU (richiede C_sen)
-        C_sen = getattr(self, 'C_sen', config.get("C_sen", None))
-        if C_sen is None:
-            # fallback: usa valore globale config se l'oggetto non ha C_sen
-            C_sen = config.get("C_sen", 1e9)
+        C_sen = getattr(self, 'C_sen', globals.rnd.uniform(self.C_sen_min, self.C_sen_max))
+
 
         eps_cpu = self.compute_execution_energy(d_cpu, C_sen, e=config.get("energy_coefficient", 5e-26))
 

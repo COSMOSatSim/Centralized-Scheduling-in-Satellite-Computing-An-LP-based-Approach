@@ -1,7 +1,6 @@
 import threading, os, json5, json
 import random as _random
 import numpy as np
-import time
 import sys
 
 # Funzione per determinare il file di configurazione
@@ -38,9 +37,6 @@ try:
 except FileNotFoundError:
     resolution_config = None
     sys.exit("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
-
-
-
 
 # Imposta seme e ambiente
 _seed = int(config.get("seed", 42))
