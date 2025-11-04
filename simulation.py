@@ -114,10 +114,9 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             return
         # controllo se il server ha energia disponibile (tenendo conto delle riserve)
         R = Wc + d_cpu + d_net
-        print('valore di R confreontato con deadline', R, 'deadline', D_r)
         if R > D_r:
             # se la stima supera la deadline configurata, rifiuta il task
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded", d_cpu)
             return
             # riservo energia per evitare race condition con altri task
         selected_server.energy_reserved += eps_cpu
@@ -167,7 +166,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         # Qui d_cpu e d_net sono i tempi di servizio per il task R
         R = Wc + d_cpu + Wn + d_net
         if R > D_r:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded", d_cpu)
             return
 
         # riservo energia totale (CPU + NET)
@@ -471,7 +470,7 @@ def _calculate_heuristic_metrics(neighbors_at_distance_one, server_selected,
 
 
 def _filter_and_select_best_server(server_metrics, deadline, task_id, task_type,
-                                   arrival_time_system, image_size, server_selected, config):
+                                   arrival_time_system, image_size, server_selected, config, d_cpu):
     """
     Filtra la lista di metriche (sunset, deadline) e seleziona il server migliore.
     """
@@ -508,8 +507,8 @@ def _filter_and_select_best_server(server_metrics, deadline, task_id, task_type,
     # 4. Controlla se sono rimasti server
     if not server_metrics_sorted:
         print(f"[Task {task_id}] Nessun server rimasto dopo i filtri (deadline/sunset).")
-        server_selected.record_rejected_task(
-            task_id, task_type, arrival_time_system, image_size, reason
+        server_selected.record_rejected_task( ##aggiungere execution time come d_cpu
+            task_id, task_type, arrival_time_system, image_size, reason, d_cpu
         )
         return None, reason  # Ritorna None se fallisce
 
@@ -608,7 +607,7 @@ def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, require
     # 4. Filtra e seleziona il server migliore
     chosen_metric, reason = _filter_and_select_best_server(
         server_metrics, deadline, task_id, task_type,
-        arrival_time_system, image_size, server_selected, config
+        arrival_time_system, image_size, server_selected, config, d_cpu,
     )
 
     if chosen_metric is None:

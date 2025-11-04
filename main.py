@@ -323,7 +323,7 @@ if __name__ == "__main__":
             if isinstance(srv.energy, (int, float)) and initial_energy_for_percent > 0:
                 remaining_percent = (srv.energy / initial_energy_for_percent) * 100
 
-            for (tid, task_type, arr_sys, img_size, reason) in getattr(srv, 'rejected_tasks', []):
+            for (tid, task_type, arr_sys, img_size, reason, d_cpu) in getattr(srv, 'rejected_tasks', []):
                 # --- INIZIO BLOCCO CORRETTO PER REJECTED ---
                 writer.writerow([
                     tid,  # Task ID
@@ -333,7 +333,7 @@ if __name__ == "__main__":
                     "N/A",  # Arrival Time (Queue)
                     "N/A",  # Start Time
                     "N/A",  # End Time
-                    0.0,  # Execution time (Corretto)
+                    d_cpu,  # Execution time (Corretto)
                     0.0,  # Service Time (Corretto)
                     0.0,  # Time in system (Corretto)
                     0.0,  # Time in queue (Corretto)

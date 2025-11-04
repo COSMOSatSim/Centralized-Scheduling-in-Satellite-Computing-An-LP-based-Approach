@@ -161,12 +161,12 @@ class EdgeServer:
         if ENABLE_MONITORING:
             return state
         return None
-    def record_rejected_task(self, task_id, task_type, arrival_time_system, img_size, rejection_reason ):
+    def record_rejected_task(self, task_id, task_type, arrival_time_system, img_size, rejection_reason, d_cpu ):
         """
         Registra un task scartato con la motivazione del rifiuto.
         """
         self.rejected_tasks.append(
-            (task_id, task_type, arrival_time_system, img_size, rejection_reason )
+            (task_id, task_type, arrival_time_system, img_size, rejection_reason, d_cpu )
         )
         print(f"[Task {task_id}] REJECTED on {self.name} due to: {rejection_reason}")
 
