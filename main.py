@@ -187,7 +187,7 @@ if __name__ == "__main__":
     img_res_dir = f"IMG_RES_bg_{bg}_bcpui_{bcpui}_bcpudi_{bcpudi}_am_{am}ah_{ah}_avh_{avh}_gh_{gh}_gvh_{gvh}"
 
     # Cartella base: include modalità, AP e seed
-    base_dir = f"{solver}_{req_dist}-sim_SystemAP{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}"
+    base_dir = f"{solver}_sim_SystemAP{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}"
     os.makedirs(base_dir, exist_ok=True)
 
     # File CSV e log con nomenclatura completa
