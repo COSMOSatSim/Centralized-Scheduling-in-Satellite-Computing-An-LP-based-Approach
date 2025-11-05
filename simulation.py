@@ -110,7 +110,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
         eps_cpu = selected_server.compute_execution_energy(d_cpu, C_sen, e=e_coeff)
         # controllo se il server ha energia disponibile (tenendo conto delle riserve)
         if selected_server.energy - selected_server.energy_reserved < eps_cpu:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Insufficient Energy for CPU")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Insufficient Energy for CPU", d_cpu)
             return
         # controllo se il server ha energia disponibile (tenendo conto delle riserve)
         R = Wc + d_cpu + d_net
@@ -161,7 +161,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
 
         if selected_server.energy - selected_server.energy_reserved < (eps_cpu + eps_net):
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Insufficient Energy for CPU+NET")
+                                                 "Insufficient Energy for CPU+NET", d_cpu)
             return
         # Qui d_cpu e d_net sono i tempi di servizio per il task R
         R = Wc + d_cpu + Wn + d_net
@@ -224,12 +224,12 @@ def TaskAssignment(env, selected_server, task_id, image_size,
     elif task_type == "Batch":
         # Solo coda Network
         if selected_server.energy - selected_server.energy_reserved < eps_net:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Insufficient Energy for NET")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Insufficient Energy for NET", d_cpu)
             return
 
         R = Wn + d_net
         if R > D_r:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size, "Deadline Exceeded", d_cpu)
             return
 
         selected_server.energy_reserved += eps_net
@@ -483,7 +483,7 @@ def _filter_and_select_best_server(server_metrics, deadline, task_id, task_type,
     if not server_metrics_filtered:
         print(f"[Task {task_id}] Nessun server valido trovato (filtro orbitalSunset).")
         server_selected.record_rejected_task(
-            task_id, task_type, arrival_time_system, image_size, 'Invalid orbitalSunset'
+            task_id, task_type, arrival_time_system, image_size, 'Invalid orbitalSunset', d_cpu
         )
         return None, reason  # Ritorna None se fallisce
 
