@@ -184,13 +184,13 @@ def filterSatellitesInView(satellite, t):
     velocity = sys.velocity    
 
     r = sys.position.km                             # r è la posizione relativa del SAT rispetto all'observer
-    r_unit = r / globals.rnd_np.linalg.norm(r)                  # Vettore unitario
-    v_rel = globals.rnd_np.dot(velocity.km_per_s, r_unit)       # Calcoliamo la velocità calcolando il prodotto scalare tra r e r_unit
+    r_unit = r / globals.np.linalg.norm(r)                  # Vettore unitario
+    v_rel = globals.np.dot(velocity.km_per_s, r_unit)       # Calcoliamo la velocità calcolando il prodotto scalare tra r e r_unit
     
     return True if v_rel < 0 else False
 
 # ---------------------------------------------------------------------------- #
-def getAllSatOnMe(t, tle_data, serializable = False, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):
+def getAllSatOnMe(t, tle_data, ap_selection, serializable = False, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):
     
     buffer_Phi = Phi_max - config["Phi_buffer"]             # Angle of a Buffer Zone
     satellites_dome, satellites_buffer = [], []             
@@ -229,9 +229,9 @@ def getAllSatOnMe(t, tle_data, serializable = False, Phi_max = config["Phi_max"]
     # Determino Access Points
     for sat in sat_sort_dome:
         # Decido se eseguire il filtro o meno
-        if config["AP_selection"] == "base":
+        if ap_selection == "base":
             can_take = (counter < Num_Access_point)
-        elif config["AP_selection"] == "optimal":
+        elif ap_selection == "optimal":
             can_take = (counter < Num_Access_point and filterSatellitesInView(sat.satellite, t))
         else:
             sys.exit(f"AP_selection errato : {config['AP_selection']}")

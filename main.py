@@ -9,7 +9,7 @@ import simulation
 from Task import generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
 from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, \
-    updateTaskValue, string_to_skyfield_time
+    updateTaskValue, string_to_skyfield_time, loadConfiguration_simple
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
@@ -67,25 +67,33 @@ if __name__ == "__main__":
         tle_data = saveTLEOnFile()
         config_interval = config["Interval_between_Configurations_in_seconds"]
         tot_config = int((config["simulation_duration"] + config["adding_time"]) / config_interval)
+        
+        t0 = get_current_time()
 
-        configurations = genConfigs(
-            get_current_time(),
+        # AP base
+        satellite_configurations_file_path_base = "data/configurations_AP_base.json"
+        satellite_configurations_file_path_optimal = "data/configurations_AP_optimal.json"
+
+        configurations_base = genConfigs(
+            t0,
             config_interval,
             tot_config,
-            tle_data
+            tle_data,
+            satellite_configurations_file_path_base,
+            "base"
+        )
+        print("\n GENERO OPRIMAL")
+        configuration_optimal = genConfigs(
+            t0,
+            config_interval,
+            tot_config,
+            tle_data,
+            satellite_configurations_file_path_optimal,
+            "optimal"
         )
 
-        T_min, T_max, T_avg = updateTaskValue(configurations)
-        config["Build_Configurations"] = False
-        config["CPU_timeout"]["min"] = T_min
-        config["CPU_timeout"]["max"] = T_max
-        config["CPU_timeout"]["mean"] = T_avg + 2.0
-
-        with open('config.json5', 'w') as wf:
-            json5.dump(config, wf, indent=2)
-
         if config["redistribuite_OGM"]:
-            process_OGM_enviroment_simulation(configurations)
+            process_OGM_enviroment_simulation(configurations_base)
             remove_first_30_configurations()
 
         sys.exit("File of configurations created")
@@ -93,14 +101,14 @@ if __name__ == "__main__":
     # 2) Caricamento o creazione topologia
     if config.get("Load_Configuration", False):
         print("Carico le configurazioni dal file...")
-        globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
-                                                                              globals.OGMs_tables,
-                                                                              globals.positions_vectors)
-        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables,
-                                                     globals.positions_vectors))
+        # globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
+        #                                                                       globals.OGMs_tables,
+        #                                                                       globals.positions_vectors)
+        # env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables,
+        #                                              globals.positions_vectors))
+        globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
     else:
-        print("Creo la topologia DOMEv2...")
-        globals.edge_servers = create_topology_dome(env)
+        sys.exit("Nessuna Configurazione richiesta!")
 
     globals.observer = Observer(env, getObserverObj())  # Singleton Observer
     env.process(periodic_recall_Routing_monitor(env))
@@ -204,12 +212,12 @@ if __name__ == "__main__":
     # File CSV e log con nomenclatura completa
     csv_task = (
         f"{base_dir}/results_"
-        f"{gen_dist}_REQ-{req_dist}_"
+        f"{gen_dist}_REQ-{complete_sim_solver}_"
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
     csv_mig = (
         f"{base_dir}/migration_"
-        f"{gen_dist}_REQ-{req_dist}_"
+        f"{gen_dist}_REQ-{complete_sim_solver}_"
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
     csv_routing_task = build_task_csv_path(base_dir, atime, cpu_mean)
@@ -461,7 +469,7 @@ if __name__ == "__main__":
 
     csv_energy_stats = (
         f"{base_dir}/energy_stats_"
-        f"{gen_dist}_REQ-{req_dist}_"
+        f"{gen_dist}_REQ-{complete_sim_solver}_"
         f"AT_{atime}_CPU_{cpu_mean}.csv"
     )
 

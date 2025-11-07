@@ -83,7 +83,15 @@ def load_or_create_json(path):
         return json.load(f)
 
 try:
-    data_configurations = load_or_create_json("data/configurations.json")
+    configurations_path = None
+    if config["AP_selection"] == "base":
+        configurations_path = "data/configurations_AP_base.json"
+    elif config["AP_selection"] == "optimal":
+        configurations_path = "data/configurations_AP_optimal.json"
+    else:
+        sys.exit("Errore con AP Selection, configurazione inesistente.")
+
+    data_configurations = load_or_create_json(configurations_path)
     print("Configuration file loaded.\n")
     OGMs_tables = load_or_create_json("data/OGMs_table.json")
     print("OGMs table file loaded.")

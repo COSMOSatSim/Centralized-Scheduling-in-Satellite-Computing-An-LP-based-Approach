@@ -145,7 +145,7 @@ def print_progress_bar(current_step, total_steps, bar_width=40, prefix="Avanzame
 
 
 
-def genConfigs(t0, interval, num_configs, tle_data, json_path = "data/configurations.json"):
+def genConfigs(t0, interval, num_configs, tle_data, json_path, ap_selection):
     """
     Generates a list of configurations over a specified time period.
     Args:
@@ -160,13 +160,13 @@ def genConfigs(t0, interval, num_configs, tle_data, json_path = "data/configurat
     num_access_point = config["access_point"]  # Number of access points
     totSecs = num_configs * interval  # Total duration in seconds
     
-    print("GENERAZIONE CONFIGURAZIONI: ")
+    print(f"GENERAZIONE CONFIGURAZIONI ({ap_selection}): ")
     for elapsed_time in range(0, totSecs, interval):
         step_index = elapsed_time // interval + 1
         print_progress_bar(step_index, num_configs, 40)
 
         configuration = []
-        dome, sat_sort_buff = getAllSatOnMe(t, tle_data) 
+        dome, sat_sort_buff = getAllSatOnMe(t, tle_data, ap_selection) 
         topology = dome + sat_sort_buff
 
         # Gestione della serializzabilità
