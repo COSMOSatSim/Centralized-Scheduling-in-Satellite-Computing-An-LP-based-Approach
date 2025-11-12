@@ -105,5 +105,12 @@
   },
   ilp_objective: "hierarchical",
   lexi_primary: "energy",
-  lexi_tol: 0.1,
+  lexi_tol: 0.5,
+  batching: {
+    enabled: true,
+    interval_s: 0.5,
+    max_retries: 6,
+    max_hops: 10,
+  },
+  debug_assignment: true,
 }

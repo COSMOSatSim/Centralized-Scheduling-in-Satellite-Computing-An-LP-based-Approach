@@ -2,8 +2,27 @@ import globals
 import experiments
 from Task import Task
 from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics, solve_on_Ek_hierarchical
+import os
+import csv
+from collections import defaultdict
+
+
+# --- STATO BUFFER BATCH ---
+_batch_pending = []                # elementi in attesa di flush: dict per task
+_batch_csv_path = None
+_batch_header_written = False
+_batch_seq = 0                     # progressivo dei flush
+# CSV di decisione opzionale (utile per debug)
+_batch_decisions_csv = None
+
+
 
 hop = 0  # Inizializza la variabile hop a zero
+
+
+# --- Tabu per retry (per-task) ---
+_retry_tabu = defaultdict(set)   # task_id -> {server_name}
+
 
 config = globals.config
 resolution_config = globals.resolution_config
@@ -12,6 +31,66 @@ C_sen = config.get("C_sen", 1e9)  # parametro costante per il modello energetico
 bw_MBps = float(config.get("available_bandwidth", {}).get("min", 2150.0))
 bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
 e_coeff = config.get("energy_coefficient", 5e-26)  # coefficiente energetico (esempio numerico)
+
+# ---------------------------------------------------------------------------
+# HELPER PER DEBUG WHY-NOT
+# ---------------------------------------------------------------------------
+
+def _dbg_enabled():
+    import globals
+    try:
+        return bool(globals.config.get("debug_assignment", True))
+    except Exception:
+        return True
+
+def why_not(env, task_id, stage, reason, **kw):
+    if not _dbg_enabled():
+        return
+    kv = " ".join(f"{k}={v}" for k,v in kw.items())
+    print(f"[{env.now:.2f}] [WHY-NOT][{stage}] Task {task_id}: {reason}" + (f" | {kv}" if kv else ""))
+
+class ReasonCollector:
+    """Raccoglie motivi di scarto lungo tutti gli hop."""
+    def __init__(self):
+        self.count = defaultdict(int)
+        self.samples = {}
+
+    def add(self, reason, **kw):
+        self.count[reason] += 1
+        # conserva un solo sample per tipo
+        if reason not in self.samples and kw:
+            self.samples[reason] = kw
+
+    def dump(self, env, task_id, header=""):
+        if not _dbg_enabled():
+            return
+        if header:
+            print(f"[{env.now:.2f}] [WHY-NOT][SUMMARY] Task {task_id}: {header}")
+        if not self.count:
+            print(f"[{env.now:.2f}] [WHY-NOT][SUMMARY] Task {task_id}: nessun motivo raccolto.")
+            return
+        print(f"[{env.now:.2f}] [WHY-NOT][SUMMARY] Task {task_id}: motivi (conteggi) ↓")
+        for r, c in sorted(self.count.items(), key=lambda x: -x[1]):
+            sample = self.samples.get(r, {})
+            kv = " ".join(f"{k}={v}" for k,v in sample.items())
+            print(f"  - {r}: {c}" + (f" | es.: {kv}" if kv else ""))
+
+# ---------------------------------------------------------------------------
+
+def _canon_name(name: str) -> str:
+    if not name:
+        return ""
+    # togli suffissi tipo " [DTC]" e spazi extra
+    n = name.strip()
+    i = n.find(' [')
+    if i >= 0:
+        n = n[:i]
+    return n
+
+def _ap_index():
+    # indice {canonical_name -> oggetto server}
+    return { _canon_name(s.name): s for s in globals.global_access_point }
+
 
 def network_metrics(image_size_MB, Volume_size_MB=0.0):
     """
@@ -404,38 +483,27 @@ def _calculate_heuristic_metrics(neighbors_at_distance_one, server_selected,
                                  image_size, Volume_size, task_type, d_cpu, deadline, max_energy,
                                  d_net_predicted, data_bytes_global, bw_Bps_global):
     """
-    Calcola le metriche euristiche per tutti i server candidati.
-    Questo è il ciclo 'for neighbor...' estratto.
+    Calcola le metriche per i server candidati.
+    Aggiunge: stima energia E (CPU + NET), risposta R, energia libera B_free.
     """
     server_metrics = []
+
+    # parametri energetici dal config
+    C_sen = config.get("C_sen", 1e9)
+    e_coeff = config.get("energy_coefficient", 5e-26)
+    P_net = config.get("Ptrasm", 1.0)
 
     for neighbor in neighbors_at_distance_one:
         latency_to_server = server_selected.get_latency(neighbor)
         bandwidth_to_server = server_selected.get_bandwidth(neighbor)
 
-        total_data_MB = image_size + Volume_size
+        # Dati (uplink intra-SEN): usa la banda del link corrente->neighbor
+        total_data_MB = (image_size + Volume_size)
         total_data_bytes = total_data_MB * (1024 ** 2)
+        bw_link_Bps = max(1.0, float(bandwidth_to_server or 0.0))  # evita divisioni per zero
+        transfer_time = total_data_bytes / bw_link_Bps
 
-        if bandwidth_to_server is not None and latency_to_server is not None and bandwidth_to_server > 0:
-            bandwidth_to_server_Bps = bandwidth_to_server * (1024 ** 2)
-            transfer_time = (total_data_bytes / bandwidth_to_server_Bps) + latency_to_server
-            d_net_on_link = total_data_bytes / bandwidth_to_server_Bps
-        else:
-            transfer_time = 0.0
-            d_net_on_link = float('inf')
-
-        # calcola lo score
-        selection_score = neighbor.get_selection_score(
-            task_type,
-            d_cpu=d_cpu,
-            d_net=d_net_predicted,
-            D_r=deadline,
-            energy_budget_max=max_energy,
-            file_size_bytes=data_bytes_global,
-            bandwidth_Bps=bw_Bps_global
-        )
-
-        # stima tempo di attesa in coda sul neighbor
+        # Tempo di attesa stimato su neighbor
         try:
             waiting_cpu = neighbor.W_cpu()
         except Exception:
@@ -445,70 +513,124 @@ def _calculate_heuristic_metrics(neighbors_at_distance_one, server_selected,
         except Exception:
             waiting_net = 0.0
 
-        waiting_time_adjusted = waiting_cpu + waiting_net
-        estimated_execution_time = d_cpu
-        estimated_net_time = d_net_on_link
+        # Tempo servizio lato NET locale (per task NET/batch considera solo rete)
+        d_net_on_link = transfer_time
 
-        expected_completion_time = waiting_time_adjusted + estimated_execution_time + estimated_net_time + transfer_time
+        if task_type in ("Generic_Service", "CPU_Intensive"):
+            R = waiting_cpu + d_cpu + d_net_on_link  # cpu + hop netto
+        elif task_type == "CPU_and_Data_Intensive":
+            R = waiting_cpu + d_cpu + waiting_net + d_net_on_link
+        else:
+            # Batch / NET-only
+            R = waiting_net + d_net_on_link
+
+        # Stima energia
+        E_cpu = neighbor.compute_execution_energy(d_cpu, C_sen, e=e_coeff) if d_cpu > 0 else 0.0
+        E_net = neighbor.compute_routing_energy(total_data_bytes, bw_link_Bps, Ptrasm=P_net) if total_data_bytes > 0 else 0.0
+        E = E_cpu + E_net
+
+        # Energia disponibile (considera la riserva)
+        B_free = max(0.0, float(neighbor.energy) - float(getattr(neighbor, "energy_reserved", 0.0)))
+
+        # Sunset previsto per neighbor (se non disponibile, lascia None)
+        try:
+            orbitalSunset = neighbor.get_orbital_sunset()
+        except Exception:
+            orbitalSunset = None
 
         server_metrics.append({
             'server': neighbor,
-            'selection_score': selection_score,
             'transfer_time': transfer_time,
-            'orbitalSunset': neighbor.orbitalSunset,
-            'Sunset': neighbor.elev_angle,  # Mantenuto da v1
-            'expected_completion_time': expected_completion_time
+            'expected_completion_time': R,
+            'waiting_cpu': waiting_cpu,
+            'waiting_net': waiting_net,
+            'd_net_on_link': d_net_on_link,
+            'R': R,           # <-- nuovo
+            'E': E,           # <-- nuovo
+            'B_free': B_free, # <-- nuovo
+            'orbitalSunset': orbitalSunset,
+            'energy_cpu': E_cpu,
+            'energy_net': E_net,
         })
 
     return server_metrics
 
 
+
 def _filter_and_select_best_server(server_metrics, deadline, task_id, task_type,
                                    arrival_time_system, image_size, server_selected, config):
     """
-    Filtra la lista di metriche (sunset, deadline) e seleziona il server migliore.
+    Applica:
+      1) filtro orbitalSunset (se richiesto dalla distribuzione),
+      2) filtro HARD: R <= deadline e E <= B_free,
+      3) filtro tabu (server già tentati dal task),
+      4) ranking normalizzato con pesi energia/tempo.
     """
-
-    # 1. Filtra i server non validi (orbitalSunset)
-    server_metrics_filtered = [m for m in server_metrics
-                               if m['orbitalSunset'] not in (None, 0)]
-
-    reason = "No suitable server found after deadline/sunset filters"
-    if not server_metrics_filtered:
-        print(f"[Task {task_id}] Nessun server valido trovato (filtro orbitalSunset).")
-        server_selected.record_rejected_task(
-            task_id, task_type, arrival_time_system, image_size, 'Invalid orbitalSunset'
-        )
-        return None, reason  # Ritorna None se fallisce
-
-    # 2. Ordina i server in base allo score
-    sorted_servers = sorted(server_metrics_filtered, key=lambda x: x['selection_score'], reverse=True)
-
-    # 3. Applica il blocco di filtro (DTS-base vs OrbitAware)
+    # 0) Filtra sunset se OrbitAware
     distribution = config.get("request_distribution", {}).get("distribution", "")
     if distribution in ("DTS-base", "DTS-AP optimal"):
-        print(f'[{task_id}] Filtro euristico: DTS-TMAX')
-        # filtriamo i dizionari che rispettano la deadline
-        server_metrics_sorted = [m for m in sorted_servers if m['expected_completion_time'] < deadline]
+        metrics = [m for m in server_metrics if m.get('orbitalSunset') not in (0, )]
     else:
-        print(f'[{task_id}] Filtro euristico: OrbitAware')
-        server_metrics_sorted = [
-            m for m in sorted_servers
-            if m['expected_completion_time'] < deadline
-               and m['expected_completion_time'] < m['orbitalSunset']
-        ]
+        # orbit-aware: richiede sunset valido e che R finisca prima del tramonto
+        metrics = [m for m in server_metrics
+                   if m.get('orbitalSunset') not in (None, 0)]
 
-    # 4. Controlla se sono rimasti server
-    if not server_metrics_sorted:
-        print(f"[Task {task_id}] Nessun server rimasto dopo i filtri (deadline/sunset).")
+    # 1) Filtro HARD (deadline + energia)
+    feasible = []
+    for m in metrics:
+        R = m['R']
+        E = m['E']
+        B_free = m['B_free']
+        if R <= deadline and E <= B_free:
+            feasible.append(m)
+
+    if not feasible:
+        # segnala rifiuto con motivazione più esplicita
         server_selected.record_rejected_task(
-            task_id, task_type, arrival_time_system, image_size, reason
+            task_id, task_type, arrival_time_system, image_size,
+            "No suitable server after hard filters (deadline/energy)"
         )
-        return None, reason  # Ritorna None se fallisce
+        return None, "No suitable server after hard filters (deadline/energy)"
 
-    # 5. Scegli il migliore
-    chosen_metric = server_metrics_sorted.pop(0)
-    return chosen_metric, None  # Ritorna la metrica scelta
+    # 2) Tabu: evita server già provati (rimbalzi)
+    tabu = _retry_tabu.get(task_id, set())
+    feasible = [m for m in feasible if m['server'].name not in tabu]
+    if not feasible:
+        # se tutti tabu, azzera tabu per questo task (diversificazione morbida)
+        _retry_tabu[task_id].clear()
+        feasible = [m for m in metrics if (m['R'] <= deadline and m['E'] <= m['B_free'])]
+
+    # 3) Ranking normalizzato
+    we = float(config.get("weights", {}).get("we", 0.5))
+    wR = 1.0 - we
+
+    # normalizzazioni stabili
+    Rmax = max(m['R'] for m in feasible) or 1.0
+    # per energia normalizziamo su energia disponibile del server
+    def score(m):
+        R_hat = m['R'] / Rmax
+        E_hat = m['E'] / (m['B_free'] or 1.0)
+        # opzionale: piccola penalità se vicino al tramonto o code alte
+        penalty = 0.0
+        try:
+            sunset = float(m.get('orbitalSunset') or 0.0)
+            if sunset and sunset < (deadline * 1.1):
+                penalty += 0.05  # penalità lieve
+        except Exception:
+            pass
+        return we * E_hat + wR * R_hat + penalty
+
+
+    feasible.sort(key=score)
+    chosen_metric = feasible[0]
+
+    # aggiorna tabu: aggiungo i non scelti per un giro
+    others = [m for m in feasible[1:]]
+    if others:
+        _retry_tabu[task_id].update({m['server'].name for m in others})
+
+    return chosen_metric, None
+
 
 
 def _finalize_and_assign_task(env, server_selected, server, task_id,
@@ -637,11 +759,13 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
 
         # --- Inizio blocco ILP  ---
         print(f"[{env.now:.2f}] [Task {task_id}] Entering ILP branch (v2)")
-
+        
         # 1. Ottieni i vicini (necessario per ILP)
-        neighbors_at_distance_one = list(server_selected.get_neighbors())
+        ap = _ap_index()
+        neighbors_at_distance_one = [n for n in server_selected.get_neighbors() if _canon_name(n.name) in ap]
         if server_selected not in neighbors_at_distance_one:
             neighbors_at_distance_one.append(server_selected)
+
 
         d_net_MB_req = float(image_size + (Volume_size or 0.0))
 
@@ -700,6 +824,13 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
                 return ilp_res
             return None
 
+        why_not(env, task_id, "ILP-SNAPSHOT",
+            "Ek costruito",
+            SENs=len(snap.sen), picked="1", neighbors=len(snap.neighbors.get(server_selected.name, [])),
+            primary=str(config.get("lexi_primary", "energy")).lower(), tol=float(config.get("lexi_tol", 0.10)), bw_MBps=bw_MBps)
+
+
+
         # ====== CHIAMATA AL SOLVER ======
         objective_mode = str(config.get("ilp_objective", "weighted")).lower()
         if objective_mode == "hierarchical":
@@ -713,6 +844,11 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
                 debug=bool(config.get("ilp_debug", False)),
                 tasks_from_prof=False
             )
+            
+            # esito solver
+            status = getattr(ilp_res, "status", None) if hasattr(ilp_res, "status") else None
+            why_not(env, task_id, "ILP-RESULT", "risultato ricevuto", status=status)
+            
         else:
             ilp_res = solve_on_Ek(
                 snapshot=snap, k=server_selected.name, picked_tasks=[str(task_id)],
@@ -725,10 +861,34 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
 
         print(f"[ILP] res_type={type(ilp_res).__name__} value_preview={str(ilp_res)[:160]}")
         chosen_server_name = _extract_chosen_server(ilp_res, task_id)
+        
+        ap = _ap_index()
+        chosen_key = _canon_name(chosen_server_name or "")
+        server = ap.get(chosen_key, None)
+        if server is None:
+            # log e fallback
+            why_not(env, task_id, "INVALID-TARGET",
+                    "server scelto non presente in AP set (skip)",
+                    chosen=chosen_server_name, chosen_canon=chosen_key)
+            # prova il best dei rimanenti o ritorna al server_selected
+            server = server_selected
+
+        if not chosen_server_name:
+            why_not(env, task_id, "ILP-NO-ASSIGN",
+                    "nessuna assegnazione dal solver (infeasible/none?)",
+                    note="verifica vincoli: deadline/energia/code/banda")
 
         # --- Finalizzazione ILP (se ha successo) ---
         if chosen_server_name:
             print(f"[{env.now:.2f}] [Task {task_id}] ILP chose server: {chosen_server_name}")
+            
+            ap = _ap_index()
+            if _canon_name(server.name) not in ap:
+                why_not(env, task_id, "FORWARD-BLOCKED",
+                        "target SEN non nel dataset, inoltro bloccato",
+                        target=server.name)
+                # tenta un altro vicino valido o fai backoff
+                return  # oppure ricadi alla selezione successiva
 
             server = next((s for s in neighbors_at_distance_one if s.name == chosen_server_name), server_selected)
 
@@ -869,33 +1029,41 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         D_r = (1.0 + delta_D) * (d_cpu + d_net_predicted)
         temp_task_data['deadline'] = D_r
 
-        # stima d_cpu già in temp_task_data;
-        # Ora pre-seleziona server usando i parametri d_cpu e d_net_predicted
-        best_server = None
-        best_score = float('-inf')
-        for server in globals.global_access_point:
-            score = server.get_selection_score(
-                temp_task_data['type'],
-                d_cpu=d_cpu,
-                d_net=d_net_predicted,
-                D_r=D_r,
-                energy_budget_max=max_energy,
-                file_size_bytes=data_bytes,
-                bandwidth_Bps=bw_Bps
-            )
-            if score > best_score:
-                best_score = score
-                best_server = server
+        # >>> NUOVO: log nel buffer al momento dell'ingresso <<<
+        add_to_batch_buffer(task_id, env.now, D_r, temp_task_data)  # <— passiamo anche il payload
 
-        if best_server is None:
-            print(f"[Task {task_id}] Nessun server scelto in base all'euristica.")
-            task_id += 1
-            continue
 
-        # Il resto dei dati del task sono contenuti in task_type_and_size_generator
-        env.process(task(env, task_id, best_server,
-                         initial_server_counter, different_server_counter, other_server_counter,
-                         temp_task_data, max_energy))  # Passa i dati del task
+        # ⛔️ NON lanciare il task "normale" se il batching è attivo
+        batching_cfg = config.get("batching", {})
+        if not batching_cfg.get("enabled", False):
+
+            # stima d_cpu già in temp_task_data;
+            # Ora pre-seleziona server usando i parametri d_cpu e d_net_predicted
+            best_server = None
+            best_score = float('-inf')
+            for server in globals.global_access_point:
+                score = server.get_selection_score(
+                    temp_task_data['type'],
+                    d_cpu=d_cpu,
+                    d_net=d_net_predicted,
+                    D_r=D_r,
+                    energy_budget_max=max_energy,
+                    file_size_bytes=data_bytes,
+                    bandwidth_Bps=bw_Bps
+                )
+                if score > best_score:
+                    best_score = score
+                    best_server = server
+
+            if best_server is None:
+                print(f"[Task {task_id}] Nessun server scelto in base all'euristica.")
+                task_id += 1
+                continue
+
+            # Il resto dei dati del task sono contenuti in task_type_and_size_generator
+            env.process(task(env, task_id, best_server,
+                            initial_server_counter, different_server_counter, other_server_counter,
+                            temp_task_data, max_energy))  # Passa i dati del task
 
         task_id += 1
 
@@ -1048,3 +1216,595 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
 
     print(
         f"[{env.now:.3f}] BATCH id={task_id} served on {server_obj.name} net_time={net_time:.3f} eps_net={eps_net:.6f}")
+
+# --------------------------------------------------------------------------- CODICE NUOVO -----------------
+# BATCHING CON ILP GERARCHICO
+# ----------------------------------------------------------------------------------------------------------
+
+# Buffer globale per i task in attesa di batching
+def add_to_batch_buffer(task_id: int | str, entry_time: float, deadline_remaining_s: float, payload: dict | None = None):
+    tid = int(task_id)
+    
+    p = dict(payload) if isinstance(payload, dict) else {}
+    # 👇 init current_server_id se mancante
+    if p.get("current_server_id") is None and globals.global_access_point:
+        p["current_server_id"] = max(globals.global_access_point, key=lambda s: getattr(s, "energy", 0.0)).name
+
+    # 👇 init/merge set di visitati
+    visited = set(p.get("visited", []))
+    if p.get("current_server_id"):
+        visited.add(p["current_server_id"])
+    p["visited"] = list(visited)
+
+    # se esiste già un item per quel task_id nel buffer, aggiorna in-place
+    existing_idx = next((i for i, it in enumerate(_batch_pending) if int(it.get("task_id")) == tid), None)
+    new_item = {
+        "task_id": tid,
+        "entry_time": float(entry_time),
+        "deadline_remaining_s": float(deadline_remaining_s),
+        "payload": p,
+        "retry_count": int(payload.get("retry_count", 0)) if isinstance(payload, dict) else 0,
+        "hops": int(payload.get("hops", 0)) if isinstance(payload, dict) else 0,
+    }
+    if existing_idx is not None:
+        _batch_pending[existing_idx] = new_item
+    else:
+        _batch_pending.append(new_item)
+
+    # log: usa il tempo corrente per rendere l’ordine leggibile nel CSV
+    _batch_write_row(["ENQUEUE", tid, float(globals.env.now if hasattr(globals, "env") else entry_time),
+                      len(_batch_pending), float(deadline_remaining_s), ""])
+
+
+
+
+# Avvia il processo di batching periodico
+def start_batch_buffer(env, csv_path: str, interval_s: float = 0.1, decisions_csv_path: str | None = None):
+    """
+    Ogni 'interval_s':
+      - logga PROCESS dei task correnti,
+      - risolve ILP gerarchico per assegnarli,
+      - consegna i task e svuota il buffer.
+    """
+    global _batch_csv_path, _batch_header_written, _batch_seq, _batch_decisions_csv
+    _batch_csv_path = csv_path
+    _batch_decisions_csv = decisions_csv_path
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    _batch_header_written = os.path.exists(csv_path) and os.path.getsize(csv_path) > 0
+    _batch_seq = 0
+
+    # Processo interno di batching
+    def _writer():
+        global _batch_seq  # se già presente, ok
+        while True:
+            yield env.timeout(interval_s)
+
+            if not _batch_pending:
+                continue
+
+            t_now = env.now
+
+            # 1) snapshot degli elementi correnti (con deduplica per task_id)
+            raw = _batch_pending[:]          # copia del buffer
+            # 2) SWAP: svuota SUBITO il buffer, così i requeue vanno in un buffer "nuovo"
+            del _batch_pending[:]            # <-- non rimuovere questa riga
+
+            # Deduplica: per ogni task_id tieni l'item "più nuovo"
+            by_tid = {}
+            def _key(it):
+                # priorità: retry_count > hops > entry_time
+                return (
+                    int(it.get("retry_count", 0)),
+                    int(it.get("hops", 0)),
+                    float(it.get("entry_time", 0.0)),
+                )
+
+            for it in raw:
+                tid = int(it["task_id"])
+                if tid not in by_tid or _key(it) > _key(by_tid[tid]):
+                    by_tid[tid] = it
+
+            snapshot = list(by_tid.values())
+            buffer_size_before = len(snapshot)
+
+            # (facoltativo) log se sono stati rimossi duplicati
+            removed = len(raw) - len(snapshot)
+            if removed > 0:
+                print(f"[BATCH][DEDUP] removed {removed} stale entries before ILP")               # <-- differenza chiave!
+
+            # 3) log PROCESS
+            for item in snapshot:
+                _batch_write_row([
+                    "PROCESS", item["task_id"], t_now, buffer_size_before,
+                    item["deadline_remaining_s"], _batch_seq
+                ])
+
+            try:
+                # 4) ILP + consegna
+                assignments = _process_batch_with_ilp(env, snapshot)
+                _write_batch_decisions(assignments, batch_seq=_batch_seq, t_now=t_now)
+
+                for item in snapshot:
+                    task_id = item["task_id"]
+                    chosen = assignments.get(task_id)
+                    _deliver_assignment(env, item, chosen)
+
+                print(f"[BATCH][EXEC] ILP batch executed")
+                _batch_seq += 1
+
+            except Exception as e:
+                print(f"[BATCH][ERROR] ILP batch failed at t={t_now}: {e}")
+                # 5) ripristina gli elementi dello snapshot (non persi) per il prossimo tick
+                _batch_pending.extend(snapshot)
+
+            # 6) NON svuotare qui: niente _batch_pending.clear()
+
+
+    return env.process(_writer())
+
+
+# Scrittura CSV di decisioni batch (opzionale)
+def _batch_write_row(row):
+    """Scrive una riga nel CSV; crea header se necessario."""
+    global _batch_header_written
+    if _batch_csv_path is None:
+        return
+    os.makedirs(os.path.dirname(_batch_csv_path), exist_ok=True)
+    write_header = not _batch_header_written or not os.path.exists(_batch_csv_path) or os.path.getsize(_batch_csv_path) == 0
+    with open(_batch_csv_path, mode="a", newline="") as f:
+        w = csv.writer(f)
+        if write_header:
+            w.writerow(["event", "task_id", "t", "buffer_size", "deadline_remaining_s", "batch_seq"])
+            _batch_header_written = True
+        w.writerow(row)
+
+
+
+def _process_batch_with_ilp(env, snapshot_items: list[dict]) -> dict[int, str]:
+    if not snapshot_items:
+        return {}
+
+    # 1) Pulisci payload e raggruppa per current_server_id
+    groups: dict[str, list[dict]] = {}
+    for it in snapshot_items:
+        p = dict(it.get("payload") or {})
+        p["id"] = it["task_id"]
+        if "deadline" not in p:
+            p["deadline"] = it["deadline_remaining_s"]
+        k_id = p.get("current_server_id")
+        if not k_id and globals.global_access_point:
+            k_id = max(globals.global_access_point, key=lambda s: getattr(s, "energy", 0.0)).name
+            p["current_server_id"] = k_id
+        groups.setdefault(str(k_id), []).append(p)
+
+    # 2) Parametri fisici/solver
+    P_net = float(config.get("Ptrasm", 1.0))
+    alpha_cpu, alpha_net_J_per_byte = alpha_from_physics(C_sen, e_coeff, P_net, bw_Bps)
+    alpha_net = alpha_net_J_per_byte * (1024 ** 2)
+    primary = str(config.get("lexi_primary", "energy")).lower()
+    tol = float(config.get("lexi_tol", 0.10))
+    solver_name = str(config.get("ilp_solver", "CBC"))
+    debug = bool(config.get("ilp_debug", False))
+
+    all_assignments: dict[int, str] = {}
+
+    # 3) Esegui ILP per ogni gruppo (Ek locale), con guard su k
+    for k_id, tasks_payloads in groups.items():
+        snap = _build_snapshot_for_batch(env, tasks_payloads)
+        sen_names = set(snap.sen.keys())
+
+        # -- GUARD: se k_id non esiste nello snapshot, riassegna k --
+        if k_id not in sen_names:
+            # scegli un seed valido nello snapshot (max energia)
+            if sen_names:
+                seed_srv = max(
+                    (s for s in globals.global_access_point if s.name in sen_names),
+                    key=lambda s: getattr(s, "energy", 0.0),
+                )
+                new_k = seed_srv.name
+            else:
+                # scenario estremo: nessun SEN -> nessuna assegnazione
+                new_k = None
+
+            # aggiorna il current_server_id dei payload del gruppo per evitare loop futuri
+            if new_k:
+                for p in tasks_payloads:
+                    p["current_server_id"] = new_k
+                k_id = new_k
+            else:
+                # Non c'è nulla da fare: salta questo gruppo (verrà riaccodato con deadline ridotta)
+                continue
+
+        picked_tasks = [str(p["id"]) for p in tasks_payloads]
+
+        # --- DEBUG: riassunto batch locale su Ek=k_id ---
+        try:
+            slacks = []
+            for p in tasks_payloads:
+                D_rel = float(p.get("deadline", 300.0) or 300.0)  # è relativo
+                # NB: env.now è “adesso”, l’arrivo del task non lo abbiamo qui -> usiamo D_rel come proxy di slack residuo
+                slacks.append(D_rel)
+            if slacks:
+                sl_min = min(slacks); sl_med = sorted(slacks)[len(slacks)//2]; sl_max = max(slacks)
+                why_not(env, "BATCH", "ILP-PREFLIGHT",
+                    f"Ek={k_id} con {len(tasks_payloads)} task",
+                    SENs=len(snap.sen))
+        except Exception:
+            pass
+
+
+        ilp_res = solve_on_Ek_hierarchical(
+            snapshot=snap,
+            k=str(k_id),
+            picked_tasks=picked_tasks,
+            primary=primary,
+            tol=tol,
+            alpha_cpu=alpha_cpu,
+            alpha_net=alpha_net,
+            solver_name=solver_name,
+            default_net_bw_MBps=bw_MBps,
+            debug=debug,
+            tasks_from_prof=False
+        )
+
+        all_assignments.update(_extract_assignments_from_solution(ilp_res))
+
+
+        # --- DEBUG: copertura assegnazioni su questo gruppo ---
+        missing = [p["id"] for p in tasks_payloads if int(p["id"]) not in all_assignments]
+        if missing:
+            why_not(env, "BATCH", "ILP-PARTIAL",
+                    f"alcuni task senza assegnazione su Ek={k_id}",
+                    missing_ids=",".join(map(str, missing)))
+
+
+    return all_assignments
+
+
+
+
+def _build_snapshot_for_batch(env, tasks_payloads: list[dict]):
+    """
+    Costruisce uno Snapshot 'globale' al tempo corrente che include:
+      - tutti i SEN visibili (globals.global_access_point),
+      - la mappa dei vicini a 1-hop,
+      - TUTTE le richieste (requests) del batch corrente.
+
+    d_net dei task è espresso in **MB** (come fa già _build_snapshot_Ek), il solver
+    convertirà in secondi usando default_net_bw_MBps.
+    """
+    sen_map = {}
+    neighbors_map = {}
+    listening = []
+
+    # 1) Costruisci stato dei SEN (come nella tua _build_snapshot_Ek)
+    for srv in globals.global_access_point:
+        st = srv.export_state(env)  # richiede enable_queue_monitoring=true
+        B = float(st.get("energy_budget_J", getattr(srv, "energy", 0.0)))
+        B_max = float(config.get("initial_energy", B if B > 0 else 1.0))
+
+        cpu_q, net_q = _merge_queues_for_ilp(st)
+
+        s_state = SENState(
+            B=B,
+            B_max=B_max,
+            Rmax_norm=1.0,
+            cpu_queue=cpu_q,
+            net_queue=net_q,
+            in_service_cpu=None,
+            in_service_net=None,
+            net_bw_bps=None  # lascio None: il solver userà default_net_bw_MBps
+        )
+        sen_map[srv.name] = s_state
+
+        # vicini per nome
+        neigh_names = [n.name for n in srv.get_neighbors()]
+        neighbors_map[srv.name] = neigh_names
+
+        if st.get("in_listening_dome", False):
+            listening.append(srv.name)
+
+    # 2) Prepara le richieste del batch
+    requests = []
+    for p in tasks_payloads:
+        tid = str(p.get("id"))
+        task_type = p.get("type", "Generic_Service")
+        d_cpu_req = float(p.get("d_cpu", 0.0) or 0.0)
+
+        # per d_net in MB: se è CPU+DATA o Batch, usa image_size; altrimenti 0
+        if task_type in ("CPU_and_Data_Intensive", "Batch"):
+            d_net_MB_req = float(p.get("image_size", 0.0) or 0.0)
+        else:
+            d_net_MB_req = 0.0
+
+        D_req = float(p.get("deadline", 300.0) or 300.0)
+
+        requests.append(QueueTask(
+            task_id=tid,
+            d_cpu=d_cpu_req,
+            d_net=d_net_MB_req,   # MB!
+            D=D_req
+        ))
+
+    snap = Snapshot(
+        time=float(env.now),
+        listening_dome=listening,
+        neighbors=neighbors_map,
+        sen=sen_map,
+        requests=requests,
+        pre_R={},
+        pre_E={}
+    )
+    return snap
+
+
+
+def _extract_assignments_from_solution(sol) -> dict[int, str]:
+    """
+    Estrae {task_id:int -> server_id:str} dalla soluzione ILP.
+    Supporta vari formati (dict/list/obj).
+    """
+    assignments: dict[int, str] = {}
+
+    def _add(tid, sid):
+        try:
+            assignments[int(str(tid))] = str(sid)
+        except Exception:
+            pass
+
+    if isinstance(sol, dict):
+        # formati tipici
+        if "assignments" in sol and isinstance(sol["assignments"], list):
+            for a in sol["assignments"]:
+                _add(a.get("task") or a.get("task_id") or a.get("id"),
+                     a.get("sen") or a.get("server") or a.get("server_id"))
+        elif "x" in sol and isinstance(sol["x"], dict):
+            for tid, sid in sol["x"].items():
+                _add(tid, sid)
+        else:
+            # prova ricorsivo su sotto-chiavi
+            for v in sol.values():
+                sub = _extract_assignments_from_solution(v)
+                assignments.update(sub)
+    elif isinstance(sol, list):
+        for item in sol:
+            if isinstance(item, dict):
+                _add(item.get("task") or item.get("task_id") or item.get("id"),
+                     item.get("sen") or item.get("server") or item.get("server_id"))
+            elif isinstance(item, (list, tuple)) and len(item) >= 2:
+                _add(item[0], item[1])
+    else:
+        # oggetto con attributi?
+        try:
+            for a in getattr(sol, "assignments", []):
+                _add(getattr(a, "task_id", None), getattr(a, "server_id", None))
+        except Exception:
+            pass
+
+    return assignments
+
+
+
+def _deliver_assignment(env, item: dict, chosen_server_id: str | None):
+    task_id = item["task_id"]
+    payload = dict(item.get("payload") or {})
+    retry_count = int(item.get("retry_count", 0))
+    hops = int(item.get("hops", 0))
+
+    max_retries = int(config.get("batching", {}).get("max_retries", 3))
+    max_hops    = int(config.get("batching", {}).get("max_hops", 5))
+
+    # parametri utili
+    arrival_time_system = float(item.get("entry_time", env.now))
+    image_size_MB = float(payload.get("image_size", 0.0) or 0.0)
+    volume_MB     = float(payload.get("Volume_size", 0.0) or 0.0)
+    task_type     = payload.get("type", "Generic_Service")
+    d_cpu         = float(payload.get("d_cpu", 0.0) or 0.0)
+    D_r_init      = float(payload.get("deadline", item.get("deadline_remaining_s", 300.0)) or 300.0)
+
+    # tempo trascorso dall'arrivo -> slack residuo
+    elapsed = max(0.0, env.now - arrival_time_system)
+    D_r_remaining = max(0.001, D_r_init - elapsed)
+
+    # helper robusto per aggiornare l'entry corretta nel buffer dopo add_to_batch_buffer
+    def _update_pending_fields(tid: int, retry: int, hopv: int):
+        idx = next((i for i, it in enumerate(_batch_pending) if int(it.get("task_id")) == int(tid)), None)
+        if idx is not None:
+            _batch_pending[idx]["retry_count"] = retry
+            _batch_pending[idx]["hops"] = hopv
+
+    # Caso 1: ILP ha assegnato un server -> consegna immediata
+    srv = next((s for s in globals.global_access_point if s.name == chosen_server_id), None)
+    if chosen_server_id and srv is not None:
+        # ✅ log positivo (prima c’era un 'NO-ASSIGN' qui, da rimuovere)
+        why_not(env, task_id, "BATCH-ASSIGN", "solver ha assegnato un server", server=chosen_server_id)
+
+        transfer_time = 0.0  # consegna diretta (il batch decide e avviamo TaskAssignment)
+        _batch_write_row(["ASSIGN", task_id, float(env.now), len(_batch_pending),
+                          float(D_r_remaining), str(chosen_server_id)])
+        env.process(TaskAssignment(
+            env, srv, task_id, image_size_MB,
+            arrival_time_system, hops, transfer_time,
+            task_type, d_cpu, D_r_init      
+        ))
+        return
+
+    # Se siamo qui: nessuna assegnazione dal solver per questo task
+    why_not(env, task_id, "BATCH-NO-ASSIGN", "nessuna assegnazione dal solver per questo task")
+
+    # Caso 2: inoltro a un vicino del server corrente
+    current_sid = payload.get("current_server_id")
+    current_srv = next((s for s in globals.global_access_point if s.name == current_sid), None)
+
+    if current_srv is None and globals.global_access_point:
+        current_srv = max(globals.global_access_point, key=lambda s: getattr(s, "energy", 0.0))
+        payload["current_server_id"] = current_srv.name
+        print(f"[{env.now:.2f}] [BATCH] Task {task_id}: current_server_id non valido, riassegnato a seed={current_srv.name}")
+
+    if current_srv is None:
+        # fallback finale: niente vicini e nessun server noto
+        if retry_count >= max_retries:
+            print(f"[{env.now:.2f}] [BATCH] Task {task_id}: max retries reached, trying heuristic fallback")
+            # prova ultima spiaggia
+            fallback_server = max(globals.global_access_point, key=lambda s: getattr(s, "energy", 0.0)) if globals.global_access_point else None
+            if fallback_server and getattr(fallback_server, "energy", 0.0) > 0:
+                print(f"[{env.now:.2f}] [BATCH] Task {task_id}: fallback assigned to {fallback_server.name}")
+                env.process(TaskAssignment(
+                    env, fallback_server, task_id, image_size_MB,
+                    arrival_time_system, hops, 0.0,
+                    task_type, d_cpu, D_r_remaining
+                ))
+                return
+
+            # reject loggando su un server sensato (non usare current_srv, è None)
+            print(f"[{env.now:.2f}] [BATCH] Task {task_id}: all attempts failed -> task rejected")
+            log_srv = fallback_server or (max(globals.global_access_point, key=lambda s: getattr(s, "energy", 0.0)) if globals.global_access_point else None)
+            if log_srv:
+                log_srv.record_rejected_task(
+                    task_id, task_type, arrival_time_system, image_size_MB,
+                    f"Max retries ({max_retries}) exhausted in batch"
+                )
+            return
+
+        # riaccodo “puro”
+        add_to_batch_buffer(task_id, arrival_time_system, D_r_remaining, payload)
+        _update_pending_fields(task_id, retry_count + 1, hops)
+        print(f"[{env.now:.2f}] [BATCH] Task {task_id}: requeued (no-current), retry {retry_count+1}/{max_retries}")
+        return
+
+    # limite hop?
+    if hops >= max_hops:
+        log_srv = current_srv or (max(globals.global_access_point, key=lambda s: getattr(s, "energy", 0.0)) if globals.global_access_point else None)
+        if log_srv is not None:
+            log_srv.record_rejected_task(
+                task_id, task_type, arrival_time_system, image_size_MB,
+                f"Max hops ({max_hops}) reached in batch"
+            )
+        _batch_write_row(["REJECTED", task_id, float(env.now), len(_batch_pending),
+                          float(D_r_remaining), "max_hops"])
+        why_not(env, task_id, "BATCH-MAX-HOPS", f"raggiunto limite hop ({max_hops})")
+        return
+
+    visited = set(payload.get("visited", []))
+    # evita anche il backtrack immediato
+    visited.add(payload.get("current_server_id", ""))
+
+    neighbor, _ = _pick_best_neighbor(current_srv, exclude=visited)
+    if neighbor is not None and neighbor.name not in {s.name for s in globals.global_access_point}:
+        why_not(env, task_id, "BATCH-NEIGHBOR-INVALID",
+                "neighbor non fa parte del set AP (ignoro)", neighbor=neighbor.name)
+        neighbor = None
+    if neighbor is None:
+        # nessun vicino: retry oppure reject
+        if retry_count >= max_retries:
+            print(f"[{env.now:.2f}] [BATCH] Task {task_id}: max retries reached, trying heuristic fallback")
+            print(f"[{env.now:.2f}] [BATCH] Task {task_id}: all attempts failed -> task rejected")
+            log_srv = current_srv or (max(globals.global_access_point, key=lambda s: getattr(s, "energy", 0.0)) if globals.global_access_point else None)
+            if log_srv:
+                log_srv.record_rejected_task(
+                    task_id, task_type, arrival_time_system, image_size_MB,
+                    f"Max retries ({max_retries}) exhausted in batch"
+                )
+            _batch_write_row(["REJECTED", task_id, float(env.now), len(_batch_pending),
+                              float(D_r_remaining), "max_retries"])
+            return
+
+        all_neighbors = [n.name for n in (current_srv.get_neighbors() or []) if n.name in {s.name for s in globals.global_access_point}]
+        if all(n in visited for n in all_neighbors) and all_neighbors:
+            why_not(env, task_id, "BATCH-CYCLE", "tutti i vicini già visitati", current=current_srv.name, visited=",".join(sorted(visited)))
+            # policy: o retry senza incrementare hop, o fallback ILP locale, o reject elegante
+            add_to_batch_buffer(task_id, arrival_time_system, D_r_remaining, payload)
+            _update_pending_fields(task_id, retry_count + 1, hops)  # 👈 niente hops+1 qui
+            print(f"[{env.now:.2f}] [BATCH] Task {task_id}: cycle detected, requeued (no-progress), retry {retry_count+1}/{max_retries}")
+            return
+
+        # aggiorna memoria di percorso
+        visited.add(neighbor.name)
+        payload["visited"] = list(visited)
+        payload["current_server_id"] = neighbor.name
+        add_to_batch_buffer(task_id, arrival_time_system, D_r_remaining, payload)
+        _update_pending_fields(task_id, retry_count + 1, hops)
+        print(f"[{env.now:.2f}] [BATCH] Task {task_id}: requeued (no-neighbors), retry {retry_count+1}/{max_retries}")
+        return
+
+    # stima transfer_time reale per inoltro
+    total_MB = image_size_MB + volume_MB
+    bw_MBps  = current_srv.get_bandwidth(neighbor) or 0.0
+    latency  = current_srv.get_latency(neighbor) or 0.0
+    if bw_MBps > 0:
+        transfer_time = (total_MB / bw_MBps) + latency
+    else:
+        transfer_time = latency if latency > 0 else 0.05  # piccolo minimo
+
+    # aggiorna deadline residua “dopo l’inoltro”
+    D_r_next = max(0.001, D_r_remaining - transfer_time)
+
+    # aggiorna router corrente e hop
+    payload["current_server_id"] = neighbor.name
+
+    # riaccoda per il prossimo batch (ora "vive" sul vicino)
+    add_to_batch_buffer(task_id, arrival_time_system, D_r_next, payload)
+    _update_pending_fields(task_id, retry_count + 1, hops + 1)
+
+    why_not(env, task_id, "BATCH-FORWARD",
+            "inoltro al vicino",
+            src=current_srv.name, dst=neighbor.name,
+            hops=hops+1)
+
+    print(f"[{env.now:.2f}] [BATCH] Task {task_id}: forwarded {current_srv.name} -> {neighbor.name} "
+          f"(hop {hops+1}), xfer={transfer_time:.3f}s, D_rem={D_r_next:.3f}s")
+    _batch_write_row(["FORWARD", task_id, float(env.now), len(_batch_pending),
+                      float(D_r_next), f"{current_srv.name}->{neighbor.name}"])
+
+
+
+# helper per la scelta del miglio vicino
+def _pick_best_neighbor(current_srv, exclude=None):
+    """
+    Ritorna (neighbor_srv, transfer_time_s) oppure (None, None) se non ci sono vicini.
+    Seleziona solo vicini appartenenti a globals.global_access_point e non presenti in 'exclude'.
+    """
+    exclude = set(exclude or [])
+    try:
+        neighbors_all = list(current_srv.get_neighbors())
+    except Exception:
+        neighbors_all = []
+
+    if not neighbors_all:
+        return None, None
+
+    # Mantieni solo i vicini che sono davvero "validi" nel contesto del batch/ILP
+    ap_names = set(_ap_index().keys())
+    neighbors = [n for n in neighbors_all if _canon_name(n.name) in ap_names]
+
+
+    if not neighbors:
+        return None, None
+
+    # Stima semplice: minimize (latency + 1/bw)
+    def _score(nbr):
+        bw_MBps = current_srv.get_bandwidth(nbr)  # MB/s
+        lat = current_srv.get_latency(nbr) or 0.0
+        if not bw_MBps or bw_MBps <= 0:
+            return float('inf')
+        return lat + (1.0 / bw_MBps)
+
+    best = min(neighbors, key=_score)
+    return best, None
+
+
+
+
+# Scrittura CSV di decisioni batch (opzionale)
+def _write_batch_decisions(assignments: dict[int, str], batch_seq: int, t_now: float):
+    if not _batch_decisions_csv:
+        return
+    os.makedirs(os.path.dirname(_batch_decisions_csv), exist_ok=True)
+    new_file = not os.path.exists(_batch_decisions_csv)
+    with open(_batch_decisions_csv, "a", newline="") as f:
+        w = csv.writer(f)
+        if new_file:
+            w.writerow(["batch_seq", "t", "task_id", "server_id"])
+        for tid, sid in assignments.items():
+            w.writerow([batch_seq, t_now, tid, sid])
+

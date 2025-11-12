@@ -216,6 +216,23 @@ if __name__ == "__main__":
 
     # esempio: ogni 2s, dal secondo 100 al 200
     env.process(data_collector(env, interval=2, start_time=100, end_time=200))
+    
+    # NUOVO
+    # CSV per il buffer batching (solo id, tempo ingresso, tempo rimanente deadline)
+    csv_batch_buffer = f"{base_dir}/BATCH_BUFFER/buffer_log.csv"
+    os.makedirs(os.path.dirname(csv_batch_buffer), exist_ok=True)
+
+    # Avvio writer periodico del buffer se abilitato in config
+    batching_cfg = config.get("batching", {})
+    if batching_cfg.get("enabled", False):
+        interval_s = float(batching_cfg.get("interval_s", 0.1))
+        decisions_csv = f"{base_dir}/BATCH_BUFFER/BATCH_DECISIONS.csv"
+        simulation.start_batch_buffer(env, csv_batch_buffer, interval_s, decisions_csv_path=decisions_csv)
+        print(f"[BATCHING] Abilitato: interval={interval_s}s -> {csv_batch_buffer}")
+    else:
+        print("[BATCHING] Disabilitato da config.") 
+    
+    
 
     # 6) Esecuzione simulazione
     env.run(config['simulation_duration'])
