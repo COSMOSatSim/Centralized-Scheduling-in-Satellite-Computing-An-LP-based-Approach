@@ -179,7 +179,7 @@ if __name__ == "__main__":
     if req_dist == "DTS-base" and ap_selection == "base" and solver == "ERT": complete_sim_solver = "DTS-base"
     elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ERT": complete_sim_solver = "DTS-APopt"
     elif req_dist == "OrbitAware" and ap_selection == "optimal" and solver == "ERT": complete_sim_solver = "OrbitAware"
-    elif req_dist == "DTS-base" and ap_selection == "base" and solver == "ILP": complete_sim_solver = "ILP"
+    elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ILP": complete_sim_solver = "ILP"
     else: sys.exit(f"Complete_sim_solver not right! CHECK: req_dist:{req_dist} ap_selection:{ap_selection} solver:{solver}")
 
     # BETA, ALPHA, GAMMA
