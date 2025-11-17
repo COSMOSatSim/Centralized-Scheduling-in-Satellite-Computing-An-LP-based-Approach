@@ -7,10 +7,9 @@
   adding_time: 30,
   seed: 101,
   access_point: 5,
-  arrival_time_exponential: 0.1,
+  arrival_time_exponential: 0.5,
   deadline: 10,
   initial_energy: 80000,
-  C_sen2: 10000000000.0,
   C_sen: {
     min: 10000000.0,
     max: 10000000000.0,
@@ -36,9 +35,6 @@
       min: 0.1,
       max: 1.0,
     },
-    min: 12,
-    max: 176,
-    mean: 129.5769230769231,
   },
   request_distribution: {
     distribution: "DTS-base",
@@ -67,7 +63,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "result/DTS-base_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_101/results_exponential_REQ-DTS-base_AT_0.1_CPU_0.05.csv",
+    name: "result/DTS-base_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_101/results_exponential_REQ-DTS-base_AT_0.5_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {

@@ -236,6 +236,7 @@ def getAllSatOnMe(t, tle_data, ap_mode : AccPointMode, Phi_max = config["Phi_max
             can_take = (counter < Num_Access_point and filterSatellitesInView(sat.satellite, t))
 
         if can_take:
+            print('TEST_AP',config["AP_selection"], can_take, sat)
             sat.is_acc_point = True
             dome.append(sat)
             counter+=1

@@ -6,7 +6,6 @@
             "CPU_Intensive": 0.35,
             "CPU_and_Data_Intensive": 0.40
         },
-
         // Ranges di dimensione (in MB)
         "size_ranges_MB": {
             // Generic e CPU-Intensive - LOW (10 KB – 88 KB)

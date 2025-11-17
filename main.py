@@ -68,7 +68,7 @@ if __name__ == "__main__":
         configurations_base = build_configurations(tle_data, AccPointMode.BASE)
         configuration_optimal = build_configurations(tle_data, AccPointMode.OPTIMAL)
 
-        print(f"Lunghezza configurations_base: {len(configurations_base["configurations"])}")
+        print(f"Lunghezza configurations_base: {len(configurations_base['configurations'])}")
 
         if config["redistribuite_OGM"]:
             # TODO : Controlla che funzioni bene
@@ -162,7 +162,6 @@ if __name__ == "__main__":
     ))
 
     # 5) Preparazione dei nomi di cartella e file
-    mode_name             = config.get("mode_name", "UnknownMode").replace(" ", "_")
     ap                    = config.get("access_point", 0)
     seed_val              = config["seed"]
     gen_dist              = config["generate_tasks"]["distribution"]
@@ -216,7 +215,6 @@ if __name__ == "__main__":
         json5.dump(config, wf, indent=2)
 
     print(f"--- Avvio simulazione ---")
-    print(f"Modalità: {mode_name}")
     print(f"Cartella: {base_dir}")
     print(f"CSV tasks: {csv_task}")
     print(f"CSV migrazioni: {csv_mig}")
