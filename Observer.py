@@ -91,5 +91,5 @@ class Observer(metaclass = ObserverMeta):
                 duration = round(task.routingEndTime - task.routingInitTime, 2)
 
             print(
-                f" {task.id:<6} | {format_mb(task.weight):<13} | {task.task_type:<13} | {initTime:<17} | {endTime:<15} | {duration:<13} | {task.hop:<3} |")
+                f" {task.id:<6} | {format_mb(task.weight):<13} | {task.task_type:<23} | {initTime:<17} | {endTime:<15} | {duration:<13} | {task.hop:<3} |")
         print()  # Riga vuota alla fine per separare dall'output successivo

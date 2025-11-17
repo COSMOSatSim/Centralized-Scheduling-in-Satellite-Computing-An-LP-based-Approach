@@ -65,10 +65,9 @@ if __name__ == "__main__":
     if config.get("Build_Configurations", False):
 
         tle_data = saveTLEOnFile()
-        configurations_base = build_configurations(tle_data, AccPointMode.BASE)
-        configuration_optimal = build_configurations(tle_data, AccPointMode.OPTIMAL)
-
-        print(f"Lunghezza configurations_base: {len(configurations_base['configurations'])}")
+        t0 = get_current_time()
+        configurations_base = build_configurations(t0, tle_data, AccPointMode.BASE)
+        configuration_optimal = build_configurations(t0, tle_data, AccPointMode.OPTIMAL)
 
         if config["redistribuite_OGM"]:
             # TODO : Controlla che funzioni bene

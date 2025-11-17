@@ -2,6 +2,7 @@ import globals
 import json, json5
 import threading
 from skyfield.api import EarthSatellite, load
+from skyfield.timelib import Time
 from EdgeServer import EdgeServer
 from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
@@ -143,9 +144,8 @@ def print_progress_bar(current_step, total_steps, bar_width=40, prefix="Avanzame
     percent = progress * 100
     print(f"\r{prefix}: {bar} {current_step}/{total_steps} ({percent:5.1f}%)", end="", flush=True)
 
-def build_configurations(tle_data : tle_data, mode: AccPointMode):
-    
-    t0 = get_current_time()
+def build_configurations(t0: Time, tle_data : tle_data, mode: AccPointMode) -> GenConfigsOutput:
+
     config_interval = config["Interval_between_Configurations_in_seconds"]
     tot_config = int((config["simulation_duration"] + config["adding_time"]) / config_interval)
     

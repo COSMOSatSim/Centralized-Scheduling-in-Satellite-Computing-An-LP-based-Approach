@@ -2,6 +2,7 @@ import json5
 from math import sqrt
 from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
+from skyfield.timelib import Time
 from Satellite import Satellite
 import sys
 from enums import AccPointMode
@@ -42,7 +43,7 @@ def printSatList(*sats):
 #                                    Getter                                    #
 # ---------------------------------------------------------------------------- #
 
-def get_current_time():
+def get_current_time() -> Time:
     """
     Get the current time using Skyfield's timescale.
 
@@ -236,7 +237,6 @@ def getAllSatOnMe(t, tle_data, ap_mode : AccPointMode, Phi_max = config["Phi_max
             can_take = (counter < Num_Access_point and filterSatellitesInView(sat.satellite, t))
 
         if can_take:
-            print('TEST_AP',config["AP_selection"], can_take, sat)
             sat.is_acc_point = True
             dome.append(sat)
             counter+=1
