@@ -6,7 +6,7 @@ from EdgeServer import EdgeServer
 from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
 from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
-
+from enums import AccPointMode, GenConfigsOutput, tle_data 
 
 # Converti il tempo in UTC e formatta
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
@@ -143,9 +143,26 @@ def print_progress_bar(current_step, total_steps, bar_width=40, prefix="Avanzame
     percent = progress * 100
     print(f"\r{prefix}: {bar} {current_step}/{total_steps} ({percent:5.1f}%)", end="", flush=True)
 
+def build_configurations(tle_data : tle_data, mode: AccPointMode):
+    
+    t0 = get_current_time()
+    config_interval = config["Interval_between_Configurations_in_seconds"]
+    tot_config = int((config["simulation_duration"] + config["adding_time"]) / config_interval)
+    
+    config_path = f"data/configurations_AP_{mode}.json"
+    
+    configurations = genConfigs(
+        t0,
+        config_interval,
+        tot_config,
+        tle_data,
+        config_path,
+        mode
+    )
 
+    return configurations
 
-def genConfigs(t0, interval, num_configs, tle_data, json_path, ap_selection):
+def genConfigs(t0, interval, num_configs, tle_data, json_path, mode: AccPointMode) -> GenConfigsOutput:
     """
     Generates a list of configurations over a specified time period.
     Args:
@@ -160,13 +177,13 @@ def genConfigs(t0, interval, num_configs, tle_data, json_path, ap_selection):
     num_access_point = config["access_point"]  # Number of access points
     totSecs = num_configs * interval  # Total duration in seconds
     
-    print(f"GENERAZIONE CONFIGURAZIONI ({ap_selection}): ")
+    print(f"[{mode}]GENERAZIONE CONFIGURAZIONI: ")
     for elapsed_time in range(0, totSecs, interval):
         step_index = elapsed_time // interval + 1
         print_progress_bar(step_index, num_configs, 40)
 
         configuration = []
-        dome, sat_sort_buff = getAllSatOnMe(t, tle_data, ap_selection) 
+        dome, sat_sort_buff = getAllSatOnMe(t, tle_data, mode) 
         topology = dome + sat_sort_buff
 
         # Gestione della serializzabilità
@@ -215,7 +232,7 @@ def genConfigs(t0, interval, num_configs, tle_data, json_path, ap_selection):
     return output
 
 
-def build_EdgeServer_from_config(env, configuration, ogm_tables = None, positions_vectors = None):
+def build_EdgeServer_from_config(env, configuration, ogm_tables = None):
     neighbors_SAT, tmp_ES, list_acc_point = {}, [], []
     #print_dict(dict_OGMs)
     for sat_info in configuration["configuration"]:
@@ -230,31 +247,29 @@ def build_EdgeServer_from_config(env, configuration, ogm_tables = None, position
         if acc_point:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
-            if ogm_tables and positions_vectors:
+            if ogm_tables:
                 edge_server.ogm_table = ogm_tables[name]
-                edge_server.OGMs_position = positions_vectors[name]
             tmp_ES.append(edge_server)
             list_acc_point.append(edge_server.name)
             
         else:
             neighbors_SAT[server_id] = sat_info["neighbors"]
             edge_server = EdgeServer(env, server_id, EarthSatellite(line1, line2, name, load.timescale()), life, acc_point, satellite_angle)
-            if ogm_tables and positions_vectors:
+            if ogm_tables:
                 edge_server.ogm_table = ogm_tables[name]
-                edge_server.OGMs_position = positions_vectors[name]
             tmp_ES.append(edge_server)
         
     return tmp_ES, neighbors_SAT, list_acc_point
 
 
-def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables, positions_vectors):
+def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables):
     while True:
         
         print("-" * 70)
         print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
         
-        new_edge_servers, new_global_access_point = loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors)  # Carica la configurazione
+        new_edge_servers, new_global_access_point = loadConfiguration(env, data_configurations, OGMs_tables)  # Carica la configurazione
 
         # ! Aggiorno le Globali
         with lock:
@@ -266,21 +281,20 @@ def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables, posi
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
 
 
-def distribute_ogm(env, data_configuration, config_riempimento):
+def distribute_ogm(env, data_configuration, config_riempimento, mode:AccPointMode):
+    
     while True:
-
-
-        print(f"||CONF({globals.config_index}) TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
-        print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
+        # Avvisa quando si è sull'ultimo elemento della configurazione
+        if globals.config_index >= len(data_configuration["configurations"]) - 1:
+            print(f"---!!!Raggiunto ultimo elemento di data_configuration (index {globals.config_index})")
+        else:
+            print(f"---Caricamento configurazione index {globals.config_index}")
 
         new_edge_servers, new_global_access_point = loadConfiguration_simple(env, data_configuration)  # Carica la configurazione
         
-        print("CONFIGURAZIONE MODIFICATA!")
-        # Aggiorno le Globali
         with lock:
             globals.global_access_point = new_global_access_point
             globals.edge_servers = new_edge_servers
-
 
         with globals.lock_access_edge_servers_topology:
             ogm_map = [globals.observer] + globals.edge_servers_topology   
@@ -290,28 +304,31 @@ def distribute_ogm(env, data_configuration, config_riempimento):
         ogm_table_snapshot, position_dict = None, None
         at = timedelta(seconds=time_section)
 
+        # 1) Fase di Redistribuzione
         for i in range(num_redistributions):
-             
             new_instant = ts.utc(globals.ist_in_conf.utc_datetime() + at)
             at += timedelta(seconds=time_section)
                                  
             print(f"\tOGMS REDISTRIBUTION {i+1}/{num_redistributions} on : {new_instant.utc_iso(places=6)}")
             ogm_table_snapshot, position_dict = manage_ogm_test(ogm_map, new_instant)
         
-        # $ Fase di Salvataggio
+        # 2) Fase di Salvataggio
         if globals.config_index >= config_riempimento:
-            new_index = globals.config_index - config_riempimento
-            saveInfoInFile('data/OGMs_table.json', ogm_table_snapshot, new_index)
-            saveInfoInFile('data/positions_vectors.json', position_dict, new_index)
-
-            print(f"Salvataggio SnapShot Completato ({new_index}|{globals.config_index})")
-
-        print("-"*20)
-
-        # $ Caricamento Configurazione Successiva
-        globals.config_index += 1  
-        
             
+            ogm_table_path = f'data/OGMs_table_{mode}.json'
+            position_vectors_path = f'data/positions_vectors_{mode}.json'
+
+            new_index = globals.config_index - config_riempimento
+
+            saveInfoInFile(ogm_table_path, ogm_table_snapshot, new_index)
+            saveInfoInFile(position_vectors_path, position_dict, new_index)
+
+            #print(f"Salvataggio SnapShot Completato ({new_index}|{globals.config_index})")
+
+        #print("-"*20)
+
+        # Caricamento Configurazione Successiva
+        globals.config_index += 1  
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
 
 
@@ -536,7 +553,7 @@ def loadConfiguration_simple(env, data_configurations):
         globals.edge_servers_topology = edge_servers
         return edge_servers, global_access_point
 
-def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
+def loadConfiguration(env, data_configurations, OGMs_tables):
     """
     Carica una configurazione dal file e aggiorna la lista edge_servers senza sostituirla completamente.
 
@@ -548,7 +565,6 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
         #print("#" * 30)
         configuration = data_configurations["configurations"][globals.config_index]
         OGMs_table_single_config = OGMs_tables[str(globals.config_index)]
-        positions_Vectors_single_config = positions_vectors[str(globals.config_index)]
         globals.ist_in_conf = string_to_skyfield_time(configuration["time"])
 
         print("Aggiornato il Tempo Globale: ", globals.ist_in_conf.utc_strftime('%Y-%m-%d %H:%M:%S'))
@@ -556,7 +572,7 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
 
         # Costruisci i nuovi server dalla configurazione
         new_servers, new_neighbors, acc_point = build_EdgeServer_from_config(env,
-                     configuration, OGMs_table_single_config, positions_Vectors_single_config)
+                     configuration, OGMs_table_single_config)
 
         # Aggiorna i server esistenti o aggiunge nuovi server se non presenti.
         intersection, old_edge_servers, new_edge_servers = update_servers(new_servers, acc_point)
@@ -613,11 +629,10 @@ def loadConfiguration(env, data_configurations, OGMs_tables, positions_vectors):
         # Caricamento iniziale della configurazione
         configuration = data_configurations["configurations"][globals.config_index]
         OGMs_table_single_config = OGMs_tables[str(globals.config_index)]
-        positions_Vectors_single_config = positions_vectors[str(globals.config_index)]
 
         # Costruisci i server iniziali
         edge_servers, neighbors_SAT, list_acc_point = build_EdgeServer_from_config(env,
-                     configuration, OGMs_table_single_config, positions_Vectors_single_config)
+                     configuration, OGMs_table_single_config)
 
         # Stampa per debug
         #print(f"Configurazione iniziale caricata. Totale server: {len(edge_servers)}")

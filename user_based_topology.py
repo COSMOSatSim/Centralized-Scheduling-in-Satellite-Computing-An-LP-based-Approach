@@ -4,6 +4,7 @@ from datetime import timedelta
 from skyfield.api import load, EarthSatellite, wgs84
 from Satellite import Satellite
 import sys
+from enums import AccPointMode
 import globals
 
 # Leggi il file di configurazione JSON
@@ -190,7 +191,7 @@ def filterSatellitesInView(satellite, t):
     return True if v_rel < 0 else False
 
 # ---------------------------------------------------------------------------- #
-def getAllSatOnMe(t, tle_data, ap_selection, serializable = False, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):
+def getAllSatOnMe(t, tle_data, ap_mode : AccPointMode, Phi_max = config["Phi_max"], Num_Access_point = config["access_point"]):
     
     buffer_Phi = Phi_max - config["Phi_buffer"]             # Angle of a Buffer Zone
     satellites_dome, satellites_buffer = [], []             
@@ -225,16 +226,14 @@ def getAllSatOnMe(t, tle_data, ap_selection, serializable = False, Phi_max = con
         Num_Access_point = len(sat_sort_dome) // 2   # Non ci sono abbastanza satelliti da soddisfare la richiesta di Access_point 
         print(f"WARNING: Not enough satellites to satisfy the request. The number of access points has been set to {Num_Access_point}.")
 
-    #Determino Access Points
     # Determino Access Points
     for sat in sat_sort_dome:
+
         # Decido se eseguire il filtro o meno
-        if ap_selection == "base":
+        if ap_mode == AccPointMode.BASE:
             can_take = (counter < Num_Access_point)
-        elif ap_selection == "optimal":
+        elif ap_mode == AccPointMode.OPTIMAL:
             can_take = (counter < Num_Access_point and filterSatellitesInView(sat.satellite, t))
-        else:
-            sys.exit(f"AP_selection errato : {config['AP_selection']}")
 
         if can_take:
             sat.is_acc_point = True

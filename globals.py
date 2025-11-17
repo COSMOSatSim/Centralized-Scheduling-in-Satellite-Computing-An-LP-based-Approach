@@ -92,9 +92,8 @@ try:
         sys.exit("Errore con AP Selection, configurazione inesistente.")
 
     data_configurations = load_or_create_json(configurations_path)
-    print("Configuration file loaded.\n")
+    print(f"Configuration file ({configurations_path}) loaded.\n")
     OGMs_tables = load_or_create_json("data/OGMs_table.json")
     print("OGMs table file loaded.")
-    positions_vectors = load_or_create_json("data/positions_vectors.json")
 except Exception as e:
     print(f"Error loading configuration file: {e}")

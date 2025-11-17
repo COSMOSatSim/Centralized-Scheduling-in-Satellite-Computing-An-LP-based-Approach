@@ -1,5 +1,7 @@
 import requests
 
+from enums import tle_data
+
 starlink_url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=STARLINK&FORMAT=TLE"
 all_active_url = "https://celestrak.org/NORAD/elements/gp.php?GROUP=ACTIVE&FORMAT=TLE"
 
@@ -24,9 +26,10 @@ def get_active_satellites():
         return None
 
 
-def saveTLEOnFile():
+def saveTLEOnFile() -> tle_data:
     filename="./data/tle_data.txt"
     tle_data = get_active_satellites()
+    
     if tle_data:
         try:
             with open(filename, "w") as file:

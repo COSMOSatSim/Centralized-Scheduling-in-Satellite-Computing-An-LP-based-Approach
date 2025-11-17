@@ -5,11 +5,11 @@ import sys
 import simpy
 import json
 from EdgeServer import build_task_csv_path
+from enums import AccPointMode
 import simulation
 from Task import generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
-from topology import loadConfiguration, periodic_recall_Topology_monitor, create_topology_dome, genConfigs, \
-    updateTaskValue, string_to_skyfield_time, loadConfiguration_simple
+from topology import build_configurations, loadConfiguration, periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
@@ -65,47 +65,35 @@ if __name__ == "__main__":
     if config.get("Build_Configurations", False):
 
         tle_data = saveTLEOnFile()
-        config_interval = config["Interval_between_Configurations_in_seconds"]
-        tot_config = int((config["simulation_duration"] + config["adding_time"]) / config_interval)
-        
-        t0 = get_current_time()
+        configurations_base = build_configurations(tle_data, AccPointMode.BASE)
+        configuration_optimal = build_configurations(tle_data, AccPointMode.OPTIMAL)
 
-        # AP base
-        satellite_configurations_file_path_base = "data/configurations_AP_base.json"
-        satellite_configurations_file_path_optimal = "data/configurations_AP_optimal.json"
-
-        configurations_base = genConfigs(
-            t0,
-            config_interval,
-            tot_config,
-            tle_data,
-            satellite_configurations_file_path_base,
-            "base"
-        )
-        print("\n GENERO OPRIMAL")
-        configuration_optimal = genConfigs(
-            t0,
-            config_interval,
-            tot_config,
-            tle_data,
-            satellite_configurations_file_path_optimal,
-            "optimal"
-        )
+        print(f"Lunghezza configurations_base: {len(configurations_base["configurations"])}")
 
         if config["redistribuite_OGM"]:
-            process_OGM_enviroment_simulation(configurations_base)
-            remove_first_30_configurations()
+            # TODO : Controlla che funzioni bene
+            process_OGM_enviroment_simulation(configurations_base, AccPointMode.BASE)
+            remove_first_30_configurations(AccPointMode.BASE)
+            
+            process_OGM_enviroment_simulation(configuration_optimal, AccPointMode.OPTIMAL)
+            remove_first_30_configurations(AccPointMode.OPTIMAL)
+
+        config["Build_Configurations"] = False
+        with open('config.json5', 'w') as wf:
+            json5.dump(config, wf, indent=2)
 
         sys.exit("File of configurations created")
 
     # 2) Caricamento o creazione topologia
     if config.get("Load_Configuration", False):
         print("Carico le configurazioni dal file...")
+        # TODO : Controlla che il load configuration funzioni bene senza positions_vectors
+        # TODO : Controlla che il periodic recall funzioni bene senza positions_vectors
+        # TODO : Crea le confugurazioni
         # globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
-        #                                                                       globals.OGMs_tables,
-        #                                                                       globals.positions_vectors)
-        # env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables,
-        #                                              globals.positions_vectors))
+        #                                                                       globals.OGMs_tables)
+        # env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables))
+        
         globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
     else:
         sys.exit("Nessuna Configurazione richiesta!")
