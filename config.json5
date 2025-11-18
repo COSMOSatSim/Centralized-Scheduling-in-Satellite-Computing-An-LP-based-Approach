@@ -5,12 +5,16 @@
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
   adding_time: 30,
-  seed: 13,
+  seed: 101,
   access_point: 5,
-  arrival_time_exponential: 1.5,
+  arrival_time_exponential: 0.1,
   deadline: 10,
-  initial_energy: 150000,
-  C_sen: 10000000000.0,
+  initial_energy: 80000,
+  C_sen2: 10000000000.0,
+  C_sen: {
+    min: 10000000.0,
+    max: 10000000000.0,
+  },
   energy_coefficient: 5e-26,
   weight_energy: 0.7,
   weight_response: 0.3,
@@ -18,12 +22,12 @@
   Bandwidth_to_GU_Bps: 35000000,
   CPU_timeout: {
     gen: {
-      mean: 1,
+      mean: 0.05,
       min: 0.01,
       max: 0.1,
     },
     cpui: {
-      mean: 1,
+      mean: 0.5,
       min: 0.1,
       max: 1.0,
     },
@@ -60,7 +64,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "ILP_DTS-base-sim_SystemAP5/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_13/results_exponential_REQ-DTS-base_AT_1.5_CPU_1.csv",
+    name: "C:\\Users\\Davide\\Documents\\Davide\\Universit\u00e0\\tirocinio-tesi\\SECMotionModel\\result\\ILP_sim_SystemAP5\\deadline_10\\Energy_budget_80000\\IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5\\Routing_bidirectional_True\\seed_101\\results_exponential_REQ-DTS-base_AT_0.1_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {
@@ -89,7 +93,7 @@
   OGMs_redistribution: 20,
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
-  Routing_Interval: 1,
+  Routing_Interval: 0.1,
   Routing_algorithm: {
     BATMAN: false,
     GREEDY: true,
@@ -105,12 +109,10 @@
   },
   ilp_objective: "hierarchical",
   lexi_primary: "energy",
-  lexi_tol: 0.5,
-  batching: {
+  lexi_tol: 0.1,
+  fallback_retry: {
     enabled: true,
-    interval_s: 0.5,
-    max_retries: 6,
-    max_hops: 10,
+    max_attempts: 3,
+    deadline_slack: 0.1,
   },
-  debug_assignment: true,
 }

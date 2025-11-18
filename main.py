@@ -18,8 +18,20 @@ from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_co
 import globals
 import time
 
+
 simulation_dataset = []
 
+
+def _win_longpath(p: str) -> str:
+    """Rende il path compatibile con i percorsi lunghi di Windows usando il prefisso \\?\\."""
+    if os.name != "nt":
+        return p
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    if p.startswith("\\\\"):     # UNC path
+        return "\\\\?\\UNC" + p[1:]
+    return "\\\\?\\" + p
 
 # Aggiungi il nuovo processo di raccolta dati
 def data_collector(env, interval, start_time, end_time):
@@ -176,6 +188,16 @@ if __name__ == "__main__":
     cpu_mean              = config["CPU_timeout"]["gen"]["mean"]
     solver                = config["SearchNode"]
     ap_dir_bidir          = config["AP_routing_bidirectional"]      # (Booleano) AP_Routing 
+    ap_selection          = config["AP_selection"]
+    energy_budget         = config["initial_energy"]
+    deadline              = config["deadline"]
+    complete_sim_solver   = None
+
+    if req_dist == "DTS-base" and ap_selection == "base" and solver == "ERT": complete_sim_solver = "DTS-base"
+    elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ERT": complete_sim_solver = "DTS-APopt"
+    elif req_dist == "OrbitAware" and ap_selection == "optimal" and solver == "ERT": complete_sim_solver = "OrbitAware"
+    elif req_dist == "DTS-base" and ap_selection == "base" and solver == "ILP": complete_sim_solver = "ILP"
+    else: sys.exit(f"Complete_sim_solver not right! CHECK: req_dist:{req_dist} ap_selection:{ap_selection} solver:{solver}")
 
     # BETA, ALPHA, GAMMA
     beta = resolution_config["beta_probabilities"]
@@ -187,8 +209,9 @@ if __name__ == "__main__":
     img_res_dir = f"IMG_RES_bg_{bg}_bcpui_{bcpui}_bcpudi_{bcpudi}_am_{am}ah_{ah}_avh_{avh}_gh_{gh}_gvh_{gvh}"
 
     # Cartella base: include modalità, AP e seed
-    base_dir = f"{solver}_{req_dist}-sim_SystemAP{ap}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}"
-    os.makedirs(base_dir, exist_ok=True)
+    base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}"
+    base_dir = os.path.abspath(base_dir)
+    os.makedirs(_win_longpath(base_dir), exist_ok=True)
 
     # File CSV e log con nomenclatura completa
     csv_task = (
@@ -203,6 +226,16 @@ if __name__ == "__main__":
     )
     csv_routing_task = build_task_csv_path(base_dir, atime, cpu_mean)
 
+    def _ensure_parent_dir(path_str: str) -> str:
+        parent = os.path.dirname(path_str) or "."
+        parent = os.path.abspath(parent)
+        os.makedirs(_win_longpath(parent), exist_ok=True)
+        return os.path.join(parent, os.path.basename(path_str))
+
+    csv_task = _ensure_parent_dir(csv_task)
+    csv_mig = _ensure_parent_dir(csv_mig)
+    csv_routing_task = _ensure_parent_dir(csv_routing_task)
+
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
     with open('config.json5', 'w') as wf:
@@ -216,23 +249,6 @@ if __name__ == "__main__":
 
     # esempio: ogni 2s, dal secondo 100 al 200
     env.process(data_collector(env, interval=2, start_time=100, end_time=200))
-    
-    # NUOVO
-    # CSV per il buffer batching (solo id, tempo ingresso, tempo rimanente deadline)
-    csv_batch_buffer = f"{base_dir}/BATCH_BUFFER/buffer_log.csv"
-    os.makedirs(os.path.dirname(csv_batch_buffer), exist_ok=True)
-
-    # Avvio writer periodico del buffer se abilitato in config
-    batching_cfg = config.get("batching", {})
-    if batching_cfg.get("enabled", False):
-        interval_s = float(batching_cfg.get("interval_s", 0.1))
-        decisions_csv = f"{base_dir}/BATCH_BUFFER/BATCH_DECISIONS.csv"
-        simulation.start_batch_buffer(env, csv_batch_buffer, interval_s, decisions_csv_path=decisions_csv)
-        print(f"[BATCHING] Abilitato: interval={interval_s}s -> {csv_batch_buffer}")
-    else:
-        print("[BATCHING] Disabilitato da config.") 
-    
-    
 
     # 6) Esecuzione simulazione
     env.run(config['simulation_duration'])
@@ -282,7 +298,8 @@ if __name__ == "__main__":
         all_servers_by_name[s.name] = s
     all_servers = list(all_servers_by_name.values())
 
-    with open(csv_task, mode='w', newline='') as f_out:
+    with open(_win_longpath(csv_task), mode='w', newline='') as f_out:
+
         writer = csv.writer(f_out)
         # Intestazione aggiornata a 27 colonne
         writer.writerow([
@@ -290,23 +307,33 @@ if __name__ == "__main__":
             "Arrival Time (Queue)", "Start Time", "End Time", "Execution time",
             "Service Time", "Time in system", "Time in queue", "Server Name", "Num Hops",
             "Num Hops Routing",  # <-- Nuova colonna
-            "Queue length", "transfer_time", "Image_Size_MB", "DeadLine Exceded", "Exec_after_set",
+            "Queue length", "transfer_time", "Image_Size_MB", "Exec_after_set",
             "Energy_CPU [J]", "Energy_NET [J]", "Energy_TOTAL [J]", "Remaining_energy [J]", "Remaining_energy [%]",
             "Rejection Reason",
-            "Routing Init Time", # <-- Nuova colonna
+            "Routing Init Time",  # <-- Nuova colonna
             "Routing End Time",  # <-- Nuova colonna
-            "Routing Duration"   # <-- Nuova colonna
+            "Routing Duration"  # <-- Nuova colonna
         ])
 
         initial_energy_for_percent = config.get("initial_energy", 0.0)
 
-        for srv in all_servers:
-            # completed tasks
-            for entry in getattr(srv, 'completed_tasks', []):
+        # Dizionario: tid -> { "priority": int, "row": list }
+        # priority: 0 = In Queue, 1 = Rejected, 2 = Completed
+        rows_by_tid = {}
 
+        def _upsert_row(tid, priority, row):
+            current = rows_by_tid.get(tid)
+            if current is None or priority > current["priority"]:
+                rows_by_tid[tid] = {"priority": priority, "row": row}
+
+        for srv in all_servers:
+            # -----------------------------
+            # completed tasks
+            # -----------------------------
+            for entry in getattr(srv, 'completed_tasks', []):
                 (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
-                 time_q, sel_srv, hops, qlen, tranfer_t, image_size,
-                 DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+                time_q, sel_srv, hops, qlen, tranfer_t, image_size,
+                DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
 
                 time_in_system = (end_t - arr_sys) if (
                         isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
@@ -315,81 +342,112 @@ if __name__ == "__main__":
                 if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
                     remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
-                # Ottieni i dati di routing dal dizionario
-                r_hops, r_init_time, r_end_time, r_duration = "N/A", "N/A", "N/A", "N/A" # Default
+                # Routing stats
+                r_hops, r_init_time, r_end_time, r_duration = "N/A", "N/A", "N/A", "N/A"
                 if tid in task_dict:
                     try:
                         r_hops, r_init_time, r_end_time, r_duration = task_dict[tid].get_stat_csv()
                     except Exception as e:
                         print(f"Warning: could not get routing stats for task {tid}: {e}")
 
-                writer.writerow([
+                row = [
                     tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
                     ex_t, service_t, time_in_system, time_q, sel_srv, hops,
-                    r_hops, # <-- Valore Routing Hops
-                    qlen, tranfer_t, image_size, DeadLine, exec_set,
+                    r_hops,  # Num Hops Routing
+                    qlen, tranfer_t, image_size, exec_set,
                     eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
-                    r_init_time, # <-- Valore Routing Init Time
-                    r_end_time,  # <-- Valore Routing End Time
-                    r_duration   # <-- Valore Routing Duration
-                ])
+                    r_init_time,  # Routing Init Time
+                    r_end_time,   # Routing End Time
+                    r_duration    # Routing Duration
+                ]
+                _upsert_row(tid, priority=2, row=row)  # 2 = Completed
 
-            # rejected tasks (come prima)
+            # -----------------------------
+            # rejected tasks
+            # -----------------------------
             remaining_percent = "N/A"
             if isinstance(srv.energy, (int, float)) and initial_energy_for_percent > 0:
                 remaining_percent = (srv.energy / initial_energy_for_percent) * 100
 
             for (tid, task_type, arr_sys, img_size, reason) in getattr(srv, 'rejected_tasks', []):
-                # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
-                writer.writerow([
+                row = [
                     tid, task_type, "Rejected", arr_sys, "N/A", "N/A", "N/A",
                     "N/A", "N/A", "N/A", "N/A", srv.name, "N/A",
-                    "N/A", # Num Hops Routing
-                    "N/A", "N/A", img_size, "N/A", "N/A",
+                    "N/A",  # Num Hops Routing
+                    "N/A", "N/A", img_size, "N/A",
                     "N/A", "N/A", "N/A", srv.energy, remaining_percent, reason,
-                    "N/A", # Routing Init Time
-                    "N/A", # Routing End Time
-                    "N/A"  # Routing Duration
-                ])
+                    "N/A",  # Routing Init Time
+                    "N/A",  # Routing End Time
+                    "N/A",  # Routing Duration
+                ]
+                _upsert_row(tid, priority=1, row=row)  # 1 = Rejected
 
-            # residual tasks: CPU queue & NET queue
+            # -----------------------------
+            # residual tasks (In Queue)
+            # -----------------------------
             residual_tasks = []
-            for req in getattr(srv, 'cpu_dev').queue:
-                if hasattr(req, 'task_data'):
-                    td = req.task_data
-                    residual_tasks.append(
-                        {"tid": td.id, "type": "CPU_Waiting", "demand": getattr(td, 'd_cpu', 'N/A')})
-            for req in getattr(srv, 'net_dev').queue:
-                if hasattr(req, 'task_data'):
-                    td = req.task_data
-                    residual_tasks.append(
-                        {"tid": td.id, "type": "NET_Waiting", "demand": getattr(td, 'd_net', 'N/A')})
+            if ENABLE_MONITORING:
+                for req in getattr(srv, 'cpu_dev').queue:
+                    if hasattr(req, 'task_data'):
+                        td = req.task_data
+                        residual_tasks.append(
+                            {"tid": td.id, "type": "CPU_Waiting", "demand": getattr(td, 'd_cpu', 'N/A')})
+                for req in getattr(srv, 'net_dev').queue:
+                    if hasattr(req, 'task_data'):
+                        td = req.task_data
+                        residual_tasks.append(
+                            {"tid": td.id, "type": "NET_Waiting", "demand": getattr(td, 'd_net', 'N/A')})
 
             total_residual_count = len(residual_tasks)
+            remaining_percent = "N/A"
+            if isinstance(srv.energy, (int, float)) and initial_energy_for_percent > 0:
+                remaining_percent = (srv.energy / initial_energy_for_percent) * 100
+
             for task_data in residual_tasks:
                 tid = task_data["tid"]
                 task_type_label = f"Residual ({task_data['type']})"
                 demand = task_data["demand"]
-                execution_time = demand if task_data["type"] == "CPU_Waiting" else "N/A"
-                service_time = demand if task_data["type"] == "NET_Waiting" else "N/A"
+                execution_time = demand if task_data["type"] == "CPU_Waiting" and isinstance(demand, (int, float)) else 0.0
+                service_time = demand if task_data["type"] == "NET_Waiting" and isinstance(demand, (int, float)) else 0.0
 
-                # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
-                writer.writerow([
-                    tid, task_type_label, "In Queue", "N/A", "N/A", "N/A", "N/A",
-                    execution_time, service_time, "N/A", "N/A", srv.name, "N/A",
-                    "N/A", # Num Hops Routing
-                    total_residual_count, "N/A", "N/A", "N/A", "N/A",
-                    "N/A", "N/A", "N/A", srv.energy, "N/A", "In Queue at End",
-                    "N/A", # Routing Init Time
-                    "N/A", # Routing End Time
-                    "N/A"  # Routing Duration
-                ])
+                row = [
+                    tid,
+                    task_type_label,
+                    "In Queue",
+                    "N/A",  # Arrival Time (System)
+                    "N/A",  # Arrival Time (Queue)
+                    "N/A",  # Start Time
+                    "N/A",  # End Time
+                    execution_time,
+                    service_time,
+                    "N/A",  # Time in system
+                    "N/A",  # Time in queue
+                    srv.name,
+                    "N/A",  # Num Hops
+                    "N/A",  # Num Hops Routing
+                    total_residual_count,
+                    "N/A",  # transfer_time
+                    "N/A",  # Image_Size_MB
+                    False,  # Exec_after_set
+                    0.0,    # Energy_CPU [J]
+                    0.0,    # Energy_NET [J]
+                    0.0,    # Energy_TOTAL [J]
+                    srv.energy,
+                    remaining_percent,
+                    "In Queue at End",
+                    "N/A",  # Routing Init Time
+                    "N/A",  # Routing End Time
+                    "N/A"   # Routing Duration
+                ]
+                _upsert_row(tid, priority=0, row=row)  # 0 = In Queue
 
-        # dump also global batch completions (if any)
+        # -----------------------------
+        # batch completions globali
+        # -----------------------------
         for entry in getattr(globals, 'gbl_batch_completed', []):
             (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
-             tq, sel_srv, hops, qlen, trf, image_size,
-             DeadLine, exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
+            tq, sel_srv, hops, qlen, trf, image_size,
+            exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy) = entry
 
             time_in_system = (end_t - arr_sys) if (
                     isinstance(end_t, (int, float)) and isinstance(arr_sys, (int, float))) else "N/A"
@@ -398,20 +456,26 @@ if __name__ == "__main__":
             if isinstance(srv_rem_energy, (int, float)) and initial_energy_for_percent > 0:
                 remaining_percent = (srv_rem_energy / initial_energy_for_percent) * 100
 
-            # *** CORREZIONE: Aggiunti 4 "N/A" per le colonne di routing ***
-            writer.writerow([
+            row = [
                 tid, task_type, "Completed", arr_sys, arr_q, start_t, end_t,
                 ex_t, service_t, time_in_system, tq, sel_srv, hops,
-                "N/A", # Num Hops Routing
+                "N/A",  # Num Hops Routing
                 qlen, trf, image_size,
-                DeadLine, exec_set,
-                eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
-                "N/A", # Routing Init Time
-                "N/A", # Routing End Time
-                "N/A"  # Routing Duration
-            ])
+                exec_set, eps_cpu, eps_net, eps_tot, srv_rem_energy, remaining_percent, "N/A",
+                "N/A",  # Routing Init Time
+                "N/A",  # Routing End Time
+                "N/A"   # Routing Duration
+            ]
+            _upsert_row(tid, priority=2, row=row)  # Completed batched vince su eventuali rejected
 
-    print(f"Simulation results saved to: {csv_task}")
+        # -----------------------------
+        # Scrivi UNA sola riga per task
+        # -----------------------------
+        for tid in sorted(rows_by_tid.keys()):
+            writer.writerow(rows_by_tid[tid]["row"])
+
+        print(f"Simulation results saved to: {csv_task}")
+
 
     # --------------------------------------------------
     # 8) Scrittura Statistiche Energetiche e Task Counts
@@ -467,7 +531,7 @@ if __name__ == "__main__":
                     stats_per_server[server_name]["energy_consumptions"].append(energy)
 
         # 4. Scrivi il file CSV
-        with open(csv_energy_stats, mode='w', newline='') as f_stats:
+        with open(_win_longpath(csv_energy_stats), 'w', newline='') as f_stats:
             writer_stats = csv.writer(f_stats)
 
             # Scrivi l'intestazione
