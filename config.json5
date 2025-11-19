@@ -109,4 +109,9 @@
   ilp_objective: "hierarchical",
   lexi_primary: "energy",
   lexi_tol: 0.1,
+  fallback_retry: {
+    enabled: true,
+    max_attempts: 3,
+    deadline_slack: 0.1,
+  },
 }

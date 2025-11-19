@@ -18,9 +18,19 @@ from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_co
 import globals
 import time
 
-
 simulation_dataset = []
 
+
+def _win_longpath(p: str) -> str:
+    """Rende il path compatibile con i percorsi lunghi di Windows usando il prefisso \\?\\."""
+    if os.name != "nt":
+        return p
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p
+    if p.startswith("\\\\"):     # UNC path
+        return "\\\\?\\UNC" + p[1:]
+    return "\\\\?\\" + p
 
 # Aggiungi il nuovo processo di raccolta dati
 def data_collector(env, interval, start_time, end_time):
@@ -73,7 +83,7 @@ if __name__ == "__main__":
             # TODO : Controlla che funzioni bene
             process_OGM_enviroment_simulation(configurations_base, AccPointMode.BASE)
             remove_first_30_configurations(AccPointMode.BASE)
-            
+
             process_OGM_enviroment_simulation(configuration_optimal, AccPointMode.OPTIMAL)
             remove_first_30_configurations(AccPointMode.OPTIMAL)
 
@@ -92,7 +102,7 @@ if __name__ == "__main__":
         # globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
         #                                                                       globals.OGMs_tables)
         # env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables))
-        
+
         globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
     else:
         sys.exit("Nessuna Configurazione richiesta!")
@@ -208,6 +218,16 @@ if __name__ == "__main__":
     )
     csv_routing_task = build_task_csv_path(base_dir, atime, cpu_mean)
 
+    def _ensure_parent_dir(path_str: str) -> str:
+        parent = os.path.dirname(path_str) or "."
+        parent = os.path.abspath(parent)
+        os.makedirs(_win_longpath(parent), exist_ok=True)
+        return os.path.join(parent, os.path.basename(path_str))
+
+    csv_task = _ensure_parent_dir(csv_task)
+    csv_mig = _ensure_parent_dir(csv_mig)
+    csv_routing_task = _ensure_parent_dir(csv_routing_task)
+
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
     with open('config.json5', 'w') as wf:
@@ -286,6 +306,15 @@ if __name__ == "__main__":
         ])
 
         initial_energy_for_percent = config.get("initial_energy", 0.0)
+
+        # Dizionario: tid -> { "priority": int, "row": list }
+        # priority: 0 = In Queue, 1 = Rejected, 2 = Completed
+        rows_by_tid = {}
+
+        def _upsert_row(tid, priority, row):
+            current = rows_by_tid.get(tid)
+            if current is None or priority > current["priority"]:
+                rows_by_tid[tid] = {"priority": priority, "row": row}
 
         for srv in all_servers:
             # completed tasks (Questa sezione era già corretta)
@@ -446,7 +475,6 @@ if __name__ == "__main__":
             ])
 
     print(f"Simulation results saved to: {csv_task}")
-
 
     # --------------------------------------------------
     # 8) Scrittura Statistiche Energetiche e Task Counts

@@ -68,6 +68,21 @@ class Task:
         else:
             return self.hop, self.routingInitTime, "N/A", "N/A"
 
+
+def _win_longpath(p: str) -> str:
+    """Rende il path compatibile con i percorsi lunghi di Windows usando il prefisso \\?\\."""
+    if os.name != "nt":
+        return p
+    # normalizza/assolutizza
+    p = os.path.abspath(p)
+    if p.startswith("\\\\?\\"):
+        return p  # già esteso
+    if p.startswith("\\\\"):        # UNC -> \\?\UNC\server\share\...
+        return "\\\\?\\UNC" + p[1:]
+    return "\\\\?\\" + p
+
+
+
 def assign_resolution(required_ram, required_disk):
     # Normalizzazione pesata
     norm_ram = required_ram / config["required_ram"]["max"]
@@ -181,28 +196,29 @@ def findAlgorithm():
             f"C'è un problema con gli algoritmi: DSR:{DSR} GREEDY:{GREEDY} BATMAN:{BATMAN}")
 
 
+def makeSummary(folder, TArr, TExp, Tsob, ToS):
+    file = f"SUMMARY[{findAlgorithm()}]_Rout_interval_{str(config.get('Routing_Interval')).replace(',', '.')}.csv"
 
-def makeSummary(folder,TArr, TExp, Tsob, ToS):
+    # 1) Assicurati che la cartella esista (usando il path assoluto)
+    folder_abs = os.path.abspath(folder)
+    os.makedirs(folder_abs, exist_ok=True)
 
-    #summary_dir = f"RESULTS_TASKS_SIMULATIONS/Summary/"
-    file = f"SUMMARY[{findAlgorithm()}]_Rout_interval_{config['Routing_Interval']}.csv"
-    path = os.path.join(folder, file)
+    # 2) Costruisci path e applica il prefisso long-path su Windows
+    path = os.path.join(folder_abs, file)
+    path = _win_longpath(path)
 
-    # Crea la directory se non esiste
-    os.makedirs(folder, exist_ok=True)
-
-    # Contenuto da scrivere: numero totale di task e conteggi per ogni stato
     summary_row = [config["seed"], len(globals.gbl_tasks), TArr, TExp, Tsob, ToS]
 
-    # Controllo file
     file_exists = os.path.isfile(path)
-    with open(path, mode="a", newline="") as summary_file:
+    with open(path, mode="a", newline="", encoding="utf-8") as summary_file:
         writer = csv.writer(summary_file)
         if not file_exists:
             writer.writerow(["Seed", "TotalTasks", "Arrived", "Expired", "OutOfBuff", "OnSim"])
         writer.writerow(summary_row)
 
     print(f"Summary info saved to: {path}")
+
+
 
 def convert_task_list_in_dict(task_list : list) -> dict:
     result = {}
@@ -294,20 +310,22 @@ def generate_Tasks_Status(csv_filename, folder):
     print()  # Riga vuota alla fine per separare dall'output successivo
 
     # FASE DI SCRITTURA CSV
+        # FASE DI SCRITTURA CSV
     headers = [
         "TaskID", "CurrentNode", "Hop", "Label", "Resolution",
         "RoutingInitTime", "RoutingEndTime", "Duration", "Algorithms"
     ]
 
-    # Crea il file se non esiste
-    if not os.path.exists(csv_filename):
-        open(csv_filename, "w").close()
+    # Assicura l'esistenza della cartella del CSV (uso path assoluto)
+    csv_dir = os.path.abspath(os.path.dirname(csv_filename) or ".")
+    os.makedirs(csv_dir, exist_ok=True)
 
-    with open(csv_filename, mode="w", newline="") as file:
+    csv_path = os.path.join(csv_dir, os.path.basename(csv_filename))
+    csv_path = _win_longpath(csv_path)  # <--- prefisso long-path su Windows
+
+    with open(csv_path, mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
-        writer.writerow(headers)  # intestazioni
+        writer.writerow(headers)
         writer.writerows(total_tasks)
 
-    print(f"Task info saved to: {csv_filename}")
-    print(f"TASK GLOBALI {len(globals.gbl_tasks)} \n", )
-    print(f"TASK CONSEGNATI:{TArr} EXP:{TExp} SOB:{Tsob} OnSim:{ToS}")
+    print(f"Task info saved to: {csv_path}")
