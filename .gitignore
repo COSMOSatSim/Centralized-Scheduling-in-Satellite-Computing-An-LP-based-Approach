@@ -37,6 +37,6 @@
 __pycache__/
 /SIMS_SETS/
 /SIMS_IMG_RESOLUTIONS/
-/Result_Tasks_Simulations/
+/result/
 info.txt
 ERT_OrbitAware-sim_SystemAP5/IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3/Routing_bidirectional_True/seed_13/results_exponential_REQ-OrbitAware_AT_0.1_CPU_0.05.csv
