@@ -140,6 +140,9 @@ class EdgeServer:
             "energy_reserved_J": self.energy_reserved,
             "is_access_point": self.is_acc_point,
             "position": self.getPositionVector(globals.ist_in_conf),
+            
+            # Task Completati
+            "completed_tasks_count": len(self.completed_tasks),
             # Code e Task
             "queue_cpu_len": len(tasks_in_cpu_queue),  # Conteggio solo i task in attesa
             "queue_net_len": len(tasks_in_net_queue),  # Conteggio solo i task in attesa

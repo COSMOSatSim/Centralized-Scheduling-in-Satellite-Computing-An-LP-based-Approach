@@ -2,15 +2,19 @@ from enum import StrEnum, auto
 import json
 import sys
 import os
+from turtle import pos
+import json5
 from matplotlib import pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 PATH = "Generated_datasets/simulation_dataset.json"
+PATH_TASK = "Generated_datasets/generated_tasks_counter.json5"
 PLOT_PATH = "Dome_Plots/"
 
 class Mode(StrEnum):
     NORMAL = auto()
     BATTERY = auto()
-    NET_QUEUE = auto()
+    COMPLETED_TASK = auto()
 
 # Ensure output directory exists
 if not os.path.exists(PLOT_PATH):
@@ -25,6 +29,25 @@ def open_generated_dataset(config_path: str) -> dict:
     with open(config_path, "r") as file:
         simulation_dataset = json.load(file)
     return simulation_dataset
+
+
+def count_completed_tasks(tasks: list) -> dict:
+    completed_count = {}
+    for task in tasks:
+        sat_name = task.get("execution_server")
+        if sat_name not in completed_count:
+            completed_count[sat_name] = 0
+        else:
+            completed_count[sat_name] += 1
+    
+    #print(completed_count)
+    if completed_count:
+        top_key, top_value = max(completed_count.items(), key=lambda kv: kv[1])
+        print("Satellite con più task completati:", top_key, "con", top_value, "task")
+        completed_count["_top"] = {"satellite": top_key, "count": top_value}
+    else:
+        completed_count["_top"] = {"satellite": None, "count": 0}
+    return top_value
 
 
 def plot_dome(snapshot: dict):
@@ -163,8 +186,19 @@ def plot_dome_network(snapshot: dict, save_path: str, mode: Mode):
             cmap = plt.cm.RdYlGn(norm)
             ax.scatter(pos[0], pos[1], pos[2], s=5, c=[cmap], alpha=0.8)  # Node point
 
-        elif mode == Mode.NET_QUEUE:
-            pass
+        elif mode == Mode.COMPLETED_TASK:
+            executed_tasks = sat.get("completed_tasks_count")
+            norm = executed_tasks / MAX_TASKS_VALUE
+            #cmap = plt.cm.RdYlGn(norm)
+            cmap_no_white = LinearSegmentedColormap.from_list(
+                "green_red",
+                ["green", "red"]
+            )
+
+            
+            color = cmap_no_white(norm)
+            ax.scatter(pos[0], pos[1], pos[2], s=5, c=[color], alpha=0.8)  # Node point
+
         ax.text(pos[0], pos[1], pos[2], clean_name(name), fontsize=4, alpha=0.8)  # Name label
 
         p1 = (pos[0], pos[1], pos[2])
@@ -198,10 +232,16 @@ def plot_dome_network(snapshot: dict, save_path: str, mode: Mode):
     plt.savefig(save_path, dpi=600)
     plt.close()
 
+try:
+    with open(PATH_TASK, "r") as f:
+        tasks_list = json5.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    sys.exit(f"Errore: Impossibile aprire o decodificare il file '{PATH_TASK}'.")
 
+MAX_TASKS_VALUE = count_completed_tasks(tasks_list) # un satellite ha eseguito questo numero massimo di task in tutta la simulazione
 
 dataset = open_generated_dataset(PATH)
-mode = Mode.BATTERY
+mode = Mode.COMPLETED_TASK
 
 for i, snapshot in enumerate(dataset["snapshots"]):
     print(f"Processing {i}")

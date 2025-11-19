@@ -257,7 +257,7 @@ if __name__ == "__main__":
 
         os.makedirs(output_folder, exist_ok=True)
         # Genera un nome di file basato su seed e durata (per unicità)
-        file_name = f"generated_tasks_seed{config['seed']}_dur{config['simulation_duration']}.json5"
+        file_name = "generated_tasks_counter.json5"
         output_path = os.path.join(output_folder, file_name)
 
         print(f"\nSalvataggio del dataset generato in: {output_path}")
