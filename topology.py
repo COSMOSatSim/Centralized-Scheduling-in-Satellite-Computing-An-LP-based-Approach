@@ -262,15 +262,18 @@ def build_EdgeServer_from_config(env, configuration, ogm_tables = None):
     return tmp_ES, neighbors_SAT, list_acc_point
 
 
-def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables):
+def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables = None):
     while True:
         
         print("-" * 70)
         print(f"\t||TIME IN SIMULATION : (seconds:{env.now}) (minutes: {env.now // 60}) ||\n")
         print("MODIFICA CONFIGURAZIONE IN CORSO...\n")
         
-        new_edge_servers, new_global_access_point = loadConfiguration(env, data_configurations, OGMs_tables)  # Carica la configurazione
-
+        if OGMs_tables:
+            new_edge_servers, new_global_access_point = loadConfiguration(env, data_configurations, OGMs_tables)
+        else:
+            new_edge_servers, new_global_access_point = loadConfiguration_simple(env, data_configurations)
+            
         # ! Aggiorno le Globali
         with lock:
             globals.global_access_point = new_global_access_point
@@ -484,11 +487,9 @@ def loadConfiguration_simple(env, data_configurations):
         servers_in_dome_updated = update_servers_neighbors({**intersection, **new_edge_servers},
                                                            new_neighbors)  # Aggiorno i vicini per i server nell'intersection e i nuovi aggiunti
         # Pulisco i dizionari che riguardano i vicini dei server tramontati
-        [server.update_neighbors({}, {}, {}) for server in old_edge_servers.values()]  
-
-
-        # print("TOPOLOGIA ATTUALE:")
-        # [print(sat.name) for sat in servers_in_dome_updated.values()]
+        for server in old_edge_servers.values():
+            server.update_neighbors({}, {}, {})
+            server.elev_angle = 0
 
         with globals.lock_access_edge_servers_topology:
             # Salvo solo i satelliti che appartengono alla topologia

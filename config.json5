@@ -7,7 +7,7 @@
   adding_time: 30,
   seed: 101,
   access_point: 5,
-  arrival_time_exponential: 0.5,
+  arrival_time_exponential: 0.1,
   deadline: 10,
   initial_energy: 80000,
   C_sen: {
@@ -63,7 +63,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "/home/vinz/Scrivania/Work/SEC/SECMotionModel/result/DTS-base_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_101/results_exponential_REQ-DTS-base_AT_0.5_CPU_0.05.csv",
+    name: "/home/vinz/Scrivania/Work/SEC/SECMotionModel/result/DTS-base_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_101/results_exponential_REQ-DTS-base_AT_0.1_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {

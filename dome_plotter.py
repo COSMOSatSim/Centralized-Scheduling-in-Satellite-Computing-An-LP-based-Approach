@@ -1,3 +1,4 @@
+from enum import StrEnum, auto
 import json
 import sys
 import os
@@ -5,6 +6,11 @@ from matplotlib import pyplot as plt
 
 PATH = "Generated_datasets/simulation_dataset.json"
 PLOT_PATH = "Dome_Plots/"
+
+class Mode(StrEnum):
+    NORMAL = auto()
+    BATTERY = auto()
+    NET_QUEUE = auto()
 
 # Ensure output directory exists
 if not os.path.exists(PLOT_PATH):
@@ -38,6 +44,32 @@ def plot_dome(snapshot: dict):
     plt.savefig(f"{PLOT_PATH}dome_plot.png")
     plt.close()
 
+def expand_axes(ax, factor=1.5):
+    """
+    Aumenta le dimensioni del cubo 3D espandendo i limiti degli assi.
+    factor > 1 ingrandisce il cubo.
+    """
+    x_min, x_max = ax.get_xlim3d()
+    y_min, y_max = ax.get_ylim3d()
+    z_min, z_max = ax.get_zlim3d()
+
+    # Centri
+    x_mid = (x_min + x_max) / 2
+    y_mid = (y_min + y_max) / 2
+    z_mid = (z_min + z_max) / 2
+
+    # Range
+    x_range = (x_max - x_min) * factor / 2
+    y_range = (y_max - y_min) * factor / 2
+    z_range = (z_max - z_min) * factor / 2
+
+    ax.set_xlim3d(x_mid - x_range, x_mid + x_range)
+    ax.set_ylim3d(y_mid - y_range, y_mid + y_range)
+    ax.set_zlim3d(z_mid - z_range, z_mid + z_range)
+
+    ax.tick_params(axis='x', labelsize=6)
+    ax.tick_params(axis='y', labelsize=6)
+    ax.tick_params(axis='z', labelsize=6)
 
 def zoom_3d(ax: plt.Axes, factor: float):
     """
@@ -100,7 +132,7 @@ def _set_axes_equal(ax: plt.Axes):
     ax.set_zlim3d(z_mid - max_range / 2, z_mid + max_range / 2)
 
 
-def plot_dome_network(snapshot: dict, save_path: str = None, annotate: bool = True):
+def plot_dome_network(snapshot: dict, save_path: str, mode: Mode):
     """Plot satellites as points and draw lines to their neighbors.
 
     - `snapshot` is the list of satellite dicts (each must have `satellite` and `position`).
@@ -120,9 +152,20 @@ def plot_dome_network(snapshot: dict, save_path: str = None, annotate: bool = Tr
     for sat in snapshot:
         name = sat.get("satellite")
         pos = sat.get("position")
-        
-        ax.text(pos[0], pos[1], pos[2], clean_name(name), fontsize=6, alpha=0.8)  # Name label
-        ax.scatter(pos[0], pos[1], pos[2], s=20, c="tab:blue", alpha=0.8)
+        if mode == Mode.NORMAL:
+            ax.scatter(pos[0], pos[1], pos[2], s=5, c="tab:blue", alpha=0.8)         # Node point 
+
+        elif mode == Mode.BATTERY:
+            battery_level = sat.get("energy_budget_J", 100)
+            max_battery = dataset.get("metadata").get("battery_life")
+            norm = float(battery_level) / float(max_battery) 
+            print(f"{name} : battery {norm}")
+            cmap = plt.cm.RdYlGn(norm)
+            ax.scatter(pos[0], pos[1], pos[2], s=5, c=[cmap], alpha=0.8)  # Node point
+
+        elif mode == Mode.NET_QUEUE:
+            pass
+        ax.text(pos[0], pos[1], pos[2], clean_name(name), fontsize=4, alpha=0.8)  # Name label
 
         p1 = (pos[0], pos[1], pos[2])
         neighbors = sat.get("neighbors_metrics")
@@ -130,29 +173,40 @@ def plot_dome_network(snapshot: dict, save_path: str = None, annotate: bool = Tr
         for neigh in neighbors:
             nname = neigh.get("name")
             p2 = sat_info.get(nname)
-
-            link = tuple(sorted((name, nname)))
-            if link in drawn:
-                continue
-            drawn.add(link)
-            ax.plot(
-                [p1[0], p2[0]],
-                [p1[1], p2[1]],
-                [p1[2], p2[2]],
-                color="gray",
-                linewidth=0.4,
-                linestyle='--',
-                alpha=0.5,
-            )
+            if p2 :
+                #print(f"{nname} p2: {p2}")
+                link = tuple(sorted((name, nname)))
+                if link in drawn:
+                    continue
+                drawn.add(link)
+                ax.plot(
+                    [p1[0], p2[0]],
+                    [p1[1], p2[1]],
+                    [p1[2], p2[2]],
+                    color="gray",
+                    linewidth=0.4,
+                    linestyle='--',
+                    alpha=0.5,
+                )
 
 
     _set_axes_equal(ax)
-    set_3d_view(ax, elev=30, azim=30)
-    zoom_3d(ax, factor=1.3)
-    #plt.show()
-    plt.savefig(save_path, dpi=200)
+    set_3d_view(ax, elev=30, azim=30) # Gestore della view 
+    expand_axes(ax, factor=1.3)     # Gestore dello zoom degli assi 
+    zoom_3d(ax, factor=1.7)         # Gestore dello zoom dei punti
+    # plt.show()
+    plt.savefig(save_path, dpi=600)
     plt.close()
 
 
-snapshot = open_generated_dataset(PATH)[0]["satellites"]
-plot_dome_network(snapshot, save_path=f"{PLOT_PATH}dome_network.png", annotate=True)
+
+dataset = open_generated_dataset(PATH)
+mode = Mode.BATTERY
+
+for i, snapshot in enumerate(dataset["snapshots"]):
+    print(f"Processing {i}")
+
+    plot_path = f"{PLOT_PATH}{i}_Dome_network_{mode}.png"
+    satellites_snapshot = snapshot["satellites"]
+    plot_dome_network(satellites_snapshot, plot_path, mode)
+
