@@ -39,7 +39,12 @@ def data_collector(env, interval, start_time, end_time):
     in un intervallo di tempo specificato.
     """
     global simulation_dataset
-
+    simulation_dataset = {
+        "metadata": {
+            "battery_life" : globals.config.get("initial_energy", 0.0)
+        },
+        "snapshots": []
+    }
     # Attendi fino all'inizio dell'intervallo di raccolta
     yield env.timeout(start_time)
 
@@ -54,10 +59,11 @@ def data_collector(env, interval, start_time, end_time):
         for sat_obj in globals.edge_servers:
             if sat_obj:
                 state = sat_obj.export_state(env)
-                snapshot["satellites"].append(state)
+                if state.get("neighbors_count") > 0:
+                    snapshot["satellites"].append(state)
 
         # Aggiungi lo snapshot alla lista globale
-        simulation_dataset.append(snapshot)
+        simulation_dataset["snapshots"].append(snapshot)
 
         # Attendi l'intervallo di tempo specificato prima della prossima raccolta
         yield env.timeout(interval)
@@ -101,7 +107,7 @@ if __name__ == "__main__":
         # TODO : Crea le confugurazioni
         # globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
         #                                                                       globals.OGMs_tables)
-        # env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables))
+        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations))
 
         globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
     else:
@@ -251,7 +257,7 @@ if __name__ == "__main__":
 
         os.makedirs(output_folder, exist_ok=True)
         # Genera un nome di file basato su seed e durata (per unicità)
-        file_name = f"generated_tasks_seed{config['seed']}_dur{config['simulation_duration']}.json5"
+        file_name = "generated_tasks_counter.json5"
         output_path = os.path.join(output_folder, file_name)
 
         print(f"\nSalvataggio del dataset generato in: {output_path}")
