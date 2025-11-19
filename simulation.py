@@ -1,8 +1,7 @@
 import globals
 import experiments
 from Task import Task
-from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics, solve_on_Ek_hierarchical
-
+import ILP_simulation
 hop = 0  # Inizializza la variabile hop a zero
 
 config = globals.config
@@ -302,110 +301,6 @@ def cpu_demand(task_type):
     return experiments.truncated_exponential_unbounded(mean_seconds)
 
 
-# ---------------------------------------------------------------------------
-# FUNZIONI HELPER PER ILP
-# ---------------------------------------------------------------------------
-
-def _merge_queues_for_ilp(sat_state: dict):
-    """
-    Unisce waiting+service per CPU/NET e mappa i task nel formato atteso dall'ILP.
-    - CPU: usa 'demand' -> d_cpu (s)
-    - NET: usa image_size_MB come d_net (MB) quando disponibile; come fallback usa 'demand' (MB)
-    Ritorna: (cpu_queue, net_queue)
-    """
-    cpu_q = []
-    net_q = []
-
-    # CPU
-    for key in ("queue_cpu_waiting", "queue_cpu_service"):
-        for t in sat_state.get(key, []):
-            cpu_q.append(QueueTask(
-                task_id=str(t.get("task_id")),
-                d_cpu=float(t.get("demand", 0.0) or 0.0),
-                d_net=0.0,  # non usato per la coda CPU
-                D=float(t.get("deadline", 300.0) or 300.0)
-            ))
-
-    # NET
-    for key in ("queue_net_waiting", "queue_net_service"):
-        for t in sat_state.get(key, []):
-            d_net_MB = t.get("image_size_MB", None)
-            if d_net_MB is None or d_net_MB == 'N/A':
-                # fallback: prendi 'demand' come MB
-                d_net_MB = float(t.get("demand", 0.0) or 0.0)
-            net_q.append(QueueTask(
-                task_id=str(t.get("task_id")),
-                d_cpu=0.0,
-                d_net=float(d_net_MB),
-                D=float(t.get("deadline", 300.0) or 300.0)
-            ))
-
-    return cpu_q, net_q
-
-
-def _build_snapshot_Ek(env, candidate_servers, current_task_id, d_cpu_req, d_net_MB_req, deadline_req,
-                       config):
-    """
-    Costruisce un oggetto Snapshot minimale per solve_on_Ek su Ek={k}+neighbors[k].
-    - d_net del *task corrente* è espresso in MB (l'ILP lo converte in secondi con la banda).
-    - B = energia corrente; B_max = initial_energy (fallback dal config).
-    """
-    sen_map = {}
-    neighbors_map = {}
-    listening = []
-
-    # costruisci mappe SEN e vicinato
-    for srv in candidate_servers:
-        st = srv.export_state(env)  # richiede enable_queue_monitoring=true
-        B = float(st.get("energy_budget_J", getattr(srv, "energy", 0.0)))
-        B_max = float(config.get("initial_energy", B if B > 0 else 1.0))
-
-        cpu_q, net_q = _merge_queues_for_ilp(st)
-
-        # NOTA: l'ILP usa default_net_bw_MBps, quindi non è obbligatorio impostare s.net_bw_MBps
-        # ma se vuoi puoi passare un valore medio per nodo come attributo add-on:
-        s_state = SENState(
-            B=B,
-            B_max=B_max,
-            Rmax_norm=1.0,
-            cpu_queue=cpu_q,
-            net_queue=net_q,
-            in_service_cpu=None,
-            in_service_net=None,
-            net_bw_bps=None,  # lasciamo None -> userà default_net_bw_MBps
-        )
-        sen_map[srv.name] = s_state
-
-        # vicini: basta la lista dei nomi
-        neigh_names = []
-        for n in srv.get_neighbors():
-            neigh_names.append(n.name)
-        neighbors_map[srv.name] = neigh_names
-
-        # listening dome (se serve per policy): lo prendiamo dallo state
-        if st.get("in_listening_dome", False):
-            listening.append(srv.name)
-
-    # richieste: SOLO il task corrente
-    req = QueueTask(
-        task_id=str(current_task_id),
-        d_cpu=float(d_cpu_req),
-        d_net=float(d_net_MB_req),  # MB!
-        D=float(deadline_req)
-    )
-
-    snap = Snapshot(
-        time=float(env.now),
-        listening_dome=listening,
-        neighbors=neighbors_map,
-        sen=sen_map,
-        requests=[req],
-        pre_R={},  # niente precomputation
-        pre_E={}
-    )
-    return snap
-
-
 def _calculate_heuristic_metrics(neighbors_at_distance_one, server_selected,
                                  image_size, Volume_size, task_type, d_cpu, deadline, max_energy,
                                  d_net_predicted, data_bytes_global, bw_Bps_global):
@@ -625,155 +520,6 @@ def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, require
         initial_server_counter, different_server_counter, other_server_counter
     )
 
-
-# ---------------------------------------------------------------------------
-# VERSIONE 2: SearchNode IPL
-# ---------------------------------------------------------------------------
-
-def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
-                             arrival_time_system,
-                             initial_server_counter, different_server_counter, other_server_counter,
-                             task_type, max_energy, d_cpu, deadline):
-    """
-    Wrapper: Prova ILP se configurato in config["SearchNode"].
-    Altrimenti, o in caso di fallimento, esegue SearchNode_Heuristic_v1.
-    """
-
-    if str(config.get("SearchNode", "")).upper() == "ILP":
-
-        # --- Inizio blocco ILP  ---
-        print(f"[{env.now:.2f}] [Task {task_id}] Entering ILP branch (v2)")
-
-        # 1. Ottieni i vicini (necessario per ILP)
-        neighbors_at_distance_one = list(server_selected.get_neighbors())
-        if server_selected not in neighbors_at_distance_one:
-            neighbors_at_distance_one.append(server_selected)
-
-        d_net_MB_req = float(image_size + (Volume_size or 0.0))
-
-        # Snapshot locale e risoluzione
-        snap = _build_snapshot_Ek(
-            env=env,
-            candidate_servers=neighbors_at_distance_one,
-            current_task_id=task_id,
-            d_cpu_req=float(d_cpu),
-            d_net_MB_req=float(d_net_MB_req),
-            deadline_req=float(deadline),
-            config=config
-        )
-
-        # --- Coefficienti fisici ---
-        P_net = float(config.get("Ptrasm", 1.0))
-        alpha_cpu, alpha_net_J_per_byte = alpha_from_physics(C_sen, e_coeff, P_net, bw_Bps)
-        alpha_net = alpha_net_J_per_byte * (1024 ** 2)  # J/MB
-        w_e = float(config.get("ilp_weights", {}).get("w_e", 0.5))
-        w_R = float(config.get("ilp_weights", {}).get("w_R", 0.5))
-
-        # --- Funzione interna per estrarre risultati ---
-        def _extract_chosen_server(ilp_res, task_id):
-            # ... (la tua logica di estrazione è corretta) ...
-            tid = str(task_id)
-            if isinstance(ilp_res, dict):
-                a = ilp_res.get("assignments")
-                if isinstance(a, list):
-                    for item in a:
-                        if str(item.get("task") or item.get("task_id") or item.get("id")) == tid:
-                            sen = item.get("sen") or item.get("server")
-                            if sen: return str(sen)
-                    if len(a) == 1 and isinstance(a[0], dict):
-                        sen = a[0].get("sen") or a[0].get("server")
-                        if sen: return str(sen)
-                if isinstance(a, dict):
-                    v = a.get(tid)
-                    if v is not None: return str(v)
-                for key in ("solution", "assignments_list", "result", "x"):
-                    if key in ilp_res:
-                        v = _extract_chosen_server(ilp_res[key], task_id)
-                        if v: return v
-            if isinstance(ilp_res, list):
-                for item in ilp_res:
-                    if isinstance(item, (tuple, list)) and len(item) >= 2 and str(item[0]) == tid:
-                        return str(item[1])
-                    if isinstance(item, dict):
-                        itid = str(item.get("task_id") or item.get("task") or item.get("id") or "")
-                        if itid == tid:
-                            sen = item.get("sen") or item.get("server") or item.get("assignment") or item.get("value")
-                            if sen: return str(sen)
-                if len(ilp_res) == 1 and isinstance(ilp_res[0], str):
-                    return ilp_res[0]
-            if isinstance(ilp_res, str):
-                return ilp_res
-            return None
-
-        # ====== CHIAMATA AL SOLVER ======
-        objective_mode = str(config.get("ilp_objective", "weighted")).lower()
-        if objective_mode == "hierarchical":
-            ilp_res = solve_on_Ek_hierarchical(
-                snapshot=snap, k=server_selected.name, picked_tasks=[str(task_id)],
-                primary=str(config.get("lexi_primary", "energy")).lower(),
-                tol=float(config.get("lexi_tol", 0.10)),
-                alpha_cpu=alpha_cpu, alpha_net=alpha_net,
-                solver_name=str(config.get("ilp_solver", "CBC")),
-                default_net_bw_MBps=bw_MBps,
-                debug=bool(config.get("ilp_debug", False)),
-                tasks_from_prof=False
-            )
-        else:
-            ilp_res = solve_on_Ek(
-                snapshot=snap, k=server_selected.name, picked_tasks=[str(task_id)],
-                w_energy=w_e, w_time=w_R,
-                alpha_cpu=alpha_cpu, alpha_net=alpha_net,
-                solver_name="CBC", use_node_Rmax_norm=False,
-                default_net_bw_MBps=bw_MBps,
-                debug=False, tasks_from_prof=False
-            )
-
-        print(f"[ILP] res_type={type(ilp_res).__name__} value_preview={str(ilp_res)[:160]}")
-        chosen_server_name = _extract_chosen_server(ilp_res, task_id)
-
-        # --- Finalizzazione ILP (se ha successo) ---
-        if chosen_server_name:
-            print(f"[{env.now:.2f}] [Task {task_id}] ILP chose server: {chosen_server_name}")
-
-            server = next((s for s in neighbors_at_distance_one if s.name == chosen_server_name), server_selected)
-
-            lat = server_selected.get_latency(server)
-            bw_MBps_link = server_selected.get_bandwidth(server)
-            if (lat is not None) and (bw_MBps_link is not None) and bw_MBps_link > 0:
-                transfer_time = ((image_size + Volume_size) * (1024 ** 2) / (bw_MBps_link * (1024 ** 2))) + lat
-            else:
-                transfer_time = 0.0  # Fallback
-
-            # Usiamo l'helper di finalizzazione comune
-            yield from _finalize_and_assign_task(
-                env, server_selected, server, task_id,
-                image_size, Volume_size, arrival_time_system,
-                transfer_time, task_type, d_cpu, deadline,
-                required_ram, required_disk,
-                initial_server_counter, different_server_counter, other_server_counter
-            )
-            return  # Fine, ILP ha avuto successo
-
-        else:
-            print(f"[{env.now:.2f}] [Task {task_id}] ILP infeasible/none → fallback a euristica v1.")
-
-    # =========================
-    # BRANCH: EURISTICA (chiamata a v1)
-    # Motivi per essere qui:
-    # 1. config["SearchNode"] non era "ILP"
-    # 2. config["SearchNode"] era "ILP" ma il solver ha fallito
-    # =========================
-
-    print(f"[{env.now:.2f}] [Task {task_id}] Entering HEURISTIC branch (v2) -> calling v1")
-
-    # Passiamo tutti gli argomenti originali a v1, che è funzione euristica standard.
-    yield from SearchNode_Heuristic_v1(
-        env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
-        arrival_time_system,
-        initial_server_counter, different_server_counter, other_server_counter,
-        task_type, max_energy, d_cpu, deadline
-    )
-
 # ---------------------------------------------------------------------------
 # FUNZIONI CORE (task e generate_tasks)
 # ---------------------------------------------------------------------------
@@ -815,7 +561,7 @@ def task(env, task_id, server, initial_server_counter, different_server_counter,
 
     if policy == "ILP":
         print(f"--- [{env.now:.2f}] Task {task_id} using SearchNode Policy: v2_ilp_hybrid ---")
-        yield from SearchNode_ILP_Hybrid_v2(*search_node_args)
+        yield from ILP_simulation.SearchNode_ILP_Hybrid_v2(*search_node_args)
     else:  # Default a v1_heuristic
         if policy != "ERT":
             print(
