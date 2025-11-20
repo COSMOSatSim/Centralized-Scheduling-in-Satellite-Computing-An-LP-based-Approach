@@ -73,8 +73,8 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         # logghiamo davvero il rifiuto
         if (not allow_retry) or fatal:
             selected_server.record_rejected_task(task_id, task_type,
-                                                 arrival_time_system, D_r,
-                                                 image_size, reason)
+                                                 arrival_time_system, image_size, reason, d_cpu)
+
         return
 
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
@@ -94,7 +94,7 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
     T_deadline_abs = arrival_time_system + D_r
     D_rem = T_deadline_abs - env.now
     if D_rem <= 0:
-        reject("Deadline Exceeded (no residual time)", fatal=True)
+        reject("Deadline Exceeded ", fatal=True)
         result_sink["ok"] = False
         return
     arrival_time_task_queue = env.now
@@ -146,8 +146,9 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         R = Wc + d_cpu + d_net
         if R > D_r:
             # se la stima supera la deadline configurata, rifiuta il task
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, D_r, image_size,
-                                                 "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
+                                                 "Deadline Exceeded", d_cpu)
+
             result_sink["ok"] = False
             return
             # riservo energia per evitare race condition con altri task
@@ -197,8 +198,9 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         # Qui d_cpu e d_net sono i tempi di servizio per il task R
         R = Wc + d_cpu + Wn + d_net
         if R > D_r:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, D_r, image_size,
-                                                 "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
+                                                 "Deadline Exceeded", d_cpu)
+
             result_sink["ok"] = False
             return
 
@@ -262,8 +264,9 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
 
         R = Wn + d_net
         if R > D_r:
-            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, D_r, image_size,
-                                                 "Deadline Exceeded")
+            selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
+                                                 "Deadline Exceeded", d_cpu)
+
             result_sink["ok"] = False
             return
 
