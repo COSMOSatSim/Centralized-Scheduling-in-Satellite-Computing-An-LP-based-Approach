@@ -16,6 +16,18 @@ class Mode(StrEnum):
     BATTERY = auto()
     COMPLETED_TASK = auto()
 
+
+gradient = LinearSegmentedColormap.from_list(
+    "green_red_smooth",
+    [   
+        "#228b22",   # Satellite con pochi Task completati - verde scuro
+        "#FFD700",   
+        "#ffa500",
+        "#ff0000",
+        "#000000"   # Satellite con più Task completati
+    ]
+)
+
 # Ensure output directory exists
 if not os.path.exists(PLOT_PATH):
     os.makedirs(PLOT_PATH, exist_ok=True)
@@ -189,14 +201,8 @@ def plot_dome_network(snapshot: dict, save_path: str, mode: Mode):
         elif mode == Mode.COMPLETED_TASK:
             executed_tasks = sat.get("completed_tasks_count")
             norm = executed_tasks / MAX_TASKS_VALUE
-            #cmap = plt.cm.RdYlGn(norm)
-            cmap_no_white = LinearSegmentedColormap.from_list(
-                "green_red",
-                ["green", "red"]
-            )
-
-            
-            color = cmap_no_white(norm)
+    
+            color = gradient(norm)
             ax.scatter(pos[0], pos[1], pos[2], s=5, c=[color], alpha=0.8)  # Node point
 
         ax.text(pos[0], pos[1], pos[2], clean_name(name), fontsize=4, alpha=0.8)  # Name label
@@ -246,7 +252,7 @@ mode = Mode.COMPLETED_TASK
 for i, snapshot in enumerate(dataset["snapshots"]):
     print(f"Processing {i}")
 
-    plot_path = f"{PLOT_PATH}{i}_Dome_network_{mode}.png"
+    plot_path = f"{PLOT_PATH}{i}_Dome_network_{mode}_.png"
     satellites_snapshot = snapshot["satellites"]
     plot_dome_network(satellites_snapshot, plot_path, mode)
 
