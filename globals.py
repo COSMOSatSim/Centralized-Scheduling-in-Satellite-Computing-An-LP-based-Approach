@@ -3,6 +3,8 @@ import random as _random
 import numpy as np
 import sys
 
+from utils import colorize
+
 # Funzione per determinare il file di configurazione
 def get_param_file():
     default_config = 'config.json5'
@@ -71,16 +73,36 @@ gbl_tasks = []              # Lista che mantiene tutti i Task creati per il Rout
 gbl_packet = []             # Lista globale dei pacchetti che girano nel simulatore
 
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
+OGMs_tables = None
 
 
-
-# Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
-def load_or_create_json(path):
+def load_json(path) -> dict:
+    # 1. Controllo esistenza file
     if not os.path.exists(path):
-        with open(path, "w") as f:
-            json.dump({}, f)
-    with open(path, "r") as f:
-        return json.load(f)
+        sys.exit(f"ERRORE: File '{path}' non trovato.")
+    
+    # 2. Leggo il contenuto
+    try:
+        with open(path, "r") as f:
+            content = f.read().strip()
+
+            # 3. Controllo file fisicamente vuoto o solo whitespace
+            if content == "":
+                sys.exit(f"ERRORE: Il file '{path}' è vuoto.")
+
+            # 4. Torno all'inizio e faccio il parse del JSON
+            f.seek(0)
+            data = json.load(f)
+
+    except Exception as e:
+        sys.exit(f"ERRORE: Impossibile leggere '{path}': {e}")
+    
+    # 5. Controllo specifico: dizionario vuoto
+    if isinstance(data, dict) and len(data) == 0:
+        sys.exit(colorize(f"ERRORE: Il file '{path}' contiene un dizionario JSON vuoto.", "red"))
+
+    print(f"File '{path}' caricato con successo.")
+    return data
 
 try:
     configurations_path = None
@@ -91,9 +113,10 @@ try:
     else:
         sys.exit("Errore con AP Selection, configurazione inesistente.")
 
-    data_configurations = load_or_create_json(configurations_path)
+    data_configurations = load_json(configurations_path)
     print(f"Configuration file ({configurations_path}) loaded.\n")
-    OGMs_tables = load_or_create_json("data/OGMs_table.json")
-    print("OGMs table file loaded.")
+     
+
+
 except Exception as e:
     print(f"Error loading configuration file: {e}")
