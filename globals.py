@@ -2,14 +2,13 @@ import threading, os, json5, json
 import random as _random
 import numpy as np
 import sys
-
 from utils import colorize
+
+DEFAULT_CONFIG = 'config.json5'
+DEFAULT_IMG = 'img_resolution.json5'
 
 # Funzione per determinare il file di configurazione
 def get_param_file():
-    default_config = 'config.json5'
-    default_img = 'img_resolution.json5'
-
     if len(sys.argv) == 3:
         config_file, img_file = sys.argv[1], sys.argv[2]
 
@@ -17,9 +16,7 @@ def get_param_file():
             return config_file, img_file
         else:
             sys.exit("Errore nel caricamento dei File.")
-    else:
-        print(" Prendo gli Argomenti di Deafult!")
-    return default_config, default_img
+    return DEFAULT_CONFIG, DEFAULT_IMG
 
 # Carica il file di configurazione appropriato
 config_file_path, img_resolution = get_param_file()
@@ -28,17 +25,19 @@ config_file_path, img_resolution = get_param_file()
 try:
     with open(config_file_path) as config_file:
         config = json5.load(config_file)
+        print(colorize("[INFO] Configurazione passata caricata Correttamente.","green"))
 except FileNotFoundError:
     config = None
-    sys.exit("ERRORE: Impossibile trovare 'config.json5'. Assicurati che il file esista.")
+    sys.exit(colorize(f"[ERROR] Impossibile trovare il file di configurazione {config_file_path}. Assicurati che il file esista.","red"))
 
-
+# Leggiamo il file di configurazione delle Immagini
 try:
     with open(img_resolution) as res_file:
         resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
+        print(colorize("[INFO] Configurazione risoluzione immagini caricata Correttamente.","green"))
 except FileNotFoundError:
     resolution_config = None
-    sys.exit("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
+    sys.exit(colorize(f"[ERROR] Impossibile trovare il file di configurazione delle immagini {img_resolution}. Assicurati che il file esista.","red"))
 
 # Imposta seme e ambiente
 _seed = int(config.get("seed", 42))
@@ -73,50 +72,25 @@ gbl_tasks = []              # Lista che mantiene tutti i Task creati per il Rout
 gbl_packet = []             # Lista globale dei pacchetti che girano nel simulatore
 
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
+
+# Files
 OGMs_tables = None
+data_configurations = None
 
+# try:
+#     configurations_path = None
+#     if config["AP_selection"] == "base":
+#         configurations_path = "data/configurations_AP_base.json"
+#     elif config["AP_selection"] == "optimal":
+#         configurations_path = "data/configurations_AP_optimal.json"
+#     else:
+#         sys.exit("Errore con AP Selection, configurazione inesistente.")
 
-def load_json(path) -> dict:
-    # 1. Controllo esistenza file
-    if not os.path.exists(path):
-        sys.exit(f"ERRORE: File '{path}' non trovato.")
     
-    # 2. Leggo il contenuto
-    try:
-        with open(path, "r") as f:
-            content = f.read().strip()
-
-            # 3. Controllo file fisicamente vuoto o solo whitespace
-            if content == "":
-                sys.exit(f"ERRORE: Il file '{path}' è vuoto.")
-
-            # 4. Torno all'inizio e faccio il parse del JSON
-            f.seek(0)
-            data = json.load(f)
-
-    except Exception as e:
-        sys.exit(f"ERRORE: Impossibile leggere '{path}': {e}")
-    
-    # 5. Controllo specifico: dizionario vuoto
-    if isinstance(data, dict) and len(data) == 0:
-        sys.exit(colorize(f"ERRORE: Il file '{path}' contiene un dizionario JSON vuoto.", "red"))
-
-    print(f"File '{path}' caricato con successo.")
-    return data
-
-try:
-    configurations_path = None
-    if config["AP_selection"] == "base":
-        configurations_path = "data/configurations_AP_base.json"
-    elif config["AP_selection"] == "optimal":
-        configurations_path = "data/configurations_AP_optimal.json"
-    else:
-        sys.exit("Errore con AP Selection, configurazione inesistente.")
-
-    data_configurations = load_json(configurations_path)
-    print(f"Configuration file ({configurations_path}) loaded.\n")
+#     data_configurations = load_json(configurations_path)
+#     print(f"Configuration file ({configurations_path}) loaded.\n")
      
 
 
-except Exception as e:
-    print(f"Error loading configuration file: {e}")
+# except Exception as e:
+#     print(f"Error loading configuration file: {e}")
