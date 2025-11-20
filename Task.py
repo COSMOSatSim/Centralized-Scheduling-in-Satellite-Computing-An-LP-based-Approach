@@ -4,6 +4,8 @@ import json5, csv
 import os
 from pprint import pprint
 
+from utils import colorize
+
 config = globals.config
 resolution = globals.resolution_config
 
@@ -152,34 +154,6 @@ def get_algo_percentages(t):
             algo_perc[algo] = round((count / total) * 100, 2)
     return algo_perc  # se non ci sono algoritmi rimane {}
 
-
-def colorize(text: str, color: str) -> str:
-    """
-    Colora una stringa con i codici ANSI per il terminale.
-
-    Args:
-        text (str): La stringa da colorare.
-        color (str): Il colore (es: "red", "green", "yellow", "blue", "magenta", "cyan", "white").
-
-    Returns:
-        str: La stringa colorata con codici ANSI.
-    """
-    colors = {
-        "black": "\033[30m",
-        "red": "\033[91m",
-        "green": "\033[92m",
-        "yellow": "\033[93m",
-        "blue": "\033[94m",
-        "magenta": "\033[95m",
-        "cyan": "\033[96m",
-        "white": "\033[97m",
-        "reset": "\033[0m",
-        "orange": "\033[33m"
-    }
-
-    start = colors.get(color.lower(), "")
-    end = colors["reset"] if start else ""
-    return f"{start}{text}{end}"
 
 def findAlgorithm():
 

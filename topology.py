@@ -1,9 +1,11 @@
+import sys
 import globals
 import json, json5
 import threading
 from skyfield.api import EarthSatellite, load
 from skyfield.timelib import Time
 from EdgeServer import EdgeServer
+from enums import AccPointMode
 from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
 from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
@@ -701,3 +703,13 @@ def string_to_skyfield_time(time_str):
     dt = datetime.fromisoformat(time_str)
     ts = load.timescale()
     return ts.from_datetime(dt)
+
+
+def get_global_mode() -> AccPointMode:
+    ap_selection = globals.config.get("AP_selection")
+    if ap_selection == "base":
+        return AccPointMode.BASE
+    elif ap_selection == "optimal":
+        return AccPointMode.OPTIMAL
+    else:
+        sys.exit("Modalità di Access Point non valida nel file di configurazione.")

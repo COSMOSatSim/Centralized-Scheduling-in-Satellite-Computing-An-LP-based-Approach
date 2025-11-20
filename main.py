@@ -7,9 +7,9 @@ import json
 from EdgeServer import build_task_csv_path
 from enums import AccPointMode
 import simulation
-from Task import generate_Tasks_Status, convert_task_list_in_dict
+from Task import findAlgorithm, generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
-from topology import build_configurations, loadConfiguration, periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
+from topology import build_configurations, get_global_mode, loadConfiguration, periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
@@ -101,15 +101,20 @@ if __name__ == "__main__":
 
     # 2) Caricamento o creazione topologia
     if config.get("Load_Configuration", False):
-        print("Carico le configurazioni dal file...")
-        # TODO : Controlla che il load configuration funzioni bene senza positions_vectors
-        # TODO : Controlla che il periodic recall funzioni bene senza positions_vectors
-        # TODO : Crea le confugurazioni
-        # globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
-        #                                                                       globals.OGMs_tables)
-        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations))
+        mode = get_global_mode()    # Otteniamo la Modalità di simulazione
+        r_algo = findAlgorithm()
+        simple_exec = True
 
-        globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
+        if r_algo == "BATMAN" or r_algo == "DINAMICO":
+            # Se l'algoritmo richiede le OGM TABLE
+            globals.OGMs_tables = globals.load_json("data/OGMs_table.json")
+            sys.exit("Gli algoritmi BATMAN e DINAMICO non sono ancora supportati in questa versione.")
+            globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
+                                                                                globals.OGMs_tables)
+        else:
+            globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
+
+        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations))
     else:
         sys.exit("Nessuna Configurazione richiesta!")
 
