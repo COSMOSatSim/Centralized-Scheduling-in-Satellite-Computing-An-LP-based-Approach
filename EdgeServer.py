@@ -59,7 +59,6 @@ class EdgeServer:
 
         self.tasks = []  # Lista task da Spedire
         self.dead_tasks = []  # Lista dei Task Morti (TTL = 0)
-        #self.OGMs_position = {}  # Dizionario delle posizioni dei vicini
 
         self.ogm_sequence = 0
         self.OGMs = []

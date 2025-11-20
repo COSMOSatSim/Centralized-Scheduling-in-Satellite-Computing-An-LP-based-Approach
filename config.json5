@@ -82,6 +82,7 @@
   Phi_max: 40,
   Phi_buffer: 15,
   Laser_Communication_Range: 659,
+  load_saved_configuration : true,
   Build_Configurations: true,
   redistribuite_OGM: true,
   Load_Configuration: false,

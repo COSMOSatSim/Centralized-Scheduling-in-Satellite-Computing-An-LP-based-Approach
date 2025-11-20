@@ -73,22 +73,6 @@ def manage_ogm_test(ogm_map, t):
                     node.ogm_table[ogm.originator][ogm.sender] = 0
                 node.ogm_table[ogm.originator][ogm.sender] += 1
                 
-                #print("-"*10)
-                # $ Inizializzazione dizionario delle posizioni
-                if ogm.originator not in node.OGMs_position:
-                    #print(f"\t[{node.name}] get {ogm.id} | [orig:{ogm.originator} sender:{ogm.sender}] carico -> {ogm.origin_position_vect} ")
-                    node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect, ogm.is_AP)
-                    #print(f"\tsaved! : {node.OGMs_position[ogm.originator]}")
-                else:
-                    # $ Controllo se aggiornare il valore 
-                    if ogm.sequence_number > node.OGMs_position[ogm.originator][0]:
-                        #print(f"\t[{node.name}] <- ({ogm.sequence_number},{ogm.origin_position_vect}) RECEIVED")
-                        #print(f"\t[{node.name}] : {node.OGMs_position[ogm.originator]} (old)")
-                        node.OGMs_position[ogm.originator] = (ogm.sequence_number, ogm.origin_position_vect, ogm.is_AP)
-                        #print(f"\t[{node.name}] Aggiornato: {node.OGMs_position[ogm.originator]} (new)")
-                #print("-"*10)
-  
-
             # ! Fase di redistribuzione
             if type(node) == Observer:
                 # Sto analizzando un Observer
@@ -147,14 +131,8 @@ def manage_ogm_test(ogm_map, t):
         if type(satellite) != Observer
     }
 
-    # $ Salvataggio informazioni posizioni
-    ogm_position_dict = {
-        satellite.name: satellite.OGMs_position
-        for satellite in ogm_map
-        if not isinstance(satellite, Observer)
-    }
 
-    return ogm_tables_snapshot, ogm_position_dict
+    return ogm_tables_snapshot
 
 def saveInfoInFile(file ,value_dictionary, N_config):
     try:

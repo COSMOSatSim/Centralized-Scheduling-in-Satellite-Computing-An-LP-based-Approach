@@ -9,7 +9,7 @@ from enums import AccPointMode
 import simulation
 from Task import findAlgorithm, generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
-from topology import build_configurations, get_global_mode, loadConfiguration, periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
+from topology import build_configurations, get_global_mode, load_saved_configuration, loadConfiguration, periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import periodic_recall_Routing_monitor
@@ -17,6 +17,8 @@ from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
 import globals
 import time
+
+from utils import colorize
 
 simulation_dataset = []
 
@@ -82,11 +84,16 @@ if __name__ == "__main__":
 
         tle_data = saveTLEOnFile()
         t0 = get_current_time()
-        configurations_base = build_configurations(t0, tle_data, AccPointMode.BASE)
-        configuration_optimal = build_configurations(t0, tle_data, AccPointMode.OPTIMAL)
+        configurations_base, configuration_optimal = None, None
 
+        if not config.get("load_saved_configuration"):
+            configurations_base = build_configurations(t0, tle_data, AccPointMode.BASE)
+            configuration_optimal = build_configurations(t0, tle_data, AccPointMode.OPTIMAL)
+        else:
+            configurations_base = load_saved_configuration(AccPointMode.BASE)
+            configuration_optimal = load_saved_configuration(AccPointMode.OPTIMAL)
+        
         if config["redistribuite_OGM"]:
-            # TODO : Controlla che funzioni bene
             process_OGM_enviroment_simulation(configurations_base, AccPointMode.BASE)
             remove_first_30_configurations(AccPointMode.BASE)
 
