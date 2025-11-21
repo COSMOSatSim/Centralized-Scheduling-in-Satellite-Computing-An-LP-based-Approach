@@ -9,7 +9,8 @@ from enums import AccPointMode
 from user_based_topology import OBSERVER, get_orbit_proximity, get_current_time, getLatency, are_satellites_equal, getAllSatOnMe, compute_distances_from_target_satellite, create_satellite_Identity_card, advance_time, ts
 from datetime import datetime, timedelta, timezone
 from routing_Manager import print_dict, manage_ogm_test, saveInfoInFile
-from enums import AccPointMode, GenConfigsOutput, tle_data 
+from enums import AccPointMode, GenConfigsOutput, tle_data
+from utils import colorize 
 
 # Converti il tempo in UTC e formatta
 time_top = datetime.now(timezone.utc)  # O il tuo oggetto datetime
@@ -145,6 +146,20 @@ def print_progress_bar(current_step, total_steps, bar_width=40, prefix="Avanzame
     bar = "[" + "#" * filled + "-" * (bar_width - filled) + "]"
     percent = progress * 100
     print(f"\r{prefix}: {bar} {current_step}/{total_steps} ({percent:5.1f}%)", end="", flush=True)
+
+def load_saved_configuration(mode:AccPointMode) -> GenConfigsOutput:
+    path = f"data/configurations_AP_{mode}.json"
+    configuration = None
+    print(colorize(f"[LOAD] Caricamento configurazione <{mode}>...", "yellow"))
+    
+    try: 
+        with open(path, "r") as f:
+            configuration = json.load(f)
+    except Exception as e:
+        sys.exit(colorize(f"[LOAD] Errore durante il caricamento delle configurazioni: {e}", "red"))
+    
+    print(colorize(f"[LOAD] Configurazione <{mode}> caricata con successo.", "green"))
+    return configuration
 
 def build_configurations(t0: Time, tle_data : tle_data, mode: AccPointMode) -> GenConfigsOutput:
 
@@ -315,22 +330,14 @@ def distribute_ogm(env, data_configuration, config_riempimento, mode:AccPointMod
             at += timedelta(seconds=time_section)
                                  
             print(f"\tOGMS REDISTRIBUTION {i+1}/{num_redistributions} on : {new_instant.utc_iso(places=6)}")
-            ogm_table_snapshot, position_dict = manage_ogm_test(ogm_map, new_instant)
+            ogm_table_snapshot = manage_ogm_test(ogm_map, new_instant)
         
         # 2) Fase di Salvataggio
         if globals.config_index >= config_riempimento:
             
             ogm_table_path = f'data/OGMs_table_{mode}.json'
-            position_vectors_path = f'data/positions_vectors_{mode}.json'
-
             new_index = globals.config_index - config_riempimento
-
             saveInfoInFile(ogm_table_path, ogm_table_snapshot, new_index)
-            saveInfoInFile(position_vectors_path, position_dict, new_index)
-
-            #print(f"Salvataggio SnapShot Completato ({new_index}|{globals.config_index})")
-
-        #print("-"*20)
 
         # Caricamento Configurazione Successiva
         globals.config_index += 1  
