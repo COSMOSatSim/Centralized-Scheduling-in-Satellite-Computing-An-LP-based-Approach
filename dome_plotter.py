@@ -4,8 +4,9 @@ import sys
 import os
 from turtle import pos
 import json5
-from matplotlib import pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib import cm, pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap, Normalize
+import numpy as np
 
 PATH = "Generated_datasets/simulation_dataset.json"
 PATH_TASK = "Generated_datasets/generated_tasks_counter.json5"
@@ -15,6 +16,18 @@ class Mode(StrEnum):
     NORMAL = auto()
     BATTERY = auto()
     COMPLETED_TASK = auto()
+
+
+gradient = LinearSegmentedColormap.from_list(
+    "green_red_smooth",
+    [   
+        "#228b22",   # Satellite con pochi Task completati - verde scuro
+        "#FFD700",   
+        "#ffa500",
+        "#ff0000",
+        "#000000"   # Satellite con più Task completati
+    ]
+)
 
 # Ensure output directory exists
 if not os.path.exists(PLOT_PATH):
@@ -189,15 +202,12 @@ def plot_dome_network(snapshot: dict, save_path: str, mode: Mode):
         elif mode == Mode.COMPLETED_TASK:
             executed_tasks = sat.get("completed_tasks_count")
             norm = executed_tasks / MAX_TASKS_VALUE
-            #cmap = plt.cm.RdYlGn(norm)
-            cmap_no_white = LinearSegmentedColormap.from_list(
-                "green_red",
-                ["green", "red"]
-            )
-
-            
-            color = cmap_no_white(norm)
+    
+            color = gradient(norm)
             ax.scatter(pos[0], pos[1], pos[2], s=5, c=[color], alpha=0.8)  # Node point
+            
+
+
 
         ax.text(pos[0], pos[1], pos[2], clean_name(name), fontsize=4, alpha=0.8)  # Name label
 
@@ -222,13 +232,22 @@ def plot_dome_network(snapshot: dict, save_path: str, mode: Mode):
                     linestyle='--',
                     alpha=0.5,
                 )
+    # Legenda
+    norm_obj = Normalize(vmin=0, vmax=1)     # la tua norma va da 0 a 1
+    scalar_map = cm.ScalarMappable(norm=norm_obj, cmap=gradient)
+    scalar_map.set_array([])  # necessario per pyplot
+    
+    cbar = plt.colorbar(scalar_map, ax=ax, shrink=0.3)  # shrink riduce la dimensione
+    cbar.set_label("Task completati", fontsize=8)
 
+    cbar.set_ticks([0, 1])
+    cbar.set_ticklabels(["Pochi task", "Tanti task"])
 
     _set_axes_equal(ax)
-    set_3d_view(ax, elev=30, azim=30) # Gestore della view 
-    expand_axes(ax, factor=1.3)     # Gestore dello zoom degli assi 
-    zoom_3d(ax, factor=1.7)         # Gestore dello zoom dei punti
-    # plt.show()
+    set_3d_view(ax, elev=30, azim=30)   # Gestore della view 
+    expand_axes(ax, factor=1.3)         # Gestore dello zoom degli assi 
+    zoom_3d(ax, factor=1.7)             # Gestore dello zoom dei punti
+    #plt.show()
     plt.savefig(save_path, dpi=600)
     plt.close()
 
@@ -243,10 +262,14 @@ MAX_TASKS_VALUE = count_completed_tasks(tasks_list) # un satellite ha eseguito q
 dataset = open_generated_dataset(PATH)
 mode = Mode.COMPLETED_TASK
 
-for i, snapshot in enumerate(dataset["snapshots"]):
-    print(f"Processing {i}")
+plot_path = f"{PLOT_PATH}_TEST_legend_{mode}_.png"
+satellites_snapshot = dataset["snapshots"][0]["satellites"]
+plot_dome_network(satellites_snapshot, plot_path, mode)
 
-    plot_path = f"{PLOT_PATH}{i}_Dome_network_{mode}.png"
-    satellites_snapshot = snapshot["satellites"]
-    plot_dome_network(satellites_snapshot, plot_path, mode)
+# for i, snapshot in enumerate(dataset["snapshots"]):
+#     print(f"Processing {i}")
+
+#     plot_path = f"{PLOT_PATH}{i}_Dome_network_{mode}_.png"
+#     satellites_snapshot = snapshot["satellites"]
+#     plot_dome_network(satellites_snapshot, plot_path, mode)
 

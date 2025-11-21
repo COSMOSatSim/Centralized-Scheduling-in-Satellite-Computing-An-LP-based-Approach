@@ -7,6 +7,7 @@ from Satellite import Satellite
 import sys
 from enums import AccPointMode
 import globals
+from utils import colorize
 
 # Leggi il file di configurazione JSON
 config = globals.config
@@ -19,13 +20,12 @@ def loadTLEFromFile(filename):
     try:
         with open(filename, "r") as file:
             tle_data = file.read().splitlines()
-        print(f"Dati TLE caricati correttamente da {filename}")
         return tle_data
     except FileNotFoundError:
-        print(f"Errore: il file {filename} non è stato trovato.")
+        print(colorize(f"[TLE] Il file {filename} non è stato trovato.","red"))
         return None
     except IOError as e:
-        print(f"Errore nella lettura del file: {e}")
+        print(colorize(f"[TLE] Errore nella lettura del file: {e}","red"))
         return None
 
 TLE_DATA = loadTLEFromFile("./data/tle_data.txt")       # Load TLE Data 
@@ -53,7 +53,6 @@ def get_current_time() -> Time:
         skyfield.timelib.Time: The current time according to Skyfield's timescale.
     """
     ts = load.timescale()  # Carica la scala temporale di Skyfield
-    print(f"Current time (UTC): {ts.now().utc_iso()}")
     return ts.now()   
 
 def advance_time(current_time, minutes_to_add):
@@ -84,8 +83,6 @@ def getObserverObj(location = config["simulation_location"]):
     if location in config["locations"]:
         lat = config["locations"][location]["lat"]
         lon = config["locations"][location]["lon"]
-        print(f"User Location: {location} ({lat},{lon}) ")
-
         return wgs84.latlon( lat, lon)
     else:
         sys.exit(f"Errore: The User Position '{location}' not found in the config file.") 

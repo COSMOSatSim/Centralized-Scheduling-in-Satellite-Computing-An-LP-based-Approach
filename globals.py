@@ -2,12 +2,13 @@ import threading, os, json5, json
 import random as _random
 import numpy as np
 import sys
+from utils import colorize
+
+DEFAULT_CONFIG = 'config.json5'
+DEFAULT_IMG = 'img_resolution.json5'
 
 # Funzione per determinare il file di configurazione
 def get_param_file():
-    default_config = 'config.json5'
-    default_img = 'img_resolution.json5'
-
     if len(sys.argv) == 3:
         config_file, img_file = sys.argv[1], sys.argv[2]
 
@@ -15,9 +16,7 @@ def get_param_file():
             return config_file, img_file
         else:
             sys.exit("Errore nel caricamento dei File.")
-    else:
-        print(" Prendo gli Argomenti di Deafult!")
-    return default_config, default_img
+    return DEFAULT_CONFIG, DEFAULT_IMG
 
 # Carica il file di configurazione appropriato
 config_file_path, img_resolution = get_param_file()
@@ -26,17 +25,19 @@ config_file_path, img_resolution = get_param_file()
 try:
     with open(config_file_path) as config_file:
         config = json5.load(config_file)
+        print(colorize("[INFO] Configurazione passata caricata Correttamente.","green"))
 except FileNotFoundError:
     config = None
-    sys.exit("ERRORE: Impossibile trovare 'config.json5'. Assicurati che il file esista.")
+    sys.exit(colorize(f"[ERROR] Impossibile trovare il file di configurazione {config_file_path}. Assicurati che il file esista.","red"))
 
-
+# Leggiamo il file di configurazione delle Immagini
 try:
     with open(img_resolution) as res_file:
         resolution_config = json5.load(res_file)["TASK_GENERATOR_PARAMS"]
+        print(colorize("[INFO] Configurazione risoluzione immagini caricata Correttamente.","green"))
 except FileNotFoundError:
     resolution_config = None
-    sys.exit("ERRORE: Impossibile trovare 'img_resolution.json5'. Assicurati che il file esista.")
+    sys.exit(colorize(f"[ERROR] Impossibile trovare il file di configurazione delle immagini {img_resolution}. Assicurati che il file esista.","red"))
 
 # Imposta seme e ambiente
 _seed = int(config.get("seed", 42))
@@ -72,28 +73,24 @@ gbl_packet = []             # Lista globale dei pacchetti che girano nel simulat
 
 lock_access_edge_servers_topology = threading.Lock()  # Meccanismo di lock
 
+# Files
+OGMs_tables = None
+data_configurations = None
+
+# try:
+#     configurations_path = None
+#     if config["AP_selection"] == "base":
+#         configurations_path = "data/configurations_AP_base.json"
+#     elif config["AP_selection"] == "optimal":
+#         configurations_path = "data/configurations_AP_optimal.json"
+#     else:
+#         sys.exit("Errore con AP Selection, configurazione inesistente.")
+
+    
+#     data_configurations = load_json(configurations_path)
+#     print(f"Configuration file ({configurations_path}) loaded.\n")
+     
 
 
-# Leggi il file di configurazione JSON (Contiene le configurazioni salvate)
-def load_or_create_json(path):
-    if not os.path.exists(path):
-        with open(path, "w") as f:
-            json.dump({}, f)
-    with open(path, "r") as f:
-        return json.load(f)
-
-try:
-    configurations_path = None
-    if config["AP_selection"] == "base":
-        configurations_path = "data/configurations_AP_base.json"
-    elif config["AP_selection"] == "optimal":
-        configurations_path = "data/configurations_AP_optimal.json"
-    else:
-        sys.exit("Errore con AP Selection, configurazione inesistente.")
-
-    data_configurations = load_or_create_json(configurations_path)
-    print(f"Configuration file ({configurations_path}) loaded.\n")
-    OGMs_tables = load_or_create_json("data/OGMs_table.json")
-    print("OGMs table file loaded.")
-except Exception as e:
-    print(f"Error loading configuration file: {e}")
+# except Exception as e:
+#     print(f"Error loading configuration file: {e}")
