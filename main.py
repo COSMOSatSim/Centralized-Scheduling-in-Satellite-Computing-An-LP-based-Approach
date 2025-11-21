@@ -81,12 +81,12 @@ if __name__ == "__main__":
 
     # 1) Costruzione configurazioni
     if config.get("Build_Configurations", False):
-
-        tle_data = saveTLEOnFile()
-        t0 = get_current_time()
+        
         configurations_base, configuration_optimal = None, None
-
+        
         if not config.get("load_saved_configuration"):
+            tle_data = saveTLEOnFile()
+            t0 = get_current_time()
             configurations_base = build_configurations(t0, tle_data, AccPointMode.BASE)
             configuration_optimal = build_configurations(t0, tle_data, AccPointMode.OPTIMAL)
         else:
