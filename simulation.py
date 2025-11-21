@@ -420,19 +420,23 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
     """
     Blocco finale: aggiorna contatori, calcola energia di routing,
     registra i dati globali e chiama TaskAssignment.
+    Nota: non usa più la variabile globale `hop`. Usa num_hops_local.
     """
-    global hop
+    # RIMOSSO: global hop
 
-    # Aggiorna contatori
+    # Aggiorna contatori di tentativo (questo rimane un contatore di "tentativi")
     initial_server_counter[server_selected.name] += 1
 
     data_bytes_global = (image_size + Volume_size) * (1024 ** 2)
     bw_Bps_global = bw_Bps
 
+    # Calcola num_hops locale: 1 se il server d'esecuzione è diverso dallo selected, altrimenti 0
+    num_hops_local = 1 if server != server_selected else 0
+
     if server != server_selected:
+        # Manteniamo i contatori "different" / "other" come misura dei tentativi verso altri server.
         different_server_counter[server_selected.name] += 1
         other_server_counter[server.name] += 1
-        hop += 1
 
         # Calcola l'energia di routing e la sottrae al nodo mittente
         # Usa il link specifico se disponibile, altrimenti il globale
@@ -455,7 +459,7 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         print(f"[{env.now:.2f}] [Task {task_id}] Routed {server_selected.name} -> {server.name} | "
               f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
 
-    # Log per runner/grafici
+    # Log per runner/grafici: usa num_hops_local (locale, non globale)
     task_data = {
         "task_id": task_id,
         "arrival_time": arrival_time_system,
@@ -465,16 +469,15 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         "image_size": image_size,
         "exec_time": d_cpu,
         "transfer_time": transfer_time,
-        "num_hops": hop,
+        "num_hops": num_hops_local,
         "execution_server": server.name
     }
     globals.gbl_generated_tasks_data.append(task_data)
 
-    # Chiamo TaskAssignment sul server scelto
+    # Chiamo TaskAssignment sul server scelto, passando num_hops_local invece della variabile globale
     yield from TaskAssignment(env, server, task_id, image_size,
-                              arrival_time_system, hop, transfer_time,
+                              arrival_time_system, num_hops_local, transfer_time,
                               task_type, d_cpu, deadline)
-
 
 # ---------------------------------------------------------------------------
 # VERSIONE 1: SearchNode

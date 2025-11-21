@@ -3,7 +3,7 @@ import simulation
 from Task import Task
 from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics, solve_on_Ek_hierarchical
 
-hop = 0  # Inizializza la variabile hop a zero
+# Removed global `hop` variable
 
 config = globals.config
 resolution_config = globals.resolution_config
@@ -19,6 +19,14 @@ else:
 bw_MBps = float(config.get("available_bandwidth", {}).get("min", 2150.0))
 bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
 e_coeff = config.get("energy_coefficient", 5e-26)  # coefficiente energetico (esempio numerico)
+
+# Initialize per-task hop counters
+# gbl_task_hops: counts performed transfers (incremented whenever a transfer actually happens)
+# gbl_task_final_hops: populated with the final number of hops for tasks that were executed
+if not hasattr(globals, 'gbl_task_hops'):
+    globals.gbl_task_hops = {}
+if not hasattr(globals, 'gbl_task_final_hops'):
+    globals.gbl_task_final_hops = {}
 
 
 def network_metrics(image_size_MB, Volume_size_MB=0.0):
@@ -94,7 +102,7 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
     T_deadline_abs = arrival_time_system + D_r
     D_rem = T_deadline_abs - env.now
     if D_rem <= 0:
-        reject("Deadline Exceeded ", fatal=True)
+        reject("Deadline Exceeded", fatal=True)
         result_sink["ok"] = False
         return
     arrival_time_task_queue = env.now
@@ -323,6 +331,7 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         print(
             f"[{env.now:.3f}] Task {task_id} served on {selected_server.name} qlen_enqueue_cpu={qlen_on_enqueue_cpu} qlen_enqueue_net={qlen_on_enqueue_net} time_in_queue={time_in_queue:.3f}")
 
+
 def _merge_queues_for_ilp(sat_state: dict):
     """
     Unisce waiting+service per CPU/NET e mappa i task nel formato atteso dall'ILP.
@@ -422,6 +431,11 @@ def _build_snapshot_Ek(env, candidate_servers, current_task_id, d_cpu_req, d_net
     )
     return snap
 
+
+# assicurati di avere in alto (una sola volta) inizializzato il dict globale:
+# globals.gbl_task_hops = {}  # inizializzato all'import sopra
+# globals.gbl_task_final_hops = {}  # inizializzato all'import sopra
+
 def _finalize_and_assign_task(env, server_selected, server, task_id,
                               image_size, Volume_size, arrival_time_system,
                               transfer_time, task_type, d_cpu, deadline,
@@ -433,22 +447,31 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
     """
     Blocco finale: aggiorna contatori, calcola energia di routing,
     registra i dati globali e chiama TaskAssignment.
+    Ora gestisce un contatore per-task in globals.gbl_task_hops che
+    conta il numero di trasferimenti effettivi (hop) per ogni task.
+    Inoltre salva il valore finale in globals.gbl_task_final_hops SOLO se il task viene eseguito.
     """
-    global hop
+    # Inizializza result_sink se necessario
+    if result_sink is None:
+        result_sink = {}
 
-    # Aggiorna contatori
+    # Incremento del contatore "candidature osservate" (come prima)
     initial_server_counter[server_selected.name] += 1
+
+    # Assicurati che esista il contatore per questo task
+    globals.gbl_task_hops.setdefault(str(task_id), 0)
 
     data_bytes_global = (image_size + Volume_size) * (1024 ** 2)
     bw_Bps_global = bw_Bps
 
-    if server != server_selected:
-        different_server_counter[server_selected.name] += 1
-        other_server_counter[server.name] += 1
-        hop += 1
+    # Calcoliamo se avviene un trasferimento fisico e, in tal caso,
+    # applichiamo l'energia e incrementiamo il contatore per-task.
+    # num_hops_local rappresenta i transfer effettuati finora per questo task
+    num_hops_local = globals.gbl_task_hops.get(str(task_id), 0)
 
-        # Calcola l'energia di routing e la sottrae al nodo mittente
-        # Usa il link specifico se disponibile, altrimenti il globale
+    if server != server_selected:
+        # Qui stiamo per effettuare un transfer dal server_selected --> server
+        # calcola energia di routing
         bw_MBps_link = server_selected.get_bandwidth(server)
 
         if bw_MBps_link is not None and bw_MBps_link > 0:
@@ -464,11 +487,20 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         else:
             eps_net = 0.0
 
+        # SOTTRAI ENERGIA: questo rappresenta il trasferimento effettivo.
         server_selected.energy -= eps_net
         print(f"[{env.now:.2f}] [Task {task_id}] Routed {server_selected.name} -> {server.name} | "
               f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
 
-    # Log per runner/grafici
+        # ---- Qui decidiamo la semantica: contare hop come "performed transfer" ----
+        globals.gbl_task_hops[str(task_id)] = globals.gbl_task_hops.get(str(task_id), 0) + 1
+        num_hops_local = globals.gbl_task_hops[str(task_id)]
+
+        # Aggiornamento dei contatori di fallback/diversi (rimangono invariati)
+        different_server_counter[server_selected.name] += 1
+        other_server_counter[server.name] += 1
+
+    # Prepara i dati di log (usiamo num_hops_local attuale)
     task_data = {
         "task_id": task_id,
         "arrival_time": arrival_time_system,
@@ -478,18 +510,40 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         "image_size": image_size,
         "exec_time": d_cpu,
         "transfer_time": transfer_time,
-        "num_hops": hop,
+        "performed_transfers": globals.gbl_task_hops.get(str(task_id), 0),
+        # final_hops verrà impostato e salvato solo se ok
+        "final_hops": None,
         "execution_server": server.name
     }
-    globals.gbl_generated_tasks_data.append(task_data)
 
-    # Chiamo TaskAssignment sul server scelto
+    # Chiamiamo TaskAssignment_ILP passando il num_hops_local
+    local_sink = result_sink if result_sink is not None else {}
     yield from TaskAssignment_ILP(env, server, task_id, image_size,
-                              arrival_time_system, hop, transfer_time,
-                              task_type, d_cpu, deadline,
-                              net_bw_override_Bps=net_bw_override_Bps,
-                              result_sink=result_sink,
-                              allow_retry=allow_retry)
+                                  arrival_time_system, num_hops_local, transfer_time,
+                                  task_type, d_cpu, deadline,
+                                  net_bw_override_Bps=net_bw_override_Bps,
+                                  result_sink=local_sink,
+                                  allow_retry=allow_retry)
+
+    # Registra i dati globali: salva il conteggio finale SOLO se assegnato con successo
+    ok_assigned = bool(local_sink.get("ok", False))
+    performed = globals.gbl_task_hops.get(str(task_id), 0)
+
+    if ok_assigned:
+        globals.gbl_task_final_hops[str(task_id)] = performed
+        task_data["final_hops"] = performed
+        globals.gbl_generated_tasks_data.append(task_data)
+
+        # opzionale: pulisci il contatore temporaneo se non ti serve più
+        # del globals.gbl_task_hops[str(task_id)]
+    else:
+        # opzionale: se vuoi registrare anche i fallimenti, inseriscilo qui
+        # globals.gbl_generated_tasks_data.append(task_data)
+        reason = local_sink.get("reason")
+        print(f"[{env.now:.2f}] [Task {task_id}] assignment failed on {server.name} reason={reason}")
+
+    return
+
 
 
 def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
@@ -746,4 +800,3 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
         initial_server_counter, different_server_counter, other_server_counter,
         task_type, max_energy, d_cpu, deadline
     )
-
