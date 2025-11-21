@@ -94,10 +94,8 @@ if __name__ == "__main__":
             configuration_optimal = load_saved_configuration(AccPointMode.OPTIMAL)
         
         if config["redistribuite_OGM"]:
-            process_OGM_enviroment_simulation(configurations_base, AccPointMode.BASE)
+            process_OGM_enviroment_simulation(configurations_base)
             remove_first_30_configurations(AccPointMode.BASE)
-
-            process_OGM_enviroment_simulation(configuration_optimal, AccPointMode.OPTIMAL)
             remove_first_30_configurations(AccPointMode.OPTIMAL)
 
         config["Build_Configurations"] = False
@@ -112,12 +110,14 @@ if __name__ == "__main__":
         r_algo = findAlgorithm()
         simple_exec = True
 
+        globals.data_configurations = load_saved_configuration(mode)
+
         if r_algo == "BATMAN" or r_algo == "DINAMICO":
             # Se l'algoritmo richiede le OGM TABLE
             globals.OGMs_tables = globals.load_json("data/OGMs_table.json")
             sys.exit("Gli algoritmi BATMAN e DINAMICO non sono ancora supportati in questa versione.")
             globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
-                                                                                globals.OGMs_tables)
+                                                                                    globals.OGMs_tables)
         else:
             globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
 
