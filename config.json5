@@ -40,8 +40,8 @@
     distribution: "DTS-base",
   },
   DTS: true,
-  AP_selection: "base",
-  SearchNode: "ERT",
+  AP_selection: "optimal",
+  SearchNode: "ILP",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -63,7 +63,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "/home/vinz/Scrivania/Work/SEC/SECMotionModel/result/ILP_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_101/results_exponential_REQ-ILP_AT_0.5_CPU_0.05.csv",
+    name: "C:\\Users\\danil\\PycharmProjects\\SECMotionModel\\result\\ILP_sim_SystemAP5\\deadline_10\\Energy_budget_80000\\IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5\\Routing_bidirectional_True\\seed_101\\results_exponential_REQ-ILP_AT_0.5_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {
@@ -82,10 +82,10 @@
   Phi_max: 40,
   Phi_buffer: 15,
   Laser_Communication_Range: 659,
-  Build_Configurations: true,
+  Build_Configurations: false,
   load_saved_configuration: true,
   redistribuite_OGM: true,
-  Load_Configuration: false,
+  Load_Configuration: true,
   Interval_between_Configurations_in_seconds: 2,
   Number_of_Configurations: 45,
   Interval_future_event_prediction: 15,
@@ -95,8 +95,8 @@
   AP_routing_bidirectional: true,
   Routing_Interval: 0.1,
   Routing_algorithm: {
-    BATMAN: true,
-    GREEDY: false,
+    BATMAN: false,
+    GREEDY: true,
     DSR: false,
   },
   ilp_weights: {

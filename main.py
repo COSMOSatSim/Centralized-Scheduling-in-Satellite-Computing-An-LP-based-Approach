@@ -325,15 +325,6 @@ if __name__ == "__main__":
 
         initial_energy_for_percent = config.get("initial_energy", 0.0)
 
-        # Dizionario: tid -> { "priority": int, "row": list }
-        # priority: 0 = In Queue, 1 = Rejected, 2 = Completed
-        rows_by_tid = {}
-
-        def _upsert_row(tid, priority, row):
-            current = rows_by_tid.get(tid)
-            if current is None or priority > current["priority"]:
-                rows_by_tid[tid] = {"priority": priority, "row": row}
-
         for srv in all_servers:
             # completed tasks (Questa sezione era già corretta)
             for entry in getattr(srv, 'completed_tasks', []):

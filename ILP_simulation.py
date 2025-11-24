@@ -20,14 +20,6 @@ bw_MBps = float(config.get("available_bandwidth", {}).get("min", 2150.0))
 bw_Bps = bw_MBps * (1024 ** 2) if bw_MBps is not None else 0.0
 e_coeff = config.get("energy_coefficient", 5e-26)  # coefficiente energetico (esempio numerico)
 
-# Initialize per-task hop counters
-# gbl_task_hops: counts performed transfers (incremented whenever a transfer actually happens)
-# gbl_task_final_hops: populated with the final number of hops for tasks that were executed
-if not hasattr(globals, 'gbl_task_hops'):
-    globals.gbl_task_hops = {}
-if not hasattr(globals, 'gbl_task_final_hops'):
-    globals.gbl_task_final_hops = {}
-
 
 def network_metrics(image_size_MB, Volume_size_MB=0.0):
     """
@@ -455,7 +447,7 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
     if result_sink is None:
         result_sink = {}
 
-    # Incremento del contatore "candidature osservate" (come prima)
+    # Incremento del contatore "candidature osservate"
     initial_server_counter[server_selected.name] += 1
 
     # Assicurati che esista il contatore per questo task
@@ -695,7 +687,7 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
             if ok:
                 return
 
-            # se il fallimento è fatale (es. Deadline Exceeded (no residual time)),
+            # se il fallimento è fatale (es. Deadline Exceeded),
             # non ha senso riprovare su altri SEN
             if fatal:
                 return

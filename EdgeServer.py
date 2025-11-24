@@ -12,9 +12,9 @@ from utils import sendTask
 # Leggi il file di configurazione JSON
 config = globals.config
 
-BATMAN = config["Routing_algorithm"]["BATMAN"]
-GREEDY = config["Routing_algorithm"]["GREEDY"]
-DSR = config["Routing_algorithm"]["DSR"]
+BATMAN = globals.config["Routing_algorithm"]["BATMAN"]
+GREEDY = globals.config["Routing_algorithm"]["GREEDY"]
+DSR = globals.config["Routing_algorithm"]["DSR"]
 
 class EdgeServer:
     def __init__(self, env, name, satellite: EarthSatellite, orbitalSunset, is_acc_point, elev_angle):
