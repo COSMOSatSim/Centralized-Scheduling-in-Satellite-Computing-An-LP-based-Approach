@@ -421,7 +421,7 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
     Blocco finale: aggiorna contatori, calcola energia di routing,
     registra i dati globali e chiama TaskAssignment.
     """
-    global hop
+    num_hops_for_task = 0
 
     # Aggiorna contatori
     initial_server_counter[server_selected.name] += 1
@@ -432,7 +432,7 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
     if server != server_selected:
         different_server_counter[server_selected.name] += 1
         other_server_counter[server.name] += 1
-        hop += 1
+        num_hops_for_task += 1
 
         # Calcola l'energia di routing e la sottrae al nodo mittente
         # Usa il link specifico se disponibile, altrimenti il globale
@@ -465,14 +465,14 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         "image_size": image_size,
         "exec_time": d_cpu,
         "transfer_time": transfer_time,
-        "num_hops": hop,
+        "num_hops": num_hops_for_task,
         "execution_server": server.name
     }
     globals.gbl_generated_tasks_data.append(task_data)
 
     # Chiamo TaskAssignment sul server scelto
     yield from TaskAssignment(env, server, task_id, image_size,
-                              arrival_time_system, hop, transfer_time,
+                              arrival_time_system, num_hops_for_task, transfer_time,
                               task_type, d_cpu, deadline)
 
 
@@ -526,8 +526,7 @@ def SearchNode_Heuristic_v1(env, server_selected, task_id, required_ram, require
 
 def task(env, task_id, server, initial_server_counter, different_server_counter, other_server_counter, task_data,
          max_energy):
-    global hop
-    hop = 0
+
     Volume_size = 0.0
     arrival_time_system = env.now
 

@@ -6,6 +6,7 @@ from utils import colorize
 
 DEFAULT_CONFIG = 'config.json5'
 DEFAULT_IMG = 'img_resolution.json5'
+DEFAULT_OGMS_TABLES = 'data/OGMs_table.json'
 
 # Funzione per determinare il file di configurazione
 def get_param_file():
@@ -61,7 +62,8 @@ global_access_point = []    # Lista degli access point globali
 next_server_index = 0       # Indice del prossimo server a cui inviare un task
 gbl_batch_completed = []   # new global list for batch completions
 config_index = 0            # Indice che indica la configurazione corrente
-
+gbl_task_hops = {}
+gbl_task_final_hops = {}
 edge_servers = []           # Lista dei server globali totali
 edge_servers_topology = []  # Edge Servers nella topologia nella configurazione 
 

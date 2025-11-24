@@ -279,7 +279,7 @@ def build_EdgeServer_from_config(env, configuration, ogm_tables = None):
     return tmp_ES, neighbors_SAT, list_acc_point
 
 
-def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables = None):
+def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables):
     while True:
         
         print("-" * 70)
@@ -301,7 +301,7 @@ def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables = Non
         yield env.timeout(config["Interval_between_Configurations_in_seconds"])
 
 
-def distribute_ogm(env, data_configuration, config_riempimento, mode:AccPointMode):
+def distribute_ogm(env, data_configuration, config_riempimento):
     
     while True:
         # Avvisa quando si è sull'ultimo elemento della configurazione
@@ -335,7 +335,7 @@ def distribute_ogm(env, data_configuration, config_riempimento, mode:AccPointMod
         # 2) Fase di Salvataggio
         if globals.config_index >= config_riempimento:
             
-            ogm_table_path = f'data/OGMs_table_{mode}.json'
+            ogm_table_path = f'data/OGMs_table.json'
             new_index = globals.config_index - config_riempimento
             saveInfoInFile(ogm_table_path, ogm_table_snapshot, new_index)
 

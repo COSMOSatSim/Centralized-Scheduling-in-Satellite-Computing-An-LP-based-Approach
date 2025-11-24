@@ -17,7 +17,7 @@ CONFIG_RIEMPI = ADDING_TIME // 2    # configurazioni aggiuntive da rimuovere
 
 
 
-def process_OGM_enviroment_simulation(data_configuration, mode:AccPointMode) -> None:
+def process_OGM_enviroment_simulation(data_configuration) -> None:
     """
     Funzione usata per la costruzione delle tabelle OGM nella fase di PRE-Loading
     """
@@ -29,7 +29,7 @@ def process_OGM_enviroment_simulation(data_configuration, mode:AccPointMode) -> 
     print(f"--SIMULAZIONE OGM DURATA TOTALE: {simulation_duration} secondi")
 
     globals.observer = Observer(env_ogm, getObserverObj())  # Singleton Observer
-    env_ogm.process(distribute_ogm(env_ogm, data_configuration, CONFIG_RIEMPI, mode))    # ! Processo di redistribuzione
+    env_ogm.process(distribute_ogm(env_ogm, data_configuration, CONFIG_RIEMPI))    # ! Processo di redistribuzione
 
     env_ogm.run(simulation_duration)
     
@@ -37,7 +37,11 @@ def process_OGM_enviroment_simulation(data_configuration, mode:AccPointMode) -> 
 
 
 def remove_first_30_configurations(mode:AccPointMode) -> None:
-    
+    """
+    Effettua la rimozione delle prime 30 configurazioni (60 secondi) usate per il riempimento delle tabelle OGM.
+    Durante il processo di creazione delle configurazioni, vengono aggiunte 30 configurazioni extra per permettere il
+    corretto riempimento delle tabelle OGM.
+    """
     config_path = f"data/configurations_AP_{mode}.json"
     with open(config_path, "r") as f:
         data = json.load(f)

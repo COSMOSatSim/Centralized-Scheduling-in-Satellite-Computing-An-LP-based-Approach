@@ -12,7 +12,7 @@ from simulation import generate_tasks
 from topology import build_configurations, get_global_mode, load_saved_configuration, loadConfiguration, periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
-from routing_Manager import periodic_recall_Routing_monitor
+from routing_Manager import load_saved_OGM, periodic_recall_Routing_monitor
 from Observer import Observer
 from simulation_OGM import process_OGM_enviroment_simulation, remove_first_30_configurations
 import globals
@@ -90,14 +90,13 @@ if __name__ == "__main__":
             configurations_base = build_configurations(t0, tle_data, AccPointMode.BASE)
             configuration_optimal = build_configurations(t0, tle_data, AccPointMode.OPTIMAL)
         else:
+            # FASE TEST : Se abbiamo già creato le configurazioni le carichiamo
             configurations_base = load_saved_configuration(AccPointMode.BASE)
             configuration_optimal = load_saved_configuration(AccPointMode.OPTIMAL)
         
         if config["redistribuite_OGM"]:
-            process_OGM_enviroment_simulation(configurations_base, AccPointMode.BASE)
+            process_OGM_enviroment_simulation(configurations_base)
             remove_first_30_configurations(AccPointMode.BASE)
-
-            process_OGM_enviroment_simulation(configuration_optimal, AccPointMode.OPTIMAL)
             remove_first_30_configurations(AccPointMode.OPTIMAL)
 
         config["Build_Configurations"] = False
@@ -112,16 +111,17 @@ if __name__ == "__main__":
         r_algo = findAlgorithm()
         simple_exec = True
 
+        globals.data_configurations = load_saved_configuration(mode)
+
         if r_algo == "BATMAN" or r_algo == "DINAMICO":
             # Se l'algoritmo richiede le OGM TABLE
-            globals.OGMs_tables = globals.load_json("data/OGMs_table.json")
-            sys.exit("Gli algoritmi BATMAN e DINAMICO non sono ancora supportati in questa versione.")
+            globals.OGMs_tables = load_saved_OGM()
             globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
-                                                                                globals.OGMs_tables)
+                                                                                    globals.OGMs_tables)
         else:
             globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
 
-        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations))
+        env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables))
     else:
         sys.exit("Nessuna Configurazione richiesta!")
 
@@ -324,15 +324,6 @@ if __name__ == "__main__":
         ])
 
         initial_energy_for_percent = config.get("initial_energy", 0.0)
-
-        # Dizionario: tid -> { "priority": int, "row": list }
-        # priority: 0 = In Queue, 1 = Rejected, 2 = Completed
-        rows_by_tid = {}
-
-        def _upsert_row(tid, priority, row):
-            current = rows_by_tid.get(tid)
-            if current is None or priority > current["priority"]:
-                rows_by_tid[tid] = {"priority": priority, "row": row}
 
         for srv in all_servers:
             # completed tasks (Questa sezione era già corretta)

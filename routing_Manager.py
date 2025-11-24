@@ -1,5 +1,5 @@
-import json, json5
-from utils import sendTask
+import json
+from utils import colorize, sendTask
 from packet import Mode, Packet
 from user_based_topology import get_orbit_proximity
 from Ogm import Ogm
@@ -36,6 +36,14 @@ def print_progress_bar(i, total, bar_length=30):
         # Alla fine: cancella riga e non va a capo
         clear_line()
 
+def load_saved_OGM():
+    try:
+        with open(globals.DEFAULT_OGMS_TABLES, "r") as f:
+            print(colorize(f"[LOAD] Caricamento OGM table...", "yellow"))
+            ogm_data = json.load(f)
+    except Exception as e:
+        sys.exit(colorize(f"[ERROR] Caricamento OGM table fallito: {e}", "red"))
+    return ogm_data
 
 def manage_ogm_test(ogm_map, t):
 
