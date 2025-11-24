@@ -279,7 +279,7 @@ def build_EdgeServer_from_config(env, configuration, ogm_tables = None):
     return tmp_ES, neighbors_SAT, list_acc_point
 
 
-def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables = None):
+def periodic_recall_Topology_monitor(env, data_configurations, OGMs_tables):
     while True:
         
         print("-" * 70)

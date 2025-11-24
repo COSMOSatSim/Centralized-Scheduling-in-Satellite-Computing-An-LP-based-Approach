@@ -6,6 +6,7 @@ from utils import colorize
 
 DEFAULT_CONFIG = 'config.json5'
 DEFAULT_IMG = 'img_resolution.json5'
+DEFAULT_OGMS_TABLES = 'data/OGMs_table.json'
 
 # Funzione per determinare il file di configurazione
 def get_param_file():

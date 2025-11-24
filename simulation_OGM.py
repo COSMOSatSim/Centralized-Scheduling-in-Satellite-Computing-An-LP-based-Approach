@@ -37,7 +37,11 @@ def process_OGM_enviroment_simulation(data_configuration) -> None:
 
 
 def remove_first_30_configurations(mode:AccPointMode) -> None:
-    
+    """
+    Effettua la rimozione delle prime 30 configurazioni (60 secondi) usate per il riempimento delle tabelle OGM.
+    Durante il processo di creazione delle configurazioni, vengono aggiunte 30 configurazioni extra per permettere il
+    corretto riempimento delle tabelle OGM.
+    """
     config_path = f"data/configurations_AP_{mode}.json"
     with open(config_path, "r") as f:
         data = json.load(f)
