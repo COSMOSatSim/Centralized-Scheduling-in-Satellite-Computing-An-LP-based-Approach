@@ -5,7 +5,7 @@
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
   adding_time: 30,
-  seed: 101,
+  seed: 9973,
   access_point: 5,
   arrival_time_exponential: 0.5,
   deadline: 10,
@@ -37,11 +37,11 @@
     },
   },
   request_distribution: {
-    distribution: "DTS-base",
+    distribution: "OrbitAware",
   },
   DTS: true,
   AP_selection: "optimal",
-  SearchNode: "ILP",
+  SearchNode: "ERT",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -63,7 +63,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "C:\\Users\\danil\\PycharmProjects\\SECMotionModel\\result\\ILP_sim_SystemAP5\\deadline_10\\Energy_budget_80000\\IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5\\Routing_bidirectional_True\\seed_101\\results_exponential_REQ-ILP_AT_0.5_CPU_0.05.csv",
+    name: "/home/vsalvatore/SECMotionModel/result/OrbitAware_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3/Routing_bidirectional_True/seed_9973/results_exponential_REQ-OrbitAware_AT_0.5_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {

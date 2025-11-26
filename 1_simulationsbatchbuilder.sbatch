@@ -5,4 +5,4 @@
 #SBATCH --output=logs.txt
 #SBATCH --error=err.txt
 
-python3 sbatchBuilder.py
+uv run sbatchBuilder.py

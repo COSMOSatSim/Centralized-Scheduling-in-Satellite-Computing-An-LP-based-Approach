@@ -4,7 +4,7 @@ import time
 
 # === PARAMETRI CONFIGURABILI ===
 SBATCH_DIR = "SBATCHFILES"
-MAX_JOBS = 7             # numero massimo di job attivi contemporaneamente
+MAX_JOBS = 20            # numero massimo di job attivi contemporaneamente
 CHECK_INTERVAL = 10      # ogni quanti secondi controllare lo stato
 
 USER = os.getenv("USER") # utente corrente per squeue
