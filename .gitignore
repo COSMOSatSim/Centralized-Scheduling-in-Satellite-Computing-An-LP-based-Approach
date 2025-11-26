@@ -40,4 +40,5 @@ __pycache__/
 SBATCHFILES/
 /result/
 info.txt
+/Generated_datasets/
 /Dome_Plots/
