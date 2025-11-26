@@ -59,5 +59,5 @@ def remove_first_30_configurations(mode:AccPointMode) -> None:
     print(f"total_second: {data['total_seconds']} <= {config['simulation_duration']}")
     print(f"tempo {data['t0']} configList tempo {config_list[0]['time']}")
     
-    with open("data/configurations.json", "w") as f:
+    with open(config_path, "w") as f:
         json.dump(data, f, indent=4)

@@ -1,5 +1,5 @@
 {
-  simulation_duration: 300,
+  simulation_duration: 10,
   enable_queue_monitoring: true,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
@@ -83,7 +83,7 @@
   Phi_buffer: 15,
   Laser_Communication_Range: 659,
   Build_Configurations: false,
-  load_saved_configuration: true,
+  load_saved_configuration: false,
   redistribuite_OGM: true,
   Load_Configuration: true,
   Interval_between_Configurations_in_seconds: 2,
@@ -95,8 +95,8 @@
   AP_routing_bidirectional: true,
   Routing_Interval: 0.1,
   Routing_algorithm: {
-    BATMAN: false,
-    GREEDY: true,
+    BATMAN: true,
+    GREEDY: false,
     DSR: false,
   },
   ilp_weights: {
