@@ -6,7 +6,7 @@ from skyfield.api import EarthSatellite
 from collections import OrderedDict
 from user_based_topology import getSystemFromSat
 from Task import Task, findAlgorithm
-from utils import sendTask
+from utils import colorize, sendTask
 
 
 # Leggi il file di configurazione JSON
@@ -502,10 +502,12 @@ class EdgeServer:
                     # ! Algorithm
                     max_neighbor = None
                     if BATMAN:
-                        max_neighbor, max_value = find_OGM_intersection(
-                            self.ogm_table[task.dest_node], self.neighbors, task
-                        )
-                    # Se entrambi attivi: prova BATMAN, altrimenti passa a GREEDY
+                        if task.dest_node in self.ogm_table:
+                            max_neighbor, max_value = find_OGM_intersection(
+                                self.ogm_table[task.dest_node], self.neighbors, task
+                            )
+                        else:
+                            print(f"[{task.id}] {task.dest_node} Route temporaneamente Sconosciuta")                   
                     if BATMAN and GREEDY:
                         if max_neighbor:
                             yield from sendTask(env, task, self, max_neighbor, 'BATMAN')
