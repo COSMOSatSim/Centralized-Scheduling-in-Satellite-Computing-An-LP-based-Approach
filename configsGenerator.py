@@ -30,6 +30,17 @@ arrival_rate = [0.5, 0.25, 0.16, 0.125, 0.1]
 deadline = [10]
 energy_budget = [80000, 100000, 120000]
 
+# ilp_weights: {
+#     w_e: 0.7,
+#     w_R: 0.3,
+#   },
+
+ilp_weights = [
+    (0.7, 0.3),
+    (0.5, 0.5),
+    (0.3, 0.7),
+]
+
 # -- IMG RES -- #
 beta_list = [(0.4, 0.35, 0.25)]                         # Beta
 alpha_list = [(0.3, 0.5, 0.2)]                          # Alpha
@@ -52,75 +63,80 @@ with open('img_resolution.json5') as img_resolution:
 
 # GENERATORE
 def gen_configs():
-    for ener_bud in energy_budget:
-        for deadl in deadline:
-            for m_g_m in mu_gen_mean:
-                for m_cpui_m in mu_cpui_mean:
-                    for algo_ap in scheduling_algorithm:
-                        label, scheduling_algo, ap_selection, searchNode = algo_ap
+    for ilp_w in ilp_weights:
+        for ener_bud in energy_budget:
+            for deadl in deadline:
+                for m_g_m in mu_gen_mean:
+                    for m_cpui_m in mu_cpui_mean:
+                        for algo_ap in scheduling_algorithm:
+                            label, scheduling_algo, ap_selection, searchNode = algo_ap
 
-                        for ar_rate in arrival_rate:
-                            for s in seeds:
-                                for rout_algo in routing_algorithms:
+                            for ar_rate in arrival_rate:
+                                for s in seeds:
+                                    for rout_algo in routing_algorithms:
 
-                                    greedy, batman, dsr = None, None, None
-                                    if rout_algo == "GREEDY":
-                                        greedy, batman, dsr = True, False, False
-                                    elif rout_algo == "BATMAN":
-                                        greedy, batman, dsr = False, True, False
-                                    elif rout_algo == "DINAMICO":
-                                        greedy, batman, dsr = True, True, False
-                                    elif rout_algo == "DSR":
-                                        greedy, batman, dsr = False, False, True
+                                        greedy, batman, dsr = None, None, None
+                                        if rout_algo == "GREEDY":
+                                            greedy, batman, dsr = True, False, False
+                                        elif rout_algo == "BATMAN":
+                                            greedy, batman, dsr = False, True, False
+                                        elif rout_algo == "DINAMICO":
+                                            greedy, batman, dsr = True, True, False
+                                        elif rout_algo == "DSR":
+                                            greedy, batman, dsr = False, False, True
 
-                                    for rout_int in routing_interval:
-                                        for apb in apBIDIR:
-                                            cfg = CONFIG.copy()
+                                        for rout_int in routing_interval:
+                                            for apb in apBIDIR:
+                                                cfg = CONFIG.copy()
 
-                                            cfg["seed"] = s
-                                            cfg["Routing_algorithm"] = {
-                                                "BATMAN": batman,
-                                                "GREEDY": greedy,
-                                                "DSR": dsr,
-                                            }
-                                            cfg["Routing_Interval"] = rout_int
-                                            cfg["AP_routing_bidirectional"] = apb
+                                                cfg["seed"] = s
+                                                cfg["Routing_algorithm"] = {
+                                                    "BATMAN": batman,
+                                                    "GREEDY": greedy,
+                                                    "DSR": dsr,
+                                                }
+                                                cfg["Routing_Interval"] = rout_int
+                                                cfg["AP_routing_bidirectional"] = apb
 
-                                            # Mu
-                                            cfg["CPU_timeout"]["gen"]["mean"] = m_g_m
-                                            cfg["CPU_timeout"]["cpui"]["mean"] = m_cpui_m
-                                            
-                                            cfg["request_distribution"]["distribution"] = scheduling_algo   # DTS Algorithm
-                                            cfg["AP_selection"] = ap_selection                              # AP Selection
-                                            cfg["SearchNode"] = searchNode                                  # SearchNode
-                                                       
-                                            # Arrival Rate
-                                            cfg["arrival_time_exponential"] = ar_rate
-                                            cfg["deadline"] = deadl # Deadline
-                                            cfg["initial_energy"] = ener_bud # Energy Budget
+                                                # Mu
+                                                cfg["CPU_timeout"]["gen"]["mean"] = m_g_m
+                                                cfg["CPU_timeout"]["cpui"]["mean"] = m_cpui_m
+                                                
+                                                cfg["request_distribution"]["distribution"] = scheduling_algo   # DTS Algorithm
+                                                cfg["AP_selection"] = ap_selection                              # AP Selection
+                                                cfg["SearchNode"] = searchNode                                  # SearchNode
+                                                        
+                                                # Arrival Rate
+                                                cfg["arrival_time_exponential"] = ar_rate
+                                                cfg["deadline"] = deadl # Deadline
+                                                cfg["initial_energy"] = ener_bud # Energy Budget
 
-                                            
+                                                if label == "ILP":
+                                                    w_e, w_R = ilp_w
+                                                    cfg["ilp_objective"] = "weighted"
+                                                    cfg["ilp_weights"]["w_e"] = w_e
+                                                    cfg["ilp_weights"]["w_R"] = w_R
 
-                                            config_file = (
-                                                f"settings_"
-                                                f"seed_{s}_"
-                                                f"{label}_"
-                                                f"Arr_Rate_{ar_rate}_"
-                                                f"mu_gen_{m_g_m}_"
-                                                f"mu_cpui_{m_cpui_m}_"
-                                                f"Rout_Algo_{rout_algo}_"
-                                                f"Rout_interv_{rout_int}_"
-                                                f"apb_{apb}_"
-                                                f"deadline_{deadl}_"
-                                                f"energy_budget_{ener_bud}.json5"
-                                            )
-                                            filename = os.path.join(
-                                                OUTPUT_DIR_CONFIG, config_file)
+                                                config_file = (
+                                                    f"settings_"
+                                                    f"seed_{s}_"
+                                                    f"{label}_"
+                                                    f"Arr_Rate_{ar_rate}_"
+                                                    f"mu_gen_{m_g_m}_"
+                                                    f"mu_cpui_{m_cpui_m}_"
+                                                    f"Rout_Algo_{rout_algo}_"
+                                                    f"Rout_interv_{rout_int}_"
+                                                    f"apb_{apb}_"
+                                                    f"deadline_{deadl}_"
+                                                    f"energy_budget_{ener_bud}.json5"
+                                                )
+                                                filename = os.path.join(
+                                                    OUTPUT_DIR_CONFIG, config_file)
 
-                                            with open(filename, "w") as f:
-                                                json5.dump(cfg, f, indent=4)
+                                                with open(filename, "w") as f:
+                                                    json5.dump(cfg, f, indent=4)
 
-                                            print(f"Creato: {filename}")
+                                                print(f"Creato: {filename}")
 
 
 def gen_img_resolution():
