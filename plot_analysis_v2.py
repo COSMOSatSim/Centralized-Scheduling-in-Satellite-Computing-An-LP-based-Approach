@@ -9,7 +9,7 @@ import numpy as np
 # ----------------------------------------------------------------------
 
 BASE_DIR = "MERGED_DATA"
-OUTPUT_DIR = "ANALYSIS_PLOTS_V5"
+OUTPUT_DIR = "ANALYSIS_PLOTS_V7"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 FILE_PATHS = {
@@ -383,8 +383,56 @@ def plot_1_success_rate(df_stats):
 
 
 # --- 2. Energy Consumption ---
-def plot_2_energy(df_energy_per_task, df_energy_per_sen):
+def plot_2_energy(df_energy_per_task, df_energy_per_sen, df_success_rate=None):
     print("Generazione grafici 2.x: Energy Consumption")
+    # --- NUOVO BLOCCO: Calcolo e Stampa Tabella Sintetica (Arrival Rate = 10) ---
+    if df_success_rate is not None and 'Arrival Rate' in df_energy_per_task.columns:
+        try:
+            # 1. Unione dei dataframe (Energia completati + Success Rate)
+            # Usiamo 'inner' join su solver, Arrival Rate ed energy_budget
+            merged = pd.merge(
+                df_energy_per_task,
+                df_success_rate,
+                on=['solver', 'Arrival Rate', 'energy_budget'],
+                suffixes=('_energy', '_sr')
+            )
+
+            # 2. Calcolo dell'Energia Reale per ogni riga
+            # E_real = E_completed * Success_Rate + (0 * Failure_Rate)
+            merged['E_real_avg'] = merged['mean_energy'] * merged['mean_sr']
+
+            # 3. Filtra per Arrival Rate = 10
+            subset_10 = merged[merged['Arrival Rate'] == 10.0].copy()
+
+            if not subset_10.empty:
+                # 4. Aggregazione: Facciamo la media sui diversi Energy Budget
+                # (visto che dai grafici sappiamo che il consumo per task è costante al variare del budget)
+                summary = subset_10.groupby('solver').agg({
+                    'mean_energy': 'mean',  # Media dell'energia (solo completati)
+                    'mean_sr': 'mean',  # Media del Success Rate
+                    'E_real_avg': 'mean'  # Media dell'Energia Reale
+                }).reset_index()
+
+                print("\n" + "=" * 85)
+                print(f"{'ANALISI CONSUMO ENERGETICO (Arrival Rate = 10 req/s)':^85}")
+                print(f"{'(Media aggregata sui vari energy budget)':^85}")
+                print("=" * 85)
+                print(f"{'ALGORITHM':<15} | {'E_AVG (Compl.)':<18} | {'SUCCESS RATE':<15} | {'E_REAL (Total)':<15}")
+                print("-" * 85)
+
+                for _, row in summary.iterrows():
+                    print(f"{row['solver']:<15} | "
+                          f"{row['mean_energy']:>10.2f} J      | "
+                          f"{row['mean_sr'] * 100:>10.1f} %    | "
+                          f"{row['E_real_avg']:>10.2f} J")
+                print("=" * 85 + "\n")
+            else:
+                print("  [Info] Nessun dato trovato per Arrival Rate = 10.")
+
+        except Exception as e:
+            print(f"  [Errore Calcolo Tabella Energia] {e}")
+    # --------------------------------------------------
+
     # Energy per Task vs. Arrival Rate
     create_line_plot_with_errors(
         df_energy_per_task,
@@ -674,8 +722,13 @@ def main():
     if 'Arrival Rate' in df_results_processed.columns:
         print("\n--- INIZIO GRAFICI (vs. Arrival Rate) ---")
         plot_1_success_rate(df_success_rate[df_success_rate['Arrival Rate'].notna()])
-        plot_2_energy(df_energy_per_task[df_energy_per_task['Arrival Rate'].notna()],
-                      df_energy_per_sen[df_energy_per_sen['Arrival Rate'].notna()])
+        plot_2_energy(
+            df_energy_per_task[df_energy_per_task['Arrival Rate'].notna()],
+            df_energy_per_sen[df_energy_per_sen['Arrival Rate'].notna()],
+            df_success_rate[df_success_rate['Arrival Rate'].notna()]  # Nuovo argomento
+        )
+        '''plot_2_energy(df_energy_per_task[df_energy_per_task['Arrival Rate'].notna()],
+                      df_energy_per_sen[df_energy_per_sen['Arrival Rate'].notna()])'''
         plot_3_response_time(df_response_time[df_response_time['Arrival Rate'].notna()])
         plot_4_routing_time(df_routing_time[df_routing_time['Arrival Rate'].notna()])
         plot_5_hops(df_hops[df_hops['Arrival Rate'].notna()])

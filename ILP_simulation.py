@@ -162,9 +162,18 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
             print(
                 f"[{env.now:.3f}] Task {task_id} enqueued on CPU {selected_server.name} qlen_enqueue={qlen_on_enqueue_cpu}")
 
+        # riservo energia
+        selected_server.energy_reserved += eps_cpu
+        req_cpu = selected_server.cpu_dev.request()
         # attendi servizio CPU
         yield req_cpu
         # quando ottengo la CPU, registro il tempo passato in coda
+        # Ora abbiamo la risorsa, ma l'energia esiste ancora?
+        if selected_server.energy < eps_cpu:
+            selected_server.energy_reserved -= eps_cpu  # Rilascio la prenotazione
+            selected_server.cpu_dev.release(req_cpu)  # Rilascio la risorsa
+            reject("Energy Depleted during Queue", fatal=True)
+            return
         time_in_queue = env.now - arrival_time_task_queue
         selected_server.cpu_busy_until = env.now + d_cpu
 
@@ -218,6 +227,14 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         # attendi la CPU
         yield req_cpu
 
+        # === FIX: Check Energia CPU POST-Coda ===
+        if selected_server.energy < eps_cpu:
+            selected_server.energy_reserved -= (eps_cpu + eps_net)
+            selected_server.cpu_dev.release(req_cpu)
+            reject("Energy Depleted during CPU Queue", fatal=True)
+            return
+        # ========================================
+
         Wc = env.now - arrival_time_task_queue
         selected_server.cpu_busy_until = env.now + d_cpu
 
@@ -238,6 +255,16 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
             f"[{env.now:.3f}] Task {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
 
         yield req_net
+
+        # === FIX: Check Energia NET POST-Coda ===
+        # Nota: l'energia CPU è già stata spesa. Controlliamo se c'è quella NET.
+        if selected_server.energy < eps_net:
+            selected_server.energy_reserved -= eps_net  # Rilascio il residuo prenotato
+            selected_server.net_dev.release(req_net)
+            # Tecnicamente il task è fallito a metà, lo registriamo come rejected o fail
+            reject("Energy Depleted during NET Queue", fatal=True)
+            return
+        # ========================================
 
         Wn = env.now - cpu_service_end
         if Wn < 0:
@@ -280,6 +307,15 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
             f"[{env.now:.3f}] Batch {task_id} enqueued on NET {selected_server.name} qlen_enqueue_net={qlen_on_enqueue_net}")
 
         yield req_net
+
+        # === FIX: Check Energia NET POST-Coda ===
+        if selected_server.energy < eps_net:
+            selected_server.energy_reserved -= eps_net
+            selected_server.net_dev.release(req_net)
+            reject("Energy Depleted during Queue", fatal=True)
+            return
+        # ========================================
+
         time_in_queue = env.now - arrival_time_task_queue
         selected_server.net_busy_until = env.now + net_time
 
@@ -439,9 +475,6 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
     """
     Blocco finale: aggiorna contatori, calcola energia di routing,
     registra i dati globali e chiama TaskAssignment.
-    Ora gestisce un contatore per-task in globals.gbl_task_hops che
-    conta il numero di trasferimenti effettivi (hop) per ogni task.
-    Inoltre salva il valore finale in globals.gbl_task_final_hops SOLO se il task viene eseguito.
     """
     # Inizializza result_sink se necessario
     if result_sink is None:
@@ -458,7 +491,6 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
 
     # Calcoliamo se avviene un trasferimento fisico e, in tal caso,
     # applichiamo l'energia e incrementiamo il contatore per-task.
-    # num_hops_local rappresenta i transfer effettuati finora per questo task
     num_hops_local = globals.gbl_task_hops.get(str(task_id), 0)
 
     if server != server_selected:
@@ -479,7 +511,22 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         else:
             eps_net = 0.0
 
-        # SOTTRAI ENERGIA: questo rappresenta il trasferimento effettivo.
+        # >>> FIX: CONTROLLO ENERGIA ROUTING <<<
+        if server_selected.energy < eps_net:
+            print(
+                f"[{env.now:.2f}] [Task {task_id}] Routing FAIL {server_selected.name}->{server.name}: No Energy for TX")
+            if result_sink is not None:
+                result_sink["ok"] = False
+                result_sink["reason"] = "Routing Energy Exhausted"
+                result_sink["fatal"] = True  # Non ha senso riprovare se la sorgente è morta
+
+            # Registra il rifiuto per statistiche
+            server_selected.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
+                                                 "Routing Energy Exhausted", d_cpu)
+            return
+        # >>> FINE FIX <<<
+
+        # SOTTRAI ENERGIA: ora è sicuro farlo
         server_selected.energy -= eps_net
         print(f"[{env.now:.2f}] [Task {task_id}] Routed {server_selected.name} -> {server.name} | "
               f"E_NET={eps_net:.6f} J | Remaining={server_selected.energy:.2f} J")
@@ -503,7 +550,6 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         "exec_time": d_cpu,
         "transfer_time": transfer_time,
         "performed_transfers": globals.gbl_task_hops.get(str(task_id), 0),
-        # final_hops verrà impostato e salvato solo se ok
         "final_hops": None,
         "execution_server": server.name
     }
@@ -525,12 +571,7 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
         globals.gbl_task_final_hops[str(task_id)] = performed
         task_data["final_hops"] = performed
         globals.gbl_generated_tasks_data.append(task_data)
-
-        # opzionale: pulisci il contatore temporaneo se non ti serve più
-        # del globals.gbl_task_hops[str(task_id)]
     else:
-        # opzionale: se vuoi registrare anche i fallimenti, inseriscilo qui
-        # globals.gbl_generated_tasks_data.append(task_data)
         reason = local_sink.get("reason")
         print(f"[{env.now:.2f}] [Task {task_id}] assignment failed on {server.name} reason={reason}")
 
@@ -786,9 +827,9 @@ def SearchNode_ILP_Hybrid_v2(env, server_selected, task_id, required_ram, requir
     print(f"[{env.now:.2f}] [Task {task_id}] Entering HEURISTIC branch (v2) -> calling v1")
 
     # Passiamo tutti gli argomenti originali a v1, che è funzione euristica standard.
-    yield from simulation.SearchNode_Heuristic_v1(
+    '''yield from simulation.SearchNode_Heuristic_v1(
         env, server_selected, task_id, required_ram, required_disk, image_size, Volume_size,
         arrival_time_system,
         initial_server_counter, different_server_counter, other_server_counter,
         task_type, max_energy, d_cpu, deadline
-    )
+    )'''

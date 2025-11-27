@@ -564,7 +564,12 @@ class EdgeServer:
 
         # 5) normalizzazione
         # Normalizziamo B_i rispetto a energy_budget_max
-        B_normalized = self.energy / energy_budget_max
+        if energy_budget_max > 0:
+            B_normalized = self.energy / energy_budget_max
+        else:
+            # Se il massimo budget disponibile nella rete è 0,
+            # significa che tutti sono scarichi. B_normalized è 0.
+            B_normalized = 0.0
 
         # normalizziamo W rispetto alla deadline D_r (evita divisione per zero)
         denom = D_r if D_r > 0 else 1.0

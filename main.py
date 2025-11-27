@@ -6,10 +6,11 @@ import simpy
 import json
 from EdgeServer import build_task_csv_path
 from enums import AccPointMode
-import simulation
+import ILP_simulation, simulation
 from Task import findAlgorithm, generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
-from topology import build_configurations, get_global_mode, load_saved_configuration, loadConfiguration, periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
+from topology import build_configurations, get_global_mode, load_saved_configuration, loadConfiguration, \
+    periodic_recall_Topology_monitor, string_to_skyfield_time, loadConfiguration_simple
 from user_based_topology import get_current_time, getObserverObj
 from SaveCurrentSATOnFile import saveTLEOnFile
 from routing_Manager import load_saved_OGM, periodic_recall_Routing_monitor
@@ -30,9 +31,10 @@ def _win_longpath(p: str) -> str:
     p = os.path.abspath(p)
     if p.startswith("\\\\?\\"):
         return p
-    if p.startswith("\\\\"):     # UNC path
+    if p.startswith("\\\\"):  # UNC path
         return "\\\\?\\UNC" + p[1:]
     return "\\\\?\\" + p
+
 
 # Aggiungi il nuovo processo di raccolta dati
 def data_collector(env, interval, start_time, end_time):
@@ -43,7 +45,7 @@ def data_collector(env, interval, start_time, end_time):
     global simulation_dataset
     simulation_dataset = {
         "metadata": {
-            "battery_life" : globals.config.get("initial_energy", 0.0)
+            "battery_life": globals.config.get("initial_energy", 0.0)
         },
         "snapshots": []
     }
@@ -81,9 +83,9 @@ if __name__ == "__main__":
 
     # 1) Costruzione configurazioni
     if config.get("Build_Configurations", False):
-        
+
         configurations_base, configuration_optimal = None, None
-        
+
         if not config.get("load_saved_configuration"):
             tle_data = saveTLEOnFile()
             t0 = get_current_time()
@@ -93,7 +95,7 @@ if __name__ == "__main__":
             # FASE TEST : Se abbiamo già creato le configurazioni le carichiamo
             configurations_base = load_saved_configuration(AccPointMode.BASE)
             configuration_optimal = load_saved_configuration(AccPointMode.OPTIMAL)
-        
+
         if config["redistribuite_OGM"]:
             process_OGM_enviroment_simulation(configurations_base)
             remove_first_30_configurations(AccPointMode.BASE)
@@ -107,7 +109,7 @@ if __name__ == "__main__":
 
     # 2) Caricamento o creazione topologia
     if config.get("Load_Configuration", False):
-        mode = get_global_mode()    # Otteniamo la Modalità di simulazione
+        mode = get_global_mode()  # Otteniamo la Modalità di simulazione
         r_algo = findAlgorithm()
         simple_exec = True
 
@@ -117,9 +119,10 @@ if __name__ == "__main__":
             # Se l'algoritmo richiede le OGM TABLE
             globals.OGMs_tables = load_saved_OGM()
             globals.edge_servers, globals.global_access_point = loadConfiguration(env, globals.data_configurations,
-                                                                                    globals.OGMs_tables)
+                                                                                  globals.OGMs_tables)
         else:
-            globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env, globals.data_configurations)
+            globals.edge_servers, globals.global_access_point = loadConfiguration_simple(env,
+                                                                                         globals.data_configurations)
 
         env.process(periodic_recall_Topology_monitor(env, globals.data_configurations, globals.OGMs_tables))
     else:
@@ -161,22 +164,55 @@ if __name__ == "__main__":
 
             # d_cpu = 0 per batch
             d_cpu_batch = 0.0
-
-            # stima d_net e deadline coerente con LaTeX: D_r = (1+delta_D)*(d_cpu + d_net)
             bw_Bps, data_bytes = simulation.network_metrics(image_size)
             d_net_batch = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
             delta_D = config.get("delta_D", 0.2)
             deadline_batch = (1.0 + delta_D) * (d_cpu_batch + d_net_batch)
 
-            # avvia il processo che mette il batch davvero nella net queue del server
-            env.process(simulation.enqueue_batch_in_net(
-                env,
-                server,
-                batch_task_id,
-                image_size,
-                env.now,
-                deadline_batch
-            ))
+            # --- SELEZIONE MODALITÀ BATCH (ILP vs ERT) ---
+
+            if str(config.get("SearchNode", "")).upper() == "ILP":
+                # Nota: Passiamo batch_task_id come INTERO (rimosso str()) per evitare TypeError nel sort finale
+                env.process(ILP_simulation.TaskAssignment_ILP(
+                    env,
+                    server,
+                    batch_task_id,  # <--- FIX: RIMOSSO str(), ora è INT
+                    image_size,
+                    env.now,
+                    0,
+                    0.0,
+                    "Batch",
+                    0.0,
+                    deadline_batch,
+                    net_bw_override_Bps=None,
+                    result_sink={},
+                    allow_retry=False
+                ))
+            elif str(config.get("SearchNode", "")).upper() == "ERT":
+                # Modalità ERT: usa simulation.TaskAssignment
+                env.process(simulation.TaskAssignment(
+                    env,
+                    server,
+                    batch_task_id,  # INT
+                    image_size,
+                    env.now,
+                    0,
+                    0.0,
+                    "Batch",
+                    0.0,
+                    deadline_batch
+                ))
+            else:
+                # Modalità ERT/Standard: usiamo la funzione di simulation.py
+                env.process(simulation.enqueue_batch_in_net(
+                    env,
+                    server,
+                    batch_task_id,  # <--- Già INT
+                    image_size,
+                    env.now,
+                    deadline_batch  # Passiamo la deadline assoluta o relativa a seconda di come la gestisce la func
+                ))
+            # -----------------------------------------------------------------------------------------------
 
     print("Batch tasks for all servers scheduled (0..3 per server).")
 
@@ -189,30 +225,36 @@ if __name__ == "__main__":
     ))
 
     # 5) Preparazione dei nomi di cartella e file
-    ap                    = config.get("access_point", 0)
-    seed_val              = config["seed"]
-    gen_dist              = config["generate_tasks"]["distribution"]
-    req_dist              = config["request_distribution"]["distribution"]
+    ap = config.get("access_point", 0)
+    seed_val = config["seed"]
+    gen_dist = config["generate_tasks"]["distribution"]
+    req_dist = config["request_distribution"]["distribution"]
     if req_dist == "0_0_0":
         req_dist = "RR"
-    atime                 = config["arrival_time_exponential"]
-    cpu_mean              = config["CPU_timeout"]["gen"]["mean"]
-    solver                = config["SearchNode"]
-    ap_dir_bidir          = config["AP_routing_bidirectional"]      # (Booleano) AP_Routing 
-    ap_selection          = config["AP_selection"]
-    energy_budget         = config["initial_energy"]
-    deadline              = config["deadline"]
-    complete_sim_solver   = None
+    atime = config["arrival_time_exponential"]
+    cpu_mean = config["CPU_timeout"]["gen"]["mean"]
+    solver = config["SearchNode"]
+    ap_dir_bidir = config["AP_routing_bidirectional"]  # (Booleano) AP_Routing
+    ap_selection = config["AP_selection"]
+    energy_budget = config["initial_energy"]
+    deadline = config["deadline"]
+    complete_sim_solver = None
 
-    if req_dist == "DTS-base" and ap_selection == "base" and solver == "ERT": complete_sim_solver = "DTS-base"
-    elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ERT": complete_sim_solver = "DTS-APopt"
-    elif req_dist == "OrbitAware" and ap_selection == "optimal" and solver == "ERT": complete_sim_solver = "OrbitAware"
-    elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ILP": complete_sim_solver = "ILP"
-    else: sys.exit(f"Complete_sim_solver not right! CHECK: req_dist:{req_dist} ap_selection:{ap_selection} solver:{solver}")
+    if req_dist == "DTS-base" and ap_selection == "base" and solver == "ERT":
+        complete_sim_solver = "DTS-base"
+    elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ERT":
+        complete_sim_solver = "DTS-APopt"
+    elif req_dist == "OrbitAware" and ap_selection == "optimal" and solver == "ERT":
+        complete_sim_solver = "OrbitAware"
+    elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ILP":
+        complete_sim_solver = "ILP"
+    else:
+        sys.exit(
+            f"Complete_sim_solver not right! CHECK: req_dist:{req_dist} ap_selection:{ap_selection} solver:{solver}")
 
     # BETA, ALPHA, GAMMA
     beta = resolution_config["beta_probabilities"]
-    bg, bcpui,bcpudi = beta["Generic_Service"], beta["CPU_Intensive"], beta["CPU_and_Data_Intensive"]
+    bg, bcpui, bcpudi = beta["Generic_Service"], beta["CPU_Intensive"], beta["CPU_and_Data_Intensive"]
     alpha = resolution_config["size_ranges_MB"]["CPU_DATA_INTENSIVE"]
     am, ah, avh = alpha["alpha_M_weight"], alpha["alpha_H_weight"], alpha["alpha_VH_weight"]
     gamma = resolution_config["size_ranges_MB"]["BATCH_TASK"]
@@ -236,11 +278,13 @@ if __name__ == "__main__":
     )
     csv_routing_task = build_task_csv_path(base_dir, atime, cpu_mean)
 
+
     def _ensure_parent_dir(path_str: str) -> str:
         parent = os.path.dirname(path_str) or "."
         parent = os.path.abspath(parent)
         os.makedirs(_win_longpath(parent), exist_ok=True)
         return os.path.join(parent, os.path.basename(path_str))
+
 
     csv_task = _ensure_parent_dir(csv_task)
     csv_mig = _ensure_parent_dir(csv_mig)
@@ -459,7 +503,10 @@ if __name__ == "__main__":
                 ])
 
         # dump also global batch completions (if any)
-        # (Questa sezione sembrava già corretta)
+        # NOTA: Ora che usiamo TaskAssignment_ILP, i batch vengono registrati anche in srv.completed_tasks.
+        # Tuttavia, TaskAssignment_ILP popola anche globals.gbl_tasks.
+        # Se TaskAssignment_ILP non popola globals.gbl_batch_completed, questa parte sarà vuota,
+        # ma i dati saranno corretti sopra (sotto srv.completed_tasks).
         for entry in getattr(globals, 'gbl_batch_completed', []):
             (tid, task_type, arr_sys, arr_q, start_t, end_t, ex_t, service_t,
              tq, sel_srv, hops, qlen, trf, image_size,
@@ -519,7 +566,7 @@ if __name__ == "__main__":
         for srv in all_servers:
             for entry in getattr(srv, 'completed_tasks', []):
                 task_type = entry[1]  # Indice 1 per task_type
-                energy = entry[18]    # Indice 18 per eps_tot
+                energy = entry[18]  # Indice 18 per eps_tot
 
                 if task_type in stats_per_server[srv.name]["task_counts"]:
                     stats_per_server[srv.name]["task_counts"][task_type] += 1
@@ -530,8 +577,8 @@ if __name__ == "__main__":
         # 3. Popola le statistiche dai task BATCH (da globals.gbl_batch_completed)
         for entry in getattr(globals, 'gbl_batch_completed', []):
             server_name = entry[9]  # Indice 9 per sel_srv
-            task_type = entry[1]    # Indice 1 per task_type
-            energy = entry[18]      # Indice 18 per eps_tot
+            task_type = entry[1]  # Indice 1 per task_type
+            energy = entry[18]  # Indice 18 per eps_tot
 
             if server_name in stats_per_server and task_type == "Batch":
                 stats_per_server[server_name]["task_counts"]["Batch"] += 1
