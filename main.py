@@ -78,7 +78,7 @@ if __name__ == "__main__":
     config, resolution_config = globals.config, globals.resolution_config
 
     MaxTry = config.get("max_try", 10)
-
+    r_algo = None
     # 1) Costruzione configurazioni
     if config.get("Build_Configurations", False):
         
@@ -220,7 +220,7 @@ if __name__ == "__main__":
     img_res_dir = f"IMG_RES_bg_{bg}_bcpui_{bcpui}_bcpudi_{bcpudi}_am_{am}ah_{ah}_avh_{avh}_gh_{gh}_gvh_{gvh}"
 
     # Cartella base: include modalità, AP e seed
-    base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}"
+    base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
     os.makedirs(base_dir, exist_ok=True)
 
     # File CSV e log con nomenclatura completa

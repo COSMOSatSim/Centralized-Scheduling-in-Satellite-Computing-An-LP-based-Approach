@@ -1,0 +1,1 @@
+slurmstepd: error: *** JOB 847484 ON node106 CANCELLED AT 2025-11-27T15:35:19 ***

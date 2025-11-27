@@ -1,5 +1,5 @@
 {
-  simulation_duration: 10,
+  simulation_duration: 300,
   enable_queue_monitoring: true,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
@@ -7,9 +7,9 @@
   adding_time: 30,
   seed: 9973,
   access_point: 5,
-  arrival_time_exponential: 0.5,
+  arrival_time_exponential: 0.1,
   deadline: 10,
-  initial_energy: 80000,
+  initial_energy: 100000,
   C_sen: {
     min: 10000000.0,
     max: 10000000000.0,
@@ -63,7 +63,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "/home/vsalvatore/SECMotionModel/result/OrbitAware_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3/Routing_bidirectional_True/seed_9973/results_exponential_REQ-OrbitAware_AT_0.5_CPU_0.05.csv",
+    name: "/home/vsalvatore/SECMotionModel/result/OrbitAware_sim_SystemAP5/deadline_10/Energy_budget_100000/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_9973/r_algo_DSR/results_exponential_REQ-OrbitAware_AT_0.1_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {
@@ -90,14 +90,14 @@
   Number_of_Configurations: 45,
   Interval_future_event_prediction: 15,
   Interval_past_event_prediction: 10,
-  OGMs_redistribution: 1,
+  OGMs_redistribution: 30,
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
   Routing_Interval: 0.1,
   Routing_algorithm: {
-    BATMAN: true,
+    BATMAN: false,
     GREEDY: false,
-    DSR: false,
+    DSR: true,
   },
   ilp_weights: {
     w_e: 0.7,
