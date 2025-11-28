@@ -238,6 +238,7 @@ if __name__ == "__main__":
     ap_selection = config["AP_selection"]
     energy_budget = config["initial_energy"]
     deadline = config["deadline"]
+    ilp_w_e, ilp_w_R = config["ilp_weights"]["w_e"], config["ilp_weights"]["w_R"]
     complete_sim_solver = None
 
     if req_dist == "DTS-base" and ap_selection == "base" and solver == "ERT":
@@ -262,7 +263,11 @@ if __name__ == "__main__":
     img_res_dir = f"IMG_RES_bg_{bg}_bcpui_{bcpui}_bcpudi_{bcpudi}_am_{am}ah_{ah}_avh_{avh}_gh_{gh}_gvh_{gvh}"
 
     # Cartella base: include modalità, AP e seed
-    base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
+    base_dir = ""
+    if complete_sim_solver == "ILP":
+        base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/w_e{ilp_w_e}_wR_{ilp_w_R}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/we_{ilp_w_e}_wR_{ilp_w_R}/"
+    else:
+        base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
     os.makedirs(base_dir, exist_ok=True)
 
     # File CSV e log con nomenclatura completa

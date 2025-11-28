@@ -63,17 +63,17 @@ with open('img_resolution.json5') as img_resolution:
 
 # GENERATORE
 def gen_configs():
-    for ilp_w in ilp_weights:
-        for ener_bud in energy_budget:
-            for deadl in deadline:
-                for m_g_m in mu_gen_mean:
-                    for m_cpui_m in mu_cpui_mean:
-                        for algo_ap in scheduling_algorithm:
-                            label, scheduling_algo, ap_selection, searchNode = algo_ap
+    for ener_bud in energy_budget:
+        for deadl in deadline:
+            for m_g_m in mu_gen_mean:
+                for m_cpui_m in mu_cpui_mean:
+                    for algo_ap in scheduling_algorithm:
+                        label, scheduling_algo, ap_selection, searchNode = algo_ap
 
-                            for ar_rate in arrival_rate:
-                                for s in seeds:
-                                    for rout_algo in routing_algorithms:
+                        for ar_rate in arrival_rate:
+                            for s in seeds:
+                                for rout_algo in routing_algorithms:
+                                    for ilp_w in  ilp_weights:
 
                                         greedy, batman, dsr = None, None, None
                                         if rout_algo == "GREEDY":
@@ -110,26 +110,44 @@ def gen_configs():
                                                 cfg["arrival_time_exponential"] = ar_rate
                                                 cfg["deadline"] = deadl # Deadline
                                                 cfg["initial_energy"] = ener_bud # Energy Budget
+                                                
+                                                config_file = ""
 
                                                 if label == "ILP":
                                                     w_e, w_R = ilp_w
                                                     cfg["ilp_objective"] = "weighted"
                                                     cfg["ilp_weights"]["w_e"] = w_e
                                                     cfg["ilp_weights"]["w_R"] = w_R
+                                                    
+                                                    config_file = (
+                                                        f"settings_"
+                                                        f"seed_{s}_"
+                                                        f"{label}_"
+                                                        f"we_{w_e}_wR_{w_R}_"
+                                                        f"Arr_Rate_{ar_rate}_"
+                                                        f"mu_gen_{m_g_m}_"
+                                                        f"mu_cpui_{m_cpui_m}_"
+                                                        f"Rout_Algo_{rout_algo}_"
+                                                        f"Rout_interv_{rout_int}_"
+                                                        f"apb_{apb}_"
+                                                        f"deadline_{deadl}_"
+                                                        f"energy_budget_{ener_bud}.json5"
+                                                    )
+                                                else:
+                                                    config_file = (
+                                                        f"settings_"
+                                                        f"seed_{s}_"
+                                                        f"{label}_"
+                                                        f"Arr_Rate_{ar_rate}_"
+                                                        f"mu_gen_{m_g_m}_"
+                                                        f"mu_cpui_{m_cpui_m}_"
+                                                        f"Rout_Algo_{rout_algo}_"
+                                                        f"Rout_interv_{rout_int}_"
+                                                        f"apb_{apb}_"
+                                                        f"deadline_{deadl}_"
+                                                        f"energy_budget_{ener_bud}.json5"
+                                                    )
 
-                                                config_file = (
-                                                    f"settings_"
-                                                    f"seed_{s}_"
-                                                    f"{label}_"
-                                                    f"Arr_Rate_{ar_rate}_"
-                                                    f"mu_gen_{m_g_m}_"
-                                                    f"mu_cpui_{m_cpui_m}_"
-                                                    f"Rout_Algo_{rout_algo}_"
-                                                    f"Rout_interv_{rout_int}_"
-                                                    f"apb_{apb}_"
-                                                    f"deadline_{deadl}_"
-                                                    f"energy_budget_{ener_bud}.json5"
-                                                )
                                                 filename = os.path.join(
                                                     OUTPUT_DIR_CONFIG, config_file)
 
