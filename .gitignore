@@ -38,6 +38,7 @@ __pycache__/
 /SIMS_SETS/
 /SIMS_IMG_RESOLUTIONS/
 SBATCHFILES/
+SBATCH_LOGS/
 /result/
 info.txt
 /Generated_datasets/
