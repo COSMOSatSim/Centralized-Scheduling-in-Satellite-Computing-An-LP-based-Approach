@@ -169,49 +169,15 @@ if __name__ == "__main__":
             delta_D = config.get("delta_D", 0.2)
             deadline_batch = (1.0 + delta_D) * (d_cpu_batch + d_net_batch)
 
-            # --- SELEZIONE MODALITÀ BATCH (ILP vs ERT) ---
-
-            if str(config.get("SearchNode", "")).upper() == "ILP":
-                # Nota: Passiamo batch_task_id come INTERO (rimosso str()) per evitare TypeError nel sort finale
-                env.process(ILP_simulation.TaskAssignment_ILP(
-                    env,
-                    server,
-                    batch_task_id,  # <--- FIX: RIMOSSO str(), ora è INT
-                    image_size,
-                    env.now,
-                    0,
-                    0.0,
-                    "Batch",
-                    0.0,
-                    deadline_batch,
-                    net_bw_override_Bps=None,
-                    result_sink={},
-                    allow_retry=False
-                ))
-            elif str(config.get("SearchNode", "")).upper() == "ERT":
-                # Modalità ERT: usa simulation.TaskAssignment
-                env.process(simulation.TaskAssignment(
-                    env,
-                    server,
-                    batch_task_id,  # INT
-                    image_size,
-                    env.now,
-                    0,
-                    0.0,
-                    "Batch",
-                    0.0,
-                    deadline_batch
-                ))
-            else:
-                # Modalità ERT/Standard: usiamo la funzione di simulation.py
-                env.process(simulation.enqueue_batch_in_net(
-                    env,
-                    server,
-                    batch_task_id,  # <--- Già INT
-                    image_size,
-                    env.now,
-                    deadline_batch  # Passiamo la deadline assoluta o relativa a seconda di come la gestisce la func
-                ))
+            # Modalità ERT/Standard: usiamo la funzione di simulation.py
+            env.process(simulation.enqueue_batch_in_net(
+                env,
+                server,
+                batch_task_id,  # <--- Già INT
+                image_size,
+                env.now,
+                deadline_batch  # Passiamo la deadline assoluta o relativa a seconda di come la gestisce la func
+            ))
             # -----------------------------------------------------------------------------------------------
 
     print("Batch tasks for all servers scheduled (0..3 per server).")
@@ -583,7 +549,7 @@ if __name__ == "__main__":
         for entry in getattr(globals, 'gbl_batch_completed', []):
             server_name = entry[9]  # Indice 9 per sel_srv
             task_type = entry[1]  # Indice 1 per task_type
-            energy = entry[18]  # Indice 18 per eps_tot
+            energy = entry[17]  # Indice 17 per eps_tot
 
             if server_name in stats_per_server and task_type == "Batch":
                 stats_per_server[server_name]["task_counts"]["Batch"] += 1

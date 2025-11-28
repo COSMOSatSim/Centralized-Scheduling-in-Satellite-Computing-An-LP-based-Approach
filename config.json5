@@ -1,5 +1,5 @@
 {
-  simulation_duration: 10,
+  simulation_duration: 300,
   enable_queue_monitoring: true,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
@@ -41,7 +41,7 @@
   },
   DTS: true,
   AP_selection: "optimal",
-  SearchNode: "ILP",
+  SearchNode: "ERT",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -63,7 +63,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "/home/vinz/Scrivania/Work/SEC/SECMotionModel/result/ILP_sim_SystemAP5/deadline_10/Energy_budget_80000/IMG_RES_bg_0.25_bcpui_0.35_bcpudi_0.4_am_0.4ah_0.3_avh_0.3_gh_0.5_gvh_0.5/Routing_bidirectional_True/seed_101/results_exponential_REQ-ILP_AT_0.5_CPU_0.05.csv",
+    name: "C:\\Users\\danil\\PycharmProjects\\SECMotionModel\\result\\DTS-APopt_sim_SystemAP5\\deadline_10\\Energy_budget_80000\\IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3\\Routing_bidirectional_True\\seed_101\\r_algo_GREEDY\\results_exponential_REQ-DTS-APopt_AT_0.5_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {
@@ -95,8 +95,8 @@
   AP_routing_bidirectional: true,
   Routing_Interval: 0.1,
   Routing_algorithm: {
-    BATMAN: true,
-    GREEDY: false,
+    BATMAN: false,
+    GREEDY: true,
     DSR: false,
   },
   ilp_weights: {
