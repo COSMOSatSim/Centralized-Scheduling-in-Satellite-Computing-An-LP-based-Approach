@@ -1,3 +1,4 @@
+import argparse
 import csv
 import json5
 import os
@@ -6,7 +7,7 @@ import simpy
 import json
 from EdgeServer import build_task_csv_path
 from enums import AccPointMode
-import ILP_simulation, simulation
+import simulation
 from Task import findAlgorithm, generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
 from topology import build_configurations, get_global_mode, load_saved_configuration, loadConfiguration, \
@@ -74,6 +75,23 @@ def data_collector(env, interval, start_time, end_time):
 
 
 if __name__ == "__main__":
+    # --- MODIFICA PER GESTIRE I FILE PARALLELI ---
+    parser = argparse.ArgumentParser()
+    parser.add_argument("config_file", nargs='?', help="Path del file di configurazione json5")
+    args = parser.parse_args()
+
+    # Se il launcher ci passa un file, usiamo quello. Altrimenti usiamo i default.
+    if args.config_file:
+        # Carichiamo la configurazione specifica per questo processo
+        with open(args.config_file, 'r') as f:
+            globals.config = json5.load(f)
+        # Importante: Disabilitiamo la rigenerazione delle configurazioni per i worker
+        globals.config["Build_Configurations"] = False
+        globals.config["Load_Configuration"] = True
+        print(f"PID {os.getpid()} sta elaborando: {args.config_file}")
+    else:
+        print("Nessun file passato, uso config.json5 standard.")
+    # ---------------------------------------------
     # Imposta seme e ambiente
     start_time_simulation_real = time.time()
     env = simpy.Environment()
