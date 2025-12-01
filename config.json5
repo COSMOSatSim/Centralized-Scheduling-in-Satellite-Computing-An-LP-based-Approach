@@ -5,7 +5,7 @@
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
   adding_time: 30,
-  seed: 9973,
+  seed: 101,
   access_point: 5,
   arrival_time_exponential: 0.5,
   deadline: 10,
@@ -37,7 +37,7 @@
     },
   },
   request_distribution: {
-    distribution: "OrbitAware",
+    distribution: "DTS-base",
   },
   DTS: true,
   AP_selection: "optimal",
@@ -93,7 +93,7 @@
   OGMs_redistribution: 30,
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
-  Routing_Interval: 0.1,
+  Routing_Interval: 1,
   Routing_algorithm: {
     BATMAN: false,
     GREEDY: true,
@@ -107,7 +107,7 @@
     alpha_cpu: 1.0,
     alpha_net_J_per_MB: 0.000465,
   },
-  ilp_objective: "weighted",
+  ilp_objective: "hierarchical",
   lexi_primary: "energy",
   lexi_tol: 0.1,
   fallback_retry: {
