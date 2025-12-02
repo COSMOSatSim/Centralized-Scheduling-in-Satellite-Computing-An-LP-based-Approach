@@ -93,7 +93,7 @@
   OGMs_redistribution: 1,
   sphere_altitude_km: 500000.0,
   AP_routing_bidirectional: true,
-  Routing_Interval: 0.1,
+  Routing_Interval: 0.5,
   Routing_algorithm: {
     BATMAN: false,
     GREEDY: true,
