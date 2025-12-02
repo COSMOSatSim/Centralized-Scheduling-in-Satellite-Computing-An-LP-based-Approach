@@ -1,9 +1,6 @@
 import globals
-import simulation
 from Task import Task
 from sec_ilp_snapshot_v3 import solve_on_Ek, Snapshot, SENState, QueueTask, alpha_from_physics, solve_on_Ek_hierarchical
-
-# Removed global `hop` variable
 
 config = globals.config
 resolution_config = globals.resolution_config
@@ -43,7 +40,7 @@ def network_metrics(image_size_MB, Volume_size_MB=0.0):
 def TaskAssignment_ILP(env, selected_server, task_id, image_size,
                    arrival_time_system, num_hops, transfer_time,
                    task_type, d_cpu, D_r, net_bw_override_Bps=None,
-                   result_sink=None, allow_retry=False):
+                   result_sink=None, allow_retry=False, routing_already_charged=False, routing_energy_from=None):
     """
     Processo SimPy che assegna un task al server selezionato e simula:
       - attesa nella coda CPU (cpu_dev)
@@ -172,7 +169,7 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         if selected_server.energy < eps_cpu:
             selected_server.energy_reserved -= eps_cpu  # Rilascio la prenotazione
             selected_server.cpu_dev.release(req_cpu)  # Rilascio la risorsa
-            reject("Energy Depleted during Queue", fatal=True)
+            reject("Insufficient Energy for CPU", fatal=True)
             return
         time_in_queue = env.now - arrival_time_task_queue
         selected_server.cpu_busy_until = env.now + d_cpu
@@ -231,7 +228,7 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         if selected_server.energy < eps_cpu:
             selected_server.energy_reserved -= (eps_cpu + eps_net)
             selected_server.cpu_dev.release(req_cpu)
-            reject("Energy Depleted during CPU Queue", fatal=True)
+            reject("Insufficient Energy for CPU", fatal=True)
             return
         # ========================================
 
@@ -262,7 +259,7 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= eps_net  # Rilascio il residuo prenotato
             selected_server.net_dev.release(req_net)
             # Tecnicamente il task è fallito a metà, lo registriamo come rejected o fail
-            reject("Energy Depleted during NET Queue", fatal=True)
+            reject("Insufficient Energy for NET", fatal=True)
             return
         # ========================================
 
@@ -274,7 +271,11 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
 
         yield env.timeout(net_time)
         selected_server.net_busy_until = env.now
-        selected_server.energy -= eps_net
+        if not routing_already_charged:
+            selected_server.energy -= eps_net
+        else:
+            # opzionale: se vuoi, registra che la routing-energy è stata già presa da `routing_energy_from`.
+            pass
         selected_server.net_dev.release(req_net)
 
         time_in_queue = Wc + Wn
@@ -312,7 +313,7 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         if selected_server.energy < eps_net:
             selected_server.energy_reserved -= eps_net
             selected_server.net_dev.release(req_net)
-            reject("Energy Depleted during Queue", fatal=True)
+            reject("Insufficient Energy for NET", fatal=True)
             return
         # ========================================
 
@@ -321,7 +322,11 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
 
         yield env.timeout(net_time)
         selected_server.net_busy_until = env.now
-        selected_server.energy -= eps_net
+        if not routing_already_charged:
+            selected_server.energy -= eps_net
+        else:
+            # opzionale: se vuoi, registra che la routing-energy è stata già presa da `routing_energy_from`.
+            pass
         selected_server.energy_reserved -= eps_net
         selected_server.net_dev.release(req_net)
 
@@ -561,7 +566,7 @@ def _finalize_and_assign_task(env, server_selected, server, task_id,
                                   task_type, d_cpu, deadline,
                                   net_bw_override_Bps=net_bw_override_Bps,
                                   result_sink=local_sink,
-                                  allow_retry=allow_retry)
+                                  allow_retry=allow_retry, routing_already_charged=True, routing_energy_from=server_selected.name)
 
     # Registra i dati globali: salva il conteggio finale SOLO se assegnato con successo
     ok_assigned = bool(local_sink.get("ok", False))

@@ -1,4 +1,3 @@
-import argparse
 import csv
 import json5
 import os
@@ -7,7 +6,7 @@ import simpy
 import json
 from EdgeServer import build_task_csv_path
 from enums import AccPointMode
-import simulation
+import ILP_simulation, simulation
 from Task import findAlgorithm, generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
 from topology import build_configurations, get_global_mode, load_saved_configuration, loadConfiguration, \
@@ -75,30 +74,15 @@ def data_collector(env, interval, start_time, end_time):
 
 
 if __name__ == "__main__":
-    # --- MODIFICA PER GESTIRE I FILE PARALLELI ---
-    parser = argparse.ArgumentParser()
-    parser.add_argument("config_file", nargs='?', help="Path del file di configurazione json5")
-    args = parser.parse_args()
-
-    # Se il launcher ci passa un file, usiamo quello. Altrimenti usiamo i default.
-    if args.config_file:
-        # Carichiamo la configurazione specifica per questo processo
-        with open(args.config_file, 'r') as f:
-            globals.config = json5.load(f)
-        # Importante: Disabilitiamo la rigenerazione delle configurazioni per i worker
-        globals.config["Build_Configurations"] = False
-        globals.config["Load_Configuration"] = True
-        print(f"PID {os.getpid()} sta elaborando: {args.config_file}")
-    else:
-        print("Nessun file passato, uso config.json5 standard.")
-    # ---------------------------------------------
     # Imposta seme e ambiente
     start_time_simulation_real = time.time()
     env = simpy.Environment()
     config, resolution_config = globals.config, globals.resolution_config
+    print(
+        f"[INFO] Using config file: {globals.config_file_path if hasattr(globals, 'config_file_path') else 'unknown'}")
 
     MaxTry = config.get("max_try", 10)
-
+    r_algo = None
     # 1) Costruzione configurazioni
     if config.get("Build_Configurations", False):
 
@@ -118,10 +102,6 @@ if __name__ == "__main__":
             process_OGM_enviroment_simulation(configurations_base)
             remove_first_30_configurations(AccPointMode.BASE)
             remove_first_30_configurations(AccPointMode.OPTIMAL)
-
-        config["Build_Configurations"] = False
-        with open('config.json5', 'w') as wf:
-            json5.dump(config, wf, indent=2)
 
         sys.exit("File of configurations created")
 
@@ -187,15 +167,49 @@ if __name__ == "__main__":
             delta_D = config.get("delta_D", 0.2)
             deadline_batch = (1.0 + delta_D) * (d_cpu_batch + d_net_batch)
 
-            # Modalità ERT/Standard: usiamo la funzione di simulation.py
-            env.process(simulation.enqueue_batch_in_net(
-                env,
-                server,
-                batch_task_id,  # <--- Già INT
-                image_size,
-                env.now,
-                deadline_batch  # Passiamo la deadline assoluta o relativa a seconda di come la gestisce la func
-            ))
+            # --- SELEZIONE MODALITÀ BATCH (ILP vs ERT) ---
+
+            if str(config.get("SearchNode", "")).upper() == "ILP":
+                # Nota: Passiamo batch_task_id come INTERO (rimosso str()) per evitare TypeError nel sort finale
+                env.process(ILP_simulation.TaskAssignment_ILP(
+                    env,
+                    server,
+                    batch_task_id,  # <--- FIX: RIMOSSO str(), ora è INT
+                    image_size,
+                    env.now,
+                    0,
+                    0.0,
+                    "Batch",
+                    0.0,
+                    deadline_batch,
+                    net_bw_override_Bps=None,
+                    result_sink={},
+                    allow_retry=False
+                ))
+            elif str(config.get("SearchNode", "")).upper() == "ERT":
+                # Modalità ERT: usa simulation.TaskAssignment
+                env.process(simulation.TaskAssignment(
+                    env,
+                    server,
+                    batch_task_id,  # INT
+                    image_size,
+                    env.now,
+                    0,
+                    0.0,
+                    "Batch",
+                    0.0,
+                    deadline_batch
+                ))
+            else:
+                # Modalità ERT/Standard: usiamo la funzione di simulation.py
+                env.process(simulation.enqueue_batch_in_net(
+                    env,
+                    server,
+                    batch_task_id,  # <--- Già INT
+                    image_size,
+                    env.now,
+                    deadline_batch  # Passiamo la deadline assoluta o relativa a seconda di come la gestisce la func
+                ))
             # -----------------------------------------------------------------------------------------------
 
     print("Batch tasks for all servers scheduled (0..3 per server).")
@@ -281,8 +295,12 @@ if __name__ == "__main__":
 
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
-    with open('config.json5', 'w') as wf:
+    # Scrivo la config *usata* nella cartella di output della simulazione
+    used_config_path = os.path.join(base_dir, "used_config.json5")
+    os.makedirs(os.path.dirname(used_config_path), exist_ok=True)
+    with open(used_config_path, 'w') as wf:
         json5.dump(config, wf, indent=2)
+    print(f"[INFO] Config salvata in: {used_config_path}")
 
     print(f"--- Avvio simulazione ---")
     print(f"Cartella: {base_dir}")
@@ -299,11 +317,9 @@ if __name__ == "__main__":
     output_folder = "Generated_datasets"
 
     if config.get("save_generated_tasks_dataset", True) and globals.gbl_generated_tasks_data:
-
-        os.makedirs(output_folder, exist_ok=True)
-        # Genera un nome di file basato su seed e durata (per unicità)
         file_name = "generated_tasks_counter.json5"
-        output_path = os.path.join(output_folder, file_name)
+        # Salviamo dentro la cartella specifica della simulazione
+        output_path = os.path.join(base_dir, file_name)
 
         print(f"\nSalvataggio del dataset generato in: {output_path}")
 
@@ -317,7 +333,8 @@ if __name__ == "__main__":
     # Salva il dataset alla fine della simulazione
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
     if ENABLE_MONITORING:
-        output_path_monitor = os.path.join(output_folder, "simulation_dataset.json")
+        monitor_file_name = "simulation_dataset.json"
+        output_path_monitor = os.path.join(base_dir, monitor_file_name)
         with open(output_path_monitor, "w") as f:
             json.dump(simulation_dataset, f, indent=4)
         print("\nDataset dello stato della simulazione salvato in 'simulation_dataset.json'")
@@ -567,7 +584,7 @@ if __name__ == "__main__":
         for entry in getattr(globals, 'gbl_batch_completed', []):
             server_name = entry[9]  # Indice 9 per sel_srv
             task_type = entry[1]  # Indice 1 per task_type
-            energy = entry[17]  # Indice 17 per eps_tot
+            energy = entry[18]  # Indice 18 per eps_tot
 
             if server_name in stats_per_server and task_type == "Batch":
                 stats_per_server[server_name]["task_counts"]["Batch"] += 1

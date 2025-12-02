@@ -133,7 +133,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= eps_cpu
             selected_server.cpu_dev.release(req_cpu)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during CPU Queue", d_cpu)
+                                                 "Insufficient Energy for CPU", d_cpu)
             return
         # ========================================
 
@@ -185,7 +185,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= (eps_cpu + eps_net)
             selected_server.cpu_dev.release(req_cpu)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during CPU Queue", d_cpu)
+                                                 "Insufficient Energy for CPU", d_cpu)
             return
         # ========================================
 
@@ -211,7 +211,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= eps_net
             selected_server.net_dev.release(req_net)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during NET Queue", d_cpu)
+                                                 "Insufficient Energy for NET", d_cpu)
             return
         # ========================================
 
@@ -257,7 +257,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= eps_net
             selected_server.net_dev.release(req_net)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during Batch Queue", d_cpu)
+                                                 "Insufficient Energy for NET", d_cpu)
             return
         # ========================================
 
@@ -708,7 +708,7 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
 
         server_obj.net_dev.release(req)
         server_obj.record_rejected_task(task_id, "Batch", arrival_time_system, image_size_MB,
-                                        "Energy Depleted during Batch Queue", 0.0)
+                                        "Insufficient Energy during Batch Queue", 0.0)
         return
 
     if bw_Bps > 0:

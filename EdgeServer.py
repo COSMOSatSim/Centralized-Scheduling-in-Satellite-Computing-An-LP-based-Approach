@@ -1,5 +1,4 @@
 import globals
-import json5
 from math import sqrt
 import simpy
 from skyfield.api import EarthSatellite

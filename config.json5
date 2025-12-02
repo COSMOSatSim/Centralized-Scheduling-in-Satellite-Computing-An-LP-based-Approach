@@ -7,9 +7,9 @@
   adding_time: 30,
   seed: 9973,
   access_point: 5,
-  arrival_time_exponential: 0.16,
+  arrival_time_exponential: 0.5,
   deadline: 10,
-  initial_energy: 120000,
+  initial_energy: 100000,
   C_sen: {
     min: 10000000.0,
     max: 10000000000.0,
@@ -63,7 +63,7 @@
     distribution: "exponential",
   },
   csv_name: {
-    name: "C:\\Users\\danil\\PycharmProjects\\SECMotionModel\\result\\OrbitAware_sim_SystemAP5\\deadline_10\\Energy_budget_120000\\IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3\\Routing_bidirectional_True\\seed_9973\\r_algo_GREEDY\\results_exponential_REQ-OrbitAware_AT_0.16_CPU_0.05.csv",
+    name: "C:\\Users\\danil\\PycharmProjects\\SECMotionModel\\result\\OrbitAware_sim_SystemAP5\\deadline_10\\Energy_budget_100000\\IMG_RES_bg_0.4_bcpui_0.35_bcpudi_0.25_am_0.3ah_0.5_avh_0.2_gh_0.7_gvh_0.3\\Routing_bidirectional_True\\seed_9973\\r_algo_GREEDY\\results_exponential_REQ-OrbitAware_AT_0.5_CPU_0.05.csv",
   },
   simulation_location: "Roma",
   locations: {
@@ -107,7 +107,7 @@
     alpha_cpu: 1.0,
     alpha_net_J_per_MB: 0.000465,
   },
-  ilp_objective: "hierarchical",
+  ilp_objective: "weighted",
   lexi_primary: "energy",
   lexi_tol: 0.1,
   fallback_retry: {
