@@ -78,6 +78,8 @@ if __name__ == "__main__":
     start_time_simulation_real = time.time()
     env = simpy.Environment()
     config, resolution_config = globals.config, globals.resolution_config
+    print(
+        f"[INFO] Using config file: {globals.config_file_path if hasattr(globals, 'config_file_path') else 'unknown'}")
 
     MaxTry = config.get("max_try", 10)
     r_algo = None
@@ -100,10 +102,6 @@ if __name__ == "__main__":
             process_OGM_enviroment_simulation(configurations_base)
             remove_first_30_configurations(AccPointMode.BASE)
             remove_first_30_configurations(AccPointMode.OPTIMAL)
-
-        config["Build_Configurations"] = False
-        with open('config.json5', 'w') as wf:
-            json5.dump(config, wf, indent=2)
 
         sys.exit("File of configurations created")
 
@@ -297,8 +295,12 @@ if __name__ == "__main__":
 
     # Salvo il nome del CSV nel config per eventuali moduli esterni
     config["csv_name"] = {"name": csv_task}
-    with open('config.json5', 'w') as wf:
+    # Scrivo la config *usata* nella cartella di output della simulazione
+    used_config_path = os.path.join(base_dir, "used_config.json5")
+    os.makedirs(os.path.dirname(used_config_path), exist_ok=True)
+    with open(used_config_path, 'w') as wf:
         json5.dump(config, wf, indent=2)
+    print(f"[INFO] Config salvata in: {used_config_path}")
 
     print(f"--- Avvio simulazione ---")
     print(f"Cartella: {base_dir}")
@@ -315,11 +317,9 @@ if __name__ == "__main__":
     output_folder = "Generated_datasets"
 
     if config.get("save_generated_tasks_dataset", True) and globals.gbl_generated_tasks_data:
-
-        os.makedirs(output_folder, exist_ok=True)
-        # Genera un nome di file basato su seed e durata (per unicità)
         file_name = "generated_tasks_counter.json5"
-        output_path = os.path.join(output_folder, file_name)
+        # Salviamo dentro la cartella specifica della simulazione
+        output_path = os.path.join(base_dir, file_name)
 
         print(f"\nSalvataggio del dataset generato in: {output_path}")
 
@@ -333,7 +333,8 @@ if __name__ == "__main__":
     # Salva il dataset alla fine della simulazione
     ENABLE_MONITORING = config.get("enable_queue_monitoring", False)
     if ENABLE_MONITORING:
-        output_path_monitor = os.path.join(output_folder, "simulation_dataset.json")
+        monitor_file_name = "simulation_dataset.json"
+        output_path_monitor = os.path.join(base_dir, monitor_file_name)
         with open(output_path_monitor, "w") as f:
             json.dump(simulation_dataset, f, indent=4)
         print("\nDataset dello stato della simulazione salvato in 'simulation_dataset.json'")

@@ -133,7 +133,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= eps_cpu
             selected_server.cpu_dev.release(req_cpu)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during CPU Queue", d_cpu)
+                                                 "Insufficient Energy for CPU", d_cpu)
             return
         # ========================================
 
@@ -185,7 +185,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= (eps_cpu + eps_net)
             selected_server.cpu_dev.release(req_cpu)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during CPU Queue", d_cpu)
+                                                 "Insufficient Energy for CPU", d_cpu)
             return
         # ========================================
 
@@ -211,7 +211,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= eps_net
             selected_server.net_dev.release(req_net)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during NET Queue", d_cpu)
+                                                 "Insufficient Energy for NET", d_cpu)
             return
         # ========================================
 
@@ -257,7 +257,7 @@ def TaskAssignment(env, selected_server, task_id, image_size,
             selected_server.energy_reserved -= eps_net
             selected_server.net_dev.release(req_net)
             selected_server.record_rejected_task(task_id, task_type, arrival_time_system, image_size,
-                                                 "Energy Depleted during Batch Queue", d_cpu)
+                                                 "Insufficient Energy for NET", d_cpu)
             return
         # ========================================
 
@@ -668,14 +668,24 @@ def task_type_and_size_generator():
 
 
 def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_system, deadline_relative):
+    print(f"[ENQUEUE_BATCH] Called id={task_id} on {server_obj.name} at time={env.now:.3f}")
+    # in cima a enqueue_batch_in_net
+
+
 
     task_OBS = Task(task_id, server_obj.name, 'OBS', arrival_time_system, "Batch", image_size_MB)
+    print(f"[ENQ_DBG START] id={task_id} server={server_obj.name} at={env.now:.3f}")
+    print(f"  image_size_MB={image_size_MB:.3f}")
     bw_Bps, data_bytes = network_metrics(image_size_MB)
+    print(
+        f"  bw_Bps={bw_Bps:.3f}, data_bytes={data_bytes}, computed d_net={data_bytes / bw_Bps if bw_Bps > 0 else 'inf'}")
     task_OBS.d_net = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
     task_OBS.deadline = arrival_time_system + deadline_relative
     task_OBS.image_size_MB = image_size_MB
 
     eps_net = server_obj.compute_routing_energy(data_bytes, bw_Bps, config.get("Ptrasm", 1.0))
+    print(
+        f"  EPS_NET calc={eps_net:.6f} energy_before={server_obj.energy:.6f} reserved_before={server_obj.energy_reserved:.6f}")
 
     # --- FIX 1: Controllo iniziale energia ---
     if server_obj.energy - server_obj.energy_reserved < eps_net:
@@ -693,9 +703,12 @@ def enqueue_batch_in_net(env, server_obj, task_id, image_size_MB, arrival_time_s
     # --- FIX 2: Check Energia POST-Coda ---
     if server_obj.energy < eps_net:
         server_obj.energy_reserved -= eps_net
+        print(
+            f"[ENQ_DBG SUB] id={task_id} server={server_obj.name} energy_after={server_obj.energy:.6f} reserved_after={server_obj.energy_reserved:.6f}")
+
         server_obj.net_dev.release(req)
         server_obj.record_rejected_task(task_id, "Batch", arrival_time_system, image_size_MB,
-                                        "Energy Depleted during Batch Queue", 0.0)
+                                        "Insufficient Energy during Batch Queue", 0.0)
         return
 
     if bw_Bps > 0:

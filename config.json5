@@ -1,15 +1,16 @@
 {
   simulation_duration: 300,
+  simulation_duration: 300,
   enable_queue_monitoring: true,
   cpu_capacity_queue: 5,
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
   adding_time: 30,
-  seed: 101,
+  seed: 9973,
   access_point: 5,
   arrival_time_exponential: 0.5,
   deadline: 10,
-  initial_energy: 80000,
+  initial_energy: 100000,
   C_sen: {
     min: 10000000.0,
     max: 10000000000.0,
@@ -37,10 +38,11 @@
     },
   },
   request_distribution: {
-    distribution: "DTS-base",
+    distribution: "OrbitAware",
   },
   DTS: true,
   AP_selection: "optimal",
+  SearchNode: "ERT",
   SearchNode: "ERT",
   SEN_selection: "maxSunset",
   required_ram: {
@@ -97,17 +99,19 @@
   Routing_algorithm: {
     BATMAN: false,
     GREEDY: true,
+    BATMAN: false,
+    GREEDY: true,
     DSR: false,
   },
   ilp_weights: {
-    w_e: 0.7,
-    w_R: 0.3,
+    w_e: 0.3,
+    w_R: 0.7,
   },
   ilp_alpha: {
     alpha_cpu: 1.0,
     alpha_net_J_per_MB: 0.000465,
   },
-  ilp_objective: "hierarchical",
+  ilp_objective: "weighted",
   lexi_primary: "energy",
   lexi_tol: 0.1,
   fallback_retry: {

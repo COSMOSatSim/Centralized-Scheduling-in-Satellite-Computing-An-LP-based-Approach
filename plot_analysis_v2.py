@@ -38,6 +38,27 @@ print(f"Filtri globali applicati: {GLOBAL_FILTERS}")
 # FUNZIONI HELPER
 # ----------------------------------------------------------------------
 
+def disambiguate_solvers(df):
+    """
+    Se il solver è ILP e ci sono colonne w_e/w_R, rinomina il solver
+    in 'ILP (0.7, 0.3)' per separarli nei grafici.
+    """
+    if df is None or df.empty:
+        return df
+
+    # Verifica se le colonne esistono
+    if 'w_e' in df.columns and 'w_R' in df.columns:
+        # Crea una maschera per le righe ILP che hanno i pesi definiti
+        mask = (df['solver'] == 'ILP') & (df['w_e'].notna()) & (df['w_R'].notna())
+
+        if mask.any():
+            print("  Disambiguazione ILP in corso...")
+            # Applica la rinomina: ILP -> ILP (we=0.7, wR=0.3)
+            df.loc[mask, 'solver'] = df.loc[mask].apply(
+                lambda row: f"ILP ($w_e$={row['w_e']}, $w_R$={row['w_R']})", axis=1
+            )
+    return df
+
 def apply_filters(df, filters):
     """Applica i filtri globali al DataFrame."""
     if df is None or df.empty:
@@ -92,52 +113,64 @@ def create_line_plot_with_errors(
         df_stats['Algorithms'] = df_stats['solver']
 
         if use_precomputed_errors:
-            # Assicuriamoci di avere una riga per (Algorithms, x_col)
+            # 1. Preparazione Dati
             df_plot = df_stats.drop_duplicates(subset=['Algorithms', x_col]).copy()
-
             unique_algorithms = sorted(df_plot['Algorithms'].unique())
+
+            # 2. Palette Dinamica: Assegna un COLORE diverso a OGNI nome completo
+            # (es. ILP 0.7 avrà un colore diverso da ILP 0.5)
             palette = dict(zip(unique_algorithms, sns.color_palette(PALETTE, len(unique_algorithms))))
 
-            # Creiamo un dizionario di stili (linestyle e marker) basato su Seaborn,
-            # dato che seaborn.lineplot non viene più chiamato.
-            # Esempio di stili (da adattare se non sono gli stessi di Seaborn per DTS-APopt, ILP, ecc.)
-            styles = {
-                'DTS-APopt': {'marker': 'o', 'ls': '-', 'color': palette[unique_algorithms[0]]},
-                'DTS-base': {'marker': 'x', 'ls': '--', 'color': palette[unique_algorithms[1]]},
-                'ILP': {'marker': 's', 'ls': ':', 'color': palette[unique_algorithms[2]]},
-                # 's' = square, ':', = dotted
-                'OrbitAware': {'marker': 'D', 'ls': '--', 'color': palette[unique_algorithms[3]]}  # 'D' = diamond
+            # 3. Definizione Stili BASE (Famiglie): Definisce solo Marker e Linea
+            base_styles = {
+                'DTS-APopt': {'marker': 'o', 'ls': '-'},  # Cerchio, Solida
+                'DTS-base': {'marker': 'x', 'ls': '--'},  # X, Tratteggiata
+                'ILP': {'marker': 's', 'ls': ':'},  # Quadrato, Puntinata (Dotted)
+                'OrbitAware': {'marker': 'D', 'ls': '-.'}  # Diamante, Dash-dot
             }
 
-            # --- NON CHIAMARE sns.lineplot QUI ---
-
-            # === PASSO 1: Disegna Linea, Marker, Cap e Errore (tutto in uno) ===
+            # === PASSO 1: Disegno con logica "Contiene" ===
             for algorithm in unique_algorithms:
                 subset = df_plot[df_plot['Algorithms'] == algorithm]
                 if subset.empty:
                     continue
 
-                style = styles.get(algorithm)
-                if not style:
-                    continue  # Salta se lo stile non è definito
+                # -- Logica di Matching Dinamico --
+                # Default (se qualcosa non matcha nulla)
+                marker = 'o'
+                ls = '-'
+
+                # Cerchiamo se il nome dell'algoritmo (es. "ILP (we=0.7...)")
+                # CONTIENE una delle chiavi base (es. "ILP")
+                found_style = False
+                for key, props in base_styles.items():
+                    if key in algorithm:
+                        marker = props['marker']
+                        ls = props['ls']
+                        found_style = True
+                        break
+
+                # Opzionale: Se vuoi saltare algoritmi non riconosciuti, scommenta qui:
+                # if not found_style: continue
+
+                # Il colore lo prendiamo dalla palette specifica per QUESTA variante precisa
+                color = palette[algorithm]
 
                 x_vals = pd.to_numeric(subset[x_col], errors='coerce').values
                 y_vals = pd.to_numeric(subset[y_col_mean], errors='coerce').values
                 y_errs = pd.to_numeric(subset[y_col_error], errors='coerce').values
 
-                # ax.errorbar disegna marker (fmt), linea (ls), errore (yerr) e cap (capsize)
                 ax.errorbar(
                     x_vals, y_vals, yerr=y_errs,
-                    # Imposta fmt come stringa che include marker ('o' o 's', etc.) e linestyle ('-' o '--', etc.)
-                    # Ad esempio: 'o-' (cerchio con linea solida), 'x--' (x con linea tratteggiata)
-                    fmt=style['marker'] + style['ls'],
+                    fmt=marker + ls,  # Combina marker e stile linea (es. 's:')
                     capsize=5,
-                    color=style['color']['color'] if isinstance(style['color'], dict) else style['color'],
+                    color=color,  # Usa il colore specifico della variante
                     elinewidth=1.8,
-                    label=algorithm  # Aggiunge l'etichetta per la legenda
+                    label=algorithm,  # Nome completo per la legenda
+                    markersize=6
                 )
 
-            # Ridisegniamo la legenda manualmente ora che lineplot non la gestisce più
+            # Ridisegniamo la legenda
             ax.legend(title=legend_title)
 
             x_ticks = sorted(df_plot[x_col].unique())
@@ -690,6 +723,9 @@ def main():
 
     df_results_raw = dataframes.get("results")
     df_energy_raw = dataframes.get("energy")
+
+    df_results_raw = disambiguate_solvers(df_results_raw)
+    df_energy_raw = disambiguate_solvers(df_energy_raw)
 
     if df_results_raw is None or df_results_raw.empty:
         print("ERRORE: 'MERGED_all_results.csv' non trovato o vuoto. Impossibile continuare.")
