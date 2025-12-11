@@ -236,7 +236,6 @@ if __name__ == "__main__":
     ap_selection = config["AP_selection"]
     energy_budget = config["initial_energy"]
     deadline = config["deadline"]
-    ilp_w_e, ilp_w_R = config["ilp_weights"]["w_e"], config["ilp_weights"]["w_R"]
     complete_sim_solver = None
 
     if req_dist == "DTS-base" and ap_selection == "base" and solver == "ERT":
@@ -262,10 +261,34 @@ if __name__ == "__main__":
 
     # Cartella base: include modalità, AP e seed
     base_dir = ""
-    if complete_sim_solver == "ILP":
-        base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/w_e{ilp_w_e}_wR_{ilp_w_R}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/we_{ilp_w_e}_wR_{ilp_w_R}/"
-    else:
+    if complete_sim_solver != "ILP":
         base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
+    else:
+        # Se siamo nell'ILP dobbiamo verificare che tipo di ILP è
+        objective, mode = "", ""
+        if config["ilp_objective"] == "hierarchical":
+            
+            objective = "hierarchical"
+            if config["lexi_primary"] == "energy":
+                mode = "energy"
+            elif config["lexi_primary"] == "time":
+                mode = "time"
+            else:
+                sys.exit(f"[Error] 'mode' non è definito correttamente.")
+        
+        elif config["ilp_objective"] == "weighted":
+            objective = "weighted"
+
+            w_e = config["ilp_weights"]["w_e"]
+            w_R = config["ilp_weights"]["w_R"]
+
+            mode = f"w_e_{w_e}_w_R_{w_R}"
+
+        else:
+            sys.exit(f"[Error] 'ilp_objective' non è definito correttamente.")
+        
+        base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/{objective}/{mode}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
+
     os.makedirs(base_dir, exist_ok=True)
 
     # File CSV e log con nomenclatura completa

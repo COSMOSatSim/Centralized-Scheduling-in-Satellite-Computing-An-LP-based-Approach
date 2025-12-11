@@ -111,7 +111,7 @@
     alpha_cpu: 1.0,
     alpha_net_J_per_MB: 0.000465,
   },
-  ilp_objective: "weighted",
+  ilp_objective: "hierarchical",
   lexi_primary: "energy",
   lexi_tol: 0.1,
   fallback_retry: {
