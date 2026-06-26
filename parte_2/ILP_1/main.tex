@@ -1,0 +1,232 @@
+\documentclass[12pt]{article}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{hyperref}
+\usepackage{varioref}
+\usepackage{caption} % Pacchetto per modificare la didascalia
+\usepackage{subcaption}
+\usepackage{authblk}
+\captionsetup{font=footnotesize}
+\usepackage{tikz}
+\usepackage{tabularx}
+\usepackage[export]{adjustbox}
+\usepackage{placeins}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{mathpazo}
+\usepackage{ragged2e}
+\hyphenpenalty=5000
+\exhyphenpenalty=5000
+\renewcommand{\arraystretch}{1.5} % Aumenta l'altezza delle celle
+\usepackage{changepage}  % permette adjustwidth
+\hypersetup{
+    colorlinks,
+    linkcolor={black!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+}
+
+
+
+
+\title{
+\textbf{Satellite Computing} \\[0.5em]
+\textbf{ILP (Weighted) per sistema centralizzato} \\[1em]
+}
+
+\author{Claudio Bagini 2045337}
+\date{14 Maggio 2026}
+
+
+\begin{document}
+\maketitle
+
+
+\section{Introduzione}
+
+L'evoluzione tecnologica nel settore delle telecomunicazioni e dell'ingegneria aerospaziale ha guidato la transizione verso il paradigma del \textit{Satellite Edge Computing} (SEC). In questa architettura, le moderne costellazioni di satelliti in orbita bassa (\textit{Low Earth Orbit} - LEO) non fungono pi\`u da meri ripetitori trasparenti di segnale, ma sono configurate come veri e propri data center orbitanti dotati di capacit\`a computazionali e di memorizzazione a bordo (\textit{On-Board Processing} - OBP).
+
+Tuttavia, l'ambiente spaziale impone vincoli fisici e operativi estremamente severi. I nodi satellitari dispongono di un \textit{Energy Budget} limitato, vincolato dai cicli di ricarica dei pannelli solari e dall'efficienza delle batterie di bordo. Inoltre, la natura dinamica delle orbite LEO comporta una topologia di rete ad altissima variabilit\`a, in cui le distanze relative cambiano costantemente, alterando la qualit\`a dei canali di comunicazione e riducendo le finestre di visibilit\`a utile verso le stazioni di terra (\textit{Ground Stations}).
+
+Il presente lavoro formalizza un modello di ottimizzazione centralizzato basato sulla \textbf{Programmazione Lineare Intera (ILP)}. L'architettura prevede la presenza di un satellite \textbf{Coordinatore di Zona (Master)} che centralizza le richieste di servizio (task) in ingresso e agisce da decisore intelligente per un insieme di satelliti locali, denominati \textit{Satellite Edge Nodes} (SEN). Il Master deve determinare la politica ottima di allocazione bilanciando due obiettivi intrinsecamente in contrasto: la minimizzazione del consumo energetico globale e la riduzione del tempo medio di risposta del servizio.
+
+Il modello proposto è caratterizzato dall'integrazione dei seguenti vincoli fisici:
+\begin{itemize}
+    \item \textbf{Modello di Coda Deterministico:} Computazione dei tempi di attesa basata sullo stato di carico effettivo dei processori e delle interfacce di rete del sistema.
+    \item \textbf{Banda Condivisa dell'Hardware:} Modellazione del collo di bottiglia fisico sul canale di trasmissione in uscita (\textit{Inter-Satellite Link} - ISL) condiviso del Master.
+    \item \textbf{Rifiuto Flessibile dei Task (\textit{Task Rejection}):} Gestione degli scenari di saturazione e congestione tramite un approccio a penalit\`a variabile nella funzione obiettivo.
+    \item \textbf{Mobilit\`a e Handover Predittivi:} Valutazione dinamica delle distanze future per minimizzare il rischio che un SEN (rispetto al Master) o il Master stesso (rispetto alla Terra) escano dal range di copertura prima del completamento e della consegna del pacchetto dati.
+\end{itemize}
+
+\section{Formulazione Matematica del Modello ILP}
+
+Di seguito viene esposta la formalizzazione matematica completa del problema di ottimizzazione risolto dal Master di zona $M_k$.
+
+\subsection{Insiemi e Indici}
+\begin{itemize}
+    \item $\mathcal{R}_k$: Insieme dei servizi/task arrivati al Coordinatore $M_k$ (indicizzati da $r$).
+    \item $\mathcal{S}_k$: Insieme dei satelliti locali (SEN) controllati dal Master $M_k$ (indicizzati da $i$).
+    \item $\mathcal{N}_k$: Insieme dei Master vicini operanti nelle zone adiacenti (indicizzati da $j$).
+\end{itemize}
+
+\subsection{Variabili di Decisione}
+Le scelte allocative del Master per ciascun task $r \in \mathcal{R}_k$ sono espresse tramite variabili binarie:
+\begin{itemize}
+    \item $x_{r,i} \in \{0, 1\}$: Vale $1$ se il task $r$ viene assegnato ed eseguito dal SEN locale $i \in \mathcal{S}_k$; $0$ altrimenti.
+    \item $z_{r,j} \in \{0, 1\}$: Vale $1$ se il task $r$ viene inoltrato al Master adiacente $j \in \mathcal{N}_k$; $0$ altrimenti.
+\end{itemize}
+Se per un determinato task si ha $\sum_{i} x_{r,i} + \sum_{j} z_{r,j} = 0$, il task viene esplicitamente \textbf{rifiutato} dal sistema per preservare l'integrit\`a dei vincoli fisici.
+
+\subsection{Parametri del Modello}
+\begin{itemize}
+    \item $w_e, w_R \in [0,1]$: Pesi di importanza relativi all'energia e al tempo di risposta ($w_e + w_R = 1$).
+    \item $P_r$: Penalit\`a associata al rifiuto del task $r$ ($P_r \gg 1$).
+    \item $P_i$: Penalit\`a associata all'inoltro del task $r$.
+    \item $b^{isl}$: Larghezza di banda del link inter-satellitare condiviso dal Master.
+    \item $s_r$: Dimensione del file associato al servizio $r$.
+    \item $D_r$: Tempo massimo di completamento (\textit{deadline}) consentito per il task $r$.
+    \item $B_i$: Budget energetico residuo a bordo del SEN $i$.
+    \item $\Omega$: Fattore di riluttanza volto a prioritizzare l'elaborazione locale rispetto all'inoltro esterno.
+    \item $\Gamma_{r,i}$: Coefficiente di rischio di connettiv\`at\`a basato sulla distanza stimata tra SEN $i$ e Master al tempo di completamento del calcolo.
+    \item $\Lambda_{r,i}$: Coefficiente di rischio di handover basato sulla visibilit\`a residua tra il Master $M_k$ e la stazione di terra al termine dell'operazione.
+\end{itemize}
+
+\subsection{Analisi e Dettaglio dei Modelli di Costo e di Rete}
+
+
+\subsubsection{Modello Energetico (Energy Consumption Model)}
+Il consumo energetico associato alla gestione di un task si divide in energetico locale (computazione e trasmissione al SEN) ed energetico di inoltro (tra Master).
+\begin{itemize}
+    \item \textbf{Energia di Computazione Locale ($e_{r,i}^{\text{cpu}}$):} Rappresenta i Joule spesi dalla CPU del satellite $i$ per elaborare il task $r$:
+    \begin{equation}
+    e_{r,i}^{\text{cpu}} = e \cdot c_{r,i}^{\text{cpu}} \cdot C_i^3
+    \end{equation}
+    dove $e$ \`e il coefficiente energetico strutturale del chip, $c_{r,i}^{\text{cpu}}$ indica la richiesta di cicli CPU del task e $C_i$ \`e la frequenza operativa allocata sul SEN $i$.
+    
+    \item \textbf{Energia di Rete Locale ($e_{r,i}^{\text{net}}$):} Il consumo legato alla trasmissione downlink/uplink del Master verso il SEN $i$:
+    \begin{equation}
+    e_{r,i}^{\text{net}} = P_{\text{net}} \cdot c_{r,i}^{\text{net}}
+    \end{equation}
+    con $P_{\text{net}}$ pari alla potenza di trasmissione e $c_{r,i}^{\text{net}}$ equivalente al tempo di occupazione del canale radio.
+    
+    \item \textbf{Energia Locale Totale ($e_{r,i}^{\text{loc}}$):} La somma lineare delle due componenti precedenti:
+    \begin{equation}
+    e_{r,i}^{\text{loc}} = e_{r,i}^{\text{cpu}} + e_{r,i}^{\text{net}}
+    \end{equation}
+    
+    \item \textbf{Energia di Inoltro Inter-Zona ($e_{r,j}^{\text{fwd}}$):} Spesa dal Master attuale per instradare il file del task di dimensione $s_r$ verso il Master vicino $j$ tramite link ISL con banda $b^{\text{isl}}$:
+    \begin{equation}
+    e_{r,j}^{\text{fwd}} = P_{\text{net}} \cdot \frac{s_r}{b^{\text{isl}}}
+    \end{equation}
+\end{itemize}
+
+\subsubsection{Modello dei Tempi di Risposta e delle Code (Response Time Model)}
+Il tempo totale di risposta si basa su modelli di accodamento deterministici sia per la componente computazionale che per quella di rete.
+\begin{itemize}
+    \item \textbf{Tempo di Risposta Locale ($R_{r,i}^{\text{loc}}$):} Tempo end-to-end richiesto per l'assegnazione locale:
+    \begin{equation}
+    R_{r,i}^{\text{loc}} = W_{r,i}^{\text{cpu}} + c_{r,i}^* + W_{r,i}^{\text{net}} + c_{r,i}^{\text{net}}
+    \end{equation}
+    
+    \item \textbf{Tempo di Attesa in Coda CPU ($W_{r,i}^{\text{cpu}}$):} Tempo speso nel buffer del processore del SEN $i$:
+    \begin{equation}
+    W_{r,i}^{\text{cpu}} = \sum_{k \in Q_i^{\text{cpu}}} c_{k,i}^* + 0.5 c_{r,i}^*
+    \end{equation}
+    Il termine di computazione $c_{k,i}^*$ spazia su tutti i task gi\`a presenti nella coda $Q_i^{\text{cpu}}$, mentre il fattore $0.5 c_{r,i}^*$ approssima il tempo residuo medio del task attualmente in esecuzione.
+    
+    \item \textbf{Tempo di Attesa in Coda Network ($W_{r,i}^{\text{net}}$):} Tempo speso nella coda dell'interfaccia di rete (verso ISL o verso Terra):
+    \begin{equation}
+    W_{r,i}^{\text{net}} = \sum_{h \in Q_i^{\text{isl/grn}}} c_{h,i}^{\text{net}} + 0.5 c_{r,i}^{\text{net}}
+    \end{equation}
+\end{itemize}
+
+\subsubsection{Definizione Dinamica della Deadline}
+La tolleranza temporale di un task viene calcolata proporzionalmente al suo tempo di servizio nominale:
+\begin{equation}
+D_r = (1 + \gamma_D) \cdot \left( c_{r,i}^{\text{gen/cpu}} + c_{r,i}^{\text{net}} \right)
+\end{equation}
+Il parametro $\gamma_D \in [0, 1]$ rappresenta il fattore di \textit{overtime} (o di tolleranza). Una configurazione con $\gamma_D = 0$ impone una deadline rigida pari al tempo minimo di esecuzione, mentre valori prossimi a $1$ concedono un ampio margine di ritardo dovuto all'accodamento.
+
+\subsubsection{Modello di Risposta per l'Inoltro (Forwarding Estimation)}
+Quando il Master decide di esternalizzare il task alla zona adiacente $j$, il tempo di risposta stimato si scompone in:
+\begin{equation}
+R_{r,j}^{\text{fwd}} = T_{\text{fwd}}(M_k, M_j) + R_{\text{rem}}(r, M_j)
+\end{equation}
+\begin{itemize}
+    \item \textbf{Tempo di Instradamento ($T_{\text{fwd}}$):} Tempo richiesto per spostare fisicamente il pacchetto dati tra i due Master:
+    \begin{equation}
+    T_{\text{fwd}}(M_k, M_j) = \frac{d(M_k, M_j, t)}{300.000} + \frac{s_r}{b^{\text{isl}}} + W_{r,k}^{\text{net}}
+    \end{equation}
+    Include il ritardo di propagazione (distanza geometrica divisa per la velocit\`a della luce espressa come $300.000 \text{ km/s}$), il ritardo di trasmissione hardware ($\frac{s_r}{b^{\text{isl}}}$) e il tempo di attesa nella coda di rete del Master attuale ($W_{r,k}^{\text{net}}$).
+    
+    \item \textbf{Tempo di Risposta Remoto Stimato ($R_{\text{rem}}$):} La stima di quanto la zona $j$ impiegher\`a a processare il task, basata sui parametri medi inviati dal Master $j$:
+    \begin{equation}
+    \text{R}_{\text{rem}}(r, M_j) = \left( \bar{W}_j^{\text{cpu}} + \bar{W}_j^{\text{net}} \right) + \left( \bar{c}_{r,j}^* + \bar{c}_{r,j}^{\text{net}} \right)
+    \end{equation}
+\end{itemize}
+
+\subsubsection{Coefficiente di Mobilit\`a e Handover ($\Gamma_{r,i} , \Lambda_{r,i}$)}
+Per evitare perdite di pacchetti dovute al movimento orbitale dei nodi, viene introdotto il coefficiente di prossimit\`a al limite di range $\Gamma_{r,i}, \Lambda_{r,i}$:
+\begin{equation}
+\Gamma_{r,i} , \Lambda_{r,i} = \frac{d(M_k, \text{TARGET}, t_0 + R_{r,i})}{d_{\text{max}}}
+\end{equation}
+Questo parametro calcola la distanza geometrica tra il Master $M_k$ e il suo $\text{TARGET}$ (es. la Ground Station) proiettata nel futuro, precisamente al timestamp di fine calcolo ($t_0 + R_{r,i}$). Dividendo per la distanza massima di comunicazione consentita ($d_{\text{max}}$):
+\begin{itemize}
+    \item Se $\Gamma_{r,i} , \Lambda_{r,i} \to 1$, il sistema si trova in una condition di elevato rischio di disconnessione causata dal movimento orbitale, inducendo la funzione obiettivo a penalizzare l'opzione locale a favore di un inoltro preventivo o dello scarto guidato del task.
+\end{itemize}
+
+
+\subsection{Funzione Obiettivo Multi-Target}
+L'obiettivo risiede nella minimizzazione del costo complessivo della zona, includendo i costi energetici e temporali normalizzati, i rischi legati alla mobilit\`a e le penali di scarto:
+
+\begin{equation}
+\begin{aligned}
+\min Z = \sum_{r \in \mathcal{R}_k} \Bigg[ & \sum_{i \in \mathcal{S}_k} x_{r,i} \left( w_e \widehat{\epsilon}_{r,i}^{\text{loc}} + w_R \widehat{R}_{r,i}^{\text{loc}} + \gamma \Gamma_{r,i} + \lambda \Lambda_{r,i} \right) \\
++ & \sum_{j \in \mathcal{N}_k} z_{r,j} \left( w_e \widehat{\epsilon}_{r,j}^{\text{fwd}} + w_R \widehat{R}_{r,j}^{\text{fwd}} + \Omega \right) \\
++ & P_r \left( 1 - \sum_{i \in \mathcal{S}_k} x_{r,i} - \sum_{j \in \mathcal{N}_k} z_{r,j} \right) \Bigg]
+\end{aligned}
+\end{equation}
+Dove i termini contrassegnati dal simbolo $\widehat{(\cdot)}$ rappresentano le grandezze opportunamente normalizzate nell'intervallo $[0,1]$ per garantirne l'omogeneit\`a matematica all'interno della sommatoria pesata.
+
+\subsection{Vincoli del Modello}
+
+\begin{enumerate}
+    \item \textbf{Ammissibilit\`a Decisionale:} Garantisce l'unicit\`a dell'assegnazione o l'eventuale rifiuto controllato del task:
+    \begin{equation}
+    \sum_{i \in \mathcal{S}_k} x_{r,i} + \sum_{j \in \mathcal{N}_k} z_{r,j} \leq 1, \quad \forall r \in \mathcal{R}_k
+    \end{equation}
+
+    \item \textbf{Energy Budget dei Nodi:} Impedisce il superamento della capacit\`a energetica residua della batteria del SEN $i$:
+    \begin{equation}
+    \sum_{r \in \mathcal{R}_k} x_{r,i} \cdot \epsilon_{i,r}^{\text{cpu}} \leq B_i, \quad \forall i \in \mathcal{S}_k
+    \end{equation}
+
+    \item \textbf{Capacit\`a di Banda Condivisa (Output Master):} Modella l'interfaccia radio condivisa del Master come collo di bottiglia trasmissivo globale entro la finestra temporale di pianificazione $\Delta T$:
+    \begin{equation}
+    \sum_{r \in \mathcal{R}_k} \left( \frac{s_r}{b^{isl}} \right) \left( \sum_{i \in \mathcal{S}_k} x_{r,i} + \sum_{j \in \mathcal{N}_k} z_{r,j} \right) \leq \Delta T
+    \end{equation}
+
+    \item \textbf{Deadline per l'Elaborazione Locale:} Forza il completamento del task locale (comprensivo dei tempi di coda deterministici) entro la scadenza pattuita:
+    \begin{equation}
+    x_{r,i} \cdot R_{i,r}^{\text{loc}} \leq D_r, \quad \forall r \in \mathcal{R}_k, \, \forall i \in \mathcal{S}_k
+    \end{equation}
+
+    \item \textbf{Deadline per l'Inoltro Inter-Zona:} Vincola il tempo stimato di instradamento ed esecuzione remota rispetto alla deadline del servizio:
+    \begin{equation}
+    z_{r,j} \cdot \left( T_{\text{fwd}}(M_k, M_j) + R_{\text{remoto}}(r, M_j) \right) \leq D_r, \quad \forall r \in \mathcal{R}_k, \, \forall j \in \mathcal{N}_k
+    \end{equation}
+
+    \item \textbf{Capacit\`a delle Risorse Hardware:} Rispetto dei limiti fisici di memoria RAM ($M_i$) e storage volumetrico ($V_i$) presenti a bordo di ciascun SEN:
+    \begin{equation}
+    \sum_{r \in \mathcal{R}_k} x_{r,i} \cdot m_r \leq M_i, \quad \forall i \in \mathcal{S}_k
+    \end{equation}
+    \begin{equation}
+    \sum_{r \in \mathcal{R}_k} x_{r,i} \cdot v_r \leq V_i, \quad \forall i \in \mathcal{S}_k
+    \end{equation}
+\end{enumerate}
+
+
+\end{document}

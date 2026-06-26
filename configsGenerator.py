@@ -15,26 +15,20 @@ mu_cpui_mean = [0.5] # mu : CPU_timeout cpui mean
 # dts_algorithm = ["DTS-base", "OrbitAware"]                              # Algoritmo di selezione AP, searchNode e selezione SEN
 # ap_selection = ["base", "optimal"]                                      # Selezione AP
 
-scheduling_algorithm = [("DTS-base","DTS-base","base","ERT"), 
+scheduling_algorithm = [("ILP-Centralized","DTS-base","optimal","ILP-Centralized")]  # Algoritmo di scheduling
+
+'''scheduling_algorithm = [("DTS-base","DTS-base","base","ERT"), 
                         ("DTS-APopt","DTS-base","optimal","ERT"),
                         ("OrbitAware","OrbitAware","optimal","ERT"), 
                         ("ILP-Hierarchical","DTS-base","optimal","ILP"),
-                        ("ILP-Weighted","DTS-base","optimal","ILP")]
-
+                        ("ILP-Weighted","DTS-base","optimal","ILP"),
+                        ("ILP-Centralized","DTS-base","optimal","ILP-Centralized")] '''
 
 lexi_primary = ["energy", "time"]                                          # Priorità ILP
 
-# ARRIVAL RATE
-# 2 = 0,5
-# 3 = 0.33
-# 4 = 0.25
-# 6 = 0.16
-# 8 = 0.125
-# 10 = 0.1
-arrival_rate = [0.5, 0.25, 0.16, 0.125, 0.1]
-
+arrival_rate = [0.5, 0.33, 0.25, 0.16, 0.125, 0.1] # da 2 a 10 req/sec
 deadline = [10]
-energy_budget = [80000, 100000, 120000, 200000]
+energy_budget = [80000]
 
 ilp_weights = [
     (0.7, 0.3),
@@ -44,14 +38,20 @@ ilp_weights = [
 
 # -- IMG RES -- #
 beta_list = [(0.4, 0.35, 0.25)]                         # Beta
-alpha_list = [(0.3, 0.5, 0.2)]                          # Alpha
+alpha_list = [(0.3,0.5,0.2)]                          # Alpha
 gamma_list = [(0.7, 0.3)]                               # Gamma
 
+# === NUOVI PARAMETRI ILP CENTRALIZZATO ===
+centralized_batch_size = [2,4,6,8,10] #range di valori per simulazioni successive [2, 4, 6, 8, 10]
+centralized_batch_timeout = [2]     #>2 sec per prossime simulazioni          
+centralized_lexi_tol = [0.1]
+centralized_dijkstra_weights = [(1, 0), (0, 1)]   # (w_r, w_e) Pesi per il Dijkstra del Centralizzato
+centralized_primary_objective = ["time", "energy"]  # Obiettivo primario per il Centralizzato
+# =========================================
 
 OUTPUT_DIR_CONFIG = "SIMS_SETS"
 OUTPUT_DIR_IMG_RESOLUTION = "SIMS_IMG_RESOLUTIONS"
-os.makedirs(OUTPUT_DIR_CONFIG, exist_ok=True)  # Controllo l'esistenza del PATH
-# Controllo l'esistenza del PATH
+os.makedirs(OUTPUT_DIR_CONFIG, exist_ok=True)  
 os.makedirs(OUTPUT_DIR_IMG_RESOLUTION, exist_ok=True)
 
 
@@ -88,83 +88,115 @@ def gen_configs():
                                         for apb in apBIDIR:
                                             for lx_prm in lexi_primary:
                                                 for w_e, w_R in ilp_weights:
-                                                    cfg = CONFIG.copy()
+                                                    # --- 1. NUOVI CICLI FOR ---
+                                                    for c_priority in centralized_primary_objective:
+                                                        for batch_sz in centralized_batch_size:
+                                                            for batch_tm in centralized_batch_timeout:
+                                                                for c_tol in centralized_lexi_tol:
+                                                                    for c_w_r, c_w_e in centralized_dijkstra_weights:
+                                                                        
+                                                                        cfg = CONFIG.copy()
 
-                                                    cfg["seed"] = s
-                                                    cfg["Routing_algorithm"] = {
-                                                        "BATMAN": batman,
-                                                        "GREEDY": greedy,
-                                                        "DSR": dsr,
-                                                    }
-                                                    cfg["Routing_Interval"] = rout_int
-                                                    cfg["AP_routing_bidirectional"] = apb
+                                                                        cfg["seed"] = s
+                                                                        cfg["Routing_algorithm"] = {
+                                                                            "BATMAN": batman,
+                                                                            "GREEDY": greedy,
+                                                                            "DSR": dsr,
+                                                                        }
+                                                                        cfg["Routing_Interval"] = rout_int
+                                                                        cfg["AP_routing_bidirectional"] = apb
 
-                                                    # Mu
-                                                    cfg["CPU_timeout"]["gen"]["mean"] = m_g_m
-                                                    cfg["CPU_timeout"]["cpui"]["mean"] = m_cpui_m
-                                                    
-                                                    cfg["request_distribution"]["distribution"] = scheduling_algo   # DTS Algorithm
-                                                    cfg["AP_selection"] = ap_selection                              # AP Selection
-                                                    cfg["SearchNode"] = searchNode                                  # SearchNode
-                                                        
-                                                    # Arrival Rate
-                                                    cfg["arrival_time_exponential"] = ar_rate
-                                                    cfg["deadline"] = deadl # Deadline
-                                                    cfg["initial_energy"] = ener_bud # Energy Budget                               
-                                                    
-                                                    
+                                                                        # Mu
+                                                                        cfg["CPU_timeout"]["gen"]["mean"] = m_g_m
+                                                                        cfg["CPU_timeout"]["cpui"]["mean"] = m_cpui_m
+                                                                        
+                                                                        cfg["request_distribution"]["distribution"] = scheduling_algo   
+                                                                        cfg["AP_selection"] = ap_selection                              
+                                                                        cfg["SearchNode"] = searchNode                                  
+                                                                            
+                                                                        # Arrival Rate & Energy
+                                                                        cfg["arrival_time_exponential"] = ar_rate
+                                                                        cfg["deadline"] = deadl 
+                                                                        cfg["initial_energy"] = ener_bud 
 
-                                                    config_file = ""
-                                                    if searchNode != "ILP":
-                                                        config_file = (
-                                                            f"settings_"
-                                                            f"seed_{s}_"
-                                                            f"{label}_"
-                                                            f"Arr_Rate_{ar_rate}_"
-                                                            f"mu_gen_{m_g_m}_"
-                                                            f"mu_cpui_{m_cpui_m}_"
-                                                            f"Rout_Algo_{rout_algo}_"
-                                                            f"Rout_interv_{rout_int}_"
-                                                            f"apb_{apb}_"
-                                                            f"deadline_{deadl}_"
-                                                            f"energy_budget_{ener_bud}.json5"
-                                                        )
-                                                    else:
-                                                        # Creo le simulazioni per Lexi Primary ILP Hierarchicallabel
-                                                        mode = ""
-                                                        # Setto le impostazioni dell'ILP
-                                                        if label == "ILP-Hierarchical":
-                                                            cfg["ilp_objective"] = "hierarchical"
-                                                            cfg["lexi_primary"] = lx_prm
-                                                            mode = lx_prm
-                                                        elif label == "ILP-Weighted":
-                                                            cfg["ilp_objective"] = "weighted"
-                                                            cfg["ilp_weights"]["w_e"] = w_e
-                                                            cfg["ilp_weights"]["w_R"] = w_R
-                                                            mode = f"{w_e}_{w_R}"
+                                                                        # --- 2. ASSEGNAZIONE NUOVI PARAMETRI ---
+                                                                        cfg["centralized_batch_size"] = batch_sz
+                                                                        cfg["centralized_batch_timeout"] = batch_tm
+                                                                        cfg["centralized_lexi_tol"] = c_tol
+                                                                        
+                                                                        # Pesi Dijkstra Centralizzato
+                                                                        cfg["centralized_w_r"] = c_w_r
+                                                                        cfg["centralized_w_e"] = c_w_e
+                                                                        
+                                                                        cfg["centralized_primary_objective"] = c_priority
+                                                                        
+                                                                        # FIX BANDA: Assicura che la modifica vitale per il downlink venga iniettata
+                                                                        cfg["Bandwidth_to_GU_Bps"] = 35000000
+                                                                        
+                                                                        config_file = ""
+                                                                        if searchNode != "ILP":
+                                                                            # --- 3A. AGGIORNAMENTO NOME FILE (Standard) ---
+                                                                            config_file = (
+                                                                                f"settings_"
+                                                                                f"seed_{s}_"
+                                                                                f"{label}_"
+                                                                                f"Arr_Rate_{ar_rate}_"
+                                                                                f"mu_gen_{m_g_m}_"
+                                                                                f"mu_cpui_{m_cpui_m}_"
+                                                                                f"Rout_Algo_{rout_algo}_"
+                                                                                f"Rout_interv_{rout_int}_"
+                                                                                f"apb_{apb}_"
+                                                                                f"deadline_{deadl}_"
+                                                                                f"energy_budget_{ener_bud}_"
+                                                                                f"batch_{batch_sz}_"
+                                                                                f"timeout_{batch_tm}_"
+                                                                                f"tol_{c_tol}_"
+                                                                                f"Dijk_{c_w_r}_{c_w_e}.json5" # <--- Aggiunto
+                                                                            )
+                                                                        else:
+                                                                            mode = ""
+                                                                            if label == "ILP-Hierarchical":
+                                                                                cfg["ilp_objective"] = "hierarchical"
+                                                                                cfg["lexi_primary"] = lx_prm
+                                                                                mode = lx_prm
+                                                                            elif label == "ILP-Weighted":
+                                                                                cfg["ilp_objective"] = "weighted"
+                                                                                cfg["ilp_weights"]["w_e"] = w_e
+                                                                                cfg["ilp_weights"]["w_R"] = w_R
+                                                                                mode = f"{w_e}_{w_R}"
+                                                                            elif label == "ILP-Centralized":
+                                                                                # --- GESTIONE SPECIFICA CENTRALIZZATO ---
+                                                                                # Assegno l'obiettivo in base al ciclo (così testa sia "time" che "energy")
+                                                                                cfg["centralized_primary_objective"] = lx_prm
+                                                                                mode = f"Centr_{lx_prm}"
 
-                                                        config_file = (
-                                                            f"settings_"
-                                                            f"seed_{s}_"
-                                                            f"{label}_"
-                                                            f"{mode}_"
-                                                            f"Arr_Rate_{ar_rate}_"
-                                                            f"mu_gen_{m_g_m}_"
-                                                            f"mu_cpui_{m_cpui_m}_"
-                                                            f"Rout_Algo_{rout_algo}_"
-                                                            f"Rout_interv_{rout_int}_"
-                                                            f"apb_{apb}_"
-                                                            f"deadline_{deadl}_"
-                                                            f"energy_budget_{ener_bud}.json5"
-                                                        )
+                                                                            # --- 3B. AGGIORNAMENTO NOME FILE (ILP) ---
+                                                                            config_file = (
+                                                                                f"settings_"
+                                                                                f"seed_{s}_"
+                                                                                f"{label}_"
+                                                                                f"{mode}_"
+                                                                                f"Arr_Rate_{ar_rate}_"
+                                                                                f"mu_gen_{m_g_m}_"
+                                                                                f"mu_cpui_{m_cpui_m}_"
+                                                                                f"Rout_Algo_{rout_algo}_"
+                                                                                f"Rout_interv_{rout_int}_"
+                                                                                f"apb_{apb}_"
+                                                                                f"deadline_{deadl}_"
+                                                                                f"energy_budget_{ener_bud}_"
+                                                                                f"batch_{batch_sz}_"
+                                                                                f"timeout_{batch_tm}_"
+                                                                                f"tol_{c_tol}_"
+                                                                                f"Dijk_{c_w_r}_{c_w_e}.json5" # <--- Aggiunto
+                                                                            )
 
-                                                    filename = os.path.join(
-                                                        OUTPUT_DIR_CONFIG, config_file)
+                                                                        filename = os.path.join(
+                                                                            OUTPUT_DIR_CONFIG, config_file)
 
-                                                    with open(filename, "w") as f:
-                                                        json5.dump(cfg, f, indent=4)
+                                                                        with open(filename, "w") as f:
+                                                                            json5.dump(cfg, f, indent=4)
 
-                                                    print(f"Creato: {filename}")
+                                                                        print(f"Creato: {filename}")
 
 
 def gen_img_resolution():

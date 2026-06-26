@@ -1,0 +1,188 @@
+\documentclass[12pt]{article}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{textcomp}
+\usepackage{hyperref}
+\usepackage{varioref}
+\usepackage{caption} % Pacchetto per modificare la didascalia
+\usepackage{subcaption}
+\usepackage{authblk}
+\captionsetup{font=footnotesize}
+\usepackage{tikz}
+\usepackage{tabularx}
+\usepackage[export]{adjustbox}
+\usepackage{placeins}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{mathpazo}
+\usepackage{ragged2e}
+\hyphenpenalty=5000
+\exhyphenpenalty=5000
+\renewcommand{\arraystretch}{1.5} % Aumenta l'altezza delle celle
+\usepackage{changepage}  % permette adjustwidth
+\hypersetup{
+    colorlinks,
+    linkcolor={black!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+}
+
+
+
+
+\title{
+\textbf{Satellite Computing} \\[0.5em]
+\textbf{ILP (Weighted) per sistema centralizzato} \\[1em]
+}
+
+\author{Claudio Bagini 2045337}
+\date{19 Maggio 2026}
+
+
+\begin{document}
+\maketitle
+\section{Introduzione e Scenario Logico}
+L'integrazione del \textit{Satellite Computing} (SC) nelle costellazioni \textit{Low Earth Orbit} (LEO) abilita l'elaborazione dei dati direttamente a bordo (\textit{On-Board Processing} - OBP), offrendo un'alternativa concreta al trasferimento sistematico del carico computazionale verso le stazioni di terra. Tuttavia, la natura intrinsecamente dinamica delle orbite LEO e i severi vincoli di risorse hardware impongono l'adozione di politiche di allocazione dei task avanzate e flessibili.
+
+Il presente lavoro definisce un modello di ottimizzazione basato sulla \textbf{Programmazione Lineare Intera (ILP)}, strutturato attorno ad un \textbf{unico Master globale} centralizzato. Questo coordinatore possiede la piena conoscenza dello stato corrente dell'intera costellazione, monitorando costantemente le traiettorie orbitali, lo stato di occupazione delle code dei processori e i budget energetici residui di ciascun nodo satellitare, denominato \textit{Satellite Edge Node} (SEN). 
+
+Il framework implementa un flusso di routing basato sulla rete di collegamenti inter-satellitari (\textit{Inter-Satellite Link} - ISL). Quando un insieme di richieste di servizio (task) perviene al Master, quest'ultimo determina in tempo reale il posizionamento ottimo dei calcoli sfruttando l'intera flotta, secondo la seguente logica distribuita:
+\begin{itemize}
+    \item \textbf{Fase di Andata (Uplink):} Il Master distribuisce il pacchetto di controllo della richiesta (fissato a 2 KB) verso il satellite esecutore prescelto lungo un cammino ottimale composto da $H_i^{up}$ salti, accumulando progressivamente i ritardi di trasmissione hardware, i tempi di attesa nelle code di rete di ogni nodo intermedio e il tempo fisico di propagazione del segnale nello spazio al tempo iniziale $t_0$.
+    \item \textbf{Fase di Elaborazione:} Il satellite selezionato accoda ed esegue il calcolo in modo locale.
+    \item \textbf{Fase di Ritorno (Downlink):} Una volta generato il file di output, il routing di ritorno viene calcolato in modo opportunistico in base alla posizione geometrica del SEN all'istante $t_{\text{comp}}$. Se il satellite \`e entrato nel raggio di copertura diretta del Master, la risposta viene inviata tramite un collegamento singolo (\textit{single-hop}, $H^{down} = 1$). In caso contrario, il sistema pianifica un cammino ideale di ritorno sfruttando la rete multi-hop della costellazione per far recapitare il pacchetto al Master tramite $H_{r,i}^{down}$ salti intermedi.
+\end{itemize}
+
+L'obiettivo del solutore risiede nella minimizzazione di una funzione di costo multi-target volta a bilanciare l'impatto energetico complessivo generato sull'intera infrastruttura di rete e il tempo di risposta totale del circuito end-to-end.
+
+\section{Formalizzazione Matematica del Modello ILP}
+
+\subsection{Insiemi, Indici e Definizione dei Cammini}
+\begin{itemize}
+    \item $\mathcal{R}$: Insieme di tutti i task sottomessi al Master (indicizzati dall'indice $r$).
+    \item $\mathcal{S}$: Insieme di tutti i satelliti della costellazione orbitale (SEN, indicizzati dall'indice $i$).
+    \item $\mathcal{P}_i^{up}$: Sequenza ordinata di nodi che definisce il cammino ottimale di andata dal Master al SEN esecutore $i$ al tempo $t_0$:
+    \begin{equation}
+    \mathcal{P}_i^{up} = \{n_0, n_1, \dots, n_{H_i^{up}}\}
+    \end{equation}
+    \item $\mathcal{P}_{r,i}^{down}$: Sequenza ordinata di nodi che definisce il cammino ottimale di ritorno dal SEN $i$ al Master, calcolato all'istante futuro di completamento $t_{\text{comp}}$:
+    \begin{equation}
+    \mathcal{P}_{r,i}^{down} = \{m_0, m_1, \dots, m_{H_{r,i}^{down}}\}
+    \end{equation}
+    Dove $m_0 = i$ e $m_{H_{r,i}^{down}} = M$. Se il SEN si trova all'interno del cono di visibilit\`a del Master al tempo $t_{\text{comp}}$, allora $H_{r,i}^{down} = 1$ e la sequenza si riduce a $\{i, M\}$.
+\end{itemize}
+
+\subsection{Variabili di Decisione}
+Il comportamento decisionale dell'algoritmo si basa sulla mappatura di una variabile binaria:
+\begin{itemize}
+    \item $x_{r,i} \in \{0, 1\}$: Vale $1$ se il task $r$ viene assegnato ed elaborato dal satellite $i$; vale $0$ altrimenti.
+\end{itemize}
+Qualora per una specifica richiesta si verifichi la condizione $\sum_{i \in \mathcal{S}} x_{r,i} = 0$, il task viene \textbf{rifiutato} dal Master per preservare l'integrit\`a fisica e la stabilità operativa della flotta.
+
+
+\subsection{Parametri del Sistema}
+\begin{itemize}
+    \item $H_i^{up}$: Numero di salti totali per il cammino di andata tra il Master e il SEN $i$ al tempo $t_0$.
+    \item $H_{r,i}^{down}$: Numero di salti del cammino di ritorno tra il SEN $i$ e il Master, determinato dinamicamente all'istante $t_{\text{comp}}$.
+    \item $b^{\text{isl}}$: Larghezza di banda disponibile sui collegamenti inter-satellitari ISL (bit/s).
+    \item $s_{\text{req}}$: Dimensione del pacchetto della richiesta (2 KB).
+    \item $s_r$: Dimensione del file di output generato dal task $r$.
+    \item $D_r$: Tempo massimo di completamento (\textit{deadline}) associato al task $r$:
+    \begin{equation}
+    D_r = (1 + \gamma_D) \cdot \left( c_{r,i}^{\text{gen/cpu}} + c_{r,i}^{\text{net}} \right)
+    \end{equation}
+    \item $B_i$: Budget energetico residuo del SEN $i$.
+    \item $P_r$: Coefficiente di penalit\`a applicato in caso di rifiuto del task $r$ ($P_r \gg 1$).
+    \item $w_e, w_R$: Pesi della funzione obiettivo ($w_e + w_R = 1$).
+    \item $c$: Velocit\`a della luce nel vuoto ($\approx 300.000 \text{ km/s}$).
+\end{itemize}
+
+\section{Modelli Fisici e di Rete di Supporto}
+
+\subsection{Modello Temporale ($R_{r,i}$)}
+Il tempo totale di risposta del circuito chiuso end-to-end per la coppia task-satellite $(r,i)$ \`e definito dalla somma analitica delle tre macro-fasi sequenziali del flusso:
+
+\begin{enumerate}
+    \item \textbf{Tempo di Uplink Multi-hop (Andata):} Il pacchetto $s_{\text{req}}$ viene instradato lungo il cammino $\mathcal{P}_i^{up}$:
+    \begin{equation}
+    T_{\text{up}}(r,i) = \sum_{h=0}^{H_i^{up} - 1} \left( W_{n_h}^{\text{net}} + \frac{s_{\text{req}}}{b^{\text{isl}}} + \frac{d(n_h, n_{h+1}, t_0)}{c} \right)
+    \end{equation}
+    Dove $    W_{n_h}^{\text{net}} = \sum_{h \in Q_i^{\text{isl/grn}}} c_{h,i}^{\text{net}} + 0.5 c_{r,i}^{\text{net}}$ \`e il tempo di coda di rete del nodo intermedio $n_h$.
+    
+    \item \textbf{Tempo di Elaborazione Computazionale Locale:} Il SEN $i$ inserisce il processo nel proprio buffer di calcolo:
+    \begin{equation}
+    R_{r,i}^{\text{cpu\_loc}} = W_{r,i}^{\text{cpu}} + c_{r,i}^*
+    \end{equation}
+    Con coda CPU deterministica basata sui task gi\`a allocati nel buffer del processore ($Q_i^{\text{cpu}}$):
+    \begin{equation}
+    W_{r,i}^{\text{cpu}} = \sum_{k \in Q_i^{\text{cpu}}} c_{k,i}^* + 0.5 c_{r,i}^*
+    \end{equation}
+    
+    \item \textbf{Tempo di Downlink Dinamico (Ritorno):} All'istante di completamento $t_{\text{comp}} = t_0 + T_{\text{up}}(r,i) + R_{r,i}^{\text{cpu\_loc}}$, il file $s_r$ viene immesso nella coda di rete ed instradato lungo il cammino $\mathcal{P}_{r,i}^{down}$:
+    \begin{equation}
+    T_{\text{down}}(r,i) = \sum_{h=0}^{H_{r,i}^{down} - 1} \left( W_{m_h}^{\text{net}} + \frac{s_r}{b^{\text{isl}}} + \frac{d(m_h, m_{h+1}, t_{\text{comp}})}{c} \right)
+    \end{equation}
+\end{enumerate}
+
+L'equazione complessiva del tempo di risposta totale risulta pertanto asimmetrica:
+\begin{equation}
+R_{r,i} = T_{\text{up}}(r,i) + R_{r,i}^{\text{cpu\_loc}} + T_{\text{down}}(r,i)
+\end{equation}
+
+\subsection{Modello Energetico Globale della Costellazione ($\epsilon_{r,i}$)}
+Il consumo energetico del sistema mappa lo sforzo complessivo indotto sull'intera infrastruttura spaziale dall'allocazione della coppia $(r,i)$, quantificando l'asimmetria dei cammini:
+\begin{itemize}
+    \item \textbf{Energia di Routing di Andata ($e_{r,i}^{\text{fwd}}$):} Consumo generato lungo gli $H_i^{up}$ salti del cammino per trasmettere il pacchetto $s_{\text{req}}$ ad una potenza fissa $P_{\text{net}}$:
+    \begin{equation}
+    e_{r,i}^{\text{fwd}} = H_i^{up} \cdot \left( P_{\text{net}} \cdot \frac{s_{\text{req}}}{b^{\text{isl}}} \right)
+    \end{equation}
+
+    \item \textbf{Energia di Computazione Locale ($e_{r,i}^{\text{cpu}}$):} Joule spesi dall'hardware del SEN $i$ per il processamento del task:
+    \begin{equation}
+    e_{r,i}^{\text{cpu}} = e \cdot c_{r,i}^{\text{cpu}} \cdot C_i^3
+    \end{equation}
+    
+    \item \textbf{Energia di Routing di Ritorno ($e_{r,i}^{\text{fwd\_back}}$):} Sforzo richiesto per l'instradamento del file di risposta $s_r$ lungo gli $H_{r,i}^{down}$ salti della catena dinamica inversa:
+    \begin{equation}
+    e_{r,i}^{\text{fwd\_back}} = H_{r,i}^{down} \cdot \left( P_{\text{net}} \cdot \frac{s_r}{b^{\text{isl}}} \right)
+    \end{equation}
+    
+    \item \textbf{Energia Complessiva di Sistema ($\epsilon_{r,i}$):} La sommatoria dei tre contributi:
+    \begin{equation}
+    \epsilon_{r,i} = e_{r,i}^{\text{fwd}} + e_{r,i}^{\text{cpu}} + e_{r,i}^{\text{fwd\_back}}
+    \end{equation}
+\end{itemize}
+
+\section{Funzione Obiettivo}
+La funzione obiettivo del Master mira alla minimizzazione del costo complessivo normalizzato della costellazione. Le metriche di energia ($\epsilon_{r,i}$) e tempo di risposta ($R_{r,i}$) vengono normalizzate nell'intervallo $[0, 1]$ tramite operazione $\widehat{(\cdot)}$. L'esclusione di un task comporta il pagamento della penale fissa $P_r$:
+
+\begin{equation}
+\min Z = \sum_{r \in \mathcal{R}} \left[ \sum_{i \in \mathcal{S}} x_{r,i} \left( w_e \widehat{\epsilon}_{r,i} + w_R \widehat{R}_{r,i} \right) + P_r \left( 1 - \sum_{i \in \mathcal{S}} x_{r,i} \right) \right]
+\end{equation}
+
+\section{Vincoli del Modello ILP}
+L'ottimizzatore seleziona la configurazione delle variabili binarie nel rispetto delle seguenti relazioni lineari:
+
+\begin{enumerate}
+    \item \textbf{Ammissibilit\`a Decisionale:} Assicura che ogni richiesta sia assegnata al massimo a un singolo satellite:
+    \begin{equation}
+    \sum_{i \in \mathcal{S}} x_{r,i} \leq 1, \quad \forall r \in \mathcal{R}
+    \end{equation}
+
+    \item \textbf{Vincolo di Scadenza del Servizio (Deadline):} Impone che il tempo totale del circuito asimmetrico dinamico non ecceda la soglia di tolleranza pattuita per il task:
+    \begin{equation}
+    x_{r,i} \cdot R_{r,i} \leq D_r, \quad \forall r \in \mathcal{R}, \quad \forall i \in \mathcal{S}
+    \end{equation}
+
+\item \textbf{Budget Energetico di Flotta Distribito sui Nodi:} Ogni singolo satellite $k \in \mathcal{S}$ deve verificare che la somma dei propri consumi (divisi tra computazione locale, trasmissione downlink e instradamento per conto di terzi) non superi la propria capacit\`a energetica $B_k$:
+\begin{equation}
+\begin{aligned}
+\sum_{r \in \mathcal{R}} \Bigg[ x_{r,k} \cdot e_{r,k}^{\text{cpu}} + \sum_{i \in \mathcal{S}} x_{r,i} \cdot \Bigg( & \mathbb{I}(k \in \mathcal{P}_i^{up}) \cdot P_{\text{net}} \frac{s_{\text{req}}}{b^{\text{isl}}} \\
+& + \mathbb{I}(k \in \mathcal{P}_{r,i}^{down}) \cdot P_{\text{net}} \frac{s_r}{b^{\text{isl}}} \Bigg) \Bigg] \leq B_k, \quad \forall k \in \mathcal{S}
+\end{aligned}
+\end{equation}
+\end{enumerate}
+
+\end{document}

@@ -6,6 +6,7 @@ import simpy
 import json
 from EdgeServer import build_task_csv_path
 from enums import AccPointMode
+from parte_2.Codice.orchestrator import Orchestrator
 import ILP_simulation, simulation
 from Task import findAlgorithm, generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks
@@ -213,7 +214,11 @@ if __name__ == "__main__":
             # -----------------------------------------------------------------------------------------------
 
     print("Batch tasks for all servers scheduled (0..3 per server).")
-
+    
+    
+    if config.get("SearchNode") == "ILP-Centralized":
+            globals.orchestrator = Orchestrator(env, config)
+        
     # 4) Avvia la generazione dei task
     env.process(generate_tasks(
         env,
@@ -221,7 +226,7 @@ if __name__ == "__main__":
         globals.different_server_counter,
         globals.other_server_counter
     ))
-
+    
     # 5) Preparazione dei nomi di cartella e file
     ap = config.get("access_point", 0)
     seed_val = config["seed"]
@@ -246,6 +251,8 @@ if __name__ == "__main__":
         complete_sim_solver = "OrbitAware"
     elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ILP":
         complete_sim_solver = "ILP"
+    elif req_dist == "DTS-base" and ap_selection == "optimal" and solver == "ILP-Centralized":
+        complete_sim_solver = "ILP-Centralized"
     else:
         sys.exit(
             f"Complete_sim_solver not right! CHECK: req_dist:{req_dist} ap_selection:{ap_selection} solver:{solver}")
@@ -259,10 +266,29 @@ if __name__ == "__main__":
     gh, gvh = gamma["gamma_H_weight"], gamma["gamma_VH_weight"]
     img_res_dir = f"IMG_RES_bg_{bg}_bcpui_{bcpui}_bcpudi_{bcpudi}_am_{am}ah_{ah}_avh_{avh}_gh_{gh}_gvh_{gvh}"
 
+    # --- Estrazione Parametri Centralizzato ---
+    batch_size = config.get("centralized_batch_size", 5)
+    batch_timeout = config.get("centralized_batch_timeout", 0.0) # Default aggiornato a 0.0
+
+    centr_obj = config.get("centralized_primary_objective", "time")
+    centr_tol = config.get("centralized_lexi_tol", 0.1)
+    centr_w_r = config.get("centralized_w_r", 0.99)
+    centr_w_e = config.get("centralized_w_e", 0.01)
+    # ------------------------------------------
+
     # Cartella base: include modalità, AP e seed
     base_dir = ""
-    if complete_sim_solver != "ILP":
+    if complete_sim_solver == "ILP":
         base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
+        
+    elif complete_sim_solver == "ILP-Centralized":
+        base_dir = (
+            f"result/{complete_sim_solver}_sim_SystemAP{ap}/"
+            f"deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/"
+            f"Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
+            f"batch_size_{batch_size}/batch_timeout_{batch_timeout}/"
+            f"obj_{centr_obj}/tol_{centr_tol}/dijk_{centr_w_r}_{centr_w_e}/"
+        )
     else:
         # Se siamo nell'ILP dobbiamo verificare che tipo di ILP è
         objective, mode = "", ""

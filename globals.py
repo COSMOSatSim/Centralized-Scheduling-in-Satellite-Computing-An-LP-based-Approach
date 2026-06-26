@@ -113,4 +113,8 @@ lock_access_edge_servers_topology = threading.Lock()
 OGMs_tables = None
 data_configurations = None
 
+orchestrator = None
+centralized_batch_size = None  
+centralized_batch_timeout = None 
+
 # end of globals.py

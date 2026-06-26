@@ -8,7 +8,7 @@
   adding_time: 30,
   seed: 9973,
   access_point: 5,
-  arrival_time_exponential: 0.5,
+  arrival_time_exponential: 0.1,
   deadline: 10,
   initial_energy: 100000,
   C_sen: {
@@ -42,7 +42,6 @@
   },
   DTS: true,
   AP_selection: "optimal",
-  SearchNode: "ERT",
   SearchNode: "ERT",
   SEN_selection: "maxSunset",
   required_ram: {
@@ -86,7 +85,7 @@
   Laser_Communication_Range: 659,
   Build_Configurations: false,
   load_saved_configuration: false,
-  redistribuite_OGM: true,
+  redistribuite_OGM: false,
   Load_Configuration: true,
   Interval_between_Configurations_in_seconds: 2,
   Number_of_Configurations: 45,
@@ -97,8 +96,6 @@
   AP_routing_bidirectional: true,
   Routing_Interval: 1,
   Routing_algorithm: {
-    BATMAN: false,
-    GREEDY: true,
     BATMAN: false,
     GREEDY: true,
     DSR: false,
@@ -112,11 +109,18 @@
     alpha_net_J_per_MB: 0.000465,
   },
   ilp_objective: "hierarchical",
-  lexi_primary: "energy",
+  lexi_primary: "time",
   lexi_tol: 0.1,
   fallback_retry: {
     enabled: true,
     max_attempts: 3,
     deadline_slack: 0.1,
   },
+
+  centralized_batch_size: 10,
+  centralized_batch_timeout: 0.0,
+  centralized_w_r:0.99,
+  centralized_w_e:0.01,
+  centralized_primary_objective: "time",
+  centralized_lexi_tol: 0.1,
 }

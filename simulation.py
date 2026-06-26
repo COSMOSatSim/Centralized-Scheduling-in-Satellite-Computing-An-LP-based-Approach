@@ -2,6 +2,7 @@ import globals
 import experiments
 from Task import Task
 import ILP_simulation
+from parte_2.Codice.orchestrator import Orchestrator
 
 hop = 0  # Inizializza la variabile hop a zero
 
@@ -593,30 +594,43 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         D_r = (1.0 + delta_D) * (d_cpu + d_net_predicted)
         temp_task_data['deadline'] = D_r
 
-        best_server = None
-        best_score = float('-inf')
-        for server in globals.global_access_point:
-            score = server.get_selection_score(
-                temp_task_data['type'],
-                d_cpu=d_cpu,
-                d_net=d_net_predicted,
-                D_r=D_r,
-                energy_budget_max=max_energy,
-                file_size_bytes=data_bytes,
-                bandwidth_Bps=bw_Bps
-            )
-            if score > best_score:
-                best_score = score
-                best_server = server
+        if globals.orchestrator is not None:
+            print(globals.orchestrator)
+            visible_aps = [ap for ap in globals.global_access_point if ap.elev_angle >= 40] 
+            
+            if not visible_aps:
+                print(f"[Task {task_id}] Nessun AP visibile per il task. Rifiutato alla fonte.")
+                task_id += 1
+                continue
+            
+            globals.orchestrator.add_task(temp_task_data, task_id, visible_aps)
+            
+        else:
+            # --- Flusso originale
+            best_server = None
+            best_score = float('-inf')
+            for server in globals.global_access_point:
+                score = server.get_selection_score(
+                    temp_task_data['type'],
+                    d_cpu=d_cpu,
+                    d_net=d_net_predicted,
+                    D_r=D_r,
+                    energy_budget_max=max_energy,
+                    file_size_bytes=data_bytes,
+                    bandwidth_Bps=bw_Bps
+                )
+                if score > best_score:
+                    best_score = score
+                    best_server = server
 
-        if best_server is None:
-            print(f"[Task {task_id}] Nessun server scelto in base all'euristica.")
-            task_id += 1
-            continue
+            if best_server is None:
+                print(f"[Task {task_id}] Nessun server scelto in base all'euristica.")
+                task_id += 1
+                continue
 
-        env.process(task(env, task_id, best_server,
-                         initial_server_counter, different_server_counter, other_server_counter,
-                         temp_task_data, max_energy))
+            env.process(task(env, task_id, best_server,
+                                    initial_server_counter, different_server_counter, other_server_counter,
+                                    temp_task_data, max_energy))
 
         task_id += 1
 
