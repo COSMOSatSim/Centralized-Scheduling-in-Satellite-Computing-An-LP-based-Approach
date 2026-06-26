@@ -6,7 +6,7 @@ import simpy
 import json
 from EdgeServer import build_task_csv_path
 from enums import AccPointMode
-from parte_2.Codice.orchestrator import Orchestrator
+from orchestrator import Orchestrator
 import ILP_simulation, simulation
 from Task import findAlgorithm, generate_Tasks_Status, convert_task_list_in_dict
 from simulation import generate_tasks

@@ -2,7 +2,7 @@ import globals
 import experiments
 from Task import Task
 import ILP_simulation
-from parte_2.Codice.orchestrator import Orchestrator
+from orchestrator import Orchestrator
 
 hop = 0  # Inizializza la variabile hop a zero
 
