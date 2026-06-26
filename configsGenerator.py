@@ -42,8 +42,8 @@ alpha_list = [(0.3,0.5,0.2)]                          # Alpha
 gamma_list = [(0.7, 0.3)]                               # Gamma
 
 # === NUOVI PARAMETRI ILP CENTRALIZZATO ===
-centralized_batch_size = [2,4,6,8,10] #range di valori per simulazioni successive [2, 4, 6, 8, 10]
-centralized_batch_timeout = [2]     #>2 sec per prossime simulazioni          
+centralized_batch_size = [20] #range di valori per simulazioni successive [2, 4, 6, 8, 10]
+centralized_batch_timeout = [0.2, 0.4, 0.6, 0.8, 1.0]     #>2 sec per prossime simulazioni          
 centralized_lexi_tol = [0.1]
 centralized_dijkstra_weights = [(1, 0), (0, 1)]   # (w_r, w_e) Pesi per il Dijkstra del Centralizzato
 centralized_primary_objective = ["time", "energy"]  # Obiettivo primario per il Centralizzato
@@ -119,22 +119,11 @@ def gen_configs():
                                                                         cfg["deadline"] = deadl 
                                                                         cfg["initial_energy"] = ener_bud 
 
-                                                                        # --- 2. ASSEGNAZIONE NUOVI PARAMETRI ---
-                                                                        cfg["centralized_batch_size"] = batch_sz
-                                                                        cfg["centralized_batch_timeout"] = batch_tm
-                                                                        cfg["centralized_lexi_tol"] = c_tol
-                                                                        
-                                                                        # Pesi Dijkstra Centralizzato
-                                                                        cfg["centralized_w_r"] = c_w_r
-                                                                        cfg["centralized_w_e"] = c_w_e
-                                                                        
-                                                                        cfg["centralized_primary_objective"] = c_priority
-                                                                        
                                                                         # FIX BANDA: Assicura che la modifica vitale per il downlink venga iniettata
                                                                         cfg["Bandwidth_to_GU_Bps"] = 35000000
                                                                         
                                                                         config_file = ""
-                                                                        if searchNode != "ILP":
+                                                                        if searchNode == "ERT":
                                                                             # --- 3A. AGGIORNAMENTO NOME FILE (Standard) ---
                                                                             config_file = (
                                                                                 f"settings_"
@@ -151,7 +140,7 @@ def gen_configs():
                                                                                 f"batch_{batch_sz}_"
                                                                                 f"timeout_{batch_tm}_"
                                                                                 f"tol_{c_tol}_"
-                                                                                f"Dijk_{c_w_r}_{c_w_e}.json5" # <--- Aggiunto
+
                                                                             )
                                                                         else:
                                                                             mode = ""
@@ -167,8 +156,18 @@ def gen_configs():
                                                                             elif label == "ILP-Centralized":
                                                                                 # --- GESTIONE SPECIFICA CENTRALIZZATO ---
                                                                                 # Assegno l'obiettivo in base al ciclo (così testa sia "time" che "energy")
-                                                                                cfg["centralized_primary_objective"] = lx_prm
-                                                                                mode = f"Centr_{lx_prm}"
+                                                                                cfg["centralized_primary_objective"] = c_priority
+                                                                                                                                                        # --- 2. ASSEGNAZIONE NUOVI PARAMETRI ---
+                                                                                cfg["centralized_batch_size"] = batch_sz
+                                                                                cfg["centralized_batch_timeout"] = batch_tm
+                                                                                cfg["centralized_lexi_tol"] = c_tol
+                                                                                
+                                                                                # Pesi Dijkstra Centralizzato
+                                                                                cfg["centralized_w_r"] = c_w_r
+                                                                                cfg["centralized_w_e"] = c_w_e
+                                                                                
+                                                                                cfg["centralized_primary_objective"] = c_priority
+                                                                                mode = f"Centr_{c_priority}"
 
                                                                             # --- 3B. AGGIORNAMENTO NOME FILE (ILP) ---
                                                                             config_file = (
@@ -187,6 +186,7 @@ def gen_configs():
                                                                                 f"batch_{batch_sz}_"
                                                                                 f"timeout_{batch_tm}_"
                                                                                 f"tol_{c_tol}_"
+                                                                                f"Centr_{c_priority}"
                                                                                 f"Dijk_{c_w_r}_{c_w_e}.json5" # <--- Aggiunto
                                                                             )
 
