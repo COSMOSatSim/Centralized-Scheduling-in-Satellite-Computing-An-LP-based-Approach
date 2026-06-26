@@ -157,7 +157,7 @@ def gen_configs():
                                                                                 # --- GESTIONE SPECIFICA CENTRALIZZATO ---
                                                                                 # Assegno l'obiettivo in base al ciclo (così testa sia "time" che "energy")
                                                                                 cfg["centralized_primary_objective"] = c_priority
-                                                                                                                                                        # --- 2. ASSEGNAZIONE NUOVI PARAMETRI ---
+                                                                                 # --- 2. ASSEGNAZIONE NUOVI PARAMETRI ---
                                                                                 cfg["centralized_batch_size"] = batch_sz
                                                                                 cfg["centralized_batch_timeout"] = batch_tm
                                                                                 cfg["centralized_lexi_tol"] = c_tol
@@ -166,8 +166,7 @@ def gen_configs():
                                                                                 cfg["centralized_w_r"] = c_w_r
                                                                                 cfg["centralized_w_e"] = c_w_e
                                                                                 
-                                                                                cfg["centralized_primary_objective"] = c_priority
-                                                                                mode = f"Centr_{c_priority}"
+                                                                                mode = f"_{c_priority}_{batch_sz}_{batch_tm}_{c_tol}_{c_w_r}_{c_w_e}"
 
                                                                             # --- 3B. AGGIORNAMENTO NOME FILE (ILP) ---
                                                                             config_file = (
@@ -182,12 +181,7 @@ def gen_configs():
                                                                                 f"Rout_interv_{rout_int}_"
                                                                                 f"apb_{apb}_"
                                                                                 f"deadline_{deadl}_"
-                                                                                f"energy_budget_{ener_bud}_"
-                                                                                f"batch_{batch_sz}_"
-                                                                                f"timeout_{batch_tm}_"
-                                                                                f"tol_{c_tol}_"
-                                                                                f"Centr_{c_priority}"
-                                                                                f"Dijk_{c_w_r}_{c_w_e}.json5" # <--- Aggiunto
+                                                                                f"budget_{ener_bud}.json5"
                                                                             )
 
                                                                         filename = os.path.join(
