@@ -17,7 +17,7 @@
 # Definisci la directory del tuo ambiente virtuale. 
 # Uso il percorso /home/vsalvatore/SECMotionModel/ come directory principale del progetto.
 # ADATTA QUESTO PERCORSO se il tuo ambiente non si chiama .venv o si trova altrove.
-VENV_DIR="/home/vsalvatore/SECMotionModel/.venv"
+VENV_DIR="/home/bagini/SECMotionModel/.venv"
 
 # 1.1. Crea la cartella dei log (Garanzia che esista quando il task inizia)
 mkdir -p SBATCH_LOGS
