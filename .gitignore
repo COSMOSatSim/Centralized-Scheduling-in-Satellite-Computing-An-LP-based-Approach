@@ -44,10 +44,11 @@ info.txt
 /Generated_datasets/
 /Dome_Plots/
 .vscode/
-result_esp_1/
-result_esp_2/
+results_esp_1/
+results_esp_2/
 results_esp_3/
 results_esp_4/
+results_esp_5/
 venv/
 .venv/
 parte-2/

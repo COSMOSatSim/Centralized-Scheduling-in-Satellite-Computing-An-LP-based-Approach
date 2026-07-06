@@ -6,11 +6,11 @@
   net_capacity_queue: 5,
   save_generated_tasks_dataset: true,
   adding_time: 30,
-  seed: 9973,
+  seed: 101,
   access_point: 5,
-  arrival_time_exponential: 0.1,
+  arrival_time_exponential: 0.16,
   deadline: 10,
-  initial_energy: 100000,
+  initial_energy: 80000,
   C_sen: {
     min: 10000000.0,
     max: 10000000000.0,
@@ -38,11 +38,11 @@
     },
   },
   request_distribution: {
-    distribution: "OrbitAware",
+    distribution: "DTS-base",
   },
   DTS: true,
   AP_selection: "optimal",
-  SearchNode: "ERT",
+  SearchNode: "ILP-Centralized",
   SEN_selection: "maxSunset",
   required_ram: {
     min: 50,
@@ -118,9 +118,9 @@
   },
 
   centralized_batch_size: 10,
-  centralized_batch_timeout: 0.0,
-  centralized_w_r:0.99,
-  centralized_w_e:0.01,
+  centralized_batch_timeout: 2,
+  centralized_w_r:1,
+  centralized_w_e:0,
   centralized_primary_objective: "time",
   centralized_lexi_tol: 0.1,
 }

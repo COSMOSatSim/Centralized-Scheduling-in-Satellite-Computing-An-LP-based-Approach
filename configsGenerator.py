@@ -42,8 +42,8 @@ alpha_list = [(0.3,0.5,0.2)]                          # Alpha
 gamma_list = [(0.7, 0.3)]                               # Gamma
 
 # === NUOVI PARAMETRI ILP CENTRALIZZATO ===
-centralized_batch_size = [20] #range di valori per simulazioni successive [2, 4, 6, 8, 10]
-centralized_batch_timeout = [0.2, 0.4, 0.6, 0.8, 1.0]     #>2 sec per prossime simulazioni          
+centralized_batch_size = [2, 4, 6, 8, 10] #range di valori per simulazioni successive [2, 4, 6, 8, 10]
+centralized_batch_timeout = [2]     #>2 sec per prossime simulazioni          
 centralized_lexi_tol = [0.1]
 centralized_dijkstra_weights = [(1, 0), (0, 1)]   # (w_r, w_e) Pesi per il Dijkstra del Centralizzato
 centralized_primary_objective = ["time", "energy"]  # Obiettivo primario per il Centralizzato
