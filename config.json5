@@ -118,7 +118,7 @@
   },
 
   centralized_batch_size: 10,
-  centralized_batch_timeout: 2,
+  centralized_batch_timeout: 0.1,
   centralized_w_r:1,
   centralized_w_e:0,
   centralized_primary_objective: "time",

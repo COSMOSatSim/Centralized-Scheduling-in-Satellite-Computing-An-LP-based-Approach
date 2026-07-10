@@ -3,6 +3,9 @@ import simpy
 import globals
 import pulp
 import ILP_simulation
+import utils
+from Task import Task
+from EdgeServer import get_pos_proximity
 
 class Orchestrator:
     def __init__(self, env, config):
@@ -77,7 +80,7 @@ class Orchestrator:
         
         # B. Chiamata al risolutore ILP (ora basato su PuLP)
         assignments = self._solve_ilp(network_state, self.task_buffer)
-        print(f"[{self.env.now:.3f}] Orchestrator: ILP completato. Assegnazioni: {assignments}")
+        print(f"[{self.env.now:.3f}] Orchestrator: ILP completato.")
 
         # C. Esecuzione/Smistamento dei task in base ai risultati dell'ILP
         self._dispatch_tasks(assignments)
@@ -193,13 +196,23 @@ class Orchestrator:
             except Exception:
                 w_net_simpy = getattr(node, "W_net", lambda: 0.0)()
 
+            # ------------------------------
+            # Calcolo del sunset time
+            raw_sunset = getattr(node, "orbitalSunset", None)
+            if raw_sunset is not None:
+                safe_sunset = float(raw_sunset)
+            else:
+                safe_sunset = 0.0
+            # ------------------------------
+
             # Creazione dello snapshot del nodo
             network_state["node_states"][node.name] = {
-                "energy_residual": node.energy - getattr(node, "energy_reserved", 0.0),
+                "energy_residual": node.energy,
                 "W_cpu_simpy": w_cpu_simpy,
                 "W_net_simpy": w_net_simpy,      
                 "C_sen": getattr(node, "C_sen", 1e9),
-                "e_coeff": self.config.get("energy_coefficient", 5e-26)
+                "e_coeff": self.config.get("energy_coefficient", 5e-26),
+                "sunset_time": safe_sunset
             }
 
         return network_state
@@ -224,24 +237,19 @@ class Orchestrator:
         all_nodes = globals.global_access_point + globals.edge_servers
         node_dict = {n.name: n for n in all_nodes}
 
-        # 1. Variabili di decisione binarie e penalità
-        x = {}
-        for r_idx, task in enumerate(R_set):
-            for i in S_set:
-                x[r_idx, i] = pulp.LpVariable(name=f"x_{r_idx}_{i}", cat='Binary')
+        # Definizione variabili
+        x = pulp.LpVariable.dicts("x", ((r, i) for r in range(len(R_set)) for i in S_set), cat='Binary')
+        
+        y = pulp.LpVariable.dicts("y", (r for r in range(len(R_set))), cat='Binary')
 
-        y = {}
+        # --- VINCOLO 1: Assegnazione o Scarto ---
         for r_idx in range(len(R_set)):
-            y[r_idx] = pulp.LpVariable(name=f"y_unassigned_{r_idx}", cat='Binary')
-
-        # Vincolo 1: Ammissibilità Decisionale
-        for r_idx in range(len(R_set)):
-            m += pulp.lpSum(x[r_idx, i] for i in S_set) + y[r_idx] == 1, f"Assignment_{r_idx}"
+            # La somma delle assegnazioni + la variabile di scarto deve fare 1
+            m += pulp.lpSum(x[r_idx, i] for i in S_set) + y[r_idx] == 1, f"Assign_Or_Drop_{r_idx}"
 
         time_costs = {}
         energy_costs = {}
         
-        # In PuLP raccogliamo le espressioni in liste prima di sommarle
         node_energy_expressions = {k: [] for k in S_set}
 
         # 2. Costruzione parametri e vincoli fisici
@@ -308,23 +316,9 @@ class Orchestrator:
                     
                 node_energy_expressions[i].append(x[r_idx, i] * e_cpu_local)
 
-                # --- DOWNLINK 
-                BANDWIDTH_TO_GU_BPS = self.config.get("Bandwidth_to_GU_Bps", 100000)
-                
-                # Tempo
-                t_down = s_r_bytes / BANDWIDTH_TO_GU_BPS
-
-                # Energia
-                if hasattr(node_obj, 'compute_routing_energy'):
-                    e_down_simpy = node_obj.compute_routing_energy(s_r_bytes, BANDWIDTH_TO_GU_BPS, p_net)
-                else:
-                    e_down_simpy = p_net * (s_r_bytes / BANDWIDTH_TO_GU_BPS)
-                    
-                node_energy_expressions[i].append(x[r_idx, i] * e_down_simpy)
-
                 # --- AGGREGAZIONE E VINCOLO DEADLINE ---
-                time_costs[r_idx, i] = t_up + t_cpu_local + t_down
-                energy_costs[r_idx, i] = e_fwd_total + e_cpu_local + e_down_simpy
+                time_costs[r_idx, i] = t_up + t_cpu_local
+                energy_costs[r_idx, i] = e_fwd_total + e_cpu_local
 
                 # Vincolo 2: Deadline Esatta
                 R_ri_for_constraint = t_up + t_cpu_local 
@@ -332,14 +326,40 @@ class Orchestrator:
 
         # Vincolo 3: Budget Energetico di Flotta Distribuito
         for k in S_set:
-            # FIX 1: Impediamo che il budget diventi matematicamente negativo
             budget_k = max(0.0, network_state["node_states"][k]["energy_residual"])
             if node_energy_expressions[k]:
                 m += pulp.lpSum(node_energy_expressions[k]) <= budget_k, f"Energy_Limit_{k}"
 
-        # 3. Ottimizzazione Gerarchica (Somma Pesata Stabilizzata)
-        # FIX 2: Abbassiamo la penalità per evitare il malcondizionamento numerico in HiGHS
-        PENALTY_VALUE = 10000.0 
+        # --- Vincolo 4: Anti-Congestione / Load Balancing ---
+        num_satellites = len(S_set)
+        
+        # Calcoliamo una "Fair Share"
+        if num_satellites > 0:
+            fair_share = len(R_set) // num_satellites
+        else:
+            fair_share = len(R_set)
+
+        MAX_TASKS_PER_NODE = fair_share + 5 
+            
+        for i in S_set:
+            m += pulp.lpSum(x[r_idx, i] for r_idx in range(len(R_set))) <= MAX_TASKS_PER_NODE, f"Max_Capacity_{i}"
+        # -------------------------------------------------------------
+        
+        # --- PREPARAZIONE PENALITÀ SUNSET ---
+        # Troviamo il massimo per normalizzare la penalità tra 0 e 1
+        valid_sunsets = [network_state["node_states"][k].get("sunset_time", 0.0) for k in S_set]
+        max_sunset = max(valid_sunsets + [1.0])
+        
+        sunset_penalties = {}
+        for i in S_set:
+            s_time = network_state["node_states"][i].get("sunset_time", 0.0)
+            
+            # Se s_time è 0.0 (satellite sotto l'orizzonte), la penalità sarà 1.0 (Massima)
+            sunset_penalties[i] = 1.0 - (s_time / max_sunset) if max_sunset > 0 else 0.0
+        # -----------------------------------------------------
+
+        # 3. Ottimizzazione Gerarchica
+        PENALTY_VALUE = 1000000.0  # Valore gigantesco per forzare il salvataggio dei task
         
         obj_time = pulp.lpSum(x[r_idx, i] * time_costs[r_idx, i] for r_idx in range(len(R_set)) for i in S_set) + \
                    pulp.lpSum(y[r_idx] * PENALTY_VALUE for r_idx in range(len(R_set)))
@@ -347,53 +367,45 @@ class Orchestrator:
         obj_energy = pulp.lpSum(x[r_idx, i] * energy_costs[r_idx, i] for r_idx in range(len(R_set)) for i in S_set) + \
                      pulp.lpSum(y[r_idx] * PENALTY_VALUE for r_idx in range(len(R_set)))
 
-        # FIX 3: Pesi più bilanciati
+        # --- COMPONENTE SUNSET ---
+        obj_sunset = pulp.lpSum(x[r_idx, i] * sunset_penalties[i] for r_idx in range(len(R_set)) for i in S_set)
+
         WEIGHT_PRIMARY = 10.0
         WEIGHT_SECONDARY = 1.0
+        WEIGHT_SUNSET = 5.0
 
         if primary_obj == "time":
-            m += WEIGHT_PRIMARY * obj_time + WEIGHT_SECONDARY * obj_energy, "Total_Objective"
+            m += WEIGHT_PRIMARY * obj_time + WEIGHT_SECONDARY * obj_energy + WEIGHT_SUNSET * obj_sunset, "Total_Objective"
         else:
-            m += WEIGHT_PRIMARY * obj_energy + WEIGHT_SECONDARY * obj_time, "Total_Objective"
+            m += WEIGHT_PRIMARY * obj_energy + WEIGHT_SECONDARY * obj_time + WEIGHT_SUNSET * obj_sunset, "Total_Objective"
 
         # 4. Esecuzione tramite HiGHS (Integrato in PuLP)
         solver = pulp.getSolver('HiGHS', msg=False)
         m.solve(solver)
         
         status = pulp.LpStatus[m.status]
+        
+        # -------------------------------------------------------
+        # Calcoliamo esattamente quanta energia e quanti slot sono stati rubati dai task accettati
+        assigned_energy_per_node = {i: 0.0 for i in S_set}
+        assigned_tasks_per_node = {i: 0 for i in S_set}
+        
+        if status in ('Optimal', 'Suboptimal'):
+            for r_idx in range(len(R_set)):
+                if pulp.value(y[r_idx]) is not None and pulp.value(y[r_idx]) < 0.5: # Task SALVO
+                    for i in S_set:
+                        if pulp.value(x[r_idx, i]) is not None and pulp.value(x[r_idx, i]) > 0.5:
+                            assigned_energy_per_node[i] += energy_costs.get((r_idx, i), 0.0)
+                            assigned_tasks_per_node[i] += 1
+        # -------------------------------------------------------
 
-        # 5. Estrazione e Mappatura Percorsi Semplificata
+        # Estrazione Assegnamenti e Diagnostica
         assignments = []
         if status in ('Optimal', 'Suboptimal'):
             for r_idx, task in enumerate(R_set):
-                assigned_node = None
                 
-                # Cerchiamo se il solver ha scelto un nodo (Valore binario > 0.5)
-                for i in S_set:
-                    if pulp.value(x[r_idx, i]) and pulp.value(x[r_idx, i]) > 0.5:
-                        assigned_node = i
-                        break
-                
-                if assigned_node:
-                    # --- TASK ASSEGNATO CON SUCCESSO ---
-                    ap_origin = task["visible_aps"][0].name
-                    
-                    # Percorso in andata
-                    path_up = network_state["routing_table"][ap_origin][assigned_node]["path"]
-                    
-                    # Percorso di ritorno
-                    path_down = [assigned_node, ap_origin]
-
-                    assignments.append({
-                        "task_id": task["task_id"],
-                        "data": task["data"],
-                        "assigned_sen": assigned_node,
-                        "routing_path_up": path_up,
-                        "routing_path_down": path_down,
-                        "status": "Assigned"
-                    })
-                else:
-                    # --- TASK RIFIUTATO: DIAGNOSTICA ---
+                # --- TASK SCARTATO ---
+                if pulp.value(y[r_idx]) and pulp.value(y[r_idx]) > 0.5:
                     ap_origin = task["visible_aps"][0].name
                     deadline = task["data"].get('deadline', 300.0)
                     specific_reason = "Unknown"
@@ -404,16 +416,38 @@ class Orchestrator:
                         specific_reason = "No_Route"
                     else:
                         can_meet_deadline = False
+                        can_meet_sunset = False
+                        has_energy = False
+                        has_capacity = False
+                        
                         for i in reachable_sens:
                             R_ri = time_costs.get((r_idx, i), 0)
-                            if R_ri > 0 and R_ri <= deadline:
-                                can_meet_deadline = True
-                                break
+                            E_ri = energy_costs.get((r_idx, i), 0)
+                            s_time_i = network_state["node_states"][i].get("sunset_time", 0)
+                            
+                            if 0 < R_ri <= deadline: can_meet_deadline = True
+                            if 0 < R_ri <= s_time_i: can_meet_sunset = True
+                            
+                            # Calcoliamo l'energia REALE rimasta dopo che i task precedenti hanno banchettato
+                            actual_energy_left = network_state["node_states"][i]["energy_residual"] - assigned_energy_per_node[i]
+                            if actual_energy_left >= E_ri: has_energy = True
+                            
+                            # Calcoliamo se c'è spazio rispetto al vincolo 4
+                            limit = locals().get('MAX_TASKS_PER_NODE', 999999)
+                            if assigned_tasks_per_node[i] < limit: has_capacity = True
                         
+                        # La sentenza finale
                         if not can_meet_deadline:
                             specific_reason = "Deadline_Violation"
-                        else:
+                        elif not can_meet_sunset:
+                            specific_reason = "Sunset_Violation"
+                        elif not has_energy:
                             specific_reason = "Energy_Exhaustion"
+                        elif not has_capacity:
+                            specific_reason = "Capacity_Limit_Reached"
+
+
+                    print(f"[{self.env.now:.3f}] Orchestrator: Task {task['task_id']} scartato dall'ILP. Motivo: {specific_reason}")
 
                     assignments.append({
                         "task_id": task["task_id"],
@@ -421,126 +455,218 @@ class Orchestrator:
                         "assigned_sen": None,
                         "routing_path_up": [],
                         "routing_path_down": [],
-                        "status": f"Rejected_{specific_reason}"
+                        "status": f"Scartato_{specific_reason}"
+                    })
+                    continue
+
+                # --- TASK SALVATO ---
+                assigned_node = None
+                for i in S_set:
+                    if pulp.value(x[r_idx, i]) and pulp.value(x[r_idx, i]) > 0.5:
+                        assigned_node = i
+                        break
+                
+                if assigned_node:
+                    ap_origin = task["visible_aps"][0].name
+                    path_up = network_state["routing_table"][ap_origin][assigned_node]["path"]
+                    path_down = [assigned_node, ap_origin]
+
+                    assignments.append({
+                        "task_id": task["task_id"],
+                        "data": task["data"],
+                        "assigned_sen": assigned_node,
+                        "routing_path_up": path_up,
+                        "routing_path_down": path_down,
+                        "status": "Assigned"
                     })
         else:
             print(f"[{self.env.now:.2f}] [ILP Centralized] Batch Infeasible (Modello matematico irrisolvibile). Status: {status}")
             for task in R_set:
                 assignments.append({
-                    "task_id": task["task_id"],
-                    "data": task["data"],
-                    "assigned_sen": None,
-                    "routing_path_up": [],
-                    "routing_path_down": [],
+                    "task_id": task["task_id"], "data": task["data"],
+                    "assigned_sen": None, "routing_path_up": [], "routing_path_down": [],
                     "status": "Infeasible"
                 })
 
         return assignments
 
     def _dispatch_tasks(self, assignments):
-            """
-            Traduce le decisioni dell'ILP in eventi SimPy fisici.
-            """
 
-            # Raccogliamo tutti i nodi per accedere ai loro oggetti fisici
-            all_nodes = {n.name: n for n in (globals.global_access_point + globals.edge_servers)}
-            p_net = self.config.get("Ptrasm", 1.0)
-            s_req_bytes = 2048  # Payload fisso di andata (2 KB)
+        all_nodes = {n.name: n for n in (globals.global_access_point + globals.edge_servers)}
 
-            for assignment in assignments:
-                task_id = assignment["task_id"]
-                data = assignment["data"]
-                status = assignment["status"]
+        for assignment in assignments:
+            task_id = assignment["task_id"]
+            data = assignment["data"]
+            status = assignment["status"]
+            dispatch_time = self.env.now
 
-                dispatch_time = self.env.now
-
-                # --- CASO 1: TASK RIFIUTATO O INFEASIBLE ---
-                if status != "Assigned":
-                    ap = globals.global_access_point[0]
-                    print(f"[{dispatch_time:.3f}] Orchestrator: Task {task_id} SCARTATO ({status}).")
-                    ap.record_rejected_task(
-                        task_id, data["type"], dispatch_time, data["image_size"], f"ILP_{status}", data["d_cpu"]
-                    )
+            if status != "Assigned":
+                if "No_Route" in status or "Infeasible" in status:
+                    arrival = data.get("arrival_time", dispatch_time)
+                    print(f"[{dispatch_time:.3f}] Orchestrator: ILP fallito ({status}) per Task {task_id}. REINSERIMENTO incondizionato nel buffer!")
+                    
+                    self.task_buffer.append({
+                        "task_id": task_id,
+                        "data": data,
+                        "visible_aps": globals.global_access_point,
+                        "arrival_time": arrival 
+                    })
+                    
+                    if len(self.task_buffer) >= self.batch_size and not self.batch_ready_event.triggered:
+                        self.batch_ready_event.succeed()
+                        
                     continue
 
-                # --- CASO 2: TASK ASSEGNATO ---
-                sen_name = assignment["assigned_sen"]
-                sen_obj = all_nodes.get(sen_name)
-                path_up = assignment.get("routing_path_up", [])
-                
-                transfer_time_up = 0.0
-
-                # 1. Pagamento Immediato dell'Energia di Uplink 
-                if len(path_up) > 1:
-                    for h in range(len(path_up) - 1):
-                        node_curr = all_nodes.get(path_up[h])
-                        node_next = all_nodes.get(path_up[h+1])
-                        
-                        if node_curr and node_next:
-                            bw = node_curr.get_bandwidth(node_next) or 0.0
-                            b_isl = bw * (1024**2)
-                            lat = node_curr.get_latency(node_next) or 0.0
-                            
-                            if b_isl > 0:
-                                if hasattr(node_curr, 'compute_routing_energy'):
-                                    e_hop = node_curr.compute_routing_energy(s_req_bytes, b_isl, p_net)
-                                else:
-                                    e_hop = p_net * (s_req_bytes / b_isl)
-                                    
-                                node_curr.energy -= e_hop
-                                transfer_time_up += (s_req_bytes / b_isl) + lat
-
-                # 2. Pagamento Immediato (Prenotazione) dell'Energia di Downlink
-                s_r_bytes = data["image_size"] * (1024**2)
-                BANDWIDTH_TO_GU_BPS = self.config.get("Bandwidth_to_GU_Bps", 100000)
-                
-                if sen_obj:
-                    if hasattr(sen_obj, 'compute_routing_energy'):
-                        e_down = sen_obj.compute_routing_energy(s_r_bytes, BANDWIDTH_TO_GU_BPS, p_net)
-                    else:
-                        e_down = p_net * (s_r_bytes / BANDWIDTH_TO_GU_BPS)
-                    
-                    sen_obj.energy -= e_down
-
-                # 3. Aggiornamento Contatori e Dataset Globali per i file CSV
-                num_hops = max(0, len(path_up) - 1)
-                globals.initial_server_counter[sen_name] = globals.initial_server_counter.get(sen_name, 0) + 1
-                globals.gbl_task_hops[str(task_id)] = num_hops
-                globals.gbl_task_final_hops[str(task_id)] = num_hops
-
-                globals.gbl_generated_tasks_data.append({
-                    "task_id": task_id,
-                    "arrival_time": dispatch_time,
-                    "type": data["type"],
-                    "ram": data["required_ram"],
-                    "disk": data["required_disk"],
-                    "image_size": data["image_size"],
-                    "exec_time": data["d_cpu"],
-                    "transfer_time": transfer_time_up,
-                    "performed_transfers": num_hops,
-                    "final_hops": num_hops,
-                    "execution_server": sen_name
-                })
-
-                print(f"[{dispatch_time:.3f}] Orchestrator: DISPATCH Task {task_id} -> {sen_name} (Hops: {num_hops})")
-
-                # 4. Iniezione del task in SimPy
-                self.env.process(
-                    ILP_simulation.TaskAssignment_ILP(
-                        env=self.env,
-                        selected_server=sen_obj,
-                        task_id=task_id,
-                        image_size=data["image_size"],
-                        arrival_time_system=data.get("arrival_time", dispatch_time), 
-                        num_hops=num_hops, 
-                        transfer_time=transfer_time_up,
-                        task_type=data["type"],
-                        d_cpu=data["d_cpu"],
-                        D_r=data["deadline"],
-                        net_bw_override_Bps=None,
-                        result_sink={},
-                        allow_retry=False,              
-                        routing_already_charged=True, 
-                        routing_energy_from=None
-                    )
+                # --- PIANO B: Rifiuto definitivo (es. Batteria insufficiente calcolata dall'ILP) ---
+                ap = globals.global_access_point[0]
+                print(f"[{dispatch_time:.3f}] Orchestrator: Task {task_id} SCARTATO ({status}).")
+                ap.record_rejected_task(
+                    task_id, data["type"], dispatch_time, data["image_size"], f"ILP_{status}", data.get("d_cpu", 0)
                 )
+                continue
+
+            # --- CASO 2: TASK ASSEGNATO, INIZIO VIAGGIO ---
+            self.env.process(self._route_and_execute_task(assignment, all_nodes, dispatch_time))
+                
+    def _route_and_execute_task(self, assignment, all_nodes, dispatch_time):
+            task_id = assignment["task_id"]
+            data = assignment["data"]
+            sen_name = assignment["assigned_sen"]
+            sen_obj = all_nodes.get(sen_name)
+            path_up = assignment.get("routing_path_up", [])
+
+            ap_origin = path_up[0] if path_up else globals.global_access_point[0].name
+
+            # --- 1. CREAZIONE TASK TEMPORANEO DI ROUTING ---
+            routing_task = Task(
+                task_id=task_id,
+                current_node=ap_origin,
+                dest_node=sen_name,
+                routingInitTime=dispatch_time,
+                task_type=data["type"],
+                image_size=data["image_size"]
+            )
+            routing_task.weight = data["image_size"]
+            routing_task.visited.add(ap_origin) 
+            
+            start_node = all_nodes.get(ap_origin)
+            if start_node and routing_task not in start_node.tasks:
+                start_node.tasks.append(routing_task)
+
+            # --- 2. LOOP DINAMICO (Navigazione ibrida: ILP -> GREEDY) ---
+            current_node_name = ap_origin
+            target_dest_name = sen_name
+            path_index = 0
+            is_greedy = False 
+        
+            while current_node_name != target_dest_name:
+                current_node_obj = all_nodes.get(current_node_name)
+                
+                if not is_greedy:
+                    # ==========================================
+                    # FASE A: NAVIGAZIONE SU ROTTA PIANIFICATA (ILP)
+                    # ==========================================
+                    next_planned = path_up[path_index + 1] if path_index < len(path_up) - 1 else None
+                    next_planned_obj = all_nodes.get(next_planned) if next_planned else None
+
+                    if next_planned_obj and current_node_obj.get_bandwidth(next_planned_obj) > 0:
+                        # Link vivo: seguiamo il piano dell'Orchestratore
+                        yield self.env.process(
+                            utils.sendTask(self.env, routing_task, current_node_obj, next_planned_obj, "ILP_Centralized")
+                        )
+                        path_index += 1
+                        routing_task.visited.add(next_planned)
+                    else:
+                        # LINK ROTTO: Fallback innescato!
+                        print(f"[{self.env.now:.3f}] Orchestrator: Link interrotto al nodo {current_node_name} (Task {task_id}). Attivazione Fallback GREEDY!")
+                        is_greedy = True
+                        
+                if is_greedy:
+                    # ==========================================
+                    # FASE B: NAVIGAZIONE D'EMERGENZA (GREEDY)
+                    # ==========================================
+                    target_dest_obj = all_nodes.get(target_dest_name)
+                    dest_pos = target_dest_obj.getPositionVector(globals.ist_in_conf)
+                    ranker_neighbors = []
+                    neighbors_list = getattr(current_node_obj, 'neighbors', current_node_obj.get_neighbors())
+
+                    for server in neighbors_list:
+                        if current_node_obj.get_bandwidth(server) > 0:
+                            neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.ist_in_conf))
+                            is_ap = getattr(server, 'is_acc_point', False)
+                            ranker_neighbors.append((server, neighbor_distance, is_ap))
+
+                    ranker_neighbors.sort(key=lambda x: (not x[2], x[1]))
+
+                    best_server = None
+                    for neighbor_tuple in ranker_neighbors:
+                        # Prevenzione dei loop ping-pong tra due satelliti
+                        if neighbor_tuple[0].name not in routing_task.visited:
+                            best_server = neighbor_tuple[0]
+                            break
+
+                    if best_server:
+                        yield self.env.process(
+                            utils.sendTask(self.env, routing_task, current_node_obj, best_server, 'GREEDY_FALLBACK')
+                        )
+                        routing_task.visited.add(best_server.name)
+                    else:
+                        print(f"[{self.env.now:.3f}] Orchestrator: Fallback GREEDY fallito (vicolo cieco) al nodo {current_node_name}. Task {task_id} droppato.")
+                        routing_task.routingEndTime = self.env.now
+                        routing_task.label = "DROPPED_GREEDY_DEADEND"
+                        globals.gbl_tasks.append(routing_task)
+                        return
+
+                # ==========================================
+                # FASE C: CONTROLLO SICUREZZA COMUNE
+                # ==========================================
+                if getattr(routing_task, 'label', '') == 'TTL_EXPIRED':
+                    print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} droppato per TTL durante il routing.")
+                    globals.gbl_tasks.append(routing_task)
+                    return
+
+                current_node_name = routing_task.current_node
+
+            # --- 3. ARRIVO ALLA DESTINAZIONE FINALE ---
+            transfer_time_up = self.env.now - dispatch_time
+            final_hops = routing_task.hop
+            init_time = routing_task.routingInitTime
+            end_time = self.env.now
+            algos = routing_task.algorithms_used
+
+            print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} arrivato a {sen_name} in {transfer_time_up:.3f}s (Hops: {final_hops})")
+
+            # --- 4. DATASET STATS ---
+            globals.initial_server_counter[sen_name] = globals.initial_server_counter.get(sen_name, 0) + 1
+            globals.gbl_task_hops[str(task_id)] = final_hops
+            globals.gbl_task_final_hops[str(task_id)] = final_hops
+            globals.gbl_generated_tasks_data.append({
+                "task_id": task_id, "arrival_time": dispatch_time, "type": data["type"],
+                "ram": data.get("required_ram", 0), "disk": data.get("required_disk", 0),
+                "image_size": data["image_size"], "exec_time": data["d_cpu"],
+                "transfer_time": transfer_time_up, "performed_transfers": final_hops,
+                "final_hops": final_hops, "execution_server": sen_name
+            })
+
+            # --- 5. ESECUZIONE SIMULAZIONE CPU ---
+            yield self.env.process(
+                ILP_simulation.TaskAssignment_ILP(
+                    env=self.env, selected_server=sen_obj, task_id=task_id, image_size=data["image_size"],
+                    arrival_time_system=data.get("arrival_time", dispatch_time), num_hops=final_hops, 
+                    transfer_time=transfer_time_up, task_type=data["type"], d_cpu=data["d_cpu"], D_r=data["deadline"],
+                    net_bw_override_Bps=None, result_sink={}, allow_retry=False,              
+                    routing_already_charged=True, routing_energy_from=None, transfer_already_simulated=True
+                )
+            )
+
+            # --- 6. SINCRONIZZAZIONE METRICHE POST-ESECUZIONE ---
+            final_task = next((t for t in globals.gbl_tasks if t.id == task_id), None)
+            if final_task:
+                final_task.hop = final_hops
+                final_task.routingInitTime = init_time
+                final_task.routingEndTime = end_time
+                final_task.algorithms_used = algos
+            else:
+                routing_task.routingEndTime = end_time
+                routing_task.label = "REJECTED_POST_ROUTING"
+                globals.gbl_tasks.append(routing_task)

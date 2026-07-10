@@ -595,7 +595,6 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         temp_task_data['deadline'] = D_r
 
         if globals.orchestrator is not None:
-            print(globals.orchestrator)
             visible_aps = [ap for ap in globals.global_access_point if ap.elev_angle >= 40] 
             
             if not visible_aps:

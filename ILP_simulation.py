@@ -40,7 +40,7 @@ def network_metrics(image_size_MB, Volume_size_MB=0.0):
 def TaskAssignment_ILP(env, selected_server, task_id, image_size,
                    arrival_time_system, num_hops, transfer_time,
                    task_type, d_cpu, D_r, net_bw_override_Bps=None,
-                   result_sink=None, allow_retry=False, routing_already_charged=False, routing_energy_from=None):
+                   result_sink=None, allow_retry=False, routing_already_charged=False, routing_energy_from=None, transfer_already_simulated=False):
     """
     Processo SimPy che assegna un task al server selezionato e simula:
       - attesa nella coda CPU (cpu_dev)
@@ -86,8 +86,10 @@ def TaskAssignment_ILP(env, selected_server, task_id, image_size,
         task_OBS.deadline = arrival_time_system + D_r
         task_OBS.image_size_MB = image_size
 
-    # aspetta il trasferimento iniziale verso il selected_server
-    yield env.timeout(transfer_time)
+    # aspetta il trasferimento iniziale verso il selected_server SOLO se non è già stato fatto
+    if not transfer_already_simulated:
+        yield env.timeout(transfer_time)
+        
     T_deadline_abs = arrival_time_system + D_r
     D_rem = T_deadline_abs - env.now
     if D_rem <= 0:
