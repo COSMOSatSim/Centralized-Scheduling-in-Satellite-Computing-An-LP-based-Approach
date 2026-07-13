@@ -11,7 +11,7 @@ plt.rcParams['figure.dpi'] = 300
 # ==========================================
 # 1. CONFIGURAZIONI PARAMETRI
 # ==========================================
-root_folder = "results_esp_5" 
+root_folder = "results_esp_6" 
 
 base_colors = [
     '#4E79A7', '#A0CBE8', # Coppia 1: Blues
@@ -76,7 +76,7 @@ def config_sort_key(config_str):
     return (bs_val, bt_val, dijk_val)
 
 def compute_stats(lines):
-    completed = rejected = deadline = insuff_cn = insuff_c = no_server = ilp_infeasible = 0
+    completed = rejected = deadline = insuff_cn = insuff_c = no_server = ilp_infeasible = sunset = 0
     total_time = sys_time = 0.0
 
     for line in lines:
@@ -106,9 +106,10 @@ def compute_stats(lines):
                 no_server += 1
             elif "infeasible" in reason:
                 ilp_infeasible += 1
-                
+            elif "sunset" in reason:
+                sunset += 1
 
-    return completed, rejected, deadline, insuff_cn, insuff_c, no_server, ilp_infeasible, total_time, sys_time
+    return completed, rejected, deadline, insuff_cn, insuff_c, no_server, ilp_infeasible, total_time, sys_time, sunset
 
 
 # ==========================================
@@ -149,8 +150,8 @@ csv_header = [
     "Objective_Mapping", "Arrival_Rate_ReqSec", "Batch_Size", "Batch_Timeout", "Dijkstra_Weight",
     "Total_Tasks", "Completed", "Rejected", "Success_Rate_PCT",
     "Rej_Deadline_PCT", "Rej_Insuff_CPU_NET_PCT", "Rej_Insuff_CPU_PCT",
-    "Rej_No_Server_PCT", "Rej_ILP_Infeasible_PCT",
-    "Avg_System_Exec_ms", "Avg_Wait_Time_ms", "Avg_Total_Response_ms"
+    "Rej_No_Server_PCT", "Rej_ILP_Infeasible_PCT", 
+    "Rej_Sunset_PCT", "Avg_System_Exec_ms", "Avg_Wait_Time_ms", "Avg_Total_Response_ms"
 ]
 
 csv_rows = []
@@ -173,7 +174,7 @@ for obj_type in ["ENERGY", "TIME"]:
             if not rows: continue
                 
             stats = compute_stats(rows)
-            completed, rejected, deadline, insuff_cn, insuff_c, no_server, ilp_infeasible, total_time, sys_time = stats
+            completed, rejected, deadline, insuff_cn, insuff_c, no_server, ilp_infeasible, total_time, sys_time, sunset = stats
             
             total_tasks = completed + rejected
             
@@ -184,6 +185,7 @@ for obj_type in ["ENERGY", "TIME"]:
             r_c = round((insuff_c / total_tasks * 100), 2) if total_tasks > 0 else 0.0
             r_ns = round((no_server / total_tasks * 100), 2) if total_tasks > 0 else 0.0
             r_ilp = round((ilp_infeasible / total_tasks * 100), 2) if total_tasks > 0 else 0.0
+            r_sunset = round((sunset / total_tasks * 100), 2) if total_tasks > 0 else 0.0
             
             # Calcolo Tempi Medi
             avg_sys = round((sys_time / completed), 4) if completed > 0 else 0.0
@@ -194,7 +196,7 @@ for obj_type in ["ENERGY", "TIME"]:
                 obj_type, ar, bs, bt, dijk,
                 total_tasks, completed, rejected, sr,
                 r_dead, r_cn, r_c, r_ns, r_ilp,
-                avg_sys, avg_wait, avg_tot
+                r_sunset, avg_sys, avg_wait, avg_tot
             ])
 
 # Salvataggio del file CSV
@@ -265,16 +267,17 @@ for obj_type in ["ENERGY", "TIME"]:
     plt.close()
 
     # --------------------------------------------------
-    # 2. REJECTION CAUSES (Senza tratteggi)
+    # 2. REJECTION CAUSES
     # --------------------------------------------------
     plt.figure(figsize=(32, 14))
     
-    cause_colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"] 
-    cause_labels = ["Deadline exceeded", "Insuff. CPU+NET", "Insuff. CPU", "No server found", "ILP Infeasible"]
+    cause_colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"] 
+    cause_labels = ["Deadline exceeded", "Insuff. CPU+NET", "Insuff. CPU", "No server found", "ILP Infeasible", "Sunset"]
 
     for i, config in enumerate(sorted_configs):
         bottom = np.zeros(len(sorted_ars))
-        for cause_idx in range(5):
+        # 3. Cambia il range a len(cause_labels) così diventa dinamico (invece che un numero fisso come 5)
+        for cause_idx in range(len(cause_labels)):
             y_vals = []
             for ar in sorted_ars:
                 rows = data_store[obj_type].get(ar, {}).get(config, [])
@@ -283,10 +286,11 @@ for obj_type in ["ENERGY", "TIME"]:
                     continue
                 stats = compute_stats(rows)
                 rejected = stats[1]
-                val = stats[2 + cause_idx]
+                # stats[2] è 'deadline', stats[3] è 'insuff_cn', e così via.
+                # L'indice 2 + cause_idx andrà a pescare esattamente i contatori nell'ordine del return!
+                val = stats[2 + cause_idx] 
                 y_vals.append(val / rejected if rejected > 0 else 0)
                 
-            # Rimosso hatch=... dalla creazione delle barre
             plt.bar(x_base + offsets[i], y_vals, width=bar_width, bottom=bottom, color=cause_colors[cause_idx], 
                     edgecolor='black', linewidth=0.3)
             bottom += np.array(y_vals)
@@ -301,8 +305,8 @@ for obj_type in ["ENERGY", "TIME"]:
     plt.grid(axis="y", linestyle="--", alpha=0.4)
 
     # Rimosso hatch=... dalla legenda delle cause
-    cause_patches = [mpatches.Patch(color=cause_colors[idx], label=cause_labels[idx]) for idx in range(5)]
-    legend1 = plt.legend(handles=cause_patches, loc='upper left', bbox_to_anchor=(1.01, 1), fontsize=16, title="Failure Causes", title_fontsize=18)
+    cause_patches = [mpatches.Patch(color=cause_colors[idx], label=cause_labels[idx]) for idx in range(len(cause_labels))]
+    legend1 = plt.legend(handles=cause_patches, loc='upper left', bbox_to_anchor=(1.01, 1.03), fontsize=16, title="Failure Causes", title_fontsize=18)
 
     config_labels = [f"{cfg}" for cfg in sorted_configs]
     config_patches = [Line2D([0], [0], color='none', label=lbl) for lbl in config_labels]

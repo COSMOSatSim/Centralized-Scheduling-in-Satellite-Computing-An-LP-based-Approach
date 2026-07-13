@@ -28,13 +28,13 @@ class Orchestrator:
     def add_task(self, task_data, task_id, visible_aps):
         """
         Aggiunge un task al buffer e gestisce i trigger degli eventi.
-        Viene chiamata esternamente
         """
-        # Se il buffer era vuoto, sblocca il loop segnalando l'arrivo del primo task
         if not self.task_buffer and not self.item_arrived_event.triggered:
             self.item_arrived_event.succeed()
 
-        # Aggiungiamo il task con i metadati necessari per l'ILP
+        if "arrival_time" not in task_data:
+            task_data["arrival_time"] = self.env.now
+
         self.task_buffer.append({
             "task_id": task_id,
             "data": task_data,
@@ -42,7 +42,6 @@ class Orchestrator:
             "arrival_time": self.env.now
         })
 
-        # Se raggiungiamo la capienza massima N, forziamo l'esecuzione del batch
         if len(self.task_buffer) >= self.batch_size and not self.batch_ready_event.triggered:
             self.batch_ready_event.succeed()
 
@@ -415,36 +414,36 @@ class Orchestrator:
                     if not reachable_sens:
                         specific_reason = "No_Route"
                     else:
-                        can_meet_deadline = False
-                        can_meet_sunset = False
-                        has_energy = False
-                        has_capacity = False
+                        # Raccogliamo i motivi per cui i vari satelliti hanno rifiutato questo specifico task
+                        reasons_for_rejection = []
                         
                         for i in reachable_sens:
                             R_ri = time_costs.get((r_idx, i), 0)
                             E_ri = energy_costs.get((r_idx, i), 0)
                             s_time_i = network_state["node_states"][i].get("sunset_time", 0)
                             
-                            if 0 < R_ri <= deadline: can_meet_deadline = True
-                            if 0 < R_ri <= s_time_i: can_meet_sunset = True
+                            # Calcoliamo l'energia e la capacità residua reale
+                            actual_energy_left = network_state["node_states"][i]["energy_residual"] - assigned_energy_per_node.get(i, 0)
                             
-                            # Calcoliamo l'energia REALE rimasta dopo che i task precedenti hanno banchettato
-                            actual_energy_left = network_state["node_states"][i]["energy_residual"] - assigned_energy_per_node[i]
-                            if actual_energy_left >= E_ri: has_energy = True
-                            
-                            # Calcoliamo se c'è spazio rispetto al vincolo 4
-                            limit = locals().get('MAX_TASKS_PER_NODE', 999999)
-                            if assigned_tasks_per_node[i] < limit: has_capacity = True
+                            # Diagnostica a cascata per il singolo nodo i
+                            if R_ri == 0 or R_ri > deadline:
+                                reasons_for_rejection.append("Deadline_Violation")
+                            elif R_ri > s_time_i:
+                                reasons_for_rejection.append("Sunset_Violation")
+                            elif actual_energy_left < E_ri:
+                                reasons_for_rejection.append("Energy_Exhaustion")
+                            elif assigned_tasks_per_node.get(i, 0) >= MAX_TASKS_PER_NODE:
+                                reasons_for_rejection.append("Load_Balancing_Rejected")
+                            else:
+                                # Se passa tutti i controlli ma è scartato, è colpa di un vincolo combinato
+                                # dell'ILP (es. ottimizzazione globale per fare spazio a task migliori)
+                                reasons_for_rejection.append("Global_ILP_Conflict")
                         
-                        # La sentenza finale
-                        if not can_meet_deadline:
-                            specific_reason = "Deadline_Violation"
-                        elif not can_meet_sunset:
-                            specific_reason = "Sunset_Violation"
-                        elif not has_energy:
-                            specific_reason = "Energy_Exhaustion"
-                        elif not has_capacity:
-                            specific_reason = "Capacity_Limit_Reached"
+                        # Estraiamo il motivo prevalente (quello che compare più volte nella lista)
+                        if reasons_for_rejection:
+                            specific_reason = max(set(reasons_for_rejection), key=reasons_for_rejection.count)
+                        else:
+                            specific_reason = "Unknown"
 
 
                     print(f"[{self.env.now:.3f}] Orchestrator: Task {task['task_id']} scartato dall'ILP. Motivo: {specific_reason}")
@@ -628,7 +627,7 @@ class Orchestrator:
                 current_node_name = routing_task.current_node
 
             # --- 3. ARRIVO ALLA DESTINAZIONE FINALE ---
-            transfer_time_up = self.env.now - dispatch_time
+            transfer_time_up = self.env.now - data.get("arrival_time", dispatch_time)
             final_hops = routing_task.hop
             init_time = routing_task.routingInitTime
             end_time = self.env.now
@@ -641,7 +640,7 @@ class Orchestrator:
             globals.gbl_task_hops[str(task_id)] = final_hops
             globals.gbl_task_final_hops[str(task_id)] = final_hops
             globals.gbl_generated_tasks_data.append({
-                "task_id": task_id, "arrival_time": dispatch_time, "type": data["type"],
+                "task_id": task_id, "arrival_time": data.get("arrival_time", dispatch_time), "type": data["type"],
                 "ram": data.get("required_ram", 0), "disk": data.get("required_disk", 0),
                 "image_size": data["image_size"], "exec_time": data["d_cpu"],
                 "transfer_time": transfer_time_up, "performed_transfers": final_hops,

@@ -4,7 +4,7 @@
 # Direttive Slurm (SENZA --array, viene fornito esternamente)
 # ==============================================================================
 #SBATCH --job-name=Sims_Array
-#SBATCH --partition=students
+#SBATCH --partition=department_only
 
 # prima che le variabili Bash vengano definite.
 #SBATCH --output=SBATCH_LOGS/OUT_%A_%a.out
@@ -17,7 +17,7 @@
 # Definisci la directory del tuo ambiente virtuale. 
 # Uso il percorso /home/vsalvatore/SECMotionModel/ come directory principale del progetto.
 # ADATTA QUESTO PERCORSO se il tuo ambiente non si chiama .venv o si trova altrove.
-VENV_DIR="/home/bagini/SECMotionModel/.venv"
+VENV_DIR="$SLURM_SUBMIT_DIR/.venv"
 
 # 1.1. Crea la cartella dei log (Garanzia che esista quando il task inizia)
 mkdir -p SBATCH_LOGS

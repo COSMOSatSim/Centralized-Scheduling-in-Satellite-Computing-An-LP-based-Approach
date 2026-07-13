@@ -8,7 +8,7 @@
   adding_time: 30,
   seed: 101,
   access_point: 5,
-  arrival_time_exponential: 0.16,
+  arrival_time_exponential: 0.1,
   deadline: 10,
   initial_energy: 80000,
   C_sen: {
@@ -117,8 +117,8 @@
     deadline_slack: 0.1,
   },
 
-  centralized_batch_size: 10,
-  centralized_batch_timeout: 0.1,
+  centralized_batch_size: 1,
+  centralized_batch_timeout: 2,
   centralized_w_r:1,
   centralized_w_e:0,
   centralized_primary_objective: "time",
