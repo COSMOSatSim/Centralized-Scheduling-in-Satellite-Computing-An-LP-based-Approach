@@ -348,9 +348,8 @@ for obj_type in ["ENERGY", "TIME"]:
     plt.ylabel("Response Time (ms)", fontsize=26)
     plt.xlabel("Arrival Rate (req/sec)", fontsize=26)
     plt.xticks(x_base, sorted_ars, fontsize=22)
-    if max_val > 0:
-        plt.yticks(np.arange(0, max_val * 1.2, max(0.1, max_val/10)), fontsize=22)
     plt.ylim(0, max_val * 1.15 if max_val > 0 else 1)
+    plt.yticks(fontsize=22)
     plt.grid(axis="y", linestyle="--", alpha=0.4)
 
     
