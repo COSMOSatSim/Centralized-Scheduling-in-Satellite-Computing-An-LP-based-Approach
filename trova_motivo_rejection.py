@@ -3,7 +3,7 @@ import csv
 from collections import Counter
 
 # Sostituisci con il nome della tua cartella se è diverso
-root_folder = "results_esp_6"
+root_folder = "results_esp_7"
 
 # Inizializziamo il Counter per tenere traccia delle frequenze
 rejection_counts = Counter()

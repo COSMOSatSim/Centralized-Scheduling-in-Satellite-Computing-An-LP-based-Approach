@@ -45,15 +45,19 @@ fi
 # Logica di Esecuzione per ogni Task
 # ==============================================================================
 
-TASK_ID=$SLURM_ARRAY_TASK_ID
+OFFSET=${CHUNK_OFFSET:-0}
+
+# Calcoliamo la vera riga da leggere nel file txt
+REAL_TASK_ID=$((SLURM_ARRAY_TASK_ID + OFFSET))
+
 SIMS_LIST_FILE="sims_sets_list.txt"
 IMG_RES_LIST_FILE="img_resolutions_list.txt"
 
-# Estrai la riga corrispondente all'ID del Task
-SET_FILE=$(sed -n "${TASK_ID}p" "$SIMS_LIST_FILE")
-IMG_FILE=$(sed -n "${TASK_ID}p" "$IMG_RES_LIST_FILE")
+# Estrai la riga corrispondente all'ID REALE
+SET_FILE=$(sed -n "${REAL_TASK_ID}p" "$SIMS_LIST_FILE")
+IMG_FILE=$(sed -n "${REAL_TASK_ID}p" "$IMG_RES_LIST_FILE")
 
-echo "--- Esecuzione Task ID: $TASK_ID ---"
+echo "--- Esecuzione Task Slurm: $SLURM_ARRAY_TASK_ID | Riga Reale (con offset): $REAL_TASK_ID ---"
 echo "  SET File: $SET_FILE"
 echo "  IMG RES File: $IMG_FILE"
 
