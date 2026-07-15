@@ -588,10 +588,22 @@ def generate_tasks(env, initial_server_counter, different_server_counter, other_
         elif delta_D > 1.0:
             delta_D = 1.0
 
-        bw_Bps, data_bytes = network_metrics(temp_task_data['image_size'])
+        bw_Bps, data_bytes = network_metrics(temp_task_data['image_size']) #Bytes/s
         d_net_predicted = data_bytes / bw_Bps if bw_Bps > 0 else float('inf')
+        
+        # -------------------------
+        # Downlink verso Ground User: si assume che l'output abbia dimensione = image_size
+        # -------------------------
+        BANDWIDTH_TO_GU_BPS = config.get("Bandwidth_to_GU_Bps", 100000)  # ATTENZIONE: unità devono essere B/s
+        downlink_transfer = data_bytes / BANDWIDTH_TO_GU_BPS  # tempo di trasmissione verso GU
 
-        D_r = (1.0 + delta_D) * (d_cpu + d_net_predicted)
+        if globals.orchestrator is not None:  
+            # Caso CON orchestrator: includiamo il timeout del batch
+            D_r = (1.0 + delta_D) * (d_cpu + d_net_predicted + downlink_transfer + (0.5 * config.get("centralized_batch_timeout", 1)))
+        else:
+            # Caso SENZA orchestrator: escludiamo il timeout del batch
+            D_r = (1.0 + delta_D) * (d_cpu + d_net_predicted + downlink_transfer)
+            
         temp_task_data['deadline'] = D_r
 
         if globals.orchestrator is not None:

@@ -15,7 +15,7 @@ fi
 echo "Trovati $NUM_JOBS task totali. Generazione dell'array 1-$NUM_JOBS."
 
 # 2. Costruisci il range dell'array.
-ARRAY_RANGE="1-1000"
+ARRAY_RANGE="1-$NUM_JOBS"
 
 # 3. Sottometti lo script Array (modifica il nome se hai usato .sbatch)
 sbatch --array="$ARRAY_RANGE%30" B_run_simulations_array.sh

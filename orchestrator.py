@@ -314,13 +314,30 @@ class Orchestrator:
                     e_cpu_local = d_cpu * e_coeff_i * (c_sen_i ** 3)
                     
                 node_energy_expressions[i].append(x[r_idx, i] * e_cpu_local)
+                
+                # -------------------------
+                # Downlink verso Ground User: si assume che l'output abbia dimensione = image_size
+                # -------------------------
+                BANDWIDTH_TO_GU_BPS = globals.config.get("Bandwidth_to_GU_Bps", 100000)  # ATTENZIONE: unità devono essere B/s
+                downlink_time = s_r_bytes / BANDWIDTH_TO_GU_BPS  # tempo di trasmissione verso GU
+                
+                # CALCOLO ENERGIA DOWNLINK
+                if hasattr(node_obj, 'compute_routing_energy'):
+                    # Passiamo i byte da inviare, la banda verso terra e la potenza dell'antenna di downlink
+                    downlink_energy = node_obj.compute_routing_energy(s_r_bytes, BANDWIDTH_TO_GU_BPS, p_net)
+                else:
+                    # Fallback alla formula base: E = P * t
+                    downlink_energy = p_net * downlink_time
+                
+                # Aggiungiamo il costo energetico del downlink al consumo del nodo i
+                node_energy_expressions[i].append(x[r_idx, i] * downlink_energy)
 
                 # --- AGGREGAZIONE E VINCOLO DEADLINE ---
-                time_costs[r_idx, i] = t_up + t_cpu_local
-                energy_costs[r_idx, i] = e_fwd_total + e_cpu_local
+                time_costs[r_idx, i] = t_up + t_cpu_local + downlink_time
+                energy_costs[r_idx, i] = e_fwd_total + e_cpu_local + downlink_energy
 
                 # Vincolo 2: Deadline Esatta
-                R_ri_for_constraint = t_up + t_cpu_local 
+                R_ri_for_constraint = t_up + t_cpu_local + downlink_time
                 m += x[r_idx, i] * R_ri_for_constraint <= deadline, f"Deadline_{r_idx}_{i}"
 
         # Vincolo 3: Budget Energetico di Flotta Distribuito
