@@ -7,6 +7,9 @@ import utils
 from Task import Task
 from EdgeServer import get_pos_proximity
 
+#modifica i requirements.txt per aggiungere pulp etc
+#controlla i risultati sperimentali
+
 class Orchestrator:
     def __init__(self, env, config):
         self.env = env
@@ -64,6 +67,13 @@ class Orchestrator:
             if self.task_buffer:
                 trigger_reason = "Capacità massima" if self.batch_ready_event.triggered else "Timeout"
                 print(f"[{self.env.now:.3f}] Orchestrator: Trigger ILP per {trigger_reason} ({len(self.task_buffer)} tasks).")
+                
+                # --- FIX SIMPY: FORZA L'AGGIORNAMENTO DELLO STATO ---
+                # Cede il passo all'event loop per processare l'aggiornamento 
+                # fisico dei satelliti (code CPU, consumi, posizioni) per il t attuale.
+                yield self.env.timeout(0)
+                # ----------------------------------------------------
+
                 self._process_batch()
 
             # 5. Reset degli eventi per il prossimo ciclo
