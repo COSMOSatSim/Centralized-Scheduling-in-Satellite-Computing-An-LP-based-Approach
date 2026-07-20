@@ -10,3 +10,4 @@ sgp4==2.25
 simpy==4.1.1
 skyfield==1.53
 urllib3==2.6.2
+highspy==1.7.2
