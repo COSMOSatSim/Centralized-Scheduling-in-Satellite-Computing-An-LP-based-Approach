@@ -1,0 +1,55 @@
+\documentclass[italian, noexaminfo, oneside]{sapthesis} %noexaminfo toglie tesi non ancora discussa, oneside per togliere la pagina aggiuntiva a destra
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{babel}
+\usepackage[hidelinks]{hyperref}
+
+% --- Dati del candidato e della tesi ---
+\title{Orchestratore ILP centralizzato per il routing di task su reti satellitari}
+\author{Claudio Bagini}
+\IDnumber{2045337}
+\course{Informatica}
+\courseorganizer{Facoltà di Ingegneria dell'Informazione, Informatica e Statistica}
+\submitdate{2025/2026}
+\copyyear{2026}
+\advisor{Dott. Emiliano Casalicchio}
+\coadvisor{}
+\authoremail{bagini.2045337@studenti.uniroma1.it}
+\versiondate{\today}
+\thesistype{Tesi di Laurea Triennale}
+
+%\examdate{01/06/2023}
+%\examiner{presidente della commissione}
+%\examiner[Relatore]{Dott. Emiliano Casalicchio}
+%\examiner{membro della commissione}
+
+\begin{document}
+
+\frontmatter
+\maketitle
+
+\dedication{Dedica}
+
+\begin{abstract}
+In questa sezione andrà inserito un riassunto conciso del lavoro di tesi. Dovrà introdurre il problema dell'instradamento dei task nelle reti satellitari, descrivere brevemente la soluzione proposta tramite la Programmazione Lineare Intera (ILP) e riassumere i risultati principali, come il tasso di successo ottenuto con le diverse configurazioni.
+\end{abstract}
+
+\begin{acknowledgments}
+Qui potrai inserire i ringraziamenti. Oltre al relatore, questo è lo spazio ideale per menzionare colleghi di università che ti hanno supportato durante lo sviluppo, come ad esempio Vincenzo per il confronto tecnico e l'aiuto nel debugging delle logiche di tracciamento.
+\end{acknowledgments}
+
+\tableofcontents
+
+\mainmatter
+
+\input{Capitoli/introduzione.tex}
+
+
+\backmatter
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{Bibliografia}
+\bibliographystyle{sapthesis}
+\bibliography{bibliografia}
+
+\end{document}
