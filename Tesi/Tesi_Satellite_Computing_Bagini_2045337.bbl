@@ -1,0 +1,65 @@
+\begin{thebibliography}{10}
+
+\bibitem{boyd2004convex}
+\textsc{Boyd, S. and Vandenberghe, L.}
+\newblock \emph{Convex Optimization}.
+\newblock Cambridge University Press, Cambridge, UK (2004).
+
+\bibitem{icdcs_satellite_2025}
+\textsc{Casalicchio, E. et~al.}
+\newblock Handling of energy- and time-constrained heterogeneous satellite computing services.
+\newblock In \emph{Proceedings of the IEEE International Conference on Distributed Computing Systems (ICDCS)}, pp. 1--12. IEEE (2025).
+
+\bibitem{denby2019orbital}
+\textsc{Denby, B. and Lucia, B.}
+\newblock Orbital edge computing: Nanosatellite clusters as accelerators for earth observation.
+\newblock \emph{IEEE Micro}, \textbf{40} (2019), 13.
+
+\bibitem{fan2025satellite}
+\textsc{Fan, W., Meng, Q., Wang, G., Bian, H., and Liu, Y.}
+\newblock Satellite edge intelligence: Drl-based resource management for task inference in leo-based satellite-ground collaborative networks.
+\newblock \emph{IEEE Transactions on Mobile Computing}, \textbf{24} (2025), 10710.
+
+\bibitem{gurobi2024}
+\textsc{{Gurobi Optimization, LLC}}.
+\newblock \emph{Gurobi Optimizer Reference Manual} (2024).
+\newblock Available from: \url{https://www.gurobi.com}.
+
+\bibitem{batman_protocol}
+\textsc{Neumann, A., Aichele, C., Lindner, M., and Fux, S.}
+\newblock Better approach to mobile ad-hoc networking (b.a.t.m.a.n.).
+\newblock Tech. rep., IETF Draft (2008).
+\newblock Draft-wunderlich-openmesh-manet-routing-00.
+
+\bibitem{simpy2023}
+\textsc{Scherfke, S. and L{\"u}nsdorf, O.}
+\newblock \emph{SimPy: Discrete Event Simulation for Python} (2023).
+\newblock Version 4.1.1.
+\newblock Available from: \url{https://simpy.readthedocs.io/}.
+
+\bibitem{tang2003loadbalancing}
+\textsc{Tang, X. and Yi, X.}
+\newblock A general metric of load balancing in $\delta$-range.
+\newblock In \emph{Advanced Parallel Processing Technologies}, pp. 311--321. Springer (2003).
+
+\bibitem{tiansuan2023}
+\textsc{Wang, S., Zhang, Q., Zhao, C., et~al.}
+\newblock Satellite computing: Vision and challenges -- tiansuan constellation.
+\newblock \emph{IEEE Internet of Things Journal}, \textbf{10} (2023), 17550.
+
+\bibitem{wolsey1998integer}
+\textsc{Wolsey, L.~A.}
+\newblock \emph{Integer Programming}.
+\newblock John Wiley \& Sons, New York, NY, USA (1998).
+
+\bibitem{survey_orbital_edge_2023}
+\textsc{Zhang, Y., Li, X., Zhou, H., and Chen, D.}
+\newblock A comprehensive survey on orbital edge computing: Systems, applications, and algorithms.
+\newblock \emph{IEEE Communications Surveys \& Tutorials}, \textbf{25} (2023), 2100.
+
+\bibitem{zhong2025leo}
+\textsc{Zhong, L., Li, Y., Ge, M.-F., Feng, M., and Mao, S.}
+\newblock Joint task offloading and resource allocation for leo satellite-based mobile edge computing systems with heterogeneous task demands.
+\newblock \emph{IEEE Transactions on Vehicular Technology}, \textbf{74} (2025), 11337.
+
+\end{thebibliography}

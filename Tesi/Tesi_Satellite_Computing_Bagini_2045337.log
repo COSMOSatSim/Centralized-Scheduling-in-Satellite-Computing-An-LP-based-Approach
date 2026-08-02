@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.25)  1 AUG 2026 16:10
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.25)  2 AUG 2026 12:53
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -374,30 +374,70 @@ Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
 Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 284.
 )
 \Hy@SectionHShift=\skip69
+) (/opt/texlive/2026/texmf-dist/tex/latex/amsfonts/amssymb.sty
+Package: amssymb 2013/01/14 v3.01 AMS font symbols
+ (/opt/texlive/2026/texmf-dist/tex/latex/amsfonts/amsfonts.sty
+Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
+\symAMSa=\mathgroup4
+\symAMSb=\mathgroup5
+LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
+LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+(Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
+)) (/opt/texlive/2026/texmf-dist/tex/latex/microtype/microtype.sty
+Package: microtype 2026/03/01 v3.2d Micro-typographical refinements (RS)
+\MT@toks=\toks34
+\MT@tempbox=\box55
+\MT@count=\count328
+LaTeX Info: Redefining \noprotrusionifhmode on input line 1084.
+LaTeX Info: Redefining \leftprotrusion on input line 1085.
+\MT@prot@toks=\toks35
+LaTeX Info: Redefining \rightprotrusion on input line 1104.
+LaTeX Info: Redefining \textls on input line 1449.
+\MT@outer@kern=\dimen194
+LaTeX Info: Redefining \microtypecontext on input line 2053.
+LaTeX Info: Redefining \textmicrotypecontext on input line 2070.
+\MT@listname@count=\count329
+ (/opt/texlive/2026/texmf-dist/tex/latex/microtype/microtype-pdftex.def
+File: microtype-pdftex.def 2026/03/01 v3.2d Definitions specific to pdftex (RS)
+LaTeX Info: Redefining \lsstyle on input line 944.
+LaTeX Info: Redefining \lslig on input line 944.
+\MT@outer@space=\skip70
+)
+Package microtype Info: Loading configuration file microtype.cfg.
+ (/opt/texlive/2026/texmf-dist/tex/latex/microtype/microtype.cfg
+File: microtype.cfg 2026/03/01 v3.2d microtype main configuration file (RS)
+)
+LaTeX Info: Redefining \microtypesetup on input line 3065.
+) (/opt/texlive/2026/texmf-dist/tex/latex/caption/subcaption.sty
+Package: subcaption 2023/07/28 v1.6b Sub-captions (AR)
+Package caption Info: New subtype `subfigure' on input line 238.
+\c@subfigure=\count330
+Package caption Info: New subtype `subtable' on input line 238.
+\c@subtable=\count331
 ) (/opt/texlive/2026/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
-\l__color_backend_stack_int=\count328
-) (./Tesi_Satellite_Computing_Bagini_2045337.aux)
+\l__color_backend_stack_int=\count332
+) (./Tesi_Satellite_Computing_Bagini_2045337.aux (./capitoli/capitolo1_introduzione.aux) (./capitoli/capitolo2_stato_arte.aux) (./capitoli/capitolo3_architettura_ilp.aux) (./capitoli/capitolo4_analisi_prestazioni.aux) (./capitoli/capitolo5_benchmark_comparativo.aux) (./capitoli/capitolo6_conclusioni.aux))
 \openout1 = `Tesi_Satellite_Computing_Bagini_2045337.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 26.
-LaTeX Font Info:    ... okay on input line 26.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -439,44 +479,68 @@ Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
 (/opt/texlive/2026/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count329
-\scratchdimen=\dimen194
-\scratchbox=\box55
-\nofMPsegments=\count330
-\nofMParguments=\count331
-\everyMPshowfont=\toks34
-\MPscratchCnt=\count332
-\MPscratchDim=\dimen195
-\MPnumerator=\count333
-\makeMPintoPDFobject=\count334
-\everyMPtoPDFconversion=\toks35
+\scratchcounter=\count333
+\scratchdimen=\dimen195
+\scratchbox=\box56
+\nofMPsegments=\count334
+\nofMParguments=\count335
+\everyMPshowfont=\toks36
+\MPscratchCnt=\count336
+\MPscratchDim=\dimen196
+\MPnumerator=\count337
+\makeMPintoPDFobject=\count338
+\everyMPtoPDFconversion=\toks37
 ) (/opt/texlive/2026/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
  (/opt/texlive/2026/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-LaTeX Info: Redefining \textsubscript on input line 26.
-LaTeX Info: Redefining \it@ocap on input line 26.
-LaTeX Info: Redefining \it@ccap on input line 26.
-Package hyperref Info: Link coloring OFF on input line 26.
+LaTeX Info: Redefining \textsubscript on input line 32.
+LaTeX Info: Redefining \it@ocap on input line 32.
+LaTeX Info: Redefining \it@ccap on input line 32.
+Package hyperref Info: Link coloring OFF on input line 32.
  (./Tesi_Satellite_Computing_Bagini_2045337.out) (./Tesi_Satellite_Computing_Bagini_2045337.out)
 \@outlinefile=\write3
 \openout3 = `Tesi_Satellite_Computing_Bagini_2045337.out'.
 
-\SAP@parboxindent=\skip70
-\SAP@parboxwidth=\skip71
-LaTeX Font Info:    Trying to load font information for T1+lmss on input line 30.
+LaTeX Info: Redefining \microtypecontext on input line 32.
+Package microtype Info: Applying patch `item' on input line 32.
+Package microtype Info: Applying patch `toc' on input line 32.
+Package microtype Info: Applying patch `eqnum' on input line 32.
+Package microtype Info: Applying patch `footnote' on input line 32.
+Package microtype Info: Applying patch `verbatim' on input line 32.
+LaTeX Info: Redefining \microtypesetup on input line 32.
+Package microtype Info: Generating PDF output.
+Package microtype Info: Character protrusion enabled (level 2).
+Package microtype Info: Using default protrusion set `alltext'.
+Package microtype Info: Automatic font expansion enabled (level 2),
+(microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
+Package microtype Info: Using default expansion set `alltext-nott'.
+Package microtype Info: Patching command `\showhyphens'.
+Package microtype Info: No adjustment of tracking.
+Package microtype Info: No adjustment of interword spacing.
+Package microtype Info: No adjustment of character kerning.
+ (/opt/texlive/2026/texmf-dist/tex/latex/microtype/mt-cmr.cfg
+File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman (RS)
+)
+\SAP@parboxindent=\skip71
+\SAP@parboxwidth=\skip72
+LaTeX Font Info:    Trying to load font information for T1+lmss on input line 36.
  (/opt/texlive/2026/texmf-dist/tex/latex/lm/t1lmss.fd
 File: t1lmss.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-<sapienzalogo.pdf, id=8, 288.07625pt x 89.33376pt>
+Package microtype Info: Loading generic protrusion settings for font family
+(microtype)             `lmss' (encoding: T1).
+(microtype)             For optimal results, create family-specific settings.
+(microtype)             See the microtype manual for details.
+<sapienzalogo.pdf, id=188, 288.07625pt x 89.33376pt>
 File: sapienzalogo.pdf Graphic file (type pdf)
 <use sapienzalogo.pdf>
-Package pdftex.def Info: sapienzalogo.pdf  used on input line 30.
+Package pdftex.def Info: sapienzalogo.pdf  used on input line 36.
 (pdftex.def)             Requested size: 142.26378pt x 44.11742pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 30--30
+Underfull \hbox (badness 10000) in paragraph at lines 36--36
 
  []
 
@@ -485,38 +549,49 @@ Underfull \hbox (badness 10000) in paragraph at lines 30--30
 
 
 {/opt/texlive/2026/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/opt/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc} </opt/texlive/2026/texmf-dist/tex/latex/sapthesis/sapienzalogo.pdf>]
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 30.
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 36.
  (/opt/texlive/2026/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-Underfull \hbox (badness 10000) in paragraph at lines 30--30
+Underfull \hbox (badness 10000) in paragraph at lines 36--36
 
  []
 
-LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 30.
+LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 36.
 (/opt/texlive/2026/texmf-dist/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OML+lmm on input line 30.
+LaTeX Font Info:    Trying to load font information for OML+lmm on input line 36.
  (/opt/texlive/2026/texmf-dist/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 30.
+LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 36.
  (/opt/texlive/2026/texmf-dist/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 30.
+LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 36.
  (/opt/texlive/2026/texmf-dist/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10> on input line 30.
+(Font)              <10> on input line 36.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <7> on input line 30.
+(Font)              <7> on input line 36.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <5> on input line 30.
-
-Underfull \hbox (badness 10000) in paragraph at lines 30--30
+(Font)              <5> on input line 36.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 36.
+ (/opt/texlive/2026/texmf-dist/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+) (/opt/texlive/2026/texmf-dist/tex/latex/microtype/mt-msa.cfg
+File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 36.
+ (/opt/texlive/2026/texmf-dist/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+) (/opt/texlive/2026/texmf-dist/tex/latex/microtype/mt-msb.cfg
+File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
+)
+Underfull \hbox (badness 10000) in paragraph at lines 36--36
 
  []
 
@@ -524,50 +599,109 @@ Underfull \hbox (badness 10000) in paragraph at lines 30--30
 pdfTeX warning (ext4): destination with the same identifier (name{page.i}) has been already used, duplicate ignored
 <to be read again> 
                    \relax 
-l.30 
+l.36 
       [1
 
 {/opt/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}] [2
 
 
-] [3
+]
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <10.95> on input line 42.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <8> on input line 42.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <6> on input line 42.
+ [3
 
-] [4
+{/opt/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc}{/opt/texlive/2026/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc}] [4
 
-] (./Tesi_Satellite_Computing_Bagini_2045337.toc)
+] (./Tesi_Satellite_Computing_Bagini_2045337.toc [5
+
+])
 \tf@toc=\write4
 \openout4 = `Tesi_Satellite_Computing_Bagini_2045337.toc'.
 
- [5
+ [6]
+\openout2 = `capitoli/capitolo1_introduzione.aux'.
 
-] (./Capitoli/introduzione.tex
+ (./capitoli/capitolo1_introduzione.tex
 Capitolo 1.
 ) [1
 
 
+
 ]
-No file Tesi_Satellite_Computing_Bagini_2045337.bbl.
-(./Tesi_Satellite_Computing_Bagini_2045337.aux)
+\openout2 = `capitoli/capitolo2_stato_arte.aux'.
+
+ (./capitoli/capitolo2_stato_arte.tex
+Capitolo 2.
+) [2
+
+
+
+
+]
+\openout2 = `capitoli/capitolo3_architettura_ilp.aux'.
+
+ (./capitoli/capitolo3_architettura_ilp.tex
+Capitolo 3.
+) [3
+
+
+
+
+]
+\openout2 = `capitoli/capitolo4_analisi_prestazioni.aux'.
+
+ (./capitoli/capitolo4_analisi_prestazioni.tex
+Capitolo 4.
+) [4
+
+
+
+
+]
+\openout2 = `capitoli/capitolo5_benchmark_comparativo.aux'.
+
+ (./capitoli/capitolo5_benchmark_comparativo.tex
+Capitolo 5.
+) [5
+
+
+
+
+]
+\openout2 = `capitoli/capitolo6_conclusioni.aux'.
+
+ (./capitoli/capitolo6_conclusioni.tex
+Capitolo 6.
+) [6
+
+
+
+
+] (./Tesi_Satellite_Computing_Bagini_2045337.aux (./capitoli/capitolo1_introduzione.aux) (./capitoli/capitolo2_stato_arte.aux) (./capitoli/capitolo3_architettura_ilp.aux) (./capitoli/capitolo4_analisi_prestazioni.aux) (./capitoli/capitolo5_benchmark_comparativo.aux) (./capitoli/capitolo6_conclusioni.aux))
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `Tesi_Satellite_Computing_Bagini_2045337.out' has not changed.
-(rerunfilecheck)             Checksum: 5F1387874E94860D7B89D38FA0CF1F9A;103.
+(rerunfilecheck)             Checksum: 5A8C361487BA5A2E97B6E4902BF405F6;12138.
  ) 
 Here is how much of TeX's memory you used:
- 13471 strings out of 467525
- 217084 string characters out of 5393692
- 641735 words of memory out of 5000000
- 42176 multiletter control sequences out of 15000+600000
- 685740 words of font info for 68 fonts, out of 8000000 for 9000
+ 16456 strings out of 467525
+ 270636 string characters out of 5393692
+ 726869 words of memory out of 5000000
+ 44890 multiletter control sequences out of 15000+600000
+ 717076 words of font info for 159 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 84i,12n,131p,498b,547s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr7.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmri10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss17.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb>
-Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (7 pages, 199203 bytes).
+ 84i,12n,131p,1075b,618s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr7.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmri10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss17.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb>
+Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (13 pages, 233875 bytes).
 PDF statistics:
- 98 PDF objects out of 1000 (max. 8388607)
- 69 compressed objects within 1 object stream
- 9 named destinations out of 1000 (max. 500000)
- 14 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 372 PDF objects out of 1000 (max. 8388607)
+ 331 compressed objects within 4 object streams
+ 60 named destinations out of 1000 (max. 500000)
+ 53622 words of extra memory for PDF output out of 61914 (max. 10000000)
 

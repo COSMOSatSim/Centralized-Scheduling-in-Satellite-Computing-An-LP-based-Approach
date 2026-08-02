@@ -1,0 +1,57 @@
+This is BibTeX, Version 0.99e (TeX Live 2026)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: Tesi_Satellite_Computing_Bagini_2045337.aux
+A level-1 auxiliary file: capitoli/capitolo1_introduzione.aux
+A level-1 auxiliary file: capitoli/capitolo2_stato_arte.aux
+A level-1 auxiliary file: capitoli/capitolo3_architettura_ilp.aux
+A level-1 auxiliary file: capitoli/capitolo4_analisi_prestazioni.aux
+A level-1 auxiliary file: capitoli/capitolo5_benchmark_comparativo.aux
+A level-1 auxiliary file: capitoli/capitolo6_conclusioni.aux
+The style file: sapthesis.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
+Reallocated global_strs (elt_size=200001) to 20 items from 10.
+Reallocated glb_str_end (elt_size=4) to 20 items from 10.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Database file #1: bibliografia.bib
+You've used 12 entries,
+            3472 wiz_defined-function locations,
+            775 strings with 7917 characters,
+and the built_in function-call counts, 6557 in all, are:
+= -- 570
+> -- 248
+< -- 2
++ -- 126
+- -- 68
+* -- 341
+:= -- 815
+add.period$ -- 40
+call.type$ -- 12
+change.case$ -- 71
+chr.to.int$ -- 0
+cite$ -- 12
+duplicate$ -- 443
+empty$ -- 566
+format.name$ -- 78
+if$ -- 1564
+int.to.chr$ -- 0
+int.to.str$ -- 12
+missing$ -- 110
+newline$ -- 65
+num.names$ -- 24
+pop$ -- 283
+preamble$ -- 1
+purify$ -- 56
+quote$ -- 0
+skip$ -- 367
+stack$ -- 0
+substring$ -- 185
+swap$ -- 272
+text.length$ -- 2
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 44
+warning$ -- 0
+while$ -- 35
+width$ -- 14
+write$ -- 131

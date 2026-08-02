@@ -1,8 +1,14 @@
-\documentclass[italian, noexaminfo, oneside]{sapthesis} %noexaminfo toglie tesi non ancora discussa, oneside per togliere la pagina aggiuntiva a destra
+\documentclass[italian, oneside]{sapthesis}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{babel}
 \usepackage[hidelinks]{hyperref}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{caption}
+\usepackage{subcaption}
 
 % --- Dati del candidato e della tesi ---
 \title{Orchestratore ILP centralizzato per il routing di task su reti satellitari}
@@ -18,10 +24,10 @@
 \versiondate{\today}
 \thesistype{Tesi di Laurea Triennale}
 
-%\examdate{01/06/2023}
-%\examiner{presidente della commissione}
+%\examdate{Data della discussione}
+%\examiner{Presidente della commissione}
 %\examiner[Relatore]{Dott. Emiliano Casalicchio}
-%\examiner{membro della commissione}
+%\examiner{Membro della commissione}
 
 \begin{document}
 
@@ -31,25 +37,37 @@
 \dedication{Dedica}
 
 \begin{abstract}
-In questa sezione andrà inserito un riassunto conciso del lavoro di tesi. Dovrà introdurre il problema dell'instradamento dei task nelle reti satellitari, descrivere brevemente la soluzione proposta tramite la Programmazione Lineare Intera (ILP) e riassumere i risultati principali, come il tasso di successo ottenuto con le diverse configurazioni.
+L'evoluzione delle megacostellazioni di satelliti in orbita bassa (LEO, \emph{Low Earth Orbit}) ha aperto nuove prospettive per il \emph{Satellite Computing}, consentendo l'estensione delle capacità computazionali dell'edge computing direttamente nello spazio (\emph{Orbital Edge Computing}). Tuttavia, l'elevata dinamicità della topologia di rete, i vincoli energetici stringenti dei nodi satellitari e le rigorose scadenze temporali (\emph{deadline}) delle applicazioni \emph{real-time} rendono l'orchestrazione e l'offloading dei task sfide di primaria importanza.
+
+Questo lavoro di tesi presenta la progettazione, l'implementazione e l'analisi prestazionale di un orchestratore centralizzato basato sulla Programmazione Lineare Intera (ILP). Per mitigare i costi computazionali del solutore e prevenire fenomeni di \emph{starvation}, il sistema integra un meccanismo di \emph{batching} dinamico regolato dalle metriche di \emph{Batch Size} ($BS$) e \emph{Batch Timeout} ($BT$), insieme a una formulazione coordinata dei vincoli di temporizzazione che compensa i tempi di permanenza in coda prima della risoluzione.
+
+Attraverso simulazioni a eventi discreti sviluppate nel framework SimPy, l'architettura è stata valutata sotto stress al variare dei tassi di arrivo delle richieste ($\lambda$), confrontando le strategie di ottimizzazione \emph{Mapping Time} e \emph{Mapping Energy}. L'analisi dettagliata ha evidenziato che i punti di collasso sotto carico intenso ($\lambda > 6 \text{ req/s}$) sono prevalentemente causati dalla scadenza dei tempi di attesa (\emph{Deadline Exceeded}) piuttosto che dalla saturazione delle risorse fisiche di calcolo. Inoltre, gli esperimenti di sensibilità hanno dimostrato l'efficacia del rilassamento delle deadline ($\Delta D$) nel recuperare tassi di completamento elevati.
+
+Infine, l'orchestratore centralizzato è stato sottoposto a un benchmark comparativo con le soluzioni distribuite ed euristiche dello stato dell'arte (\emph{OrbitAware}, \emph{DTS-base}, \emph{DTS-APopt} e ILP distribuito). I risultati quantificano il \emph{trade-off} fondamentale tra l'ottimalità globale teorica dell'allocazione centralizzata e l'impatto della latenza di accodamento rispetto alla rapidità di risposta dei modelli distribuiti.
 \end{abstract}
 
 \begin{acknowledgments}
-Qui potrai inserire i ringraziamenti. Oltre al relatore, questo è lo spazio ideale per menzionare colleghi di università che ti hanno supportato durante lo sviluppo, come ad esempio Vincenzo per il confronto tecnico e l'aiuto nel debugging delle logiche di tracciamento.
+Ringraziamenti
 \end{acknowledgments}
 
 \tableofcontents
 
 \mainmatter
 
-\input{Capitoli/introduzione.tex}
-
+% --- INCLUSIONE DEI CAPITOLI SEPARATI ---
+\include{capitoli/capitolo1_introduzione}
+\include{capitoli/capitolo2_stato_arte}
+\include{capitoli/capitolo3_architettura_ilp}
+\include{capitoli/capitolo4_analisi_prestazioni}
+\include{capitoli/capitolo5_benchmark_comparativo}
+\include{capitoli/capitolo6_conclusioni}
 
 \backmatter
 \cleardoublepage
 \phantomsection
 \addcontentsline{toc}{chapter}{Bibliografia}
+\nocite{*}
 \bibliographystyle{sapthesis}
-\bibliography{bibliografia}
+%\bibliography{bibliografia}
 
 \end{document}
