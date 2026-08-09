@@ -1,0 +1,30 @@
+\chapter{Performance Analysis and Evaluation}
+\label{chap:performance_analysis}
+
+\section{Simulation Framework}
+\label{sec:simulation_framework}
+The proposed orchestrator was implemented and evaluated using a discrete-event simulation environment built in Python with the \texttt{SimPy} framework and solved via PuLP / CBC solver[cite: 19].
+
+\section{Experimental Setup and Workload Profiles}
+\label{sec:experimental_setup}
+Simulations were conducted under varying request arrival rates ($\lambda \in [2, 10] \text{ req/s}$)[cite: 19, 20]. Workloads consisted of heterogeneous service classes combining CPU-intensive tasks and data-intensive payloads.
+
+\section{Evaluation of Optimization Strategies}
+\label{sec:optimization_strategies}
+\subsection{Mapping Time vs. Mapping Energy Comparison}
+Experimental results demonstrate that \emph{Mapping Time} achieves lower average response times and higher success rates under delay-sensitive workloads. In contrast, \emph{Mapping Energy} succeeds in extending node operational lifespans but increases task queuing delays, resulting in higher deadline expiration rates under elevated arrival rates.
+
+\subsection{Impact of Batching Parameters ($BS$ and $BT$)}
+Small batch sizes ($BS=5, BS=10$) keep queuing delays low but increase total solver runtime[cite: 18]. Larger batch sizes ($BS=20, BS=30$) optimize solver throughput but require a fine-tuned Batch Timeout ($BT \approx 0.1 - 0.2 \text{ s}$) to prevent timing violations[cite: 18].
+
+\section{Bottleneck and Collapse Analysis}
+\label{sec:bottleneck_analysis}
+\subsection{System Behavior Under Heavy Load ($\lambda > 6 \text{ req/s}$)}
+As arrival rate $\lambda$ exceeds $6 \text{ req/s}$, system completion rate experiences a sharp drop[cite: 20].
+
+\subsection{Physical Saturation vs. Deadline Exceeded Failures}
+Detailed failure analysis reveals that system degradation is predominantly driven by \emph{Deadline Exceeded} events during queue accumulation rather than physical CPU or memory resource saturation[cite: 20].
+
+\section{Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}
+\label{sec:sensitivity_analysis}
+Sensitivity experiments evaluating deadline relaxation ($\Delta D$) showed that relaxing tight real-time constraints by a marginal offset significantly recovers completion rates, proving that queuing delay adaptation is the primary leverage point for centralized satellite orchestrators[cite: 21].

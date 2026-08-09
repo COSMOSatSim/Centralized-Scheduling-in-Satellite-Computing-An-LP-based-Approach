@@ -1,0 +1,51 @@
+\chapter{System Architecture and ILP Formulation}
+\label{chap:ilp_architecture}
+
+\section{System Model and Assumptions}
+\label{sec:system_model}
+The system models a regional cluster within a LEO constellation. A designated \emph{Master Satellite} acts as the regional coordinator, receiving incoming service requests $R = \{r_1, r_2, \dots, r_m\}$ and dispatching execution orders to local \emph{Satellite Edge Nodes} (SENs) $S = \{1, 2, \dots, n\}$ via ISLs.
+
+Each service request $r \in R$ is characterized by its input data size $s_r$, compute requirement $c_r$, maximum latency tolerance (deadline) $D_r$, and penalty $P_r$ paid if rejected.
+
+\section{ILP Mathematical Formulation}
+\label{sec:ilp_formulation}
+\subsection{Decision Variables and Objective Functions}
+Let binary variable $x_{r,i} \in \{0,1\}$ indicate whether request $r$ is assigned to SEN $i$. The objective function minimizes the normalized cost combining latency $\hat{R}_{r,i}$ and energy consumption $\hat{\epsilon}_{r,i}$:
+\begin{equation}
+    \min Z = \sum_{r \in R} \left[ \sum_{i \in S} x_{r,i} \left( w_{en} \hat{\epsilon}_{r,i} + w_{lat} \hat{R}_{r,i} \right) + P_r \left( 1 - \sum_{i \in S} x_{r,i} \right) \right]
+    \label{eq:ilp_objective}
+\end{equation}
+where $w_{lat}$ and $w_{en}$ are strategy weights:
+\begin{itemize}
+    \item \textbf{Mapping Time:} $w_{lat} = 1, w_{en} = 0$, prioritizing minimal execution and routing latency.
+    \item \textbf{Mapping Energy:} $w_{lat} = 0, w_{en} = 1$, prioritizing energy preservation across SEN nodes.
+\end{itemize}
+
+\subsection{System Constraints}
+The optimization operates subject to the following linear constraints:
+\begin{enumerate}
+    \item \textbf{Uniqueness Constraint:} Each request is assigned to at most one SEN:
+    \begin{equation}
+        \sum_{i \in S} x_{r,i} \le 1, \quad \forall r \in R
+    \end{equation}
+    \item \textbf{Energy Budget Constraint:} Total processing energy on SEN $i$ cannot exceed its remaining battery capacity $B_i$:
+    \begin{equation}
+        \sum_{r \in R} x_{r,i} \cdot \epsilon_{i,r}^{cpu} \le B_i, \quad \forall i \in S
+    \end{equation}
+    \item \textbf{Service Deadline Constraint:}
+    \begin{equation}
+        x_{r,i} \cdot (t_{queue, r} + R_{r,i}) \le D_r, \quad \forall r \in R, \forall i \in S
+    \end{equation}
+\end{enumerate}
+
+\section{Dynamic Batching Mechanism}
+\label{sec:batching_mechanism}
+To prevent invoking the ILP solver for every single incoming request—which causes high computational overhead—the Master collects requests into batches[cite: 18].
+\begin{itemize}
+    \item \textbf{Batch Size ($BS$):} Triggers solver execution once $BS$ requests accumulate in the queue[cite: 18].
+    \item \textbf{Batch Timeout ($BT$):} Forces batch resolution if $BT$ seconds elapse before reaching $BS$ requests, avoiding request starvation[cite: 18].
+\end{itemize}
+
+\section{Timing and Queuing Delay Compensation}
+\label{sec:queuing_compensation}
+Since requests spend time $t_{queue, r}$ in the queue prior to ILP execution, the deadline constraint is dynamically adjusted before solving[cite: 18]. The remaining allowable service time for request $r$ becomes $D'_r = D_r - t_{queue, r}$[cite: 18]. If $t_{queue, r} \ge D_r$, the task is immediately dropped prior to optimization to avoid wasting solver resources[cite: 18, 20].

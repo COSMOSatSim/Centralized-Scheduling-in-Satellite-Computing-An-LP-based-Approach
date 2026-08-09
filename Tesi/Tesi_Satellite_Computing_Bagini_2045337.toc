@@ -1,48 +1,44 @@
-\babel@toc {italian}{}\relax 
-\babel@toc {italian}{}\relax 
-\contentsline {chapter}{\numberline {1}Introduzione}{1}{chapter.1}%
-\contentsline {section}{\numberline {1.1}Contesto e Motivazioni}{1}{section.1.1}%
-\contentsline {section}{\numberline {1.2}Formulazione del Problema}{1}{section.1.2}%
-\contentsline {section}{\numberline {1.3}Obiettivo della Tesi}{1}{section.1.3}%
-\contentsline {section}{\numberline {1.4}Organizzazione del Testo}{1}{section.1.4}%
-\contentsline {chapter}{\numberline {2}Modello di Sistema e Stato dell'Arte}{2}{chapter.2}%
-\contentsline {section}{\numberline {2.1}Modello di Reti Satellitari e Workload}{2}{section.2.1}%
-\contentsline {subsection}{\numberline {2.1.1}Architettura di Rete e Collegamenti ISL}{2}{subsection.2.1.1}%
-\contentsline {subsection}{\numberline {2.1.2}Caratteristiche del Carico di Lavoro}{2}{subsection.2.1.2}%
-\contentsline {section}{\numberline {2.2}Tassonomia delle Soluzioni di Orchestrazione}{2}{section.2.2}%
-\contentsline {subsection}{\numberline {2.2.1}Approcci Centralizzati vs Distribuiti}{2}{subsection.2.2.1}%
-\contentsline {subsection}{\numberline {2.2.2}Punti di Forza e Limiti delle Architetture Attuali}{2}{subsection.2.2.2}%
-\contentsline {section}{\numberline {2.3}Algoritmi di Riferimento dello Stato dell'Arte}{2}{section.2.3}%
-\contentsline {subsection}{\numberline {2.3.1}Euristiche Distribuite: OrbitAware, DTS-base, DTS-APopt}{2}{subsection.2.3.1}%
-\contentsline {subsection}{\numberline {2.3.2}Modello ILP Gerarchico e Distribuito di Riferimento}{2}{subsection.2.3.2}%
-\contentsline {chapter}{\numberline {3}Architettura dell'Orchestratore Centralizzato ILP}{3}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Formulazione del Modello ILP}{3}{section.3.1}%
-\contentsline {subsection}{\numberline {3.1.1}Funzioni Obiettivo: Mapping Time e Mapping Energy}{3}{subsection.3.1.1}%
-\contentsline {subsection}{\numberline {3.1.2}Vincoli di Risorsa, Rete ed Energia}{3}{subsection.3.1.2}%
-\contentsline {section}{\numberline {3.2}Meccanismo di Batching Integrato}{3}{section.3.2}%
-\contentsline {subsection}{\numberline {3.2.1}Gestione tramite Batch Size e Batch Timeout}{3}{subsection.3.2.1}%
-\contentsline {subsection}{\numberline {3.2.2}Mitigazione dei Fenomeni di Starvation}{3}{subsection.3.2.2}%
-\contentsline {section}{\numberline {3.3}Modellazione Dinamica delle Deadline}{3}{section.3.3}%
-\contentsline {subsection}{\numberline {3.3.1}Aggiustamento del Tempo di Attesa in Coda}{3}{subsection.3.3.1}%
-\contentsline {chapter}{\numberline {4}Analisi delle Prestazioni e Sensibilità dell'Orchestratore ILP}{4}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Setup Sperimentale}{4}{section.4.1}%
-\contentsline {subsection}{\numberline {4.1.1}Ambiente di Simulazione a Eventi Discreti (SimPy)}{4}{subsection.4.1.1}%
-\contentsline {subsection}{\numberline {4.1.2}Parametri di Rete e Profilo Hardware del Sistema}{4}{subsection.4.1.2}%
-\contentsline {section}{\numberline {4.2}Impatto dei Parametri di Batching e Timeout}{4}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Analisi Dettagliata delle Prestazioni}{4}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Tasso di Completamento (Success Rate) e Punti di Collasso}{4}{subsection.4.3.1}%
-\contentsline {subsection}{\numberline {4.3.2}Distribuzione e Diagnosi delle Cause di Rigetto}{4}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Scomposizione dei Tempi di Risposta e di Sistema}{4}{subsection.4.3.3}%
-\contentsline {section}{\numberline {4.4}Sensibilità al Rilassamento delle Deadline}{4}{section.4.4}%
-\contentsline {chapter}{\numberline {5}Valutazione Comparativa: Orchestratore Centralizzato vs Soluzioni Distribuiti}{5}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Setup del Benchmark Comparativo}{5}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Confronto delle Prestazioni}{5}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Success Rate e Latenza di Risposta}{5}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}Grado di Bilanciamento del Carico (Load Balancing Degree)}{5}{subsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.2.3}Efficienza Energetica Complessiva}{5}{subsection.5.2.3}%
-\contentsline {section}{\numberline {5.3}Discussione dei Trade-off}{5}{section.5.3}%
-\contentsline {subsection}{\numberline {5.3.1}Latenza di Aggregazione vs Ottimalità Globale}{5}{subsection.5.3.1}%
-\contentsline {chapter}{\numberline {6}Conclusioni e Sviluppi Futuri}{6}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Sintesi dei Risultati}{6}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Limiti dell'Approccio Centralizzato}{6}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Sviluppi Futuri e Architetture Ibride}{6}{section.6.3}%
+\babel@toc {english}{}\relax 
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Motivation and Context}{1}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Problem Statement}{2}{section.1.2}%
+\contentsline {section}{\numberline {1.3}Objectives and Main Contributions}{3}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Thesis Outline}{4}{section.1.4}%
+\contentsline {chapter}{\numberline {2}Background and State of the Art}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Satellite Computing Paradigms}{5}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Task Offloading and Routing in LEO Networks}{6}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}System Entities and Network Topology}{6}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Workload Profiles and Constraints}{7}{subsection.2.2.2}%
+\contentsline {section}{\numberline {2.3}Centralized vs. Distributed Orchestration}{7}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Centralized Orchestration}{7}{subsection.2.3.1}%
+\contentsline {subsection}{\numberline {2.3.2}Distributed Orchestration}{7}{subsection.2.3.2}%
+\contentsline {section}{\numberline {2.4}State-of-the-Art Approaches}{8}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Distributed Heuristic Frameworks}{8}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Optimization-Based and Distributed ILP Formulations}{8}{subsection.2.4.2}%
+\contentsline {section}{\numberline {2.5}Research Gap and Thesis Positioning}{9}{section.2.5}%
+\contentsline {chapter}{\numberline {3}System Architecture and ILP Formulation}{10}{chapter.3}%
+\contentsline {section}{\numberline {3.1}System Model and Assumptions}{10}{section.3.1}%
+\contentsline {section}{\numberline {3.2}ILP Mathematical Formulation}{10}{section.3.2}%
+\contentsline {subsection}{\numberline {3.2.1}Decision Variables and Objective Functions}{10}{subsection.3.2.1}%
+\contentsline {subsection}{\numberline {3.2.2}System Constraints}{10}{subsection.3.2.2}%
+\contentsline {section}{\numberline {3.3}Dynamic Batching Mechanism}{11}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Timing and Queuing Delay Compensation}{11}{section.3.4}%
+\contentsline {chapter}{\numberline {4}Performance Analysis and Evaluation}{12}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Simulation Framework}{12}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Experimental Setup and Workload Profiles}{12}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Evaluation of Optimization Strategies}{12}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Mapping Time vs. Mapping Energy Comparison}{12}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Impact of Batching Parameters ($BS$ and $BT$)}{12}{subsection.4.3.2}%
+\contentsline {section}{\numberline {4.4}Bottleneck and Collapse Analysis}{13}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}System Behavior Under Heavy Load ($\lambda > 6 \text { req/s}$)}{13}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Physical Saturation vs. Deadline Exceeded Failures}{13}{subsection.4.4.2}%
+\contentsline {section}{\numberline {4.5}Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}{13}{section.4.5}%
+\contentsline {chapter}{\numberline {5}Comparative Benchmark}{14}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{14}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation}{14}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Trade-Off Analysis}{14}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{15}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Summary of Findings}{15}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Limitations of the Centralized Approach}{15}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Future Research Directions}{15}{section.6.3}%
+\contentsline {chapter}{Bibliography}{16}{section*.2}%

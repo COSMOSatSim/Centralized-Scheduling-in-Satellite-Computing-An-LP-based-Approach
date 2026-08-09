@@ -1,0 +1,18 @@
+\chapter{Conclusions and Future Work}
+\label{chap:conclusions}
+
+\section{Summary of Findings}
+\label{sec:summary}
+This thesis presented the design, implementation, and performance evaluation of a centralized ILP orchestrator for task routing in LEO satellite networks[cite: 17]. By incorporating a dynamic batching mechanism ($BS, BT$) and queue-aware timing compensation, the orchestrator mitigates solver invocation overheads and request starvation[cite: 18]. Simulations confirmed that under heavy load ($\lambda > 6 \text{ req/s}$), performance collapse is driven by queuing timeout deadlines rather than physical hardware limits[cite: 20].
+
+\section{Limitations of the Centralized Approach}
+\label{sec:limitations}
+The primary limitation of centralized ILP lies in its single-point decision bottleneck at the Master satellite, which introduces queuing latency during traffic spikes and depends heavily on reliable ISL control signaling[cite: 18, 23].
+
+\section{Future Research Directions}
+\label{sec:future_work}
+Future work will explore:
+\begin{itemize}
+    \item \textbf{Hybrid Orchestration:} Combining centralized global optimization with local heuristic fallback during traffic surges.
+    \item \textbf{Adaptive Machine Learning Batching:} Dynamically adjusting $BS$ and $BT$ parameters in real-time based on observed arrival rate fluctuations ($\lambda$).
+\end{itemize}

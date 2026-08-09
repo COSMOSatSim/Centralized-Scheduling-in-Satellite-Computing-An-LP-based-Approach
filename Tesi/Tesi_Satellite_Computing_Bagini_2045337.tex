@@ -1,4 +1,4 @@
-\documentclass[italian, oneside]{sapthesis}
+\documentclass[english, oneside]{sapthesis}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{babel}
@@ -10,64 +10,59 @@
 \usepackage{caption}
 \usepackage{subcaption}
 
-% --- Dati del candidato e della tesi ---
-\title{Orchestratore ILP centralizzato per il routing di task su reti satellitari}
+% --- Candidate and Thesis Metadata ---
+\title{Centralized ILP Orchestrator for Task Routing in Satellite Networks}
 \author{Claudio Bagini}
 \IDnumber{2045337}
-\course{Informatica}
-\courseorganizer{Facoltà di Ingegneria dell'Informazione, Informatica e Statistica}
+\course{Computer Science}
+\courseorganizer{Faculty of Information Engineering, Computer Science and Statistics}
 \submitdate{2025/2026}
 \copyyear{2026}
-\advisor{Dott. Emiliano Casalicchio}
+\advisor{Dr. Emiliano Casalicchio}
 \coadvisor{}
 \authoremail{bagini.2045337@studenti.uniroma1.it}
 \versiondate{\today}
-\thesistype{Tesi di Laurea Triennale}
-
-%\examdate{Data della discussione}
-%\examiner{Presidente della commissione}
-%\examiner[Relatore]{Dott. Emiliano Casalicchio}
-%\examiner{Membro della commissione}
+\thesistype{Bachelor's Thesis}
 
 \begin{document}
 
 \frontmatter
 \maketitle
 
-\dedication{Dedica}
+\dedication{Dedication}
 
 \begin{abstract}
-L'evoluzione delle megacostellazioni di satelliti in orbita bassa (LEO, \emph{Low Earth Orbit}) ha aperto nuove prospettive per il \emph{Satellite Computing}, consentendo l'estensione delle capacità computazionali dell'edge computing direttamente nello spazio (\emph{Orbital Edge Computing}). Tuttavia, l'elevata dinamicità della topologia di rete, i vincoli energetici stringenti dei nodi satellitari e le rigorose scadenze temporali (\emph{deadline}) delle applicazioni \emph{real-time} rendono l'orchestrazione e l'offloading dei task sfide di primaria importanza.
+The evolution of Low Earth Orbit (LEO) satellite megaconstellations has opened new perspectives for Satellite Computing, enabling the extension of edge computing capabilities directly into space (Orbital Edge Computing). However, the highly dynamic network topology, stringent energy constraints of satellite nodes, and strict deadlines of real-time applications make task orchestration and offloading critical challenges.
 
-Questo lavoro di tesi presenta la progettazione, l'implementazione e l'analisi prestazionale di un orchestratore centralizzato basato sulla Programmazione Lineare Intera (ILP). Per mitigare i costi computazionali del solutore e prevenire fenomeni di \emph{starvation}, il sistema integra un meccanismo di \emph{batching} dinamico regolato dalle metriche di \emph{Batch Size} ($BS$) e \emph{Batch Timeout} ($BT$), insieme a una formulazione coordinata dei vincoli di temporizzazione che compensa i tempi di permanenza in coda prima della risoluzione.
+This thesis presents the design, implementation, and performance evaluation of a centralized orchestrator based on Integer Linear Programming (ILP). To mitigate solver computational costs and prevent starvation, the system integrates a dynamic batching mechanism controlled by Batch Size ($BS$) and Batch Timeout ($BT$) metrics, along with a coordinated formulation of timing constraints that accounts for queuing delay prior to resolution.
 
-Attraverso simulazioni a eventi discreti sviluppate nel framework SimPy, l'architettura è stata valutata sotto stress al variare dei tassi di arrivo delle richieste ($\lambda$), confrontando le strategie di ottimizzazione \emph{Mapping Time} e \emph{Mapping Energy}. L'analisi dettagliata ha evidenziato che i punti di collasso sotto carico intenso ($\lambda > 6 \text{ req/s}$) sono prevalentemente causati dalla scadenza dei tempi di attesa (\emph{Deadline Exceeded}) piuttosto che dalla saturazione delle risorse fisiche di calcolo. Inoltre, gli esperimenti di sensibilità hanno dimostrato l'efficacia del rilassamento delle deadline ($\Delta D$) nel recuperare tassi di completamento elevati.
+Using discrete-event simulations developed with the SimPy framework, the architecture was evaluated under stress across varying request arrival rates ($\lambda$), comparing \emph{Mapping Time} and \emph{Mapping Energy} optimization strategies. A detailed analysis revealed that system collapse under heavy loads ($\lambda > 6 \text{ req/s}$) is predominantly driven by timeout deadlines (\emph{Deadline Exceeded}) rather than physical compute resource saturation. Furthermore, sensitivity experiments demonstrated the effectiveness of deadline relaxation ($\Delta D$) in recovering high completion rates.
 
-Infine, l'orchestratore centralizzato è stato sottoposto a un benchmark comparativo con le soluzioni distribuite ed euristiche dello stato dell'arte (\emph{OrbitAware}, \emph{DTS-base}, \emph{DTS-APopt} e ILP distribuito). I risultati quantificano il \emph{trade-off} fondamentale tra l'ottimalità globale teorica dell'allocazione centralizzata e l'impatto della latenza di accodamento rispetto alla rapidità di risposta dei modelli distribuiti.
+Finally, the centralized orchestrator was benchmarked against state-of-the-art distributed and heuristic solutions (\emph{OrbitAware}, \emph{DTS-base}, \emph{DTS-APopt}, and distributed ILP). The results quantify the fundamental trade-off between the theoretical global optimality of centralized allocation and the impact of queuing latency compared to the responsiveness of distributed models.
 \end{abstract}
 
 \begin{acknowledgments}
-Ringraziamenti
+Acknowledgments
 \end{acknowledgments}
 
 \tableofcontents
 
 \mainmatter
 
-% --- INCLUSIONE DEI CAPITOLI SEPARATI ---
-\include{capitoli/capitolo1_introduzione}
-\include{capitoli/capitolo2_stato_arte}
-\include{capitoli/capitolo3_architettura_ilp}
-\include{capitoli/capitolo4_analisi_prestazioni}
-\include{capitoli/capitolo5_benchmark_comparativo}
-\include{capitoli/capitolo6_conclusioni}
+% --- CHAPTER INCLUSIONS ---
+\include{capitoli/chapter1_introduction}
+\include{capitoli/chapter2_state_of_the_art}
+\include{capitoli/chapter3_ilp_architecture}
+\include{capitoli/chapter4_performance_analysis}
+\include{capitoli/chapter5_comparative_benchmark}
+\include{capitoli/chapter6_conclusions}
 
 \backmatter
 \cleardoublepage
 \phantomsection
-\addcontentsline{toc}{chapter}{Bibliografia}
+\addcontentsline{toc}{chapter}{Bibliography}
 \nocite{*}
 \bibliographystyle{sapthesis}
-%\bibliography{bibliografia}
+\bibliography{bibliografia}
 
 \end{document}
