@@ -9,6 +9,38 @@
 \usepackage{microtype}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{changepage}
+
+% Definizione della palette di colori per Python
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+% Configurazione globale di listings
+\lstset{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen}\itshape,
+    keywordstyle=\color{blue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize, % Font monospaziato ridotto per evitare sforamenti
+    breakatwhitespace=false,         
+    breaklines=true,                 % FONDAMENTALE: spezza automaticamente le righe lunghe
+    postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space}, % Simbolo visivo di riga spezzata
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    % Mostra i numeri di riga a sinistra
+    numbersep=8pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=4,
+    frame=single,                    % Riquadro attorno al codice
+    rulecolor=\color{codegray!30},
+}
 
 % --- Candidate and Thesis Metadata ---
 \title{Centralized ILP Orchestrator for Task Routing in Satellite Networks}
