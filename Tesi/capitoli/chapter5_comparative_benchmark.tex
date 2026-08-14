@@ -3,26 +3,11 @@
 
 \section{Experimental Setup and Baseline Algorithms}
 \label{sec:benchmark_setup}
-To evaluate the trade-offs of centralized ILP orchestration, the system was benchmarked against four baseline algorithms from the state of the art[cite: 22]:
-\begin{enumerate}
-    \item \textbf{OrbitAware:} Trajectory-aware predictive offloading[cite: 22].
-    \item \textbf{DTS-base:} Distance-based greedy heuristic ($O(n \log n)$ complexity)[cite: 22].
-    \item \textbf{DTS-APopt:} Distance-based offloading with local access-point optimization[cite: 22].
-    \item \textbf{Distributed ILP:} Decentralized exact optimization solved locally per orbital sector[cite: 22].
-\end{enumerate}
+
 
 \section{Comparative Performance Evaluation}
 \label{sec:comparative_evaluation}
-\begin{itemize}
-    \item \textbf{Task Completion Rate (Success Rate):} Under light to moderate traffic ($\lambda \le 4 \text{ req/s}$), Centralized ILP achieves superior completion rates due to global resource awareness[cite: 23].
-    \item \textbf{Response Latency:} Distributed heuristics (DTS-base, DTS-APopt) achieve significantly lower initial response latency due to immediate decision execution without batch queuing delays[cite: 23].
-    \item \textbf{Load Balancing Degree:} Centralized ILP yields a superior load balancing distribution across SENs compared to greedy heuristics[cite: 23].
-\end{itemize}
+
 
 \section{Trade-Off Analysis}
 \label{sec:tradeoff_analysis}
-The evaluation quantifies a fundamental architectural trade-off[cite: 23]:
-\begin{itemize}
-    \item \emph{Centralized ILP} offers theoretical global optimality and optimal energy-latency balance but suffers from queuing latency under heavy loads[cite: 23].
-    \item \emph{Distributed heuristics} sacrifice global optimality but offer superior responsiveness and scalability in dynamic LEO satellite environments[cite: 23].
-\end{itemize}

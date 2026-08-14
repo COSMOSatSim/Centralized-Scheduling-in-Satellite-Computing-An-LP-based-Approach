@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.25)  9 AUG 2026 18:19
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.3.25)  14 AUG 2026 12:28
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -719,90 +719,93 @@ Chapter 3.
 
 
 ]
-Overfull \hbox (1.98605pt too wide) in paragraph at lines 28--28
-[]\T1/lmr/bx/n/14.4 (-20) Constellation Map-ping and Multi-Hop Short-est Path
+Overfull \hbox (19.49316pt too wide) in paragraph at lines 38--39
+[]\T1/lmr/bx/n/10.95 (-20) Maximum Batch Size ($\OML/lmm/m/it/10.95 BS$\T1/lmr/bx/n/10.95 (-20) ): \T1/lmr/m/n/10.95 (-20) A struc-tural thresh-old (\T1/lmtt/m/n/10.95 centralized_batch_size\T1/lmr/m/n/10.95 (-20) )
  []
 
-[11] [12]
-Overfull \hbox (43.53447pt too wide) in paragraph at lines 150--151
-\T1/lmr/m/n/10.95 (-20) causes (\T1/lmtt/m/n/10.95 "No_Route"\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10.95 "Deadline_Violation"\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10.95 "Sunset_Violation"\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10.95 "Energy_Exhaustion"\T1/lmr/m/n/10.95 (-20) ,
+
+Overfull \hbox (0.18106pt too wide) in paragraph at lines 39--40
+[]\T1/lmr/bx/n/10.95 (-20) Batch Time-out ($\OML/lmm/m/it/10.95 BT$\T1/lmr/bx/n/10.95 (-20) ): \T1/lmr/m/n/10.95 (-20) A tem-po-ral thresh-old (\T1/lmtt/m/n/10.95 centralized_batch_timeout\T1/lmr/m/n/10.95 (-20) )
  []
 
-[13] (/opt/texlive/2026/texmf-dist/tex/latex/listings/lstlang1.sty
+[11] (/opt/texlive/2026/texmf-dist/tex/latex/listings/lstlang1.sty
 File: lstlang1.sty 2025/11/14 1.11b listings language file
 )
-Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on input line 177.
+Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on input line 52.
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <9> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 178.
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 53.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <9> on input line 178.
- [14] [15] [16] [17] [18]
-Overfull \hbox (93.82732pt too wide) in paragraph at lines 425--428
-\T1/lmtt/m/n/10.95 "Deadline_Violation"\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10.95 "Sunset_Violation"\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10.95 "Energy_Exhaustion"\T1/lmr/m/n/10.95 (-20) , \T1/lmtt/m/n/10.95 "Load_Balancing_Rejected"\T1/lmr/m/n/10.95 (-20) ,
+(Font)              <9> on input line 53.
+ [12] [13] [14] [15] [16] [17] [18] [19] [20] [21] [22] [23]
+Overfull \hbox (34.08319pt too wide) in paragraph at lines 648--649
+\T1/lmr/m/n/10.95 (-20) wards the packet to the clos-est non-visited node. Vis-ited sets (\T1/lmtt/m/n/10.95 routing_task.visited\T1/lmr/m/n/10.95 (-20) )
  []
 
-[19] [20] [21] [22] [23] [24] [25] [26] [27] [28]) [29]
+
+Overfull \hbox (20.14828pt too wide) in paragraph at lines 651--653
+\T1/lmr/m/n/10.95 (-20) cess yields to the discrete-event CPU sim-u-la-tor (\T1/lmtt/m/n/10.95 ILP_simulation.TaskAssignment_ILP\T1/lmr/m/n/10.95 (-20) ).
+ []
+
+[24] [25] [26] [27]) [28]
 \openout2 = `capitoli/chapter4_performance_analysis.aux'.
 
  (./capitoli/chapter4_performance_analysis.tex
 Chapter 4.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 17.
+(Font)              <12> on input line 14.
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 17.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 17.
+(hyperref)                removing `math shift' on input line 14.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 17.
+(hyperref)                removing `math shift' on input line 14.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 17.
+(hyperref)                removing `math shift' on input line 14.
 
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 14.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 18.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\lambda' on input line 18.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 18.
+
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <14.4> on input line 22.
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 22.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\lambda' on input line 22.
+(hyperref)                removing `\Delta' on input line 22.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 22.
 
-[30
+) [29
 
 
 
 
 ]
-LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <14.4> on input line 28.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 28.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\Delta' on input line 28.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 28.
-
-) [31]
 \openout2 = `capitoli/chapter5_comparative_benchmark.aux'.
 
  (./capitoli/chapter5_comparative_benchmark.tex
 Chapter 5.
-) [32
+) [30
 
 
 
@@ -812,7 +815,7 @@ Chapter 5.
 
  (./capitoli/chapter6_conclusions.tex
 Chapter 6.
-) [33
+) [31
 
 
 
@@ -821,33 +824,33 @@ Chapter 6.
 Package microtype Info: Character `029' is missing
 (microtype)             in font `T1/lmr/m/sc/10.95'.
 (microtype)             Ignoring protrusion settings for this character.
- [34
+ [32
 
 
 
 
 
-]) [35] (./Tesi_Satellite_Computing_Bagini_2045337.aux (./capitoli/chapter1_introduction.aux) (./capitoli/chapter2_state_of_the_art.aux) (./capitoli/chapter3_ilp_architecture.aux) (./capitoli/chapter4_performance_analysis.aux) (./capitoli/chapter5_comparative_benchmark.aux) (./capitoli/chapter6_conclusions.aux))
+]) [33] (./Tesi_Satellite_Computing_Bagini_2045337.aux (./capitoli/chapter1_introduction.aux) (./capitoli/chapter2_state_of_the_art.aux) (./capitoli/chapter3_ilp_architecture.aux) (./capitoli/chapter4_performance_analysis.aux) (./capitoli/chapter5_comparative_benchmark.aux) (./capitoli/chapter6_conclusions.aux))
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `Tesi_Satellite_Computing_Bagini_2045337.out' has not changed.
-(rerunfilecheck)             Checksum: 7513E9EA4FC34E14A0960E03816D3D60;11087.
+(rerunfilecheck)             Checksum: 90D62D04B8073106D25F9737A27BE089;11781.
  ) 
 Here is how much of TeX's memory you used:
- 19949 strings out of 467525
- 320682 string characters out of 5393692
- 2056255 words of memory out of 5000000
- 47430 multiletter control sequences out of 15000+600000
- 750629 words of font info for 270 fonts, out of 8000000 for 9000
+ 19887 strings out of 467525
+ 319705 string characters out of 5393692
+ 1951724 words of memory out of 5000000
+ 47424 multiletter control sequences out of 15000+600000
+ 749818 words of font info for 264 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 84i,13n,131p,1549b,2323s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmex10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi6.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi9.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr6.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr7.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr8.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmri10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss17.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy9.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtt9.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (42 pages, 659269 bytes).
+ 84i,13n,131p,1075b,2374s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmex10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi6.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmmi9.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr12.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr6.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr7.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmr8.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmri10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmss17.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmsy9.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtt9.pfb></opt/texlive/2026/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
+Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (40 pages, 646360 bytes).
 PDF statistics:
- 1465 PDF objects out of 1728 (max. 8388607)
- 1352 compressed objects within 14 object streams
- 793 named destinations out of 1000 (max. 500000)
- 72590 words of extra memory for PDF output out of 74296 (max. 10000000)
+ 1399 PDF objects out of 1440 (max. 8388607)
+ 1288 compressed objects within 13 object streams
+ 747 named destinations out of 1000 (max. 500000)
+ 72078 words of extra memory for PDF output out of 74296 (max. 10000000)
 

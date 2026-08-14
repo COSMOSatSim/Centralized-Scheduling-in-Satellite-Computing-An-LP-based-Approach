@@ -16,35 +16,35 @@
 \contentsline {subsection}{\numberline {2.4.1}Distributed Heuristic Frameworks}{8}{subsection.2.4.1}%
 \contentsline {subsection}{\numberline {2.4.2}Optimization-Based and Distributed ILP Formulations}{8}{subsection.2.4.2}%
 \contentsline {section}{\numberline {2.5}Research Gap and Thesis Positioning}{9}{section.2.5}%
-\contentsline {chapter}{\numberline {3}System Architecture and Centralized ILP Formulation}{10}{chapter.3}%
-\contentsline {section}{\numberline {3.1}System Model and Logical Topology}{10}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Constellation Mapping and Multi-Hop Shortest Path Routing}{11}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Mathematical Optimization Formulation}{11}{section.3.3}%
-\contentsline {subsection}{\numberline {3.3.1}Latency and Energy Models}{12}{subsection.3.3.1}%
-\contentsline {subsection}{\numberline {3.3.2}Orbital Eclipse Penalty and Multi-Objective Function}{12}{subsection.3.3.2}%
-\contentsline {subsection}{\numberline {3.3.3}Operational Linear Constraints}{13}{subsection.3.3.3}%
-\contentsline {section}{\numberline {3.4}Orchestration Lifecycle: Dynamic Batching and Hybrid Fallback Routing}{13}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Software Implementation in Python}{14}{section.3.5}%
-\contentsline {subsection}{\numberline {3.5.1}Class Definition}{14}{subsection.3.5.1}%
-\contentsline {subsection}{\numberline {3.5.2}Constellation Mapping}{16}{subsection.3.5.2}%
-\contentsline {subsection}{\numberline {3.5.3}ILP Resolution}{19}{subsection.3.5.3}%
-\contentsline {subsection}{\numberline {3.5.4}Task Routing}{25}{subsection.3.5.4}%
-\contentsline {chapter}{\numberline {4}Performance Analysis and Evaluation}{30}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Simulation Framework}{30}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Experimental Setup and Workload Profiles}{30}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Evaluation of Optimization Strategies}{30}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Mapping Time vs. Mapping Energy Comparison}{30}{subsection.4.3.1}%
-\contentsline {subsection}{\numberline {4.3.2}Impact of Batching Parameters ($BS$ and $BT$)}{30}{subsection.4.3.2}%
-\contentsline {section}{\numberline {4.4}Bottleneck and Collapse Analysis}{31}{section.4.4}%
-\contentsline {subsection}{\numberline {4.4.1}System Behavior Under Heavy Load ($\lambda > 6 \text { req/s}$)}{31}{subsection.4.4.1}%
-\contentsline {subsection}{\numberline {4.4.2}Physical Saturation vs. Deadline Exceeded Failures}{31}{subsection.4.4.2}%
-\contentsline {section}{\numberline {4.5}Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}{31}{section.4.5}%
-\contentsline {chapter}{\numberline {5}Comparative Benchmark}{32}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{32}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation}{32}{section.5.2}%
-\contentsline {section}{\numberline {5.3}Trade-Off Analysis}{32}{section.5.3}%
-\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{33}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Summary of Findings}{33}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Limitations of the Centralized Approach}{33}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Future Research Directions}{33}{section.6.3}%
-\contentsline {chapter}{Bibliography}{34}{section*.2}%
+\contentsline {chapter}{\numberline {3}System Architecture, Mathematical Formulation, and Implementation}{10}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Regional Constellation Architecture and Offloading Model}{10}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Event-Driven Dynamic Batching Engine}{11}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Constellation Topology Mapping and Metric Normalization}{14}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Centralized Integer Linear Programming Formulation}{17}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Latency, Energy, and Orbital Eclipse Modeling}{17}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Multi-Objective Function and System Constraints}{18}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Solver Routine and Cascade Rejection Diagnostics}{18}{subsection.3.4.3}%
+\contentsline {section}{\numberline {3.5}Task Execution and Resilient Hybrid Routing}{24}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Computational Complexity and Scalability Analysis}{27}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Topology Mapping Complexity}{27}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}ILP Formulation and Solver Complexity}{27}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Hybrid Routing Complexity}{28}{subsection.3.6.3}%
+\contentsline {chapter}{\numberline {4}Performance Analysis and Evaluation}{29}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Simulation Framework}{29}{section.4.1}%
+\contentsline {section}{\numberline {4.2}Experimental Setup and Workload Profiles}{29}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Evaluation of Optimization Strategies}{29}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Mapping Time vs. Mapping Energy Comparison}{29}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Impact of Batching Parameters ($BS$ and $BT$)}{29}{subsection.4.3.2}%
+\contentsline {section}{\numberline {4.4}Bottleneck and Collapse Analysis}{29}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}System Behavior Under Heavy Load ($\lambda > 6 \text { req/s}$)}{29}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Physical Saturation vs. Deadline Exceeded Failures}{29}{subsection.4.4.2}%
+\contentsline {section}{\numberline {4.5}Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}{29}{section.4.5}%
+\contentsline {chapter}{\numberline {5}Comparative Benchmark}{30}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{30}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation}{30}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Trade-Off Analysis}{30}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{31}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Summary of Findings}{31}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Limitations of the Centralized Approach}{31}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Future Research Directions}{31}{section.6.3}%
+\contentsline {chapter}{Bibliography}{32}{section*.2}%

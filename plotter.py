@@ -11,7 +11,7 @@ plt.rcParams['figure.dpi'] = 300
 # ==========================================
 # 1. CONFIGURAZIONI PARAMETRI
 # ==========================================
-root_folder = "results_esp_7" 
+root_folder = "results_esp_7_2" 
 
 base_colors = [
     '#4E79A7', '#A0CBE8', # Coppia 1: Blues
