@@ -1,23 +1,278 @@
-\chapter{Performance Analysis and Evaluation}
+\chapter{Performance Analysis and Experimental Evaluation}
 \label{chap:performance_analysis}
 
-\section{Simulation Framework}
-\label{sec:simulation_framework}
+This chapter presents a comprehensive experimental evaluation of the proposed centralized Integer Linear Programming (ILP) orchestrator for task offloading and routing in Low Earth Orbit (LEO) satellite constellations. Through extensive discrete-event simulations, the operational behavior of the orchestrator is systematically investigated under varying network loads, batching policies, objective configurations, and deadline constraints. 
 
-\section{Experimental Setup and Workload Profiles}
-\label{sec:experimental_setup}
+The evaluation aims to identify the physical, topological, and computational bottlenecks of centralized orchestration, quantify the trade-offs between batch aggregation latency and solver optimality, and assess the resilience of the satellite edge computing (SEC) architecture under heavy workload stress.
 
-\section{Evaluation of Optimization Strategies}
-\label{sec:optimization_strategies}
-\subsection{Mapping Time vs. Mapping Energy Comparison}
+% =============================================================================
+% SECTION 4.1: SIMULATION ENVIRONMENT AND SETUP
+% =============================================================================
+\section{Simulation Environment and Methodological Setup}
+\label{sec:exp_setup}
 
-\subsection{Impact of Batching Parameters ($BS$ and $BT$)}
+The experimental campaign was carried out using a specialized discrete-event satellite network simulator developed in Python using the \texttt{SimPy} framework, coupled with the \texttt{PuLP} mathematical programming library backed by the CBC (\textit{Coin-or branch and cut}) solver engine. The simulator models the physical motion of LEO satellites, inter-satellite optical links (ISLs), dynamic ground-to-satellite contact windows, and heterogeneous onboard computing servers.
 
-\section{Bottleneck and Collapse Analysis}
-\label{sec:bottleneck_analysis}
-\subsection{System Behavior Under Heavy Load ($\lambda > 6 \text{ req/s}$)}
+\subsection{Constellation Topology and Workload Profiles}
+\label{subsec:workload_profiles}
 
-\subsection{Physical Saturation vs. Deadline Exceeded Failures}
+The simulation environment reproduces a Walker-Delta constellation topology in Low Earth Orbit at an altitude of $600\text{ km}$. Satellites act as Satellite Edge Nodes (SENs) interconnected via full-duplex laser ISLs with a transmission bandwidth of $B_{u,v} = 1\text{ Gbps}$. One designated satellite in the coverage sector operates as the centralized Master Coordinator, gathering incoming service requests from Ground Users (GUs) and executing the optimization routine.
 
-\section{Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}
-\label{sec:sensitivity_analysis}
+In alignment with the reference IEEE ICDCS baseline, the workload characteristics and task dimensions are parameterized through three profiling vectors:
+\begin{itemize}
+    \item \textbf{Task Type Distribution Vector} $\boldsymbol{\beta} = (b_G, b_C, b_{CD})$: Defines the fraction of incoming requests categorized respectively as \textit{Generic} (balanced CPU and low data), \textit{CPU-intensive} (high compute cycles, moderate data), and \textit{CPU \& Data-intensive} (high computational load and large input datasets). In the baseline stress tests, the default mixed configuration is set to $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$.
+    \item \textbf{Real-Time Data Distribution Vector} $\boldsymbol{\alpha} = (\alpha_M, \alpha_L, \alpha_V)$: Dictates the proportion of real-time service requests associated with \textit{Medium} ($1\text{--}5\text{ MB}$), \textit{Large} ($5\text{--}20\text{ MB}$), and \textit{Very Large} ($20\text{--}50\text{ MB}$) input payloads. The standard baseline is parameterized as $\boldsymbol{\alpha} = (0.30, 0.50, 0.20)$.
+    \item \textbf{Batch Task Data Distribution Vector} $\boldsymbol{\gamma} = (\gamma_L, \gamma_V)$: Controls the file weight ratio between large and very large files for delay-tolerant batch background operations, set by default to $\boldsymbol{\gamma} = (0.70, 0.30)$.
+\end{itemize}
+
+Each satellite is initialized with an operational energy budget $E_{max} = 80\text{ kJ}$, representing the usable battery storage per orbital pass. The primary independent control variable across simulations is the network arrival rate $\lambda \in [2, 10]\text{ req/s}$, corresponding to exponentially distributed inter-arrival times $AT \in [0.50, 0.10]\text{ s}$.
+
+\subsection{Simulation Engine Refinements and Architectural Correctness}
+\label{subsec:engine_enhancements}
+
+To ensure high experimental fidelity and eliminate simulation artifacts, several structural enhancements and bug fixes were integrated into the simulation framework prior to data collection:
+\begin{enumerate}
+    \item \textbf{Dynamic Load Balancing}: An active load-balancing layer was implemented across edge server queues to prevent artificial clustering of requests onto the nearest spatial nodes, thereby maximizing multi-core CPU utilization across the constellation.
+    \item \textbf{ILP Infeasibility Retry Mechanism}: In corner cases where the solver returns an \textit{Infeasible} state due to transient resource exhaustion or strict deadline conflicts, a graceful retry routine re-evaluates the batch in the subsequent simulation tick, mitigating premature task drops.
+    \item \textbf{Orbital Sunset Management}: An explicit topological sunset protocol was introduced. When an active SEN approaches the line-of-sight communication horizon relative to the ground access point or the Master, the orchestrator penalizes its routing weight to prevent in-flight connection dropouts.
+    \item \textbf{Greedy Uplink Fallback}: To enhance operational resilience against rapid orbital topology shifts during solver computation, a deterministic shortest-path fallback mechanism guarantees packet forwarding if an ILP-designated ISL path is abruptly severed.
+    \item \textbf{Time-in-System Metric Unification}: The tracking of end-to-end task residency was corrected to capture every latency contributor comprehensively:
+    \begin{equation}
+        T_{sys} = t_{queue} + t_{solver} + t_{up} + t_{exec} + t_{down}
+    \end{equation}
+    where $t_{queue}$ denotes the batch accumulation delay, $t_{solver}$ is the optimization execution wall-clock time, $t_{up}$ and $t_{down}$ represent ISL and feeder transmission delays, and $t_{exec}$ is the pure processor execution duration.
+\end{enumerate}
+
+% =============================================================================
+% SECTION 4.2: BATCHING AND ARRIVAL RATE DYNAMICS
+% =============================================================================
+\section{\texorpdfstring{Impact of Arrival Rate ($\lambda$) and Dynamic Batching}{Impact of Arrival Rate and Dynamic Batching}}
+\label{sec:batching_analysis}
+
+Centralized optimization requires accumulating individual service requests into discrete batches before invoking the ILP solver. This architectural requirement introduces an inherent trade-off between optimization horizon (the number of concurrently scheduled tasks) and queuing latency.
+
+Two operational parameters govern this aggregation phase:
+\begin{itemize}
+    \item \textbf{Batch Size ($BS$)}: The maximum number of incoming service requests buffered before triggering optimization ($BS \in \{1, 2, 4, 6, 8, 10, 20\}$).
+    \item \textbf{Batch Timeout ($BT$)}: The maximum allowable dwell time (in seconds) an incomplete batch may wait in the queue before forced solver dispatch ($BT \in [0.0, 2.0]\text{ s}$).
+\end{itemize}
+
+\subsection{Task Completion Success Rate Evaluation}
+\label{subsec:success_rate_eval}
+
+The Task Success Rate ($SR$) represents the percentage of generated requests that are successfully accepted by the Master, transmitted across the ISL mesh, computed at the designated SEN, and returned to the GU without violating either the deadline $D_r$ or the satellite energy budgets $B_i$.
+
+As illustrated in Figure~\ref{fig:sr_energy_base} and Figure~\ref{fig:sr_time_base}, the centralized orchestrator demonstrates outstanding performance in low-to-moderate traffic regimes ($\lambda \le 4\text{ req/s}$), achieving completion rates between $85\%$ and $92\%$. However, as the arrival rate scales past the critical threshold of $\lambda = 6\text{ req/s}$, system throughput exhibits a pronounced degradation, dropping below $40\%$ at $\lambda = 10\text{ req/s}$.
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/success_rate_energy_baseline.png}%
+    }
+    \caption{Success Rate as a function of Arrival Rate under Energy Mapping ($w_{lat}=0, w_{en}=1$).}
+    \label{fig:sr_energy_base}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/success_rate_time_baseline.png}%
+    }
+    \caption{Success Rate as a function of Arrival Rate under Time Mapping ($w_{lat}=1, w_{en}=0$).}
+    \label{fig:sr_time_base}
+\end{figure}
+
+The experimental results definitively highlight that the magnitude of performance degradation is strictly coupled with the Batch Timeout parameter ($BT$). Configurations relying on static, large aggregation thresholds without aggressive timeouts (e.g., $BS=8, 10$ with $BT=2.0\text{ s}$) suffer severe throughput collapse. Conversely, configurations featuring immediate dispatch ($BS=1$ or $BS=20$ with $BT \le 0.05\text{ s}$) exhibit the highest resilience across all arrival rates.
+
+
+
+% =============================================================================
+% SECTION 4.3: REJECTION CAUSE BREAKDOWN
+% =============================================================================
+\section{Rejection Cause Breakdown and Bottleneck Diagnosis}
+\label{sec:rejection_causes}
+
+To diagnose the underlying mechanisms responsible for task drops under high network load, rejected service requests were categorized according to their terminal simulation state:
+\begin{itemize}
+    \item \textbf{Deadline Exceeded}: The cumulative elapsed time (queuing $+$ transmission $+$ processing) surpassed the task deadline $D_r$.
+    \item \textbf{Insufficient CPU}: Target candidate satellites possessed insufficient CPU core cycles or excessively congested execution queues.
+    \item \textbf{Insufficient CPU+NET}: Combined exhaustion of onboard computational capacity and inter-satellite link transmission bandwidth.
+    \item \textbf{No Server Found / ILP Infeasible}: The mathematical solver failed to construct a valid topological mapping satisfying global network constraints.
+    \item \textbf{Sunset}: The candidate satellite traversed below the minimum visibility horizon during request routing.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/rejection_causes_energy_baseline.png}%
+    }
+    \caption{Distribution of failure causes across arrival rates under Energy Mapping ($w_{lat}=0, w_{en}=1$).}
+    \label{fig:rej_energy_base}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/rejection_causes_time_baseline.png}%
+    }
+    \caption{Distribution of failure causes across arrival rates under Time Mapping ($w_{lat}=1, w_{en}=0$).}
+    \label{fig:rej_time_base}
+\end{figure}
+
+As shown in Figure~\ref{fig:rej_energy_base} and Figure~\ref{fig:rej_time_base}, \textbf{Deadline Exceeded is overwhelmingly the primary cause of task failure}, accounting for up to $80\%$ of total rejected requests at high arrival rates. While physical resource exhaustion (\textit{Insuff. CPU} and \textit{Insuff. CPU+NET}) accounts for a moderate fraction of drops under low load ($3\%\text{--}17\%$), its relative proportion diminishes as arrival rate scales. 
+
+Under heavy congestion, tasks spend excessive time residing in the Master's buffer waiting for batch completion; by the time the ILP solver executes and assigns an optimal route, the remaining time margin $\Delta t_{rem} = D_r - t_{queue}$ is insufficient to execute the actual computation, triggering immediate drop.
+
+% =============================================================================
+% SECTION 4.4: LATENCY AND RESPONSE TIME DECOMPOSITION
+% =============================================================================
+\section{Response Time Decomposition and Queuing Latency}
+\label{sec:response_time_decomp}
+
+To further validate why deadline violations dominate failure modes, the total end-to-end response time was disaggregated into its two foundational sub-components:
+\begin{enumerate}
+    \item \textbf{System Execution Time ($T_{exec}$)}: Pure computational processing time on the designated SEN CPU cores plus mathematical solver calculation time.
+    \item \textbf{Network and Wait Time ($T_{net+wait}$)}: Cumulative queuing delay in the batch buffer, feeder link transmission time, and multi-hop ISL forwarding latency.
+\end{enumerate}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/stacked_response_time_energy.png}%
+    }
+    \caption{Stacked Response Time decomposition across arrival rates under Energy Mapping.}
+    \label{fig:resp_time_energy}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/stacked_response_time_time.png}%
+    }
+    \caption{Stacked Response Time decomposition across arrival rates under Time Mapping.}
+    \label{fig:resp_time_time}
+\end{figure}
+
+The stacked bar charts in Figure~\ref{fig:resp_time_energy} and Figure~\ref{fig:resp_time_time} reveal a fundamental structural insight into the centralized architecture:
+\begin{itemize}
+    \item \textbf{Invariance of Computation Time}: Across all arrival rates ($\lambda = 2$ to $10\text{ req/s}$) and batching policies, the actual execution duration ($T_{exec}$, solid base bars) remains essentially constant and remarkably low, averaging between $0.15\text{ ms}$ and $0.60\text{ ms}$. The ILP solver computation itself does not scale explosively within the tested parameter boundaries.
+    \item \textbf{Asymptotic Growth of Queuing Delay}: Conversely, the network and queuing wait time ($T_{net+wait}$, upper shaded bars) increases monotonically with traffic intensity, rising from $\approx 0.30\text{ ms}$ to over $1.45\text{ ms}$. 
+\end{itemize}
+
+In accordance with classical $M/M/1$ and $G/G/c$ queuing theory, as the mean request arrival rate $\lambda$ approaches the effective service rate $\mu$ of the centralized coordinator, the waiting time in the batching buffer diverges asymptotically. Hence, \textbf{the centralized orchestrator's bottleneck is strictly a queuing and ingress buffering problem rather than an algorithmic solver bottleneck}.
+
+% =============================================================================
+% SECTION 4.5: DEADLINE RELAXATION SENSITIVITY
+% =============================================================================
+\section{\texorpdfstring{Sensitivity Analysis under Deadline Relaxation ($\Delta D$)}{Sensitivity Analysis under Deadline Relaxation}}
+\label{sec:deadline_relaxation}
+
+Given that deadline expiration accounts for the majority of task rejections, a dedicated experimental campaign was conducted to evaluate system behavior under relaxed deadline tolerances.
+
+\subsection{Modified Deadline Formulation}
+\label{subsec:dl_formulation}
+
+To prevent batching delay from unfairly penalizing centralized orchestration compared to localized heuristics, the service request deadline was adapted with an explicit batch-latency compensation factor $\frac{1}{2} T_{batch}$:
+\begin{equation}
+    D_r = (1.0 + \Delta D) \cdot \left( d_{cpu,r} + d_{net,r} + d_{down,r} + \frac{1}{2} T_{batch} \right)
+    \label{eq:deadline_relaxed}
+\end{equation}
+where $\Delta D \in \{10\%, 20\%, 30\%\}$ represents the incremental relaxation parameter and $T_{batch} = BT$.
+
+\subsection{Experimental Findings: The Shifting Bottleneck Phenomenon}
+\label{subsec:shifting_bottleneck}
+
+Simulations were executed across the full matrix of arrival rates ($\lambda \in [2, 10]$) and batching configurations for $\Delta D = 10\%$, $20\%$, and $30\%$.
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/sr_dl10.png}%
+    }
+    \caption{Success Rate across arrival rates under deadline relaxation $\Delta D = 10\%$.}
+    \label{fig:sr_dl10}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/sr_dl20.png}%
+    }
+    \caption{Success Rate across arrival rates under deadline relaxation $\Delta D = 20\%$.}
+    \label{fig:sr_dl20}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/sr_dl30.png}%
+    }
+    \caption{Success Rate across arrival rates under deadline relaxation $\Delta D = 30\%$.}
+    \label{fig:sr_dl30}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/rej_dl10.png}%
+    }
+    \caption{Distribution of failure causes under deadline relaxation $\Delta D = 10\%$.}
+    \label{fig:rej_dl10}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/rej_dl20.png}%
+    }
+    \caption{Distribution of failure causes under deadline relaxation $\Delta D = 20\%$.}
+    \label{fig:rej_dl20}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/rej_dl30.png}%
+    }
+    \caption{Distribution of failure causes under deadline relaxation $\Delta D = 30\%$.}
+    \label{fig:rej_dl30}
+\end{figure}
+
+The experimental data depicted in Figures~\ref{fig:sr_dl10},~\ref{fig:sr_dl20}, and~\ref{fig:sr_dl30}, and in Figures~\ref{fig:rej_dl10},~\ref{fig:rej_dl20}, and~\ref{fig:rej_dl30} yield three major insights:
+\begin{enumerate}
+    \item \textbf{Marginal Global Success Rate Gain}: Expanding the deadline margin by up to $30\%$ produces only modest overall improvements in the total Success Rate (on average $1\%\text{--}3\%$), with the notable exception of the zero-wait setting ($BS=20, BT=0.0\text{ s}$), where the success rate gains approximately $10\%$ at intermediate loads.
+    \item \textbf{Transformation of the Failure Profile}: While the aggregate success rate remains constrained, the internal distribution of rejection causes undergoes a profound shift. Passing from $\Delta D = 10\%$ to $\Delta D = 30\%$, the proportion of \textit{Deadline Exceeded} drops significantly.
+    \item \textbf{The Shifting Bottleneck}: The reduction in deadline violations is almost exactly counterbalanced by an increase in \textit{Insufficient CPU} and \textit{Insufficient CPU+NET} rejections. Because tasks are permitted to remain in the system longer without timing out, they occupy edge server compute queues and optical ISL bandwidth for extended durations. Consequently, \textbf{relaxing the temporal constraint shifts the primary system bottleneck from latency violation to physical hardware saturation}.
+\end{enumerate}
+
+
+
+% =============================================================================
+% SECTION 4.6: OBJECTIVE MAPPING COMPARISON
+% =============================================================================
+\section{Comparative Evaluation of Objective Functions: Time vs. Energy Mapping}
+\label{sec:objective_comparison}
+
+The mathematical formulation in Chapter~\ref{chap:ilp_architecture} allows parameterizing the centralized objective function via normalized scalar weights $w_{lat}$ and $w_{en}$. To understand the practical impact of optimization priorities under operational constraints, two extreme mapping policies were evaluated across all test configurations:
+\begin{itemize}
+    \item \textbf{Time Mapping} ($w_{lat}=1.0, w_{en}=0.0$): Minimizes pure end-to-end response time across the constellation.
+    \item \textbf{Energy Mapping} ($w_{lat}=0.0, w_{en}=1.0$): Minimizes cumulative electrical power consumption across satellite transceivers and onboard CPUs.
+\end{itemize}
+
+Remarkably, the empirical variance in overall Success Rate between Time Mapping and Energy Mapping remained under $2.5\%$ across all simulated arrival rates. While Time Mapping achieves slightly lower mean response times (on average $4\%\text{--}7\%$ lower latency), both strategies experience identical failure curves under high arrival rates ($\lambda \ge 6\text{ req/s}$).
+
+This convergence occurs because, in congested satellite networks, \textbf{queuing latency and topological path availability dominate the objective space}. Regardless of whether the ILP solver prioritizes minimal energy or minimal hop-count latency, the overarching feasibility boundary is governed by batch dwell time in the ingress buffer and physical core availability across the SEN fleet.
+
+% =============================================================================
+% SECTION 4.7: SUMMARY OF FINDINGS
+% =============================================================================
+\section{Summary and Key Insights}
+\label{sec:summary_findings}
+
+The empirical evaluation of the centralized ILP orchestrator yields several fundamental takeaways for the design of Low Earth Orbit satellite computing architectures:
+\begin{enumerate}
+    \item \textbf{Batching Penalty}: Accumulating requests to provide the ILP solver with a broader optimization horizon is counterproductive in delay-sensitive satellite environments. Prolonged Batch Timeouts ($BT > 0.1\text{ s}$) introduce fatal queuing delays that cause up to $80\%$ of tasks to fail due to deadline expiration.
+    \item \textbf{Optimal Centralized Operating Point}: Centralized ILP delivers optimal scheduling when operated with low batching sizes ($BS \le 2$) or near-zero timeout thresholds ($BT \to 0$), ensuring rapid dispatch and minimal ingress buffering.
+    \item \textbf{Solver Computational Viability}: The CBC/PuLP solver execution overhead remains minimal ($<0.6\text{ ms}$) for operational batch sizes, proving that centralized mathematical optimization is computationally feasible on modern space-qualified processors.
+    \item \textbf{Hardware Saturation Boundary}: When deadline constraints are relaxed ($\Delta D = 30\%$), the limiting factor transitions from scheduling delay to physical CPU core and ISL bandwidth saturation, confirming that holistic resource management requires joint queue admission control and adaptive task offloading.
+\end{enumerate}

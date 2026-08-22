@@ -29,22 +29,25 @@
 \contentsline {subsection}{\numberline {3.6.1}Topology Mapping Complexity}{27}{subsection.3.6.1}%
 \contentsline {subsection}{\numberline {3.6.2}ILP Formulation and Solver Complexity}{27}{subsection.3.6.2}%
 \contentsline {subsection}{\numberline {3.6.3}Hybrid Routing Complexity}{28}{subsection.3.6.3}%
-\contentsline {chapter}{\numberline {4}Performance Analysis and Evaluation}{29}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Simulation Framework}{29}{section.4.1}%
-\contentsline {section}{\numberline {4.2}Experimental Setup and Workload Profiles}{29}{section.4.2}%
-\contentsline {section}{\numberline {4.3}Evaluation of Optimization Strategies}{29}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Mapping Time vs. Mapping Energy Comparison}{29}{subsection.4.3.1}%
-\contentsline {subsection}{\numberline {4.3.2}Impact of Batching Parameters ($BS$ and $BT$)}{29}{subsection.4.3.2}%
-\contentsline {section}{\numberline {4.4}Bottleneck and Collapse Analysis}{29}{section.4.4}%
-\contentsline {subsection}{\numberline {4.4.1}System Behavior Under Heavy Load ($\lambda > 6 \text { req/s}$)}{29}{subsection.4.4.1}%
-\contentsline {subsection}{\numberline {4.4.2}Physical Saturation vs. Deadline Exceeded Failures}{29}{subsection.4.4.2}%
-\contentsline {section}{\numberline {4.5}Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}{29}{section.4.5}%
-\contentsline {chapter}{\numberline {5}Comparative Benchmark}{30}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{30}{section.5.1}%
-\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation}{30}{section.5.2}%
-\contentsline {section}{\numberline {5.3}Trade-Off Analysis}{30}{section.5.3}%
-\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{31}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Summary of Findings}{31}{section.6.1}%
-\contentsline {section}{\numberline {6.2}Limitations of the Centralized Approach}{31}{section.6.2}%
-\contentsline {section}{\numberline {6.3}Future Research Directions}{31}{section.6.3}%
-\contentsline {chapter}{Bibliography}{32}{section*.2}%
+\contentsline {chapter}{\numberline {4}Performance Analysis and Experimental Evaluation}{29}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Simulation Environment and Methodological Setup}{29}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Constellation Topology and Workload Profiles}{29}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Simulation Engine Refinements and Architectural Correctness}{30}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}Impact of Arrival Rate ($\lambda $) and Dynamic Batching}{31}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Task Completion Success Rate Evaluation}{31}{subsection.4.2.1}%
+\contentsline {section}{\numberline {4.3}Rejection Cause Breakdown and Bottleneck Diagnosis}{33}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Response Time Decomposition and Queuing Latency}{34}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Sensitivity Analysis under Deadline Relaxation ($\Delta D$)}{36}{section.4.5}%
+\contentsline {subsection}{\numberline {4.5.1}Modified Deadline Formulation}{36}{subsection.4.5.1}%
+\contentsline {subsection}{\numberline {4.5.2}Experimental Findings: The Shifting Bottleneck Phenomenon}{36}{subsection.4.5.2}%
+\contentsline {section}{\numberline {4.6}Comparative Evaluation of Objective Functions: Time vs. Energy Mapping}{40}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Summary and Key Insights}{40}{section.4.7}%
+\contentsline {chapter}{\numberline {5}Comparative Benchmark}{42}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{42}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation}{42}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Trade-Off Analysis}{42}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{43}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Summary of Findings}{43}{section.6.1}%
+\contentsline {section}{\numberline {6.2}Limitations of the Centralized Approach}{43}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Future Research Directions}{43}{section.6.3}%
+\contentsline {chapter}{Bibliography}{44}{section*.14}%

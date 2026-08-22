@@ -1,26 +1,62 @@
 \relax 
 \providecommand\hyper@newdestlabel[2]{}
-\@writefile{toc}{\contentsline {chapter}{\numberline {4}Performance Analysis and Evaluation}{29}{chapter.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {4}Performance Analysis and Experimental Evaluation}{29}{chapter.4}\protected@file@percent }
 \@writefile{lof}{\addvspace {10\p@ }}
 \@writefile{lot}{\addvspace {10\p@ }}
-\newlabel{chap:performance_analysis}{{4}{29}{Performance Analysis and Evaluation}{chapter.4}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.1}Simulation Framework}{29}{section.4.1}\protected@file@percent }
-\newlabel{sec:simulation_framework}{{4.1}{29}{Simulation Framework}{section.4.1}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.2}Experimental Setup and Workload Profiles}{29}{section.4.2}\protected@file@percent }
-\newlabel{sec:experimental_setup}{{4.2}{29}{Experimental Setup and Workload Profiles}{section.4.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4.3}Evaluation of Optimization Strategies}{29}{section.4.3}\protected@file@percent }
-\newlabel{sec:optimization_strategies}{{4.3}{29}{Evaluation of Optimization Strategies}{section.4.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.1}Mapping Time vs. Mapping Energy Comparison}{29}{subsection.4.3.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3.2}Impact of Batching Parameters ($BS$ and $BT$)}{29}{subsection.4.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.4}Bottleneck and Collapse Analysis}{29}{section.4.4}\protected@file@percent }
-\newlabel{sec:bottleneck_analysis}{{4.4}{29}{Bottleneck and Collapse Analysis}{section.4.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.1}System Behavior Under Heavy Load ($\lambda > 6 \text  { req/s}$)}{29}{subsection.4.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4.2}Physical Saturation vs. Deadline Exceeded Failures}{29}{subsection.4.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4.5}Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}{29}{section.4.5}\protected@file@percent }
-\newlabel{sec:sensitivity_analysis}{{4.5}{29}{Sensitivity Analysis: Deadline Relaxation ($\Delta D$)}{section.4.5}{}}
+\newlabel{chap:performance_analysis}{{4}{29}{Performance Analysis and Experimental Evaluation}{chapter.4}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.1}Simulation Environment and Methodological Setup}{29}{section.4.1}\protected@file@percent }
+\newlabel{sec:exp_setup}{{4.1}{29}{Simulation Environment and Methodological Setup}{section.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1.1}Constellation Topology and Workload Profiles}{29}{subsection.4.1.1}\protected@file@percent }
+\newlabel{subsec:workload_profiles}{{4.1.1}{29}{Constellation Topology and Workload Profiles}{subsection.4.1.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1.2}Simulation Engine Refinements and Architectural Correctness}{30}{subsection.4.1.2}\protected@file@percent }
+\newlabel{subsec:engine_enhancements}{{4.1.2}{30}{Simulation Engine Refinements and Architectural Correctness}{subsection.4.1.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.2}Impact of Arrival Rate ($\lambda $) and Dynamic Batching}{31}{section.4.2}\protected@file@percent }
+\newlabel{sec:batching_analysis}{{4.2}{31}{\texorpdfstring {Impact of Arrival Rate ($\lambda $) and Dynamic Batching}{Impact of Arrival Rate and Dynamic Batching}}{section.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Task Completion Success Rate Evaluation}{31}{subsection.4.2.1}\protected@file@percent }
+\newlabel{subsec:success_rate_eval}{{4.2.1}{31}{Task Completion Success Rate Evaluation}{subsection.4.2.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.1}{\ignorespaces Success Rate as a function of Arrival Rate under Energy Mapping ($w_{lat}=0, w_{en}=1$).}}{32}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:sr_energy_base}{{4.1}{32}{Success Rate as a function of Arrival Rate under Energy Mapping ($w_{lat}=0, w_{en}=1$)}{figure.caption.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.2}{\ignorespaces Success Rate as a function of Arrival Rate under Time Mapping ($w_{lat}=1, w_{en}=0$).}}{32}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:sr_time_base}{{4.2}{32}{Success Rate as a function of Arrival Rate under Time Mapping ($w_{lat}=1, w_{en}=0$)}{figure.caption.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.3}Rejection Cause Breakdown and Bottleneck Diagnosis}{33}{section.4.3}\protected@file@percent }
+\newlabel{sec:rejection_causes}{{4.3}{33}{Rejection Cause Breakdown and Bottleneck Diagnosis}{section.4.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.3}{\ignorespaces Distribution of failure causes across arrival rates under Energy Mapping ($w_{lat}=0, w_{en}=1$).}}{33}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:rej_energy_base}{{4.3}{33}{Distribution of failure causes across arrival rates under Energy Mapping ($w_{lat}=0, w_{en}=1$)}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.4}{\ignorespaces Distribution of failure causes across arrival rates under Time Mapping ($w_{lat}=1, w_{en}=0$).}}{34}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:rej_time_base}{{4.4}{34}{Distribution of failure causes across arrival rates under Time Mapping ($w_{lat}=1, w_{en}=0$)}{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.4}Response Time Decomposition and Queuing Latency}{34}{section.4.4}\protected@file@percent }
+\newlabel{sec:response_time_decomp}{{4.4}{34}{Response Time Decomposition and Queuing Latency}{section.4.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.5}{\ignorespaces Stacked Response Time decomposition across arrival rates under Energy Mapping.}}{35}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:resp_time_energy}{{4.5}{35}{Stacked Response Time decomposition across arrival rates under Energy Mapping}{figure.caption.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.6}{\ignorespaces Stacked Response Time decomposition across arrival rates under Time Mapping.}}{35}{figure.caption.7}\protected@file@percent }
+\newlabel{fig:resp_time_time}{{4.6}{35}{Stacked Response Time decomposition across arrival rates under Time Mapping}{figure.caption.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.5}Sensitivity Analysis under Deadline Relaxation ($\Delta D$)}{36}{section.4.5}\protected@file@percent }
+\newlabel{sec:deadline_relaxation}{{4.5}{36}{\texorpdfstring {Sensitivity Analysis under Deadline Relaxation ($\Delta D$)}{Sensitivity Analysis under Deadline Relaxation}}{section.4.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.1}Modified Deadline Formulation}{36}{subsection.4.5.1}\protected@file@percent }
+\newlabel{subsec:dl_formulation}{{4.5.1}{36}{Modified Deadline Formulation}{subsection.4.5.1}{}}
+\newlabel{eq:deadline_relaxed}{{4.2}{36}{Modified Deadline Formulation}{equation.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5.2}Experimental Findings: The Shifting Bottleneck Phenomenon}{36}{subsection.4.5.2}\protected@file@percent }
+\newlabel{subsec:shifting_bottleneck}{{4.5.2}{36}{Experimental Findings: The Shifting Bottleneck Phenomenon}{subsection.4.5.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.7}{\ignorespaces Success Rate across arrival rates under deadline relaxation $\Delta D = 10\%$.}}{37}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:sr_dl10}{{4.7}{37}{Success Rate across arrival rates under deadline relaxation $\Delta D = 10\%$}{figure.caption.8}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.8}{\ignorespaces Success Rate across arrival rates under deadline relaxation $\Delta D = 20\%$.}}{37}{figure.caption.9}\protected@file@percent }
+\newlabel{fig:sr_dl20}{{4.8}{37}{Success Rate across arrival rates under deadline relaxation $\Delta D = 20\%$}{figure.caption.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.9}{\ignorespaces Success Rate across arrival rates under deadline relaxation $\Delta D = 30\%$.}}{38}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:sr_dl30}{{4.9}{38}{Success Rate across arrival rates under deadline relaxation $\Delta D = 30\%$}{figure.caption.10}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.10}{\ignorespaces Distribution of failure causes under deadline relaxation $\Delta D = 10\%$.}}{38}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:rej_dl10}{{4.10}{38}{Distribution of failure causes under deadline relaxation $\Delta D = 10\%$}{figure.caption.11}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.11}{\ignorespaces Distribution of failure causes under deadline relaxation $\Delta D = 20\%$.}}{39}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:rej_dl20}{{4.11}{39}{Distribution of failure causes under deadline relaxation $\Delta D = 20\%$}{figure.caption.12}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4.12}{\ignorespaces Distribution of failure causes under deadline relaxation $\Delta D = 30\%$.}}{39}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:rej_dl30}{{4.12}{39}{Distribution of failure causes under deadline relaxation $\Delta D = 30\%$}{figure.caption.13}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.6}Comparative Evaluation of Objective Functions: Time vs. Energy Mapping}{40}{section.4.6}\protected@file@percent }
+\newlabel{sec:objective_comparison}{{4.6}{40}{Comparative Evaluation of Objective Functions: Time vs. Energy Mapping}{section.4.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.7}Summary and Key Insights}{40}{section.4.7}\protected@file@percent }
+\newlabel{sec:summary_findings}{{4.7}{40}{Summary and Key Insights}{section.4.7}{}}
 \@setckpt{capitoli/chapter4_performance_analysis}{
-\setcounter{page}{30}
-\setcounter{equation}{0}
+\setcounter{page}{42}
+\setcounter{equation}{2}
 \setcounter{enumi}{4}
 \setcounter{enumii}{0}
 \setcounter{enumiii}{0}
@@ -29,23 +65,24 @@
 \setcounter{mpfootnote}{0}
 \setcounter{part}{0}
 \setcounter{chapter}{4}
-\setcounter{section}{5}
+\setcounter{section}{7}
 \setcounter{subsection}{0}
 \setcounter{subsubsection}{0}
 \setcounter{paragraph}{0}
 \setcounter{subparagraph}{0}
-\setcounter{figure}{0}
+\setcounter{figure}{12}
 \setcounter{table}{0}
-\setcounter{caption@flags}{0}
+\setcounter{caption@flags}{2}
 \setcounter{continuedfloat}{0}
 \setcounter{parentequation}{0}
 \setcounter{section@level}{1}
-\setcounter{Item}{18}
+\setcounter{Item}{32}
 \setcounter{Hfootnote}{0}
-\setcounter{bookmark@seq@number}{40}
+\setcounter{bookmark@seq@number}{43}
 \setcounter{subfigure}{0}
 \setcounter{subtable}{0}
 \setcounter{lstnumber}{143}
 \setcounter{cp@cntr}{0}
+\setcounter{float@type}{8}
 \setcounter{lstlisting}{0}
 }
