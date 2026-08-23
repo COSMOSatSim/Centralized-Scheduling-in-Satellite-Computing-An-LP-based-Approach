@@ -1,4 +1,4 @@
-This is BibTeX, Version 0.99e (TeX Live 2026)
+This is BibTeX, Version 0.99e (TeX Live 2026/Arch Linux)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: Tesi_Satellite_Computing_Bagini_2045337.aux
 A level-1 auxiliary file: capitoli/chapter1_introduction.aux
@@ -8,11 +8,11 @@ A level-1 auxiliary file: capitoli/chapter4_performance_analysis.aux
 A level-1 auxiliary file: capitoli/chapter5_comparative_benchmark.aux
 A level-1 auxiliary file: capitoli/chapter6_conclusions.aux
 The style file: sapthesis.bst
-Reallocated singl_function (elt_size=4) to 100 items from 50.
-Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
+Reallocated singl_function (elt_size=8) to 100 items from 50.
+Reallocated glb_str_ptr (elt_size=8) to 20 items from 10.
 Reallocated global_strs (elt_size=200001) to 20 items from 10.
-Reallocated glb_str_end (elt_size=4) to 20 items from 10.
-Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Reallocated glb_str_end (elt_size=8) to 20 items from 10.
+Reallocated wiz_functions (elt_size=8) to 6000 items from 3000.
 Database file #1: bibliografia.bib
 You've used 12 entries,
             3472 wiz_defined-function locations,

@@ -11,16 +11,16 @@ The evaluation aims to identify the physical, topological, and computational bot
 \section{Simulation Environment and Methodological Setup}
 \label{sec:exp_setup}
 
-The experimental campaign was carried out using a specialized discrete-event satellite network simulator developed in Python using the \texttt{SimPy} framework, coupled with the \texttt{PuLP} mathematical programming library backed by the CBC (\textit{Coin-or branch and cut}) solver engine. The simulator models the physical motion of LEO satellites, inter-satellite optical links (ISLs), dynamic ground-to-satellite contact windows, and heterogeneous onboard computing servers.
+The experimental campaign was carried out using a specialized discrete-event satellite network simulator developed in Python using the \texttt{SimPy} framework, coupled with the \texttt{PuLP} mathematical programming library backed by the HiGHS solver engine. The simulator models the physical motion of LEO satellites, inter-satellite optical links (ISLs), dynamic ground-to-satellite contact windows, and heterogeneous onboard computing servers.
 
 \subsection{Constellation Topology and Workload Profiles}
 \label{subsec:workload_profiles}
 
-The simulation environment reproduces a Walker-Delta constellation topology in Low Earth Orbit at an altitude of $600\text{ km}$. Satellites act as Satellite Edge Nodes (SENs) interconnected via full-duplex laser ISLs with a transmission bandwidth of $B_{u,v} = 1\text{ Gbps}$. One designated satellite in the coverage sector operates as the centralized Master Coordinator, gathering incoming service requests from Ground Users (GUs) and executing the optimization routine.
+The simulation environment reproduces a Walker-Delta constellation topology in Low Earth Orbit at an altitude of approximately $600\text{ km}$. Satellites act as Satellite Edge Nodes (SENs) interconnected via full-duplex laser ISLs with a transmission bandwidth ranging from $2$ to $3\text{ Gbps}$. One designated Master Coordinator in the coverage sector operates as the centralized orchestrator, gathering incoming service requests from Ground Users (GUs) and executing the optimization routine.
 
 In alignment with the reference IEEE ICDCS baseline, the workload characteristics and task dimensions are parameterized through three profiling vectors:
 \begin{itemize}
-    \item \textbf{Task Type Distribution Vector} $\boldsymbol{\beta} = (b_G, b_C, b_{CD})$: Defines the fraction of incoming requests categorized respectively as \textit{Generic} (balanced CPU and low data), \textit{CPU-intensive} (high compute cycles, moderate data), and \textit{CPU \& Data-intensive} (high computational load and large input datasets). In the baseline stress tests, the default mixed configuration is set to $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$.
+    \item \textbf{Task Type Distribution Vector} $\boldsymbol{\beta} = (b_G, b_C, b_{CD})$: Defines the fraction of incoming requests categorized respectively as \textit{Generic} (balanced CPU and low data), \textit{CPU-intensive} (high compute cycles, low data), and \textit{CPU \& Data-intensive} (high computational load and large input datasets). In the baseline stress tests, the default mixed configuration is set to $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$.
     \item \textbf{Real-Time Data Distribution Vector} $\boldsymbol{\alpha} = (\alpha_M, \alpha_L, \alpha_V)$: Dictates the proportion of real-time service requests associated with \textit{Medium} ($1\text{--}5\text{ MB}$), \textit{Large} ($5\text{--}20\text{ MB}$), and \textit{Very Large} ($20\text{--}50\text{ MB}$) input payloads. The standard baseline is parameterized as $\boldsymbol{\alpha} = (0.30, 0.50, 0.20)$.
     \item \textbf{Batch Task Data Distribution Vector} $\boldsymbol{\gamma} = (\gamma_L, \gamma_V)$: Controls the file weight ratio between large and very large files for delay-tolerant batch background operations, set by default to $\boldsymbol{\gamma} = (0.70, 0.30)$.
 \end{itemize}
@@ -34,7 +34,7 @@ To ensure high experimental fidelity and eliminate simulation artifacts, several
 \begin{enumerate}
     \item \textbf{Dynamic Load Balancing}: An active load-balancing layer was implemented across edge server queues to prevent artificial clustering of requests onto the nearest spatial nodes, thereby maximizing multi-core CPU utilization across the constellation.
     \item \textbf{ILP Infeasibility Retry Mechanism}: In corner cases where the solver returns an \textit{Infeasible} state due to transient resource exhaustion or strict deadline conflicts, a graceful retry routine re-evaluates the batch in the subsequent simulation tick, mitigating premature task drops.
-    \item \textbf{Orbital Sunset Management}: An explicit topological sunset protocol was introduced. When an active SEN approaches the line-of-sight communication horizon relative to the ground access point or the Master, the orchestrator penalizes its routing weight to prevent in-flight connection dropouts.
+    \item \textbf{Orbital Sunset Management}: An explicit topological sunset protocol was introduced. When an active SEN approaches the line-of-sight communication horizon relative to the ground access point, the orchestrator penalizes its routing weight to prevent in-flight connection dropouts.
     \item \textbf{Greedy Uplink Fallback}: To enhance operational resilience against rapid orbital topology shifts during solver computation, a deterministic shortest-path fallback mechanism guarantees packet forwarding if an ILP-designated ISL path is abruptly severed.
     \item \textbf{Time-in-System Metric Unification}: The tracking of end-to-end task residency was corrected to capture every latency contributor comprehensively:
     \begin{equation}
@@ -54,7 +54,7 @@ Centralized optimization requires accumulating individual service requests into 
 Two operational parameters govern this aggregation phase:
 \begin{itemize}
     \item \textbf{Batch Size ($BS$)}: The maximum number of incoming service requests buffered before triggering optimization ($BS \in \{1, 2, 4, 6, 8, 10, 20\}$).
-    \item \textbf{Batch Timeout ($BT$)}: The maximum allowable dwell time (in seconds) an incomplete batch may wait in the queue before forced solver dispatch ($BT \in [0.0, 2.0]\text{ s}$).
+    \item \textbf{Batch Timeout ($BT$)}: The maximum allowable dwell time (in seconds) an incomplete batch may wait in the queue before forced solver dispatch ($BT \in {0.0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 2.0}\text{ s}$).
 \end{itemize}
 
 \subsection{Task Completion Success Rate Evaluation}
@@ -119,7 +119,7 @@ To diagnose the underlying mechanisms responsible for task drops under high netw
     \label{fig:rej_time_base}
 \end{figure}
 
-As shown in Figure~\ref{fig:rej_energy_base} and Figure~\ref{fig:rej_time_base}, \textbf{Deadline Exceeded is overwhelmingly the primary cause of task failure}, accounting for up to $80\%$ of total rejected requests at high arrival rates. While physical resource exhaustion (\textit{Insuff. CPU} and \textit{Insuff. CPU+NET}) accounts for a moderate fraction of drops under low load ($3\%\text{--}17\%$), its relative proportion diminishes as arrival rate scales. 
+As shown in Figure~\ref{fig:rej_energy_base} and Figure~\ref{fig:rej_time_base}, \textbf{Deadline Exceeded is overwhelmingly the primary cause of task failure}, accounting for up to $80\%$ of total rejected requests at high arrival rates. While physical resource exhaustion (\textit{Insuff. CPU} and \textit{Insuff. CPU+NET}) accounts for the majority of drops under low load, its relative proportion diminishes as arrival rate scales. 
 
 Under heavy congestion, tasks spend excessive time residing in the Master's buffer waiting for batch completion; by the time the ILP solver executes and assigns an optimal route, the remaining time margin $\Delta t_{rem} = D_r - t_{queue}$ is insufficient to execute the actual computation, triggering immediate drop.
 
@@ -131,8 +131,8 @@ Under heavy congestion, tasks spend excessive time residing in the Master's buff
 
 To further validate why deadline violations dominate failure modes, the total end-to-end response time was disaggregated into its two foundational sub-components:
 \begin{enumerate}
-    \item \textbf{System Execution Time ($T_{exec}$)}: Pure computational processing time on the designated SEN CPU cores plus mathematical solver calculation time.
-    \item \textbf{Network and Wait Time ($T_{net+wait}$)}: Cumulative queuing delay in the batch buffer, feeder link transmission time, and multi-hop ISL forwarding latency.
+    \item \textbf{System Execution Time}: Pure computational processing time on the designated SEN CPU cores.
+    \item \textbf{Network and Wait Time}: Cumulative queuing delay in the batch buffer, feeder link transmission time, and multi-hop ISL forwarding latency.
 \end{enumerate}
 
 \begin{figure}[H]
@@ -273,6 +273,6 @@ The empirical evaluation of the centralized ILP orchestrator yields several fund
 \begin{enumerate}
     \item \textbf{Batching Penalty}: Accumulating requests to provide the ILP solver with a broader optimization horizon is counterproductive in delay-sensitive satellite environments. Prolonged Batch Timeouts ($BT > 0.1\text{ s}$) introduce fatal queuing delays that cause up to $80\%$ of tasks to fail due to deadline expiration.
     \item \textbf{Optimal Centralized Operating Point}: Centralized ILP delivers optimal scheduling when operated with low batching sizes ($BS \le 2$) or near-zero timeout thresholds ($BT \to 0$), ensuring rapid dispatch and minimal ingress buffering.
-    \item \textbf{Solver Computational Viability}: The CBC/PuLP solver execution overhead remains minimal ($<0.6\text{ ms}$) for operational batch sizes, proving that centralized mathematical optimization is computationally feasible on modern space-qualified processors.
+    \item \textbf{Solver Computational Viability}: The HiGHS solver execution overhead remains minimal ($<0.6\text{ ms}$) for operational batch sizes, proving that centralized mathematical optimization is computationally feasible on modern space-qualified processors.
     \item \textbf{Hardware Saturation Boundary}: When deadline constraints are relaxed ($\Delta D = 30\%$), the limiting factor transitions from scheduling delay to physical CPU core and ISL bandwidth saturation, confirming that holistic resource management requires joint queue admission control and adaptive task offloading.
 \end{enumerate}

@@ -29,6 +29,65 @@ To achieve robust real-time execution in highly dynamic space environments, the 
 
 Because result return is governed dynamically in real time by the autonomous greedy protocol, the centralized ILP orchestrator focuses its optimization capacity on the joint satellite selection, uplink multi-hop routing, and processing deadline compliance.
 
+To formalize the optimization problem and network dynamics unambiguously, 
+Table~\ref{tab:system_notations} summarizes the foundational notations, sets, 
+and operational parameters adopted throughout the system model and ILP formulation.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Summary of mathematical notations and system parameters used in the Centralized ILP Orchestrator model.}
+\label{tab:system_notations}
+\begin{tabular}{@{}llp{9.2cm}@{}}
+\toprule
+\textbf{Category} & \textbf{Symbol} & \textbf{Description} \\
+\midrule
+\multirow{5}{*}{\textbf{Sets \& Topology}}
+& $R$ & Set of task requests accumulated in the active batch ($|R| \le BS$). \\
+& $S$ & Set of candidate Satellite Edge Nodes (SENs) in the regional constellation. \\
+& $AP_{global}$ & Set of active regional Access Points / satellite gateways. \\
+& $AP_r$ & Originating Access Point for computational task request $r$. \\
+& $\vec{P}_{up}(AP_r, i)$ & Pre-computed shortest multi-hop ISL path from $AP_r$ to satellite $i$. \\
+\midrule
+\multirow{6}{*}{\textbf{Task Requests}}
+& $r$ & Task tuple: $r = (d_{cpu,r}, D_r, s_r, t_{arr}, AP_r)$. \\
+& $d_{cpu,r}$ & Computational workload processing demand. \\
+& $D_r$ & Maximum allowable end-to-end service completion deadline. \\
+& $s_r$ & Input/output dataset payload size (in MB). \\
+& $t_{arr}$ & Task generation timestamp at the Access Point. \\
+& $S_{req}, S_{ref}$ & Uplink control payload ($2\text{ KB}$) and reference link payload ($1\text{ MB}$). \\
+\midrule
+\multirow{6}{*}{\textbf{Network Links}}
+& $\tau_{u,v}$ & Propagation delay of the directed link $(u,v)$ (in seconds). \\
+& $B_{u,v}$ & Available transmission bandwidth of link $(u,v)$ (in Bytes/s or Gbps). \\
+& $P_{net}$ & Radio frequency / optical laser transmission power coefficient ($P_{trasm}$). \\
+& $c_{link}(u,v)$ & Normalized dimensionless cost of link $(u,v)$ in Dijkstra mapping. \\
+& $w_R, w_e$ & Routing cost strategy weights for delay and energy ($w_R + w_e = 1$). \\
+& $W_{net,u}$ & Network queue waiting time at intermediate forwarding node $u$. \\
+\midrule
+\multirow{6}{*}{\textbf{Satellite Nodes}}
+& $C_{sen,i}$ & Processor clock frequency / compute capacity of satellite $i$ (Hz). \\
+& $\kappa_i$ & Dynamic CPU energy switching capacitance coefficient ($e\_coeff$). \\
+& $B_i$ & Usable residual battery energy budget of satellite $i$ (in Joules). \\
+& $W_{cpu,i}$ & Estimated queuing delay in the onboard processor execution queue. \\
+& $t_{sunset,i}$ & Solar visibility horizon / orbital eclipse timestamp for satellite $i$. \\
+& $\Omega_i$ & Normalized orbital eclipse penalty factor ($\Omega_i \in [0, 1]$). \\
+\midrule
+\multirow{7}{*}{\textbf{Optimization \& ILP}}
+& $x_{r,i}$ & Binary decision variable ($1$ if task $r$ is assigned to SEN $i$; $0$ otherwise). \\
+& $y_r$ & Binary rejection variable ($1$ if task $r$ is dropped by the solver; $0$ otherwise). \\
+& $R_{r,i}$ & Total predicted response time for assigning task $r$ to satellite $i$. \\
+& $\epsilon_{r,i}$ & Fleet cumulative energy expenditure for routing and executing task $r$ on $i$. \\
+& $P_{drop}$ & Heavy penalty scalar applied to rejected tasks ($P_{drop} = 10^6$). \\
+& $\alpha, \beta, \gamma$ & Multi-objective hierarchical weighting factors (Time, Energy, Sunset). \\
+& $BS, BT$ & Batch Size and Batch Timeout control thresholds for dynamic batching. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+
+
 \section{Event-Driven Dynamic Batching Engine}
 \label{sec:dynamic_batching}
 
