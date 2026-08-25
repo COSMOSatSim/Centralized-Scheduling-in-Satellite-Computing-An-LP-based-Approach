@@ -53,7 +53,7 @@ In a centralized orchestration architecture, a dedicated master entity—such as
 
 \begin{itemize}
     \item \textbf{Advantages:} The central orchestrator maintains complete global visibility over all network resources, enabling mathematically optimal decision-making. Global optimization models (e.g., Integer Linear Programming) can eliminate load imbalances, prevent local hotspots, and minimize network-wide energy consumption.
-    \item \textbf{Disadvantages:} Centralized schemes incur significant control signaling overhead to aggregate state information. Furthermore, requests must travel to the orchestrator, causing queuing delays and introducing a single point of failure and bottleneck under high request arrival rates ($\lambda$).
+    \item \textbf{Disadvantages:} Centralized schemes incur significant control signaling overhead to aggregate state information across the constellation. Furthermore, routing all requests to a central orchestrator creates queuing delays and bottlenecks under high request arrival rates ($\lambda$). Most critically, relying on a centralized controller introduces a Single Point of Failure (SPOF): if the orchestrator experiences hardware faults, orbital visibility loss, or link outages, the entire scheduling and task-handling pipeline is compromised, severely undermining system fault tolerance.
 \end{itemize}
 
 \subsection{Distributed Orchestration}

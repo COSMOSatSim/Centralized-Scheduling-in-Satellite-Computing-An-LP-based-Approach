@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.8.23)  23 AUG 2026 18:06
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.8.23)  25 AUG 2026 19:26
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -785,70 +785,70 @@ Chapter 4.
 ] [31]
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <14.4> on input line 49.
-<figures/success_rate_energy_baseline.png, id=1126, 2192.19pt x 877.5987pt>
+<figures/success_rate_energy_baseline.png, id=1124, 2192.19pt x 877.5987pt>
 File: figures/success_rate_energy_baseline.png Graphic file (type png)
 <use figures/success_rate_energy_baseline.png>
 Package pdftex.def Info: figures/success_rate_energy_baseline.png  used on input line 71.
 (pdftex.def)             Requested size: 594.0pt x 237.79845pt.
  [32]
-<figures/success_rate_time_baseline.png, id=1135, 2192.19pt x 877.5987pt>
+<figures/success_rate_time_baseline.png, id=1133, 2192.19pt x 877.5987pt>
 File: figures/success_rate_time_baseline.png Graphic file (type png)
 <use figures/success_rate_time_baseline.png>
 Package pdftex.def Info: figures/success_rate_time_baseline.png  used on input line 80.
 (pdftex.def)             Requested size: 594.0pt x 237.79845pt.
  [33 <./figures/success_rate_energy_baseline.png> <./figures/success_rate_time_baseline.png>]
-<figures/rejection_causes_energy_baseline.png, id=1142, 2192.19pt x 918.0699pt>
+<figures/rejection_causes_energy_baseline.png, id=1140, 2192.19pt x 918.0699pt>
 File: figures/rejection_causes_energy_baseline.png Graphic file (type png)
 <use figures/rejection_causes_energy_baseline.png>
 Package pdftex.def Info: figures/rejection_causes_energy_baseline.png  used on input line 108.
 (pdftex.def)             Requested size: 594.0pt x 248.76472pt.
-<figures/rejection_causes_time_baseline.png, id=1143, 2192.19pt x 918.0699pt>
+<figures/rejection_causes_time_baseline.png, id=1141, 2192.19pt x 918.0699pt>
 File: figures/rejection_causes_time_baseline.png Graphic file (type png)
 <use figures/rejection_causes_time_baseline.png>
 Package pdftex.def Info: figures/rejection_causes_time_baseline.png  used on input line 117.
 (pdftex.def)             Requested size: 594.0pt x 248.76472pt.
  [34 <./figures/rejection_causes_energy_baseline.png>]
-<figures/stacked_response_time_energy.png, id=1152, 2192.19pt x 877.5987pt>
+<figures/stacked_response_time_energy.png, id=1150, 2192.19pt x 877.5987pt>
 File: figures/stacked_response_time_energy.png Graphic file (type png)
 <use figures/stacked_response_time_energy.png>
 Package pdftex.def Info: figures/stacked_response_time_energy.png  used on input line 142.
 (pdftex.def)             Requested size: 594.0pt x 237.79845pt.
  [35 <./figures/rejection_causes_time_baseline.png>]
-<figures/stacked_response_time_time.png, id=1161, 2192.19pt x 877.5987pt>
+<figures/stacked_response_time_time.png, id=1159, 2192.19pt x 877.5987pt>
 File: figures/stacked_response_time_time.png Graphic file (type png)
 <use figures/stacked_response_time_time.png>
 Package pdftex.def Info: figures/stacked_response_time_time.png  used on input line 151.
 (pdftex.def)             Requested size: 594.0pt x 237.79845pt.
  [36 <./figures/stacked_response_time_energy.png> <./figures/stacked_response_time_time.png>]
-<figures/sr_dl10.png, id=1174, 2192.19pt x 877.5987pt>
+<figures/sr_dl10.png, id=1171, 2192.19pt x 877.5987pt>
 File: figures/sr_dl10.png Graphic file (type png)
 <use figures/sr_dl10.png>
 Package pdftex.def Info: figures/sr_dl10.png  used on input line 191.
 (pdftex.def)             Requested size: 594.0pt x 237.79845pt.
  [37]
-<figures/sr_dl20.png, id=1181, 2192.19pt x 877.5987pt>
+<figures/sr_dl20.png, id=1179, 2192.19pt x 877.5987pt>
 File: figures/sr_dl20.png Graphic file (type png)
 <use figures/sr_dl20.png>
 Package pdftex.def Info: figures/sr_dl20.png  used on input line 200.
 (pdftex.def)             Requested size: 594.0pt x 237.79845pt.
-<figures/sr_dl30.png, id=1182, 2192.19pt x 877.5987pt>
+<figures/sr_dl30.png, id=1180, 2192.19pt x 877.5987pt>
 File: figures/sr_dl30.png Graphic file (type png)
 <use figures/sr_dl30.png>
 Package pdftex.def Info: figures/sr_dl30.png  used on input line 209.
 (pdftex.def)             Requested size: 594.0pt x 237.79845pt.
  [38 <./figures/sr_dl10.png> <./figures/sr_dl20.png>]
-<figures/rej_dl10.png, id=1191, 2192.19pt x 918.0699pt>
+<figures/rej_dl10.png, id=1189, 2192.19pt x 918.0699pt>
 File: figures/rej_dl10.png Graphic file (type png)
 <use figures/rej_dl10.png>
 Package pdftex.def Info: figures/rej_dl10.png  used on input line 218.
 (pdftex.def)             Requested size: 594.0pt x 248.76472pt.
-<figures/rej_dl20.png, id=1192, 2192.19pt x 918.0699pt>
+<figures/rej_dl20.png, id=1190, 2192.19pt x 918.0699pt>
 File: figures/rej_dl20.png Graphic file (type png)
 <use figures/rej_dl20.png>
 Package pdftex.def Info: figures/rej_dl20.png  used on input line 227.
 (pdftex.def)             Requested size: 594.0pt x 248.76472pt.
  [39 <./figures/sr_dl30.png> <./figures/rej_dl10.png>]
-<figures/rej_dl30.png, id=1201, 2192.19pt x 918.0699pt>
+<figures/rej_dl30.png, id=1199, 2192.19pt x 918.0699pt>
 File: figures/rej_dl30.png Graphic file (type png)
 <use figures/rej_dl30.png>
 Package pdftex.def Info: figures/rej_dl30.png  used on input line 236.
@@ -902,18 +902,18 @@ Package rerunfilecheck Info: File `Tesi_Satellite_Computing_Bagini_2045337.out' 
 (rerunfilecheck)             Checksum: 1D1864CE63C5654E2E6A5734C8889FDF;13067.
  ) 
 Here is how much of TeX's memory you used:
- 20246 strings out of 469515
- 325196 string characters out of 5470807
- 2069318 words of memory out of 5000000
+ 20244 strings out of 469515
+ 325162 string characters out of 5470807
+ 2070318 words of memory out of 5000000
  47411 multiletter control sequences out of 15000+600000
  756275 words of font info for 296 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 84i,14n,131p,1075b,2321s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,14n,131p,1122b,2321s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmex10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi7.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmib10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr7.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmri10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmss10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmss17.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtt9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (53 pages, 12755866 bytes).
+Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (53 pages, 12755919 bytes).
 PDF statistics:
- 1560 PDF objects out of 1728 (max. 8388607)
- 1405 compressed objects within 15 object streams
- 792 named destinations out of 1000 (max. 500000)
+ 1558 PDF objects out of 1728 (max. 8388607)
+ 1403 compressed objects within 15 object streams
+ 790 named destinations out of 1000 (max. 500000)
  74210 words of extra memory for PDF output out of 74296 (max. 10000000)
 

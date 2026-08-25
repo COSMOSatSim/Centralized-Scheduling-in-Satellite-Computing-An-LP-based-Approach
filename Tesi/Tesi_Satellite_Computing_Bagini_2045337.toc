@@ -11,7 +11,7 @@
 \contentsline {subsection}{\numberline {2.2.2}Workload Profiles and Constraints}{7}{subsection.2.2.2}%
 \contentsline {section}{\numberline {2.3}Centralized vs. Distributed Orchestration}{7}{section.2.3}%
 \contentsline {subsection}{\numberline {2.3.1}Centralized Orchestration}{7}{subsection.2.3.1}%
-\contentsline {subsection}{\numberline {2.3.2}Distributed Orchestration}{7}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.2}Distributed Orchestration}{8}{subsection.2.3.2}%
 \contentsline {section}{\numberline {2.4}State-of-the-Art Approaches}{8}{section.2.4}%
 \contentsline {subsection}{\numberline {2.4.1}Distributed Heuristic Frameworks}{8}{subsection.2.4.1}%
 \contentsline {subsection}{\numberline {2.4.2}Optimization-Based and Distributed ILP Formulations}{8}{subsection.2.4.2}%

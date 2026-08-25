@@ -18,7 +18,7 @@ Each offloading request $r \in R$ is characterized by a five-element tuple:
 \begin{equation}
     r = \left( d_{cpu}, D_r, s_r, t_{arr}, AP_r \right)
 \end{equation}
-where $d_{cpu}$ is the computational CPU workload demand (in seconds), $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input/output image size (in MB), $t_{arr}$ is the generation timestamp, and $AP_r \in AP_{global}$ identifies the originating entry point.
+where $d_{cpu}$ is the computational CPU workload demand, $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input/output image size (in MB), $t_{arr}$ is the generation timestamp, and $AP_r \in AP_{global}$ identifies the originating entry point.
 
 To achieve robust real-time execution in highly dynamic space environments, the operational lifecycle of task $r$ is modeled as a decoupled, three-phase circuit:
 \begin{enumerate}
@@ -786,7 +786,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
 
                     best_server = None
                     for neighbor_tuple in ranker_neighbors:
-                        # Prevent ping-pong loops between adjacent satellites
+                        # Prevent loops between adjacent satellites
                         if neighbor_tuple[0].name not in routing_task.visited:
                             best_server = neighbor_tuple[0]
                             break
@@ -803,9 +803,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
                         globals.gbl_tasks.append(routing_task)
                         return
 
-                # ==========================================
-                # PHASE C: COMMON SAFETY CONTROL
-                # ==========================================
+
                 if getattr(routing_task, 'label', '') == 'TTL_EXPIRED':
                     print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} dropped due to expired TTL during routing.")
                     globals.gbl_tasks.append(routing_task)
