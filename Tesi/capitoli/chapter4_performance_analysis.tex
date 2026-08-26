@@ -32,8 +32,8 @@ Each satellite is initialized with an operational energy budget $E_{max} = 80\te
 
 To ensure high experimental fidelity and eliminate simulation artifacts, several structural enhancements and bug fixes were integrated into the simulation framework prior to data collection:
 \begin{enumerate}
-    \item \textbf{Dynamic Load Balancing}: An active load-balancing layer was implemented across edge server queues to prevent artificial clustering of requests onto the nearest spatial nodes, thereby maximizing multi-core CPU utilization across the constellation.
-    \item \textbf{ILP Infeasibility Retry Mechanism}: In corner cases where the solver returns an \textit{Infeasible} state due to transient resource exhaustion or strict deadline conflicts, a graceful retry routine re-evaluates the batch in the subsequent simulation tick, mitigating premature task drops.
+    \item \textbf{Dynamic Load Balancing}: An active load-balancing layer was implemented across edge server queues to prevent artificial clustering of requests onto the nearest spatial nodes, thereby maximizing CPU utilization across the constellation.
+    \item \textbf{ILP Infeasibility Retry Mechanism}: In corner cases where the solver returns an \textit{Infeasible} state, a simple retry routine re-evaluates the batch in the subsequent simulation tick, mitigating premature task drops.
     \item \textbf{Orbital Sunset Management}: An explicit topological sunset protocol was introduced. When an active SEN approaches the line-of-sight communication horizon relative to the ground access point, the orchestrator penalizes its routing weight to prevent in-flight connection dropouts.
     \item \textbf{Greedy Uplink Fallback}: To enhance operational resilience against rapid orbital topology shifts during solver computation, a deterministic shortest-path fallback mechanism guarantees packet forwarding if an ILP-designated ISL path is abruptly severed.
     \item \textbf{Time-in-System Metric Unification}: The tracking of end-to-end task residency was corrected to capture every latency contributor comprehensively:
@@ -156,7 +156,7 @@ To further validate why deadline violations dominate failure modes, the total en
 The stacked bar charts in Figure~\ref{fig:resp_time_energy} and Figure~\ref{fig:resp_time_time} reveal a fundamental structural insight into the centralized architecture:
 \begin{itemize}
     \item \textbf{Invariance of Computation Time}: Across all arrival rates ($\lambda = 2$ to $10\text{ req/s}$) and batching policies, the actual execution duration ($T_{exec}$, solid base bars) remains essentially constant and remarkably low, averaging between $0.15\text{ ms}$ and $0.60\text{ ms}$. The ILP solver computation itself does not scale explosively within the tested parameter boundaries.
-    \item \textbf{Asymptotic Growth of Queuing Delay}: Conversely, the network and queuing wait time ($T_{net+wait}$, upper shaded bars) increases monotonically with traffic intensity, rising from $\approx 0.30\text{ ms}$ to over $1.45\text{ ms}$. 
+    \item \textbf{Asymptotic Growth of Queuing Delay}: Conversely, the network and queuing wait time ($T_{net+wait}$, upper shaded bars) increases monotonically with traffic intensity, rising from $\approx 0.40\text{ ms}$ to over $1.45\text{ ms}$. 
 \end{itemize}
 
 In accordance with classical $M/M/1$ and $G/G/c$ queuing theory, as the mean request arrival rate $\lambda$ approaches the effective service rate $\mu$ of the centralized coordinator, the waiting time in the batching buffer diverges asymptotically. Hence, \textbf{the centralized orchestrator's bottleneck is strictly a queuing and ingress buffering problem rather than an algorithmic solver bottleneck}.
