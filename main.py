@@ -276,12 +276,10 @@ if __name__ == "__main__":
     centr_w_e = config.get("centralized_w_e", 0.01)
     # ------------------------------------------
 
-    # Cartella base: include modalità, AP e seed
+# Cartella base: include modalità, AP e seed
     base_dir = ""
-    if complete_sim_solver == "ILP":
-        base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
-        
-    elif complete_sim_solver == "ILP-Centralized":
+    
+    if complete_sim_solver == "ILP-Centralized":
         base_dir = (
             f"result/{complete_sim_solver}_sim_SystemAP{ap}/"
             f"deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/"
@@ -289,11 +287,10 @@ if __name__ == "__main__":
             f"batch_size_{batch_size}/batch_timeout_{batch_timeout}/"
             f"obj_{centr_obj}/tol_{centr_tol}/dijk_{centr_w_r}_{centr_w_e}/"
         )
-    else:
-        # Se siamo nell'ILP dobbiamo verificare che tipo di ILP è
+    elif complete_sim_solver == "ILP":
+        # Se siamo nell'ILP distribuito dobbiamo verificare che tipo di ILP è (Hierarchical o Weighted)
         objective, mode = "", ""
         if config["ilp_objective"] == "hierarchical":
-            
             objective = "hierarchical"
             if config["lexi_primary"] == "energy":
                 mode = "energy"
@@ -304,16 +301,18 @@ if __name__ == "__main__":
         
         elif config["ilp_objective"] == "weighted":
             objective = "weighted"
-
             w_e = config["ilp_weights"]["w_e"]
             w_R = config["ilp_weights"]["w_R"]
-
             mode = f"w_e_{w_e}_w_R_{w_R}"
-
         else:
             sys.exit(f"[Error] 'ilp_objective' non è definito correttamente.")
         
+        # Genera il path con la distinzione dell'obiettivo e del mode
         base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/{objective}/{mode}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
+        
+    else:
+        # Per le Euristiche (OrbitAware, DTS-base, DTS-APopt)
+        base_dir = f"result/{complete_sim_solver}_sim_SystemAP{ap}/deadline_{deadline}/Energy_budget_{energy_budget}/{img_res_dir}/Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
 
     os.makedirs(base_dir, exist_ok=True)
 
