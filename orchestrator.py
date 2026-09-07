@@ -381,7 +381,11 @@ class Orchestrator:
 
         WEIGHT_PRIMARY = 10.0
         WEIGHT_SECONDARY = 1.0
-        WEIGHT_SUNSET = 5.0
+
+        if primary_obj == "time":
+            WEIGHT_SUNSET = 10000
+        else:
+            WEIGHT_SUNSET = 80000
 
         if primary_obj == "time":
             m += WEIGHT_PRIMARY * obj_time + WEIGHT_SECONDARY * obj_energy + WEIGHT_SUNSET * obj_sunset, "Total_Objective"

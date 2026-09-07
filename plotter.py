@@ -1,112 +1,138 @@
 import os
 import csv
 import re
-from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
 
 plt.rcParams['figure.dpi'] = 300
 
-# ==========================================
-# 1. CONFIGURAZIONI PARAMETRI E COLORI
-# ==========================================
-root_folder = "simulazioni_esp_8" # Cambia con il nome della tua cartella
+# ==============================================================================
+# 1. CONFIGURAZIONE CARTELLA E 28 CONFIGURAZIONI
+# ==============================================================================
+root_folder = "simulazioni_esp_8"  # Cartella contenente i risultati
 
-# Colori fissi assegnati agli algoritmi per coerenza visiva
-ALGO_COLORS = {
-    "DTS-base": "#F28E2B",
-    "DTS-APopt": "#4E79A7",
-    "OrbitAware": "#59A14F",
-    "ILP-Centralized": "#E15759",
-    "ILP-Hierarchical-Time": "#B6992D",  # <-- CORRETTO
-    "ILP-Weighted-0.5-0.5": "#9467BD"    # <-- CORRETTO
-}
-
-# Pattern (hatch) per distinguere le barre nelle Rejection Causes
-ALGO_HATCHES = {
-    "DTS-base": "",
-    "DTS-APopt": "//",
-    "OrbitAware": "..",
-    "ILP-Centralized": "xx",
-    "ILP-Hierarchical-Time": "++",       # <-- CORRETTO
-    "ILP-Weighted-0.5-0.5": "||"         # <-- CORRETTO
-}
-
-# Ordine desiderato per la legenda e le barre sull'asse X
-ALGO_ORDER = [
-    "DTS-base", 
-    "DTS-APopt", 
-    "OrbitAware", 
-    "ILP-Centralized", 
-    "ILP-Hierarchical-Time",             # <-- CORRETTO
-    "ILP-Weighted-0.5-0.5"               # <-- CORRETTO
+CONFIG_ORDER = [
+    "BS:1 | BT:2 | Dijk:Energy",    "BS:1 | BT:2 | Dijk:Time",
+    "BS:2 | BT:2 | Dijk:Energy",    "BS:2 | BT:2 | Dijk:Time",
+    "BS:4 | BT:2 | Dijk:Energy",    "BS:4 | BT:2 | Dijk:Time",
+    "BS:6 | BT:2 | Dijk:Energy",    "BS:6 | BT:2 | Dijk:Time",
+    "BS:8 | BT:2 | Dijk:Energy",    "BS:8 | BT:2 | Dijk:Time",
+    "BS:10 | BT:2 | Dijk:Energy",   "BS:10 | BT:2 | Dijk:Time",
+    "BS:20 | BT:0.0 | Dijk:Energy", "BS:20 | BT:0.0 | Dijk:Time",
+    "BS:20 | BT:0.05 | Dijk:Energy","BS:20 | BT:0.05 | Dijk:Time",
+    "BS:20 | BT:0.1 | Dijk:Energy", "BS:20 | BT:0.1 | Dijk:Time",
+    "BS:20 | BT:0.2 | Dijk:Energy", "BS:20 | BT:0.2 | Dijk:Time",
+    "BS:20 | BT:0.4 | Dijk:Energy", "BS:20 | BT:0.4 | Dijk:Time",
+    "BS:20 | BT:0.6 | Dijk:Energy", "BS:20 | BT:0.6 | Dijk:Time",
+    "BS:20 | BT:0.8 | Dijk:Energy", "BS:20 | BT:0.8 | Dijk:Time",
+    "BS:20 | BT:1.0 | Dijk:Energy", "BS:20 | BT:1.0 | Dijk:Time"
 ]
-# ==========================================
+
+PAIRED_PALETTES = [
+    ("#1f77b4", "#aec7e8"),  # BS:1  BT:2
+    ("#ff7f0e", "#ffbb78"),  # BS:2  BT:2
+    ("#2ca02c", "#98df8a"),  # BS:4  BT:2
+    ("#bcbd22", "#dbdb8d"),  # BS:6  BT:2
+    ("#17becf", "#9edae5"),  # BS:8  BT:2
+    ("#d62728", "#ff9896"),  # BS:10 BT:2
+    ("#4d4d4d", "#b3b3b3"),  # BS:20 BT:0.0
+    ("#393b79", "#6b6ecf"),  # BS:20 BT:0.05
+    ("#e6550d", "#fdae6b"),  # BS:20 BT:0.1
+    ("#31a354", "#a1d99b"),  # BS:20 BT:0.2
+    ("#756bb1", "#bcbddc"),  # BS:20 BT:0.4
+    ("#b8860b", "#e7ba52"),  # BS:20 BT:0.6
+    ("#de9ed6", "#f7b6d2"),  # BS:20 BT:0.8
+    ("#525252", "#969696")   # BS:20 BT:1.0
+]
+
+CONFIG_COLORS = {}
+for pair_idx, base_idx in enumerate(range(0, len(CONFIG_ORDER), 2)):
+    c_dark, c_light = PAIRED_PALETTES[pair_idx]
+    CONFIG_COLORS[CONFIG_ORDER[base_idx]] = c_dark
+    CONFIG_COLORS[CONFIG_ORDER[base_idx + 1]] = c_light
 
 
-# -----------------------------
-# Funzioni di utilità & Parsing
-# -----------------------------
+# ==============================================================================
+# 2. PARSING ED ESTRAZIONE PARAMETRI
+# ==============================================================================
 def read_csv_to_2d_array(file_path):
     with open(file_path, newline='', encoding='utf-8') as f:
         return [row for row in csv.reader(f) if row]
 
+def format_bt(bt_val):
+    for target in [2.0, 0.0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]:
+        if abs(bt_val - target) < 1e-4:
+            return "2" if target == 2.0 else str(target)
+    return str(round(bt_val, 2))
+
 def extract_parameters(filepath):
-    # Estrazione Arrival Rate
-    ar_match = re.search(r'(?:Arr_Rate|AT)_([\d.]+)', filepath)
+    f_lower = filepath.lower()
+
+    # 1. Arrival Rate
+    ar_match = re.search(r'(?:arr_rate|at)[_=]([\d.]+)', f_lower)
     if ar_match:
-        at_val = float(ar_match.group(1))
-        ar_val = int(round(1.0 / at_val))
+        at_float = float(ar_match.group(1))
+        ar_val = int(round(1.0 / at_float)) if at_float <= 1.0 else int(round(at_float))
     else:
         ar_val = None
 
-    # Convertiamo il path in minuscolo
-    filepath_lower = filepath.lower()
+    # 2. Deadline
+    dl_match = re.search(r'deadline[_=](\d+)', f_lower)
+    dl_val = int(dl_match.group(1)) if dl_match else None
 
-    # Estrazione Blindata dell'Algoritmo
-    algo_val = "Unknown"
-    
-    if "ilp-centralized" in filepath_lower:
-        algo_val = "ILP-Centralized"
-    elif "hierarchical" in filepath_lower and "time" in filepath_lower:
-        algo_val = "ILP-Hierarchical-Time"
-    # CORREZIONE: Ora cerchiamo la stringa esatta creata dal main.py
-    elif "weighted" in filepath_lower and "0.5_w_r_0.5" in filepath_lower:
-        algo_val = "ILP-Weighted-0.5-0.5"
-    elif "dts-apopt" in filepath_lower:
-        algo_val = "DTS-APopt"
-    elif "dts-base" in filepath_lower:
-        algo_val = "DTS-base"
-    elif "orbitaware" in filepath_lower:
-        algo_val = "OrbitAware"
-    
-    # Estrazione Deadline
-    dl_match = re.search(r'deadline_(\d+)', filepath, re.IGNORECASE)
-    dl_val = int(dl_match.group(1)) if dl_match else "N/A"
-    
-    return ar_val, algo_val, dl_val
+    # 3. Batch Size
+    bs_match = re.search(r'(?:batch_size|bs)[_=](\d+)', f_lower)
+    bs_val = int(bs_match.group(1)) if bs_match else None
+
+    # 4. Batch Timeout
+    bt_match = re.search(r'(?:batch_timeout|bt)[_=]([\d.]+)', f_lower)
+    bt_val = float(bt_match.group(1)) if bt_match else None
+
+    # 5. Mapping (ENERGY Mapping vs TIME Mapping)
+    if any(k in f_lower for k in ["obj_energy", "energy_mapping", "opt_energy", "/energy/"]):
+        mapping_str = "ENERGY"
+    elif any(k in f_lower for k in ["obj_time", "time_mapping", "opt_time", "/time/"]):
+        mapping_str = "TIME"
+    else:
+        mapping_str = "Default"
+
+    # 6. Routing Algorithm (Dijkstra Energy vs Time)
+    dijk_str = None
+    dijk_weights = re.search(r'dijk_(?:w_r_)?([0-9.]+)_?(?:w_e_)?([0-9.]+)', f_lower)
+    if dijk_weights:
+        w_r = float(dijk_weights.group(1))
+        w_e = float(dijk_weights.group(2))
+        dijk_str = "Energy" if w_e > w_r else "Time"
+    elif any(k in f_lower for k in ["dijk_energy", "dijkstra_energy", "r_algo_energy"]):
+        dijk_str = "Energy"
+    elif any(k in f_lower for k in ["dijk_time", "dijkstra_time", "r_algo_time"]):
+        dijk_str = "Time"
+
+    config_label = None
+    if bs_val is not None and bt_val is not None and dijk_str is not None:
+        bt_repr = format_bt(bt_val)
+        config_label = f"BS:{bs_val} | BT:{bt_repr} | Dijk:{dijk_str}"
+
+    return ar_val, dl_val, mapping_str, config_label
 
 def compute_stats(lines):
     completed = rejected = deadline = insuff_cn = insuff_c = no_server = ilp_infeasible = sunset = 0
     total_time = sys_time = 0.0
 
     for line in lines:
-        if len(line) <= 26: 
+        if len(line) <= 26:
             continue
-            
         status = str(line[2]).strip()
-        
         if status == "Completed":
             completed += 1
             if str(line[26]).strip() != "N/A":
                 total_time += float(line[9]) + float(line[15]) + float(line[26])
                 sys_time += float(line[9])
-                
         elif status == "Rejected":
             rejected += 1
             reason = str(line[23]).lower()
-            
             if "deadline" in reason:
                 deadline += 1
             elif "energy" in reason:
@@ -121,201 +147,209 @@ def compute_stats(lines):
             elif "sunset" in reason:
                 sunset += 1
 
-    return completed, rejected, deadline, insuff_cn, insuff_c, no_server, ilp_infeasible, total_time, sys_time, sunset
+    return {
+        "completed": completed,
+        "rejected": rejected,
+        "deadline": deadline,
+        "insuff_cn": insuff_cn,
+        "insuff_c": insuff_c,
+        "no_server": no_server,
+        "ilp_infeasible": ilp_infeasible,
+        "sunset": sunset,
+        "total_time": total_time,
+        "sys_time": sys_time
+    }
 
 
-# ==========================================
-# ESECUZIONE PRINCIPALE: RACCOLTA DATI
-# ==========================================
-print("Inizio Estrazione e Classificazione Dati...")
+# ==============================================================================
+# 3. RACCOLTA DATI
+# ==============================================================================
+print("Scansione risultati simulazioni in corso...")
 
 data_store = {}
 all_ars = set()
-unique_algos = set()
 
 for root, _, files in os.walk(root_folder):
     for file in files:
         if file.endswith(".csv") and "results" in file:
             filepath = os.path.join(root, file)
-            ar, algo, dl = extract_parameters(filepath)
-            
-            if ar is not None and algo != "Unknown" and dl != "N/A":
+            ar, dl, mapping, config = extract_parameters(filepath)
+
+            if ar is not None and dl is not None and config is not None:
                 all_ars.add(ar)
-                unique_algos.add(algo)
-                
-                if dl not in data_store:
-                    data_store[dl] = {}
-                
-                if algo not in data_store[dl]:
-                    data_store[dl][algo] = {}
-                    
-                if ar not in data_store[dl][algo]:
-                    data_store[dl][algo][ar] = []
-                
-                rows = read_csv_to_2d_array(filepath)
-                data_store[dl][algo][ar].extend(rows)
+                group_key = (mapping, dl)
+
+                if group_key not in data_store:
+                    data_store[group_key] = {}
+                if config not in data_store[group_key]:
+                    data_store[group_key][config] = {}
+                if ar not in data_store[group_key][config]:
+                    data_store[group_key][config][ar] = []
+
+                data_store[group_key][config][ar].extend(read_csv_to_2d_array(filepath))
 
 sorted_ars = sorted(list(all_ars))
-sorted_deadlines = sorted(list(data_store.keys()))
+sorted_groups = sorted(list(data_store.keys()))
 
-# Garantisce che l'ordine sia rispettato e include i nuovi algoritmi solo se presenti
-present_algos = [algo for algo in ALGO_ORDER if algo in unique_algos]
+# ==============================================================================
+# 4. GENERAZIONE GRAFICI PER CIASCUN MAPPING & DEADLINE
+# ==============================================================================
+for mapping, dl in sorted_groups:
+    group_title = f"{mapping} Mapping, DL={dl}" if mapping != "Default" else f"DL={dl}"
+    file_tag = f"{mapping.lower()}_mapping_dl_{dl}" if mapping != "Default" else f"dl_{dl}"
 
-# ==========================================
-# CICLO GENERAZIONE GRAFICI (PER OGNI DEADLINE)
-# ==========================================
-for dl in sorted_deadlines:
-    print(f"\n=============================================")
-    print(f" ELABORAZIONE DEADLINE: {dl}")
-    print(f"=============================================")
-    
-    if not present_algos:
-        print(f"Nessun dato trovato per la DL {dl}. Salto...")
+    present_configs = [c for c in CONFIG_ORDER if c in data_store[(mapping, dl)]]
+    if not present_configs:
         continue
 
-    n_configs = len(present_algos)
-    
-    # Regolazione dinamica della larghezza delle barre in base al numero di algoritmi testati
-    step_width = 0.85 / n_configs      
-    bar_width = step_width * 0.90      
+    print(f"\nGenerazione grafici per {group_title} ({len(present_configs)} configurazioni trovate)...")
+
+    n_configs = len(present_configs)
+    step_width = 0.030
+    bar_width = 0.026
     group_width = n_configs * step_width
-    group_spacing = 0.8   
-    
+    group_spacing = 0.35
+
     x_base = np.arange(len(sorted_ars)) * (group_width + group_spacing)
     offsets = np.linspace(-group_width/2 + step_width/2, group_width/2 - step_width/2, n_configs)
 
     def draw_separators():
         for x in x_base[:-1]:
-            plt.axvline(x + group_width/2 + group_spacing/2, color='gray', linestyle=':', alpha=0.4)
+            plt.axvline(x + group_width/2 + group_spacing/2, color='gray', linestyle=':', alpha=0.35)
 
-    # --------------------------------------------------
+    # --------------------------------------------------------------------------
     # 1. SUCCESS RATE
-    # --------------------------------------------------
-    print(f"Generazione Success Rate (DL={dl})...")
-    plt.figure(figsize=(24, 10))
-    for i, algo in enumerate(present_algos):
+    # --------------------------------------------------------------------------
+    plt.figure(figsize=(26, 10))
+    for i, cfg in enumerate(present_configs):
         y_vals = []
         for ar in sorted_ars:
-            rows = data_store[dl].get(algo, {}).get(ar, [])
+            rows = data_store[(mapping, dl)].get(cfg, {}).get(ar, [])
             if not rows:
-                y_vals.append(0)
+                y_vals.append(0.0)
                 continue
             stats = compute_stats(rows)
-            c, r = stats[0], stats[1]
-            y_vals.append((c / (c + r) * 100) if (c + r) > 0 else 0)
-            
-        plt.bar(x_base + offsets[i], y_vals, width=bar_width, color=ALGO_COLORS[algo], edgecolor='black', linewidth=0.5, label=algo)
+            c, r = stats["completed"], stats["rejected"]
+            y_vals.append((c / (c + r)) if (c + r) > 0 else 0.0)
+
+        plt.bar(x_base + offsets[i], y_vals, width=bar_width,
+                color=CONFIG_COLORS.get(cfg, "#333333"), edgecolor='black', linewidth=0.2, label=cfg)
 
     draw_separators()
-    plt.title("Success Rate per Algorithm across Arrival Rates", fontsize=22)
-    plt.ylabel("Success Rate (%)", fontsize=20)
-    plt.xlabel("Arrival Rate (req/sec)", fontsize=20)
-    plt.ylim(0, 100)
-    plt.xticks(x_base, sorted_ars, fontsize=16)
-    plt.yticks(np.arange(0, 105, 10), fontsize=16)
-    plt.grid(axis="y", linestyle="--", alpha=0.5) 
-    plt.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=14, title="Algorithms", title_fontsize=16)
-    
-    plt.savefig(f"01_AR_success_rate_dl_{dl}.png", bbox_inches='tight')
+    plt.title(f"Success Rate per Arrival Rate ({group_title})", fontsize=20)
+    plt.ylabel("Success Rate (%)", fontsize=18)
+    plt.xlabel("Arrival Rate (req/sec)", fontsize=18)
+    plt.ylim(0, 1.05)
+    plt.xticks(x_base, sorted_ars, fontsize=15)
+    plt.yticks(np.arange(0.0, 1.1, 0.1), [f"{v:.1f}" for v in np.arange(0.0, 1.1, 0.1)], fontsize=14)
+    plt.grid(axis="y", linestyle="--", alpha=0.5)
+
+    plt.legend(bbox_to_anchor=(1.01, 1), loc='upper left', fontsize=10, title="Configurations", title_fontsize=11)
+    plt.savefig(f"01_Success_Rate_{file_tag}.png", bbox_inches='tight')
     plt.close()
 
-    # --------------------------------------------------
+    # --------------------------------------------------------------------------
     # 2. REJECTION CAUSES
-    # --------------------------------------------------
-    print(f"Generazione Rejection Causes (DL={dl})...")
-    plt.figure(figsize=(24, 10))
-    
-    cause_colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"] 
-    cause_labels = ["Deadline exceeded", "Insuff. CPU+NET", "Insuff. CPU", "No server found", "ILP Infeasible", "Sunset"]
+    # --------------------------------------------------------------------------
+    plt.figure(figsize=(26, 10))
 
-    for i, algo in enumerate(present_algos):
+    cause_keys = ["deadline", "insuff_cn", "insuff_c", "no_server", "ilp_infeasible", "sunset"]
+    cause_labels = ["Deadline exceeded", "Insuff. CPU+NET", "Insuff. CPU", "No server found", "ILP Infeasible", "Sunset"]
+    cause_colors = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
+
+    for i, cfg in enumerate(present_configs):
         bottom = np.zeros(len(sorted_ars))
-        for cause_idx in range(len(cause_labels)):
+        for k_idx, key in enumerate(cause_keys):
             y_vals = []
             for ar in sorted_ars:
-                rows = data_store[dl].get(algo, {}).get(ar, [])
+                rows = data_store[(mapping, dl)].get(cfg, {}).get(ar, [])
                 if not rows:
-                    y_vals.append(0)
+                    y_vals.append(0.0)
                     continue
                 stats = compute_stats(rows)
-                rejected = stats[1]
-                val = stats[2 + cause_idx] 
-                y_vals.append((val / rejected * 100) if rejected > 0 else 0)
-                
-            plt.bar(x_base + offsets[i], y_vals, width=bar_width, bottom=bottom, color=cause_colors[cause_idx], 
-                    edgecolor='black', linewidth=0.5, hatch=ALGO_HATCHES[algo])
+                rej = stats["rejected"]
+                val = stats[key]
+                y_vals.append((val / rej) if rej > 0 else 0.0)
+
+            plt.bar(x_base + offsets[i], y_vals, width=bar_width, bottom=bottom,
+                    color=cause_colors[k_idx], edgecolor='black', linewidth=0.2)
             bottom += np.array(y_vals)
 
     draw_separators()
-    plt.title("Failure Causes per Algorithm across Arrival Rates", fontsize=22)
-    plt.ylabel("Rejection Rate (%)", fontsize=20)
-    plt.xlabel("Arrival Rate (req/sec)", fontsize=20)
-    plt.ylim(0, 100)
-    plt.xticks(x_base, sorted_ars, fontsize=16)
-    plt.yticks(np.arange(0, 105, 10), fontsize=16)
+    plt.title(f"Failure causes per Arrival Rate ({group_title})", fontsize=20)
+    plt.ylabel("Rejection Rate (%)", fontsize=18)
+    plt.xlabel("Arrival Rate (req/sec)", fontsize=18)
+    plt.ylim(0, 1.00)
+    plt.xticks(x_base, sorted_ars, fontsize=15)
+    plt.yticks(np.arange(0.0, 1.1, 0.1), [f"{v:.1f}" for v in np.arange(0.0, 1.1, 0.1)], fontsize=14)
     plt.grid(axis="y", linestyle="--", alpha=0.5)
 
     cause_patches = [mpatches.Patch(color=cause_colors[idx], label=cause_labels[idx]) for idx in range(len(cause_labels))]
-    legend1 = plt.legend(handles=cause_patches, loc='upper left', bbox_to_anchor=(1.01, 1.03), fontsize=14, title="Failure Causes", title_fontsize=16)
+    legend_causes = plt.legend(handles=cause_patches, loc='upper left', bbox_to_anchor=(1.01, 1.0),
+                               fontsize=11, title="Failure Causes", title_fontsize=13)
 
-    config_patches = [mpatches.Patch(facecolor='white', edgecolor='black', hatch=ALGO_HATCHES[algo], label=algo) for algo in present_algos]
-    legend2 = plt.legend(handles=config_patches, loc='upper left', bbox_to_anchor=(1.01, 0.7), fontsize=14, title="Algorithms", title_fontsize=16)
-    plt.gca().add_artist(legend1)
+    cfg_lines = [Line2D([0], [0], color=CONFIG_COLORS.get(cfg, '#555'), lw=3, label=cfg) for cfg in present_configs]
+    legend_cfgs = plt.legend(handles=cfg_lines, loc='upper left', bbox_to_anchor=(1.01, 0.72),
+                             fontsize=10, title="Configurations", title_fontsize=11)
+    plt.gca().add_artist(legend_causes)
 
-    # Correzione bbox_extra_artists applicata
-    plt.savefig(f"02_AR_rejection_causes_dl_{dl}.png", bbox_inches='tight', bbox_extra_artists=(legend1, legend2))
+    plt.savefig(f"02_Failure_Causes_{file_tag}.png", bbox_inches='tight',
+                bbox_extra_artists=(legend_causes, legend_cfgs))
     plt.close()
 
-    # --------------------------------------------------
-    # 3. RESPONSE TIME 
-    # --------------------------------------------------
-    print(f"Generazione Response Time (DL={dl})...")
-    plt.figure(figsize=(24, 10))
-    max_val = 0
+    # --------------------------------------------------------------------------
+    # 3. STACKED RESPONSE TIME
+    # --------------------------------------------------------------------------
+    plt.figure(figsize=(26, 10))
+    max_val = 0.0
 
-    for i, algo in enumerate(present_algos):
+    for i, cfg in enumerate(present_configs):
         y_sys = []
         y_diff = []
         for ar in sorted_ars:
-            rows = data_store[dl].get(algo, {}).get(ar, [])
+            rows = data_store[(mapping, dl)].get(cfg, {}).get(ar, [])
             if not rows:
-                y_sys.append(0)
-                y_diff.append(0)
+                y_sys.append(0.0)
+                y_diff.append(0.0)
                 continue
             stats = compute_stats(rows)
-            completed = stats[0]
-            sys_time = stats[8] / completed if completed > 0 else 0
-            tot_time = stats[7] / completed if completed > 0 else 0
-            
-            y_sys.append(sys_time)
-            y_diff.append(max(0, tot_time - sys_time))
-            if tot_time > max_val: max_val = tot_time
+            comp = stats["completed"]
+            sys_t = stats["sys_time"] / comp if comp > 0 else 0.0
+            tot_t = stats["total_time"] / comp if comp > 0 else 0.0
 
-        plt.bar(x_base + offsets[i], y_sys, width=bar_width, color=ALGO_COLORS[algo], edgecolor='black', linewidth=0.5)
-        plt.bar(x_base + offsets[i], y_diff, width=bar_width, bottom=y_sys, color=ALGO_COLORS[algo], alpha=0.35, edgecolor='black', linewidth=0.5)
+            y_sys.append(sys_t)
+            y_diff.append(max(0.0, tot_t - sys_t))
+            if tot_t > max_val:
+                max_val = tot_t
+
+        c = CONFIG_COLORS.get(cfg, "#333333")
+        plt.bar(x_base + offsets[i], y_sys, width=bar_width, color=c, edgecolor='black', linewidth=0.2)
+        plt.bar(x_base + offsets[i], y_diff, width=bar_width, bottom=y_sys,
+                color=c, alpha=0.35, edgecolor='black', linewidth=0.2)
 
     draw_separators()
-    plt.title("Stacked Response Time per Algorithm across Arrival Rates", fontsize=22)
-    plt.ylabel("Response Time (ms)", fontsize=20)
-    plt.xlabel("Arrival Rate (req/sec)", fontsize=20)
-    plt.xticks(x_base, sorted_ars, fontsize=16)
-    plt.ylim(0, max_val * 1.15 if max_val > 0 else 1)
-    plt.yticks(fontsize=16)
+    plt.title(f"Stacked Response Time per Arrival Rate ({group_title})", fontsize=20)
+    plt.ylabel("Response Time (ms)", fontsize=18)
+    plt.xlabel("Arrival Rate (req/sec)", fontsize=18)
+    plt.xticks(x_base, sorted_ars, fontsize=15)
+    plt.ylim(0, max_val * 1.15 if max_val > 0 else 1.5)
+    plt.yticks(fontsize=14)
     plt.grid(axis="y", linestyle="--", alpha=0.5)
 
-    time_patches = [
-            mpatches.Patch(facecolor='gray', edgecolor='black', alpha=1.0, label='System Execution (Bottom)'),
-            mpatches.Patch(facecolor='gray', edgecolor='black', alpha=0.35, label='Network/Wait Time (Top)')
-        ]
-    legend_time = plt.legend(handles=time_patches, loc='upper left', bbox_to_anchor=(1.01, 0.7), fontsize=14, title="Time Components", title_fontsize=16)
-    
-    config_patches_rt = [mpatches.Patch(color=ALGO_COLORS[algo], label=algo) for algo in present_algos]
-    legend_config = plt.legend(handles=config_patches_rt, loc='upper left', bbox_to_anchor=(1.01, 1), fontsize=14, title="Algorithms", title_fontsize=16)
-    
-    plt.gca().add_artist(legend_time)
+    config_patches_rt = [mpatches.Patch(color=CONFIG_COLORS.get(cfg, '#555'), label=cfg) for cfg in present_configs]
+    legend_cfgs_rt = plt.legend(handles=config_patches_rt, loc='upper left', bbox_to_anchor=(1.01, 1.0),
+                                fontsize=10, title="Configurations", title_fontsize=11)
 
-    # Correzione bbox_extra_artists applicata
-    plt.savefig(f"03_AR_response_time_dl_{dl}.png", bbox_inches='tight', bbox_extra_artists=(legend_time, legend_config))
+    time_patches = [
+        mpatches.Patch(facecolor='black', edgecolor='black', alpha=1.0, label='System Execution (Bottom)'),
+        mpatches.Patch(facecolor='black', edgecolor='black', alpha=0.35, label='Network/Wait Time (Top)')
+    ]
+    legend_time = plt.legend(handles=time_patches, loc='upper left', bbox_to_anchor=(1.01, 0.12),
+                             fontsize=11, title="Time Component", title_fontsize=12)
+    plt.gca().add_artist(legend_cfgs_rt)
+
+    plt.savefig(f"03_Response_Time_{file_tag}.png", bbox_inches='tight',
+                bbox_extra_artists=(legend_cfgs_rt, legend_time))
     plt.close()
 
-print("\nCompletato! Sono stati generati i 3 grafici di comparazione algoritmi.")
+print("\nElaborazione terminata con successo.")
