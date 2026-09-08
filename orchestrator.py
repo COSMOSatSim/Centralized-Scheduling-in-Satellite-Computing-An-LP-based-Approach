@@ -17,6 +17,16 @@ from EdgeServer import get_pos_proximity
 #alpha e beta = 10, 50, 1000 (l'altro sempre ad 1)
 
 
+"""Info per laurea:
+        Relatore
+        Correlatore
+        Relatore aggiuntivo
+        Relatore esterno
+        Titolo tesi
+        Materia tesi
+        Allegati"""
+
+
 
 class Orchestrator:
     def __init__(self, env, config):
@@ -453,11 +463,8 @@ class Orchestrator:
                             elif assigned_tasks_per_node.get(i, 0) >= MAX_TASKS_PER_NODE:
                                 reasons_for_rejection.append("Load_Balancing_Rejected")
                             else:
-                                # Se passa tutti i controlli ma è scartato, è colpa di un vincolo combinato
-                                # dell'ILP (es. ottimizzazione globale per fare spazio a task migliori)
                                 reasons_for_rejection.append("Global_ILP_Conflict")
                         
-                        # Estraiamo il motivo prevalente (quello che compare più volte nella lista)
                         if reasons_for_rejection:
                             specific_reason = max(set(reasons_for_rejection), key=reasons_for_rejection.count)
                         else:
