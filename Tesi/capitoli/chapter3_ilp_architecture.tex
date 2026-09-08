@@ -411,7 +411,8 @@ The aggregated fleet latency ($Z_{time}$), energy ($Z_{energy}$), and eclipse pe
     Z_{sunset} &= \sum_{r \in R} \sum_{i \in S} x_{r,i} \Omega_i
 \end{align}
 
-Depending on the configuration parameter \texttt{centralized\_primary\_objective} (Time vs. Energy), the objective function $Z$ applies hierarchical weights ($\alpha = 10.0, \beta = 1.0, \gamma = 5.0$):
+Depending on the configuration parameter \texttt{centralized\_primary\_objective} (Time vs. Energy), the objective function $Z$ applies hierarchical weighting parameters ($\alpha$, $\beta$, and $\gamma$):
+
 \begin{equation}
     \min Z = \begin{cases}
         \alpha Z_{time} + \beta Z_{energy} + \gamma Z_{sunset}, & \text{if primary strategy is Time} \\
@@ -419,6 +420,7 @@ Depending on the configuration parameter \texttt{centralized\_primary\_objective
     \end{cases}
     \label{eq:objective_function}
 \end{equation}
+where $\alpha$ denotes the weight assigned to the primary performance metric, $\beta$ weights the secondary objective, and $\gamma$ scales the orbital sunset penalty factor.
 
 The optimization space is constrained by four strict linear relations:
 \begin{enumerate}

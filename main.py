@@ -274,6 +274,9 @@ if __name__ == "__main__":
     centr_tol = config.get("centralized_lexi_tol", 0.1)
     centr_w_r = config.get("centralized_w_r", 0.99)
     centr_w_e = config.get("centralized_w_e", 0.01)
+    centr_pw = config.get("centralized_primary_weight", 10)
+    centr_sw = config.get("centralized_secondary_weight", 1)
+    centr_sunw = config.get("centralized_sunset_weight", 10000)
     # ------------------------------------------
 
 # Cartella base: include modalità, AP e seed
@@ -286,6 +289,7 @@ if __name__ == "__main__":
             f"Routing_bidirectional_{ap_dir_bidir}/seed_{seed_val}/r_algo_{r_algo}/"
             f"batch_size_{batch_size}/batch_timeout_{batch_timeout}/"
             f"obj_{centr_obj}/tol_{centr_tol}/dijk_{centr_w_r}_{centr_w_e}/"
+            f"weights_pw_{centr_pw}_sw_{centr_sw}_sunw_{centr_sunw}/"
         )
     elif complete_sim_solver == "ILP":
         # Se siamo nell'ILP distribuito dobbiamo verificare che tipo di ILP è (Hierarchical o Weighted)

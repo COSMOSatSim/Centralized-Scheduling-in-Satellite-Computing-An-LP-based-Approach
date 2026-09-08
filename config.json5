@@ -122,5 +122,8 @@
   centralized_w_r:1,
   centralized_w_e:0,
   centralized_primary_objective: "time",
+  centralized_primary_weight: 0.33,
+  centralized_secondary_weight: 0.33,
+  centralized_sunset_weight: 0.33,
   centralized_lexi_tol: 0.1,
 }

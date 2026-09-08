@@ -7,8 +7,16 @@ import utils
 from Task import Task
 from EdgeServer import get_pos_proximity
 
-#modifica i requirements.txt per aggiungere pulp etc
-#controlla i risultati sperimentali
+#simulazioni con configurazioni bs 20 bt 0.05, bs 2 bt 2
+
+
+#gamma = 2, 4, 6, 8, 10, 1000, 5000, 10000 
+#alpha beta invariati
+
+#trovato gamma
+#alpha e beta = 10, 50, 1000 (l'altro sempre ad 1)
+
+
 
 class Orchestrator:
     def __init__(self, env, config):
@@ -379,13 +387,9 @@ class Orchestrator:
         # --- COMPONENTE SUNSET ---
         obj_sunset = pulp.lpSum(x[r_idx, i] * sunset_penalties[i] for r_idx in range(len(R_set)) for i in S_set)
 
-        WEIGHT_PRIMARY = 10.0
-        WEIGHT_SECONDARY = 1.0
-
-        if primary_obj == "time":
-            WEIGHT_SUNSET = 10000
-        else:
-            WEIGHT_SUNSET = 80000
+        WEIGHT_PRIMARY = self.config.get("centralized_primary_weight", 1.0)
+        WEIGHT_SECONDARY = self.config.get("centralized_secondary_weight", 1.0)
+        WEIGHT_SUNSET = self.config.get("centralized_sunset_weight", 1.0)
 
         if primary_obj == "time":
             m += WEIGHT_PRIMARY * obj_time + WEIGHT_SECONDARY * obj_energy + WEIGHT_SUNSET * obj_sunset, "Total_Objective"
