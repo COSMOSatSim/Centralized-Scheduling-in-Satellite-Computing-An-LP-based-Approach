@@ -34,38 +34,37 @@ This repository implements a **Centralized Integer Linear Programming (ILP) Orch
 ---
 
 ## System Architecture & Methodology
-
+```text
                +-----------------------------------------------+
                |          Ground Access Points (APs)           |
                +-----------------------------------------------+
-                                      |
-                            [Task Ingress Batch]
-                                      v
-
-+-------------------------------------------------------------------------------------+
-|                             MASTER ORCHESTRATOR NODE                                |
-|                                                                                     |
-|   1. Constellation Mapping (_map_constellation)                                     |
-|      - Multi-Source Dijkstra from all APs across active ISL mesh                    |
-|      - Evaluated on a 1 MB reference payload with normalized latency and energy     |
-|                                                                                     |
-|   2. Event-Driven Dynamic Batching (_run_loop)                                      |
-|      - Dual trigger: |Buffer| >= BS  OR  elapsed time >= BT                         |
-|      - Zero-delay SimPy yield (yield env.timeout(0)) for physical state sync        |
-|                                                                                     |
-|   3. Mathematical Solver Engine (_solve_ilp via PuLP)                               |
-|      - Decision variables: x[r, i] (assignment), y[r] (drop)                        |
-|      - Objectives: Latency minimization, Fleet Energy preservation, Sunset penalty  |
-|      - Constraints: Uniqueness, Deadlines, Battery capacity, Fair load bound       |
-+-------------------------------------------------------------------------------------+
-|
-+-------------------+-------------------+
-|                                       |
-v                                       v
-[Phase A: Uplink ISL Routing]            [Phase B: Execution & Return]
-Planned Dijkstra path to SEN             Local task execution on SEN
-(Fallback: Geographic Greedy)            Dynamic Greedy return to AP
-
+                                       |
+                             [Task Ingress Batch]
+                                       v
++-------------------------------------------------------------------------------+
+|                           MASTER ORCHESTRATOR NODE                            |
+|                                                                               |
+|  1. Constellation Mapping (_map_constellation)                                |
+|     - Multi-Source Dijkstra from all APs across active ISL mesh               |
+|     - Evaluated on a 1 MB reference payload with normalized latency & energy  |
+|                                                                               |
+|  2. Event-Driven Dynamic Batching (_run_loop)                                 |
+|     - Dual trigger: |Buffer| >= BS  OR  elapsed time >= BT                    |
+|     - Zero-delay SimPy yield (yield env.timeout(0)) for physical state sync   |
+|                                                                               |
+|  3. Mathematical Solver Engine (_solve_ilp via PuLP)                          |
+|     - Decision variables: x[r, i] (assignment), y[r] (drop)                   |
+|     - Objectives: Latency minimization, Fleet Energy preservation, Sunset     |
+|     - Constraints: Uniqueness, Deadlines, Battery capacity, Fair load bound  |
++-------------------------------------------------------------------------------+
+                                       |
+                       +---------------+---------------+
+                       |                               |
+                       v                               v
+         [Phase A: Uplink ISL Routing]   [Phase B: Execution & Return]
+          Planned Dijkstra path to SEN    Local task execution on SEN
+          (Fallback: Geographic Greedy)   Dynamic Greedy return to AP
+```
 
 ### 1. Dynamic Constellation Mapping
 Prior to solver execution, the orchestrator gathers a global network snapshot via a **Multi-Source Dijkstra** shortest-path algorithm evaluated from all active Ground Access Points across the ISL mesh. Links are evaluated using a standardized reference payload ($S_{ref} = 1\text{ MB}$):
@@ -88,11 +87,15 @@ To account for idle time spent waiting in the buffer ($T_{batch}$), task deadlin
 $$D'_r = (1 + \Delta D)(D_r - T_{batch})$$
 
 ### 3. Optimization Model Formulation (ILP)
-For a batch of requests $R$ and candidate satellites $S$, binary variables $x_{r,i} \in \{0, 1\}$ represent task assignment and $y_r \in \{0, 1\}$ denote request rejection:
+For a batch of requests $R$ and candidate satellites $S$, binary variables $x_{r,i} \in \{0, 1\}$ represent task assignment and $y_r \in \{0, 1\}$ denote request rejection. The optimization target is formulated depending on the chosen primary objective:
 
-$$\min Z = \begin{cases}  \alpha Z_{time} + \beta Z_{energy} + \gamma Z_{sunset}, & \text{if primary objective is Time}
- \alpha Z_{energy} + \beta Z_{time} + \gamma Z_{sunset}, & \text{if primary objective is Energy} \end{cases}$$
+* **Primary Objective: Time Minimization**
+  $$\min Z_{Time} = \alpha Z_{time} + \beta Z_{energy} + \gamma Z_{sunset}$$
 
+* **Primary Objective: Energy Minimization**
+  $$\min Z_{Energy} = \alpha Z_{energy} + \beta Z_{time} + \gamma Z_{sunset}$$
+
+Where $\alpha$ weights the primary performance metric, $\beta$ weights the secondary metric, and $\gamma$ scales the orbital sunset penalty factor.
 Subject to:
 1. **Assignment Uniqueness:** $\sum_{i \in S} x_{r,i} + y_r = 1, \quad \forall r \in R$
 2. **Compensated Deadline Compliance:** $x_{r,i} \cdot R_{r,i} \le D'_r, \quad \forall r \in R, \, \forall i \in S$
