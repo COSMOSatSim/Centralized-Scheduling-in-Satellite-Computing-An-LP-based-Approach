@@ -1,41 +1,53 @@
 import os
 import csv
 import re
-import math
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 plt.rcParams['figure.dpi'] = 300
 
 # ==============================================================================
-# 1. PARAMETRI E COSTANTI
+# 1. CONFIGURAZIONE PERCORSI E PARAMETRI
 # ==============================================================================
-root_folder = "simulazioni_esp_10"
+root_folder = "simulazioni_esp_10"  # Sostituisci con il path dei tuoi CSV
+OUTPUT_DIR = "plots"               # Cartella in cui salvare i grafici
 
-SUNSET_WEIGHTS = [2, 4, 6, 8, 10, 1000, 5000, 10000]
-PRIMARY_WEIGHTS = [10, 50, 1000]
+# Creazione automatica della directory di destinazione se non esiste
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Palette per alpha (Primary Weight)
-ALPHA_COLORS = {
-    10:   "#386cb0",  # Blu
-    50:   "#fdb462",  # Ambra dorata
-    1000: "#7fc97f"   # Verde
+# I 9 algoritmi distinti da confrontare
+ALGO_ORDER = [
+    "DTS-base",
+    "DTS-Optimal",
+    "Orbit-aware",
+    "ILP-Hierarchical (Time)",
+    "ILP-Hierarchical (Energy)",
+    "ILP-Centr (BS20, BT0.05, Time)",
+    "ILP-Centr (BS20, BT0.05, Energy)",
+    "ILP-Centr (BS2, BT2, Time)",
+    "ILP-Centr (BS2, BT2, Energy)"
+]
+
+# Palette ad alto contrasto per distinguere chiaramente le 9 configurazioni
+ALGO_COLORS = {
+    "DTS-base":                         "#F28E2B",  # Arancione
+    "DTS-Optimal":                      "#4E79A7",  # Blu
+    "Orbit-aware":                      "#59A14F",  # Verde
+    "ILP-Hierarchical (Time)":          "#B6992D",  # Oro/Senape
+    "ILP-Hierarchical (Energy)":        "#8C564B",  # Marrone
+    "ILP-Centr (BS20, BT0.05, Time)":   "#E15759",  # Rosso brillante
+    "ILP-Centr (BS20, BT0.05, Energy)": "#FF9D9A",  # Salmone
+    "ILP-Centr (BS2, BT2, Time)":       "#79706E",  # Antracite
+    "ILP-Centr (BS2, BT2, Energy)":     "#BAB0AC"   # Grigio chiaro
 }
 
-ALPHA_HATCHES = {
-    10:   "",
-    50:   "//",
-    1000: "++"
-}
-
-# Cause di fallimento
 CAUSE_KEYS = ["deadline", "insuff_cn", "insuff_c", "no_server", "ilp_infeasible", "sunset"]
 CAUSE_LABELS = ["Deadline exceeded", "Insuff. CPU+NET", "Insuff. CPU", "No server found", "ILP Infeasible", "Sunset"]
 CAUSE_COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b"]
 
 # ==============================================================================
-# 2. PARSING E STATISTICHE
+# 2. PARSING DEI DATI E CLASSIFICAZIONE
 # ==============================================================================
 def read_csv_to_2d_array(file_path):
     with open(file_path, newline='', encoding='utf-8') as f:
@@ -44,7 +56,7 @@ def read_csv_to_2d_array(file_path):
 def extract_parameters(filepath):
     f_lower = filepath.lower()
 
-    # Arrival Rate
+    # 1. Arrival Rate (es. arr_rate_0.1 -> 10 req/s, arr_rate_0.5 -> 2 req/s)
     ar_match = re.search(r'(?:arr_rate|at)[_=]([\d.]+)', f_lower)
     if ar_match:
         at_f = float(ar_match.group(1))
@@ -52,36 +64,52 @@ def extract_parameters(filepath):
     else:
         ar_val = None
 
-    # Batch config
-    bs_match = re.search(r'batch_size[_=](\d+)', f_lower)
-    bt_match = re.search(r'batch_timeout[_=]([\d.]+)', f_lower)
-    bs_val = int(bs_match.group(1)) if bs_match else None
-    bt_val = float(bt_match.group(1)) if bt_match else None
-
-    # Objective
-    obj_match = re.search(r'obj[_=]([a-z]+)', f_lower)
-    obj_val = obj_match.group(1).capitalize() if obj_match else "Unknown"
-
-    # Dijkstra
-    dijk_match = re.search(r'dijk[_=]([0-9.]+)[_=]([0-9.]+)', f_lower)
-    if dijk_match:
-        w_r, w_e = float(dijk_match.group(1)), float(dijk_match.group(2))
-        dijk_str = "Dijk-Energy" if w_e > w_r else "Dijk-Time"
+    # 2. Budget Energetico (40 kJ vs 80 kJ)
+    budget_match = re.search(r'(?:energy_budget|budget)[_=]?(\d+)', f_lower)
+    if budget_match:
+        b_val = int(budget_match.group(1))
+        budget_str = "40 kJ" if b_val in [40, 40000] else "80 kJ"
     else:
-        dijk_str = "Dijk-Default"
+        budget_str = "80 kJ"
 
-    # Alpha & Gamma
-    pw_match = re.search(r'pw[_=](\d+)', f_lower)
-    pw_val = int(pw_match.group(1)) if pw_match else None
+    # 3. Classificazione univoca dei 9 Algoritmi
+    algo_val = None
+    if "centralized" in f_lower or "ilp-centralized" in f_lower:
+        # Obiettivo primario (Energy vs Time)
+        obj_match = re.search(r'obj[_=]([a-z]+)', f_lower)
+        if obj_match:
+            mapping = obj_match.group(1).capitalize()
+        elif any(k in f_lower for k in ["obj_energy", "energy_mapping", "/energy/"]):
+            mapping = "Energy"
+        else:
+            mapping = "Time"
 
-    sunw_match = re.search(r'sunw[_=](\d+)', f_lower)
-    sunw_val = int(sunw_match.group(1)) if sunw_match else None
+        # Configurazione di Batching (BS 20 e BT 0.05 vs BS 2 e BT 2)
+        if any(k in f_lower for k in ["batch_size_20", "bs_20", "bs20"]):
+            algo_val = f"ILP-Centr (BS20, BT0.05, {mapping})"
+        elif any(k in f_lower for k in ["batch_size_2", "bs_2", "bs2"]):
+            algo_val = f"ILP-Centr (BS2, BT2, {mapping})"
+        else:
+            # Fallback tramite timeout
+            if "0.05" in f_lower:
+                algo_val = f"ILP-Centr (BS20, BT0.05, {mapping})"
+            else:
+                algo_val = f"ILP-Centr (BS2, BT2, {mapping})"
 
-    scenario_key = None
-    if bs_val is not None and bt_val is not None:
-        scenario_key = f"{obj_val} | BS:{bs_val} BT:{bt_val} | {dijk_str}"
+    elif "hierarchical" in f_lower:
+        if "energy" in f_lower:
+            algo_val = "ILP-Hierarchical (Energy)"
+        else:
+            algo_val = "ILP-Hierarchical (Time)"
 
-    return ar_val, scenario_key, pw_val, sunw_val
+    elif "orbitaware" in f_lower or "orbit-aware" in f_lower:
+        algo_val = "Orbit-aware"
+    elif "dts-apopt" in f_lower or "dts-optimal" in f_lower:
+        algo_val = "DTS-Optimal"
+    elif "dts-base" in f_lower:
+        algo_val = "DTS-base"
+
+    return ar_val, budget_str, algo_val
 
 def compute_stats(lines):
     completed = rejected = deadline = insuff_cn = insuff_c = no_server = ilp_infeasible = sunset = 0
@@ -121,9 +149,9 @@ def compute_stats(lines):
     }
 
 # ==============================================================================
-# 3. CARICAMENTO DATI
+# 3. RACCOLTA E AGGREGAZIONE SUI PROFILI DI WORKLOAD
 # ==============================================================================
-print("Lettura file da 'result'...")
+print(f"Scansione ricorsiva della cartella '{root_folder}'...")
 data_store = {}
 all_ars = set()
 
@@ -131,191 +159,170 @@ for root, _, files in os.walk(root_folder):
     for file in files:
         if file.endswith(".csv") and "results" in file:
             filepath = os.path.join(root, file)
-            ar, scenario, pw, sunw = extract_parameters(filepath)
+            ar, budget, algo = extract_parameters(filepath)
 
-            if None not in (ar, scenario, pw, sunw):
+            if None not in (ar, budget, algo):
                 all_ars.add(ar)
-                data_store.setdefault(pw, {}).setdefault(scenario, {}).setdefault(sunw, {}).setdefault(ar, []).extend(read_csv_to_2d_array(filepath))
+                data_store.setdefault(budget, {}).setdefault(algo, {}).setdefault(ar, []).extend(read_csv_to_2d_array(filepath))
 
 sorted_ars = sorted(list(all_ars))
-present_alphas = sorted(list(data_store.keys()))
-all_scenarios = sorted(list({s for p in present_alphas for s in data_store[p].keys()}))
+budgets = [b for b in ["40 kJ", "80 kJ"] if b in data_store]
 
-if not present_alphas or not all_scenarios:
-    print("Nessun dato corrispondente trovato in 'result'.")
+if not budgets:
+    print("Nessun dato CSV valido trovato. Controlla il percorso in 'root_folder'.")
     exit()
 
-OUTPUT_DIR = "plots"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+present_algos = [a for a in ALGO_ORDER if any(a in data_store[b] for b in budgets)]
+n_algos = len(present_algos)
+print(f"Caricati {len(sorted_ars)} tassi di arrivo ({sorted_ars}) e {n_algos} configurazioni algoritmiche.")
 
-# Impostazione geometria griglia
-num_sc = len(all_scenarios)
-ncols = min(4, num_sc)
-nrows = math.ceil(num_sc / ncols)
-
-all_sunws = [w for w in SUNSET_WEIGHTS if any(w in data_store[p][s] for p in present_alphas for s in all_scenarios if s in data_store[p])]
-
-n_alphas = len(present_alphas)
-step_a = 0.85 / n_alphas
-bar_a = step_a * 0.90
-grp_a = n_alphas * step_a
-grp_space_a = 0.50
-
-x_sunw = np.arange(len(all_sunws)) * (grp_a + grp_space_a)
-offsets_a = np.linspace(-grp_a/2 + step_a/2, grp_a/2 - step_a/2, n_alphas)
+step_w = 0.82 / n_algos
+bar_w = step_w * 0.90
+grp_w = n_algos * step_w
+grp_space = 0.45
+x_base = np.arange(len(sorted_ars)) * (grp_w + grp_space)
+offsets = np.linspace(-grp_w/2 + step_w/2, grp_w/2 - step_w/2, n_algos)
 
 # ==============================================================================
-# 4. GENERAZIONE MATRICI CROSS-SENSITIVITY (AR = 8, 10 req/s)
+# 4. GRAFICO 1: SUCCESS RATE COMPARISON (40 kJ vs 80 kJ)
 # ==============================================================================
-for target_ar in sorted_ars:
-    print(f"\n--- Generazione Cross-Sensitivity per Arrival Rate = {target_ar} req/s ---")
+fig, axes = plt.subplots(1, len(budgets), figsize=(12 * len(budgets), 7), sharey=True, squeeze=False)
 
-    # --------------------------------------------------------------------------
-    # 1. SUCCESS RATE (Gamma x Alpha)
-    # --------------------------------------------------------------------------
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6.5 * ncols, 4.5 * nrows), sharey=True, squeeze=False)
-    for idx, sc in enumerate(all_scenarios):
-        ax = axes[idx // ncols, idx % ncols]
-        for a_idx, pw in enumerate(present_alphas):
-            y_vals = []
-            for w in all_sunws:
-                rows = data_store.get(pw, {}).get(sc, {}).get(w, {}).get(target_ar, [])
-                st = compute_stats(rows)
-                c, r = st["completed"], st["rejected"]
-                y_vals.append((c / (c + r) * 100) if (c + r) > 0 else 0.0)
+for idx, b in enumerate(budgets):
+    ax = axes[0, idx]
+    for i, algo in enumerate(present_algos):
+        y_vals = []
+        for ar in sorted_ars:
+            rows = data_store[b].get(algo, {}).get(ar, [])
+            st = compute_stats(rows)
+            c, r = st["completed"], st["rejected"]
+            y_vals.append((c / (c + r) * 100) if (c + r) > 0 else 0.0)
 
-            ax.bar(x_sunw + offsets_a[a_idx], y_vals, width=bar_a,
-                   color=ALPHA_COLORS.get(pw, "#444"), edgecolor='black', linewidth=0.3)
+        ax.bar(x_base + offsets[i], y_vals, width=bar_w,
+               color=ALGO_COLORS[algo], edgecolor='black', linewidth=0.3)
 
-        for x in x_sunw[:-1]:
-            ax.axvline(x + grp_a/2 + grp_space_a/2, color='gray', linestyle=':', alpha=0.3)
-        ax.set_title(sc, fontsize=12, fontweight='bold')
-        ax.set_xticks(x_sunw)
-        ax.set_xticklabels([str(w) for w in all_sunws], fontsize=9, rotation=35)
-        ax.set_xlabel("Sunset Weight ($\gamma$)", fontsize=10)
-        ax.set_ylim(0, 105)
-        ax.grid(axis='y', linestyle='--', alpha=0.4)
-        if idx % ncols == 0:
-            ax.set_ylabel("Success Rate (%)", fontsize=11)
+    for x in x_base[:-1]:
+        ax.axvline(x + grp_w/2 + grp_space/2, color='gray', linestyle=':', alpha=0.35)
 
-    for idx in range(num_sc, nrows * ncols):
-        fig.delaxes(axes[idx // ncols, idx % ncols])
+    ax.set_title(f"Energy Budget: {b}", fontsize=14, fontweight='bold')
+    ax.set_xticks(x_base)
+    ax.set_xticklabels(sorted_ars, fontsize=11)
+    ax.set_xlabel("Arrival Rate (req/s)", fontsize=12)
+    ax.set_ylim(0, 105)
+    ax.grid(axis='y', linestyle='--', alpha=0.4)
+    if idx == 0:
+        ax.set_ylabel("Success Rate (%)", fontsize=12)
 
-    alpha_patches = [mpatches.Patch(color=ALPHA_COLORS.get(p, "#444"), label=f"$\\alpha = {p}$") for p in present_alphas]
-    fig.legend(handles=alpha_patches, loc='lower center', ncol=len(present_alphas),
-               bbox_to_anchor=(0.5, -0.04), fontsize=11, title="Primary Weight ($\mathbf{\\alpha}$)", title_fontsize=12)
-    fig.suptitle(f"Cross-Sensitivity Success Rate ($\mathbf{{\\gamma \\times \\alpha}}$) at {target_ar} req/s", fontsize=16, fontweight='bold', y=1.01)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, f"01_Cross_Success_Rate_AR_{target_ar}.png"), bbox_inches='tight')
-    plt.close()
-    print(f"Salvato: 01_Cross_Success_Rate_AR_{target_ar}.png")
+algo_patches = [mpatches.Patch(color=ALGO_COLORS[a], label=a) for a in present_algos]
+fig.legend(handles=algo_patches, loc='lower center', ncol=3,
+           bbox_to_anchor=(0.5, -0.10), fontsize=10, title="Algorithm Configuration", title_fontsize=11)
 
-    # --------------------------------------------------------------------------
-    # 2. REJECTION CAUSES (Gamma x Alpha)
-    # --------------------------------------------------------------------------
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6.5 * ncols, 4.5 * nrows), sharey=True, squeeze=False)
-    for idx, sc in enumerate(all_scenarios):
-        ax = axes[idx // ncols, idx % ncols]
-        for a_idx, pw in enumerate(present_alphas):
-            bottom = np.zeros(len(all_sunws))
-            for k_idx, key in enumerate(CAUSE_KEYS):
-                y_vals = []
-                for w in all_sunws:
-                    rows = data_store.get(pw, {}).get(sc, {}).get(w, {}).get(target_ar, [])
-                    st = compute_stats(rows)
-                    rej = st["rejected"]
-                    y_vals.append((st[key] / rej * 100) if rej > 0 else 0.0)
+fig.suptitle("Consolidated Success Rate across 9 SCSH Configurations", fontsize=16, fontweight='bold', y=0.98)
+plt.tight_layout()
 
-                ax.bar(x_sunw + offsets_a[a_idx], y_vals, width=bar_a, bottom=bottom,
-                       color=CAUSE_COLORS[k_idx], edgecolor='black', linewidth=0.25,
-                       hatch=ALPHA_HATCHES.get(pw, ""))
-                bottom += np.array(y_vals)
+out_sr = os.path.join(OUTPUT_DIR, "01_Consolidated_Success_Rate_9Algos.png")
+plt.savefig(out_sr, bbox_inches='tight')
+plt.close()
+print(f"Salvato: {out_sr}")
 
-        for x in x_sunw[:-1]:
-            ax.axvline(x + grp_a/2 + grp_space_a/2, color='gray', linestyle=':', alpha=0.3)
-        ax.set_title(sc, fontsize=12, fontweight='bold')
-        ax.set_xticks(x_sunw)
-        ax.set_xticklabels([str(w) for w in all_sunws], fontsize=9, rotation=35)
-        ax.set_xlabel("Sunset Weight ($\gamma$)", fontsize=10)
-        ax.set_ylim(0, 105)
-        ax.grid(axis='y', linestyle='--', alpha=0.4)
-        if idx % ncols == 0:
-            ax.set_ylabel("Rejection Rate (%)", fontsize=11)
+# ==============================================================================
+# 5. GRAFICO 2: REJECTION CAUSES BREAKDOWN (40 kJ vs 80 kJ at Max Load)
+# ==============================================================================
+crit_ar = sorted_ars[-1] if sorted_ars else 10
+fig, axes = plt.subplots(1, len(budgets), figsize=(12 * len(budgets), 7), sharey=True, squeeze=False)
+x_algos = np.arange(len(present_algos))
 
-    for idx in range(num_sc, nrows * ncols):
-        fig.delaxes(axes[idx // ncols, idx % ncols])
+for idx, b in enumerate(budgets):
+    ax = axes[0, idx]
+    bottom = np.zeros(len(present_algos))
 
-    cause_patches = [mpatches.Patch(color=CAUSE_COLORS[k], label=CAUSE_LABELS[k]) for k in range(len(CAUSE_LABELS))]
-    alpha_hatch_patches = [mpatches.Patch(facecolor='white', edgecolor='black', hatch=ALPHA_HATCHES.get(p, ""), label=f"$\\alpha={p}$") for p in present_alphas]
+    for k_idx, key in enumerate(CAUSE_KEYS):
+        y_vals = []
+        for algo in present_algos:
+            rows = data_store[b].get(algo, {}).get(crit_ar, [])
+            st = compute_stats(rows)
+            rej = st["rejected"]
+            y_vals.append((st[key] / rej * 100) if rej > 0 else 0.0)
 
-    leg1 = fig.legend(handles=cause_patches, loc='lower center', ncol=len(CAUSE_LABELS),
-                      bbox_to_anchor=(0.22, -0.05), fontsize=10, title="Failure Causes", title_fontsize=11)
-    leg2 = fig.legend(handles=alpha_hatch_patches, loc='lower center', ncol=len(present_alphas),
-                      bbox_to_anchor=(0.78, -0.05), fontsize=10, title="Primary Weight ($\mathbf{\\alpha}$) Pattern", title_fontsize=11)
+        ax.bar(x_algos, y_vals, width=0.65, bottom=bottom,
+               color=CAUSE_COLORS[k_idx], edgecolor='black', linewidth=0.3)
+        bottom += np.array(y_vals)
 
-    fig.suptitle(f"Cross-Sensitivity Failure Causes ($\mathbf{{\\gamma \\times \\alpha}}$) at {target_ar} req/s", fontsize=16, fontweight='bold', y=1.01)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, f"02_Cross_Failure_Causes_AR_{target_ar}.png"),
-                bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
-    plt.close()
-    print(f"Salvato: 02_Cross_Failure_Causes_AR_{target_ar}.png")
+    ax.set_title(f"Energy Budget: {b} (Arrival Rate = {crit_ar} req/s)", fontsize=14, fontweight='bold')
+    ax.set_xticks(x_algos)
+    ax.set_xticklabels(present_algos, fontsize=9, rotation=35, ha='right')
+    ax.set_ylim(0, 105)
+    ax.grid(axis='y', linestyle='--', alpha=0.4)
+    if idx == 0:
+        ax.set_ylabel("Rejection Breakdown (%)", fontsize=12)
 
-    # --------------------------------------------------------------------------
-    # 3. RESPONSE TIME (Gamma x Alpha)
-    # --------------------------------------------------------------------------
-    fig, axes = plt.subplots(nrows, ncols, figsize=(6.5 * ncols, 4.5 * nrows), squeeze=False)
-    max_rt = 0.0
+cause_patches = [mpatches.Patch(color=CAUSE_COLORS[k], label=CAUSE_LABELS[k]) for k in range(len(CAUSE_LABELS))]
+fig.legend(handles=cause_patches, loc='lower center', ncol=len(CAUSE_LABELS),
+           bbox_to_anchor=(0.5, -0.08), fontsize=10, title="Failure Causes", title_fontsize=11)
 
-    for idx, sc in enumerate(all_scenarios):
-        ax = axes[idx // ncols, idx % ncols]
-        for a_idx, pw in enumerate(present_alphas):
-            y_sys, y_diff = [], []
-            for w in all_sunws:
-                rows = data_store.get(pw, {}).get(sc, {}).get(w, {}).get(target_ar, [])
-                st = compute_stats(rows)
-                comp = st["completed"]
-                sys_t = (st["sys_time"] / comp) if comp > 0 else 0.0
-                tot_t = (st["total_time"] / comp) if comp > 0 else 0.0
+fig.suptitle("Consolidated Rejection Causes Distribution under Critical Load", fontsize=16, fontweight='bold', y=0.98)
+plt.tight_layout()
 
-                y_sys.append(sys_t)
-                y_diff.append(max(0.0, tot_t - sys_t))
-                if tot_t > max_rt:
-                    max_rt = tot_t
+out_rej = os.path.join(OUTPUT_DIR, "02_Consolidated_Failure_Causes_9Algos.png")
+plt.savefig(out_rej, bbox_inches='tight')
+plt.close()
+print(f"Salvato: {out_rej}")
 
-            c = ALPHA_COLORS.get(pw, "#444")
-            ax.bar(x_sunw + offsets_a[a_idx], y_sys, width=bar_a, color=c, edgecolor='black', linewidth=0.3)
-            ax.bar(x_sunw + offsets_a[a_idx], y_diff, width=bar_a, bottom=y_sys, color=c, alpha=0.35, edgecolor='black', linewidth=0.3)
+# ==============================================================================
+# 6. GRAFICO 3: STACKED RESPONSE TIME (40 kJ vs 80 kJ)
+# ==============================================================================
+fig, axes = plt.subplots(1, len(budgets), figsize=(12 * len(budgets), 7), sharey=True, squeeze=False)
+max_rt = 0.0
 
-        for x in x_sunw[:-1]:
-            ax.axvline(x + grp_a/2 + grp_space_a/2, color='gray', linestyle=':', alpha=0.3)
-        ax.set_title(sc, fontsize=12, fontweight='bold')
-        ax.set_xticks(x_sunw)
-        ax.set_xticklabels([str(w) for w in all_sunws], fontsize=9, rotation=35)
-        ax.set_xlabel("Sunset Weight ($\gamma$)", fontsize=10)
-        ax.grid(axis='y', linestyle='--', alpha=0.4)
-        if idx % ncols == 0:
-            ax.set_ylabel("Response Time (ms)", fontsize=11)
+for idx, b in enumerate(budgets):
+    ax = axes[0, idx]
+    for i, algo in enumerate(present_algos):
+        y_sys, y_diff = [], []
+        for ar in sorted_ars:
+            rows = data_store[b].get(algo, {}).get(ar, [])
+            st = compute_stats(rows)
+            comp = st["completed"]
+            sys_t = (st["sys_time"] / comp) if comp > 0 else 0.0
+            tot_t = (st["total_time"] / comp) if comp > 0 else 0.0
+            y_sys.append(sys_t)
+            y_diff.append(max(0.0, tot_t - sys_t))
+            if tot_t > max_rt:
+                max_rt = tot_t
 
-    for idx in range(num_sc):
-        axes[idx // ncols, idx % ncols].set_ylim(0, max_rt * 1.15 if max_rt > 0 else 1.0)
-    for idx in range(num_sc, nrows * ncols):
-        fig.delaxes(axes[idx // ncols, idx % ncols])
+        c = ALGO_COLORS[algo]
+        ax.bar(x_base + offsets[i], y_sys, width=bar_w, color=c, edgecolor='black', linewidth=0.3)
+        ax.bar(x_base + offsets[i], y_diff, width=bar_w, bottom=y_sys, color=c, alpha=0.35, edgecolor='black', linewidth=0.3)
 
-    rt_alpha_patches = [mpatches.Patch(color=ALPHA_COLORS.get(p, "#444"), label=f"$\\alpha = {p}$") for p in present_alphas]
-    rt_comp_patches = [
-        mpatches.Patch(facecolor='gray', edgecolor='black', alpha=1.0, label='System Execution (Solid)'),
-        mpatches.Patch(facecolor='gray', edgecolor='black', alpha=0.35, label='Network/Wait Time (Translucent)')
-    ]
-    leg_rt1 = fig.legend(handles=rt_alpha_patches, loc='lower center', ncol=len(present_alphas),
-                         bbox_to_anchor=(0.22, -0.05), fontsize=10, title="Primary Weight ($\mathbf{\\alpha}$)", title_fontsize=11)
-    leg_rt2 = fig.legend(handles=rt_comp_patches, loc='lower center', ncol=2,
-                         bbox_to_anchor=(0.78, -0.05), fontsize=10, title="Component Breakdown", title_fontsize=11)
+    for x in x_base[:-1]:
+        ax.axvline(x + grp_w/2 + grp_space/2, color='gray', linestyle=':', alpha=0.35)
 
-    fig.suptitle(f"Cross-Sensitivity Response Time ($\mathbf{{\\gamma \\times \\alpha}}$) at {target_ar} req/s", fontsize=16, fontweight='bold', y=1.01)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUTPUT_DIR, f"03_Cross_Response_Time_AR_{target_ar}.png"),
-                bbox_inches='tight', bbox_extra_artists=(leg_rt1, leg_rt2))
-    plt.close()
-    print(f"Salvato: 03_Cross_Response_Time_AR_{target_ar}.png")
+    ax.set_title(f"Energy Budget: {b}", fontsize=14, fontweight='bold')
+    ax.set_xticks(x_base)
+    ax.set_xticklabels(sorted_ars, fontsize=11)
+    ax.set_xlabel("Arrival Rate (req/s)", fontsize=12)
+    ax.grid(axis='y', linestyle='--', alpha=0.4)
+    if idx == 0:
+        ax.set_ylabel("Response Time (ms)", fontsize=12)
 
-print(f"\nTutte le matrici di cross-sensitivity sono state salvate con successo in '{OUTPUT_DIR}'.")
+for idx in range(len(budgets)):
+    axes[0, idx].set_ylim(0, max_rt * 1.15 if max_rt > 0 else 1.0)
+
+time_comp_patches = [
+    mpatches.Patch(facecolor='gray', edgecolor='black', alpha=1.0, label='System Execution'),
+    mpatches.Patch(facecolor='gray', edgecolor='black', alpha=0.35, label='Network / Wait Time')
+]
+
+leg1 = fig.legend(handles=algo_patches, loc='lower center', ncol=3,
+                  bbox_to_anchor=(0.5, -0.10), fontsize=10, title="Algorithm Configuration", title_fontsize=11)
+leg2 = fig.legend(handles=time_comp_patches, loc='lower center', ncol=2,
+                  bbox_to_anchor=(0.5, -0.16), fontsize=10, title="Time Component", title_fontsize=11)
+
+fig.suptitle("Consolidated Stacked Response Time across 9 SCSH Configurations", fontsize=16, fontweight='bold', y=0.98)
+plt.tight_layout()
+
+out_rt = os.path.join(OUTPUT_DIR, "03_Consolidated_Response_Time_9Algos.png")
+plt.savefig(out_rt, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
+plt.close()
+print(f"Salvato: {out_rt}")
+
+print(f"\nTutti e 3 i grafici consolidati sono stati salvati nella cartella '{OUTPUT_DIR}/'.")
