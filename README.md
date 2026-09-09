@@ -4,7 +4,7 @@
 > **Candidate:** Claudio Bagini (Matr. 2045337)  
 > **Advisor:** Dr. Emiliano Casalicchio  
 > **Academic Year:** 2025/2026  
-> **Month:** October
+> **Month:** October  
 
 ---
 
@@ -16,7 +16,7 @@ Traditional satellite missions operate under a passive **bent-pipe** architectur
 
 Orchestrating compute tasks across high-velocity LEO constellations introduces acute physical challenges:
 * **Severe Energy Budgets:** Satellites rely on solar harvesting and onboard batteries, periodically traversing Earth's eclipse shadow (orbital sunset).
-* **Dynamic Mesh Topology:** High orbital velocities (~$7.5\text{ km/s}$) induce continuous link disruptions, variable propagation latencies, and ephemeral Inter-Satellite Links (ISLs).
+* **Dynamic Mesh Topology:** High orbital velocities (~7.5 km/s) induce continuous link disruptions, variable propagation latencies, and ephemeral Inter-Satellite Links (ISLs).
 * **Constrained Heterogeneous Hardware:** Nodes feature heterogeneous clock frequencies, memory limits, and power coefficients.
 * **Strict Temporal Deadlines ($D_r$):** Tasks dropped due to routing or processing delays exceeding $D_r$ waste constrained ISL bandwidth and solar-harvested battery power.
 
@@ -34,6 +34,7 @@ This repository implements a **Centralized Integer Linear Programming (ILP) Orch
 ---
 
 ## System Architecture & Methodology
+
 ```text
                +-----------------------------------------------+
                |          Ground Access Points (APs)           |
@@ -58,12 +59,29 @@ This repository implements a **Centralized Integer Linear Programming (ILP) Orch
 |     - Constraints: Uniqueness, Deadlines, Battery capacity, Fair load bound  |
 +-------------------------------------------------------------------------------+
                                        |
-                       +---------------+---------------+
-                       |                               |
-                       v                               v
-         [Phase A: Uplink ISL Routing]   [Phase B: Execution & Return]
-          Planned Dijkstra path to SEN    Local task execution on SEN
-          (Fallback: Geographic Greedy)   Dynamic Greedy return to AP
+                              [Offload Decision]
+                                       v
++-------------------------------------------------------------------------------+
+|                      STEP 1: UPLINK & ISL TASK ROUTING                        |
+|  - Packet forwarded along planned multi-hop Dijkstra path from AP to SEN      |
+|  - Fallback: Autonomous Geographic Greedy routing in case of link disruption  |
++-------------------------------------------------------------------------------+
+                                       |
+                                [Task Delivered]
+                                       v
++-------------------------------------------------------------------------------+
+|                      STEP 2: ONBOARD EXECUTION (SEN)                          |
+|  - Task processed on designated Satellite Edge Node CPU cores                 |
+|  - Local energy consumption deducted from satellite battery budget            |
++-------------------------------------------------------------------------------+
+                                       |
+                                [Result Ready]
+                                       v
++-------------------------------------------------------------------------------+
+|                      STEP 3: RESULT DOWNLINK DELIVERY                         |
+|  - Processed payload routed back to originating Ground AP                     |
+|  - Dynamic Geographic Greedy forwarding over real-time active ISL topology    |
++-------------------------------------------------------------------------------+
 ```
 
 ### 1. Dynamic Constellation Mapping
@@ -96,14 +114,44 @@ For a batch of requests $R$ and candidate satellites $S$, binary variables $x_{r
   $$\min Z_{Energy} = \alpha Z_{energy} + \beta Z_{time} + \gamma Z_{sunset}$$
 
 Where $\alpha$ weights the primary performance metric, $\beta$ weights the secondary metric, and $\gamma$ scales the orbital sunset penalty factor.
-Subject to:
-1. **Assignment Uniqueness:** $\sum_{i \in S} x_{r,i} + y_r = 1, \quad \forall r \in R$
-2. **Compensated Deadline Compliance:** $x_{r,i} \cdot R_{r,i} \le D'_r, \quad \forall r \in R, \, \forall i \in S$
-3. **Fleet Battery Budget Limits:** $\sum_{r \in R} \sum_{i \in S} x_{r,i} \cdot \epsilon_{r,i,k} \le B_k, \quad \forall k \in S$
-4. **Constellation Fair Load Balancing:** $\sum_{r \in R} x_{r,i} \le \left\lfloor \frac{\vert{}R\vert{}}{\vert{}S\vert{}} \right\rfloor + 5, \quad \forall i \in S$
 
-### 4. Fault-Tolerant Hybrid Routing
-* **Uplink (Phase A):** Packets follow the deterministic Dijkstra shortest path $\vec{P}_{up}$[cite: 3, 7]. If dynamic orbital movement interrupts an intermediate ISL, an autonomous **Geographic Greedy Fallback** (`get_pos_proximity`) redirects traffic using Euclidean distance ranking with loop avoidance.
-* **Downlink (Phase B):** Completed task outputs are returned from the executing SEN to the originating gateway via autonomous geographic greedy routing.
+**Operational Constraints:**
+1. **Assignment Uniqueness:** 
+   $$\sum_{i \in S} x_{r,i} + y_r = 1, \quad \forall r \in R$$
+
+2. **Compensated Deadline Compliance:** 
+   $$x_{r,i} \cdot R_{r,i} \le D'_r, \quad \forall r \in R, \, \forall i \in S$$
+
+3. **Fleet Battery Budget Limits:** 
+   $$\sum_{r \in R} \sum_{i \in S} x_{r,i} \cdot \epsilon_{r,i,k} \le B_k, \quad \forall k \in S$$
+
+4. **Constellation Fair Load Balancing:** 
+   $$\sum_{r \in R} x_{r,i} \le \left\lfloor \frac{|R|}{|S|} \right\rfloor + 5, \quad \forall i \in S$$
+
+### 4. End-to-End Task Lifecycle & Routing
+* **Step 1 — Uplink & ISL Routing:** Packets follow the deterministic Dijkstra shortest path $\vec{P}_{up}$ from the AP to the designated SEN. If dynamic orbital movement interrupts an intermediate link, an autonomous **Geographic Greedy Fallback** (`get_pos_proximity`) redirects traffic using Euclidean distance ranking with loop avoidance.
+* **Step 2 — Onboard Processing:** The assigned SEN enqueues and executes the computation on its local processor, deducting the required execution energy from its onboard battery budget.
+* **Step 3 — Result Downlink Delivery:** Completed task results are routed from the servicing SEN back to the originating Ground Access Point via autonomous geographic greedy forwarding across real-time available ISLs.
+
 
 ---
+
+## Citation
+
+```bibtex
+@thesis{bagini2026centralized,
+  author      = {Claudio Bagini},
+  title       = {Centralized ILP Orchestrator for Task Routing in Satellite Networks},
+  type        = {Bachelor's Thesis},
+  institution = {Sapienza University of Rome},
+  faculty     = {Faculty of Information Engineering, Computer Science and Statistics},
+  year        = {2026},
+  month       = {October}
+}
+```
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
