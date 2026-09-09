@@ -28,7 +28,7 @@ This repository implements a **Centralized Integer Linear Programming (ILP) Orch
 
 1. **Mathematical Optimization Formulation:** Formalize an exact multi-objective ILP model that jointly optimizes multi-hop ISL routing, compute node placement, fleet battery budgets, and orbital eclipse (sunset) penalties.
 2. **Event-Driven Dynamic Batching & Timeout:** Design a non-blocking dual-trigger batching buffer governed by Batch Size ($BS$) and Batch Timeout ($BT$) to curb continuous solver invocation overhead.
-3. **Queuing Delay Compensation:** Formulate an analytical deadline adjustment ($D'_r = D_r - T_{batch}$) to protect task slack time against orchestrator accumulation delays.
+3. **Batch Wait Compensation:** Formulate an analytical deadline definition incorporating expected buffer dwell time ($\frac{1}{2} T_{batch}$) and tolerance factor ($\Delta D$) to ensure fair scheduling against decentralized baselines.
 4. **Discrete-Event Simulation Integration:** Embed the orchestrator and hybrid routing logic within an end-to-end Python/`SimPy` discrete-event simulation environment modeling orbital kinematics (SGP4), optical ISL queues, processor queues, and battery depletion.
 
 ---
@@ -95,14 +95,19 @@ The combined dimensionless cost function is:
 
 $$c_{link}(u, v) = w_R \cdot \left(\frac{t_{link}(u, v)}{T_{max}}\right) + w_e \cdot \left(\frac{e_{link}(u, v)}{E_{max}}\right)$$
 
-### 2. Dynamic Batching & Deadline Compensation
+### 2. Dynamic Batching & Deadline Formulation
 Incoming requests are held in an orchestrator buffer until either a structural or temporal trigger fires:
 * **Structural Threshold:** Buffer length reaches the target Batch Size ($BS$).
 * **Temporal Threshold:** Ingress waiting time reaches the Batch Timeout ($BT$).
 
-To account for idle time spent waiting in the buffer ($T_{batch}$), task deadlines are adjusted before solving:
+To prevent the batch aggregation delay from unfairly penalizing centralized scheduling, the service deadline $D_r$ incorporates the expected waiting time in the ingress queue ($\frac{1}{2} T_{batch}$):
 
-$$D'_r = (1 + \Delta D)(D_r - T_{batch})$$
+$$D_r = \begin{cases} 
+(1 + \Delta D) \cdot \left(d_{cpu} + d_{net} + d_{down} + \frac{1}{2} T_{batch}\right), & \text{with Orchestrator} \\
+(1 + \Delta D) \cdot \left(d_{cpu} + d_{net} + d_{down}\right), & \text{without Orchestrator} 
+\end{cases}$$
+
+Where $d_{cpu}$ is the nominal execution duration, $d_{net}$ is the uplink transmission delay, $d_{down}$ is the result return delay, $T_{batch}$ is the batch timeout, and $\Delta D$ represents the tolerance factor (deadline relaxation).
 
 ### 3. Optimization Model Formulation (ILP)
 For a batch of requests $R$ and candidate satellites $S$, binary variables $x_{r,i} \in \{0, 1\}$ represent task assignment and $y_r \in \{0, 1\}$ denote request rejection. The optimization target is formulated depending on the chosen primary objective:
@@ -119,8 +124,8 @@ Where $\alpha$ weights the primary performance metric, $\beta$ weights the secon
 1. **Assignment Uniqueness:** 
    $$\sum_{i \in S} x_{r,i} + y_r = 1, \quad \forall r \in R$$
 
-2. **Compensated Deadline Compliance:** 
-   $$x_{r,i} \cdot R_{r,i} \le D'_r, \quad \forall r \in R, \, \forall i \in S$$
+2. **Deadline Compliance:** 
+   $$x_{r,i} \cdot R_{r,i} \le D_r, \quad \forall r \in R, \, \forall i \in S$$
 
 3. **Fleet Battery Budget Limits:** 
    $$\sum_{r \in R} \sum_{i \in S} x_{r,i} \cdot \epsilon_{r,i,k} \le B_k, \quad \forall k \in S$$
@@ -132,26 +137,3 @@ Where $\alpha$ weights the primary performance metric, $\beta$ weights the secon
 * **Step 1 — Uplink & ISL Routing:** Packets follow the deterministic Dijkstra shortest path $\vec{P}_{up}$ from the AP to the designated SEN. If dynamic orbital movement interrupts an intermediate link, an autonomous **Geographic Greedy Fallback** (`get_pos_proximity`) redirects traffic using Euclidean distance ranking with loop avoidance.
 * **Step 2 — Onboard Processing:** The assigned SEN enqueues and executes the computation on its local processor, deducting the required execution energy from its onboard battery budget.
 * **Step 3 — Result Downlink Delivery:** Completed task results are routed from the servicing SEN back to the originating Ground Access Point via autonomous geographic greedy forwarding across real-time available ISLs.
-
-
----
-
-## Citation
-
-```bibtex
-@thesis{bagini2026centralized,
-  author      = {Claudio Bagini},
-  title       = {Centralized ILP Orchestrator for Task Routing in Satellite Networks},
-  type        = {Bachelor's Thesis},
-  institution = {Sapienza University of Rome},
-  faculty     = {Faculty of Information Engineering, Computer Science and Statistics},
-  year        = {2026},
-  month       = {October}
-}
-```
-
----
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
