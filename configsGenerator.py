@@ -16,7 +16,7 @@ scheduling_algorithm = [
 
 lexi_primary = ["time"]                                          # Priorità ILP
 
-arrival_rate = [0.125, 0.1] # da 2 a 10 req/sec
+arrival_rate = [0.5, 0.33, 0.25, 0.16, 0.125, 0.1] # da 2 a 10 req/sec
 deadline = [10]
 energy_budget = [80000]
 
@@ -33,11 +33,11 @@ gamma_list = [(0.7, 0.3)]                               # Gamma
 centralized_batch_size = [20] 
 centralized_batch_timeout = [0.05]  # Timeout per il batch del Centralizzato 
 centralized_lexi_tol = [0.1]
-centralized_dijkstra_weights = [(1, 0), (0, 1)]   # (w_r, w_e) Pesi per il Dijkstra del Centralizzato
+centralized_dijkstra_weights = [(1, 0)]   # (w_r, w_e) Pesi per il Dijkstra del Centralizzato
 centralized_primary_objective = ["time", "energy"]  # Obiettivo primario per il Centralizzato
-centralized_primary_weight = [10]  # Peso per l'obiettivo primario
+centralized_primary_weight = [1000]  # Peso per l'obiettivo primario
 centralized_secondary_weight = [1]  # Peso per l'obiettivo secondario
-centralized_sunset_weight = [2, 4, 6, 8, 10, 1000, 5000, 10000]  # Peso per l'obiettivo sunset
+centralized_sunset_weight = [8]  # Peso per l'obiettivo sunset
 # ===================================
 
 OUTPUT_DIR_CONFIG = "SIMS_SETS"
