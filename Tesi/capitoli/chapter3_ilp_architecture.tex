@@ -85,9 +85,6 @@ and operational parameters adopted throughout the system model and ILP formulati
 \end{tabular}
 \end{table}
 
-
-
-
 \section{Event-Driven Dynamic Batching Engine}
 \label{sec:dynamic_batching}
 
@@ -124,22 +121,22 @@ class Orchestrator:
         self.env = env
         self.config = config
         
-        # Retrieve batch configuration parameters from config dictionary
+        # Retrieve batch parameters from configuration
         self.batch_size = config.get("centralized_batch_size", 5)
         self.batch_timeout = config.get("centralized_batch_timeout", 0.25)
         
         self.task_buffer = []
         
-        # SimPy event handlers for dynamic batching triggers
+        # SimPy event handlers
         self.item_arrived_event = self.env.event()
         self.batch_ready_event = self.env.event()
         
-        # Spawn the orchestrator background process in SimPy
+        # Spawn orchestrator background process
         self.env.process(self._run_loop())
 
     def add_task(self, task_data, task_id, visible_aps):
         """
-        Enqueue an incoming task into the buffer and handle event triggers.
+        Enqueues an incoming task into the buffer and evaluates event triggers.
         """
         if not self.task_buffer and not self.item_arrived_event.triggered:
             self.item_arrived_event.succeed()
@@ -159,52 +156,53 @@ class Orchestrator:
 
     def _run_loop(self):
         """
-        Main lifecycle of the orchestrator, managing event-driven waits without blocking the simulation environment.
+        Main orchestrator lifecycle loop, handling non-blocking waits within the simulation.
         """
         while True:
-            # 1. Wait idle until the arrival of the FIRST task in the buffer
+            # 1. Wait idle for the arrival of the FIRST task
             if not self.task_buffer:
                 yield self.item_arrived_event
 
-            # 2. Initialize batch timer (Timeout)
+            # 2. Start batch aggregation timer (Timeout)
             timeout_event = self.env.timeout(self.batch_timeout)
 
-            # 3. Wait until either batch capacity is reached OR the timer expires
+            # 3. Wait until either condition is met
             yield self.batch_ready_event | timeout_event
 
-            # 4. Process accumulated tasks in the current batch
+            # 4. Process accumulated batch tasks
             if self.task_buffer:
                 trigger_reason = "Maximum Capacity" if self.batch_ready_event.triggered else "Timeout"
                 print(f"[{self.env.now:.3f}] Orchestrator: ILP trigger due to {trigger_reason} ({len(self.task_buffer)} tasks).")
                 
-                # --- SIMPY STATE SYNC: FORCE CONSTELLATION STATE UPDATE ---
-                # Yield control to the event loop to ensure physical satellite state updates 
-                # (CPU queues, energy levels, orbital positions) at timestamp t.
+                # --- SIMPY FIX: FORCE STATE UPDATE ---
+                # Yield control to event loop to process physical satellite state updates 
+                # (CPU queues, energy, positions) at current timestamp t.
                 yield self.env.timeout(0)
-                # ----------------------------------------------------------
+                # -------------------------------------
 
                 self._process_batch()
 
-            # 5. Reset events for the subsequent batching cycle
+            # 5. Reset events for the subsequent cycle
             self.item_arrived_event = self.env.event()
             self.batch_ready_event = self.env.event()
 
     def _process_batch(self):
         """
-        Core routine managing constellation state extraction, ILP resolution, and task dispatching.
+        Core routine orchestrating the resolution and dispatching pipeline.
         """
-        # A. Extract dynamic constellation network topology
+        # A. Map constellation topology and state
         network_state = self._map_constellation()
         
-        # B. Invoke the PuLP ILP solver routine
+        # B. Invoke PuLP ILP solver
         assignments = self._solve_ilp(network_state, self.task_buffer)
-        print(f"[{self.env.now:.3f}] Orchestrator: ILP execution completed.")
+        print(f"[{self.env.now:.3f}] Orchestrator: ILP completed.")
 
-        # C. Execute/dispatch tasks based on optimization decision matrix
+        # C. Dispatch tasks based on optimization results
         self._dispatch_tasks(assignments)
 
-        # Clear task buffer for the next incoming batch
+        # Clear task buffer for subsequent batch
         self.task_buffer.clear()
+
 
 \end{lstlisting}
 \end{adjustwidth}
@@ -242,28 +240,27 @@ Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of th
 \begin{lstlisting}[language=Python, caption={Constellation Topology and SEN State Mapping via Multi-Source Dijkstra.}, label={lst:orchestrator_mapping}]
     def _map_constellation(self):
         """
-        Map optimal routing paths from each Access Point (AP) to all candidate 
-        Satellite Edge Nodes (SENs) using Dijkstra's algorithm. 
-        Link costs are computed as a weighted combination of Delay and Energy.
+        Maps shortest paths from each AP to all candidate satellites (SENs) via Dijkstra.
+        Link cost is formulated as a weighted combination of Delay and Energy.
         """
-        # Retrieve objective cost function weights from configuration settings
+        # Retrieve objective cost function weights from configuration
         w_e = self.config.get("centralized_w_e", 0.5)
         w_R = self.config.get("centralized_w_r", 0.5)
         p_trasm = self.config.get("Ptrasm", 1.0)
 
-        # Standardize link evaluation using a 1 MB reference payload (in bytes)
+        # Standardize link metrics using a 1 MB reference payload (in bytes)
         REF_DATA_BYTES = 1024 * 1024 
 
         network_state = {
-            "routing_table": {}, # Format: {ap_name: {sen_name: {'total_cost': X, 'total_time': Y, 'total_energy': Z, 'path': [...]}}}
-            "node_states": {}    # Format: {sen_name: {'energy_residual': X, 'W_cpu_simpy': Y, ...}}
+            "routing_table": {}, # Format: {ap_name: {sen_name: {'cost': X, 'time': Y, 'energy': Z, 'path': [...]}}}
+            "node_states": {}    # Format: {sen_name: {'energy_residual': X, 'cpu_queue': Y, ...}}
         }
 
         # 1. Collect all topology nodes to facilitate network graph traversal
         all_nodes = globals.global_access_point + globals.edge_servers
         node_dict = {n.name: n for n in all_nodes}
 
-        # 2. Multi-Source Dijkstra: Explore network topology starting from each AP
+        # 2. Multi-Source Dijkstra: explore network topology from each AP
         for ap in globals.global_access_point:
             network_state["routing_table"][ap.name] = {}
             
@@ -281,7 +278,7 @@ Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of th
                 if current_cost > min_costs.get(current_node_name, float('inf')):
                     continue
 
-                # If current node is a Satellite Edge Node (SEN), store its optimal routing path
+                # If current node is a satellite (SEN), store its finalized shortest path
                 current_node_obj = node_dict[current_node_name]
                 if current_node_obj in globals.edge_servers:
                     network_state["routing_table"][ap.name][current_node_name] = {
@@ -291,7 +288,7 @@ Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of th
                         "path": path
                     }
 
-                # Explore physical network neighbors of the current node
+                # Explore physical neighbors of current node
                 for neighbor in current_node_obj.get_neighbors():
 
                     if neighbor.name not in node_dict:
@@ -302,19 +299,19 @@ Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of th
                     bw_MBps = current_node_obj.get_bandwidth(neighbor) or 0.0
                     bw_Bps = bw_MBps * (1024**2)
 
-                    # Link interrupted if available bandwidth is zero or negative
+                    # Interrupted link if available bandwidth is non-positive:
                     if bw_Bps <= 0:
                         continue
 
-                    # Set estimated bounds for network normalization
+                    # Set conservative estimates for network bandwidth lower bound and latency upper bound
                     MIN_BW_BPS = 100000 # Example: 100 KB/s
                     MAX_LATENCY = 0.1   # Example: 100 ms
 
-                    # Calculate theoretical upper bounds for reference payload
+                    # Compute theoretical upper bounds for reference payload
                     MAX_LINK_TIME = MAX_LATENCY + (REF_DATA_BYTES / MIN_BW_BPS)
                     MAX_LINK_ENERGY = current_node_obj.compute_routing_energy(REF_DATA_BYTES, bw_Bps, p_trasm)
                     
-                    # Compute latency and energy required for reference payload transmission
+                    # Compute latency and energy required to transmit reference payload
                     trans_time = REF_DATA_BYTES / bw_Bps
                     link_time = latency + trans_time
                     link_energy = current_node_obj.compute_routing_energy(REF_DATA_BYTES, bw_Bps, p_trasm)
@@ -323,7 +320,7 @@ Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of th
                     norm_time = link_time / MAX_LINK_TIME if MAX_LINK_TIME > 0 else 0.0
                     norm_energy = link_energy / MAX_LINK_ENERGY if MAX_LINK_ENERGY > 0 else 0.0
 
-                    # Dimensionless combined cost function for the link
+                    # Composite dimensionless link cost
                     link_cost = (w_R * norm_time) + (w_e * norm_energy)
 
                     new_cost = current_cost + link_cost
@@ -335,7 +332,7 @@ Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of th
                         min_costs[neighbor.name] = new_cost
                         heapq.heappush(pq, (new_cost, new_time, new_energy, neighbor.name, path + [neighbor.name]))
 
-        # 3. Map health and state metrics of candidate Satellite Edge Nodes (SENs)
+        # 3. Map operational health and queue metrics of candidate SENs
         for node in globals.edge_servers:
             try:
                 w_cpu_simpy = node.W_cpu()
@@ -460,15 +457,15 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
 \begin{lstlisting}[language=Python, caption={PuLP ILP Formulation, HiGHS Resolution, and Cascade Rejection Diagnostics.}, label={lst:orchestrator_ilp}]
     def _solve_ilp(self, network_state, tasks):
         """
-        Open-Source Hierarchical PuLP Optimization Model
+        Open-Source Hierarchical PuLP Optimization Formulation
         """
-        # Instantiate minimization optimization problem
+        # Initialize minimization problem
         m = pulp.LpProblem("SECMotionModel_Centralized_ILP", pulp.LpMinimize)
 
         # Configuration parameters
         primary_obj = self.config.get("centralized_primary_objective", "time")
         
-        # Fixed control payload for uplink request (2 KB)
+        # Fixed uplink control payload (2 KB)
         S_REQ_BYTES = 2048  
         p_net = self.config.get("Ptrasm", 1.0)
         
@@ -477,13 +474,14 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
         all_nodes = globals.global_access_point + globals.edge_servers
         node_dict = {n.name: n for n in all_nodes}
 
-        # Decision variable definitions: x[r, i] in {0, 1}, y[r] in {0, 1}
+        # Decision variable definitions
         x = pulp.LpVariable.dicts("x", ((r, i) for r in range(len(R_set)) for i in S_set), cat='Binary')
+        
         y = pulp.LpVariable.dicts("y", (r for r in range(len(R_set))), cat='Binary')
 
-        # --- CONSTRAINT 1: Assignment or Drop Uniqueness ---
+        # --- CONSTRAINT 1: Decision Uniqueness (Assign or Drop) ---
         for r_idx in range(len(R_set)):
-            # Sum of satellite assignments plus rejection variable must equal 1
+            # Exactly one satellite assignment or drop decision per task
             m += pulp.lpSum(x[r_idx, i] for i in S_set) + y[r_idx] == 1, f"Assign_Or_Drop_{r_idx}"
 
         time_costs = {}
@@ -491,7 +489,7 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
         
         node_energy_expressions = {k: [] for k in S_set}
 
-        # 2. Parameter construction and physical constraints
+        # 2. Construct link metrics and operational constraints
         for r_idx, task in enumerate(R_set):
             task_data = task["data"]
             ap_origin = task["visible_aps"][0].name
@@ -514,7 +512,7 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                 t_up = 0.0
                 e_fwd_total = 0.0
 
-                # --- UPLINK Latency and Energy Computation ---
+                # --- Uplink Latency and Energy Formulation ---
                 for h in range(num_hops_up):
                     node_curr = node_dict[path_up[h]]
                     node_next = node_dict[path_up[h+1]]
@@ -538,16 +536,16 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                         if node_curr.name in S_set:
                             node_energy_expressions[node_curr.name].append(x[r_idx, i] * e_hop_fwd)
 
-                # --- LOCAL CPU EXECUTION (Latency and Energy) ---
+                # --- Local CPU Execution (Latency and Energy) ---
                 node_obj = node_dict[i]
                 c_sen_i = network_state["node_states"][i]["C_sen"]
                 e_coeff_i = network_state["node_states"][i]["e_coeff"]
 
-                # Execution latency
+                # Latency
                 Wc = network_state["node_states"][i].get("W_cpu_simpy", 0.0)
                 t_cpu_local = Wc + d_cpu
 
-                # Execution energy
+                # Energy
                 if hasattr(node_obj, 'compute_execution_energy'):
                     e_cpu_local = node_obj.compute_execution_energy(d_cpu, c_sen_i, e=e_coeff_i)
                 else:
@@ -555,39 +553,50 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                     
                 node_energy_expressions[i].append(x[r_idx, i] * e_cpu_local)
 
-                # --- METRIC AGGREGATION AND DEADLINE CONSTRAINT ---
-                time_costs[r_idx, i] = t_up + t_cpu_local
-                energy_costs[r_idx, i] = e_fwd_total + e_cpu_local
+                # --- Metric Aggregation and Service Deadline Constraint ---
+                time_costs[r_idx, i] = t_up + t_cpu_local# + downlink_time
+                energy_costs[r_idx, i] = e_fwd_total + e_cpu_local# + downlink_energy
 
                 # Constraint 2: Strict Service Deadline Compliance
-                R_ri_for_constraint = t_up + t_cpu_local
+                R_ri_for_constraint = t_up + t_cpu_local# + downlink_time
                 m += x[r_idx, i] * R_ri_for_constraint <= deadline, f"Deadline_{r_idx}_{i}"
 
-        # Constraint 3: Distributed Fleet Energy Budget Limit
+        # Constraint 3: Distributed Fleet Battery Energy Budget
         for k in S_set:
             budget_k = max(0.0, network_state["node_states"][k]["energy_residual"])
             if node_energy_expressions[k]:
                 m += pulp.lpSum(node_energy_expressions[k]) <= budget_k, f"Energy_Limit_{k}"
 
-        # --- Constraint 4: Anti-Congestion and Load Balancing ---
+        # --- Constraint 4: Constellation Load Balancing (Anti-Congestion) ---
         num_satellites = len(S_set)
-        fair_share = len(R_set) // num_satellites if num_satellites > 0 else len(R_set)
+        
+        # Compute fleet fair-share allocation threshold
+        if num_satellites > 0:
+            fair_share = len(R_set) // num_satellites
+        else:
+            fair_share = len(R_set)
+
         MAX_TASKS_PER_NODE = fair_share + 5 
             
         for i in S_set:
             m += pulp.lpSum(x[r_idx, i] for r_idx in range(len(R_set))) <= MAX_TASKS_PER_NODE, f"Max_Capacity_{i}"
+        # -------------------------------------------------------------------
         
-        # --- ORBITAL SUNSET PENALTY PREPARATION ---
+        # --- Orbital Eclipse (Sunset) Penalty Preparation ---
+        # Determine horizon upper bound to normalize penalty within [0, 1]
         valid_sunsets = [network_state["node_states"][k].get("sunset_time", 0.0) for k in S_set]
         max_sunset = max(valid_sunsets + [1.0])
         
         sunset_penalties = {}
         for i in S_set:
             s_time = network_state["node_states"][i].get("sunset_time", 0.0)
+            
+            # Assign maximum penalty (1.0) if satellite is currently in eclipse (s_time = 0.0)
             sunset_penalties[i] = 1.0 - (s_time / max_sunset) if max_sunset > 0 else 0.0
+        # ----------------------------------------------------
 
-        # 3. Hierarchical Optimization Formulation
-        PENALTY_VALUE = 1000000.0
+        # 3. Hierarchical Multi-Objective Optimization
+        PENALTY_VALUE = 1000000.0  # Heavy penalty scalar penalizing task rejection
         
         obj_time = pulp.lpSum(x[r_idx, i] * time_costs[r_idx, i] for r_idx in range(len(R_set)) for i in S_set) + \
                    pulp.lpSum(y[r_idx] * PENALTY_VALUE for r_idx in range(len(R_set)))
@@ -595,38 +604,44 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
         obj_energy = pulp.lpSum(x[r_idx, i] * energy_costs[r_idx, i] for r_idx in range(len(R_set)) for i in S_set) + \
                      pulp.lpSum(y[r_idx] * PENALTY_VALUE for r_idx in range(len(R_set)))
 
+        # --- Orbital Sunset Penalty Objective Term ---
         obj_sunset = pulp.lpSum(x[r_idx, i] * sunset_penalties[i] for r_idx in range(len(R_set)) for i in S_set)
 
-        WEIGHT_PRIMARY = 10.0
-        WEIGHT_SECONDARY = 1.0
-        WEIGHT_SUNSET = 5.0
+        WEIGHT_PRIMARY = self.config.get("centralized_primary_weight", 1.0)
+        WEIGHT_SECONDARY = self.config.get("centralized_secondary_weight", 1.0)
+        WEIGHT_SUNSET = self.config.get("centralized_sunset_weight", 1.0)
 
         if primary_obj == "time":
             m += WEIGHT_PRIMARY * obj_time + WEIGHT_SECONDARY * obj_energy + WEIGHT_SUNSET * obj_sunset, "Total_Objective"
         else:
             m += WEIGHT_PRIMARY * obj_energy + WEIGHT_SECONDARY * obj_time + WEIGHT_SUNSET * obj_sunset, "Total_Objective"
 
-        # 4. Problem Resolution via HiGHS Solver
+        # 4. Model Resolution via HiGHS Solver (Integrated in PuLP)
         solver = pulp.getSolver('HiGHS', msg=False)
         m.solve(solver)
         
         status = pulp.LpStatus[m.status]
         
+        # -------------------------------------------------------
+        # Track aggregate energy consumption and task slot allocations for accepted tasks
         assigned_energy_per_node = {i: 0.0 for i in S_set}
         assigned_tasks_per_node = {i: 0 for i in S_set}
         
         if status in ('Optimal', 'Suboptimal'):
             for r_idx in range(len(R_set)):
-                if pulp.value(y[r_idx]) is not None and pulp.value(y[r_idx]) < 0.5:
+                if pulp.value(y[r_idx]) is not None and pulp.value(y[r_idx]) < 0.5: # Task accepted
                     for i in S_set:
                         if pulp.value(x[r_idx, i]) is not None and pulp.value(x[r_idx, i]) > 0.5:
                             assigned_energy_per_node[i] += energy_costs.get((r_idx, i), 0.0)
                             assigned_tasks_per_node[i] += 1
+        # -------------------------------------------------------
 
-        # Decision Matrix Parsing and Cascade Rejection Diagnostics
+        # Decision Extraction and Cascade Rejection Diagnostics
         assignments = []
         if status in ('Optimal', 'Suboptimal'):
             for r_idx, task in enumerate(R_set):
+                
+                # --- REJECTED TASK ---
                 if pulp.value(y[r_idx]) and pulp.value(y[r_idx]) > 0.5:
                     ap_origin = task["visible_aps"][0].name
                     deadline = task["data"].get('deadline', 300.0)
@@ -637,13 +652,18 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                     if not reachable_sens:
                         specific_reason = "No_Route"
                     else:
+                        # Aggregate rejection causes across all reachable candidate satellites
                         reasons_for_rejection = []
+                        
                         for i in reachable_sens:
                             R_ri = time_costs.get((r_idx, i), 0)
                             E_ri = energy_costs.get((r_idx, i), 0)
                             s_time_i = network_state["node_states"][i].get("sunset_time", 0)
+                            
+                            # Compute remaining battery energy after committed allocations
                             actual_energy_left = network_state["node_states"][i]["energy_residual"] - assigned_energy_per_node.get(i, 0)
                             
+                            # Cascade diagnostic evaluation for candidate satellite i
                             if R_ri == 0 or R_ri > deadline:
                                 reasons_for_rejection.append("Deadline_Violation")
                             elif R_ri > s_time_i:
@@ -660,15 +680,20 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                         else:
                             specific_reason = "Unknown"
 
+
                     print(f"[{self.env.now:.3f}] Orchestrator: Task {task['task_id']} rejected by ILP. Cause: {specific_reason}")
 
                     assignments.append({
-                        "task_id": task["task_id"], "data": task["data"],
-                        "assigned_sen": None, "routing_path_up": [], "routing_path_down": [],
+                        "task_id": task["task_id"],
+                        "data": task["data"],
+                        "assigned_sen": None,
+                        "routing_path_up": [],
+                        "routing_path_down": [],
                         "status": f"Scartato_{specific_reason}"
                     })
                     continue
 
+                # --- ACCEPTED TASK ---
                 assigned_node = None
                 for i in S_set:
                     if pulp.value(x[r_idx, i]) and pulp.value(x[r_idx, i]) > 0.5:
@@ -681,12 +706,15 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                     path_down = [assigned_node, ap_origin]
 
                     assignments.append({
-                        "task_id": task["task_id"], "data": task["data"],
-                        "assigned_sen": assigned_node, "routing_path_up": path_up,
-                        "routing_path_down": path_down, "status": "Assigned"
+                        "task_id": task["task_id"],
+                        "data": task["data"],
+                        "assigned_sen": assigned_node,
+                        "routing_path_up": path_up,
+                        "routing_path_down": path_down,
+                        "status": "Assigned"
                     })
         else:
-            print(f"[{self.env.now:.2f}] [ILP Centralized] Batch Infeasible. Status: {status}")
+            print(f"[{self.env.now:.2f}] [ILP Centralized] Batch Infeasible (Optimization problem unsolvable). Status: {status}")
             for task in R_set:
                 assignments.append({
                     "task_id": task["task_id"], "data": task["data"],
@@ -716,6 +744,44 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
 
 \begin{adjustwidth}{-2cm}{-2cm}
 \begin{lstlisting}[language=Python, caption={Task Execution and Dynamic Hybrid Routing Procedure.}, label={lst:orchestrator_routing}]
+    def _dispatch_tasks(self, assignments):
+
+        all_nodes = {n.name: n for n in (globals.global_access_point + globals.edge_servers)}
+
+        for assignment in assignments:
+            task_id = assignment["task_id"]
+            data = assignment["data"]
+            status = assignment["status"]
+            dispatch_time = self.env.now
+
+            if status != "Assigned":
+                if "No_Route" in status or "Infeasible" in status:
+                    arrival = data.get("arrival_time", dispatch_time)
+                    print(f"[{dispatch_time:.3f}] Orchestrator: ILP failed ({status}) for Task {task_id}. Re-enqueuing into task buffer!")
+                    
+                    self.task_buffer.append({
+                        "task_id": task_id,
+                        "data": data,
+                        "visible_aps": globals.global_access_point,
+                        "arrival_time": arrival 
+                    })
+                    
+                    if len(self.task_buffer) >= self.batch_size and not self.batch_ready_event.triggered:
+                        self.batch_ready_event.succeed()
+                        
+                    continue
+
+                # --- Final Rejection (e.g., Energy Exhaustion determined by ILP) ---
+                ap = globals.global_access_point[0]
+                print(f"[{dispatch_time:.3f}] Orchestrator: Task {task_id} DROPPED ({status}).")
+                ap.record_rejected_task(
+                    task_id, data["type"], dispatch_time, data["image_size"], f"ILP_{status}", data.get("d_cpu", 0)
+                )
+                continue
+
+            # --- Accepted Task: Spawn routing and execution process ---
+            self.env.process(self._route_and_execute_task(assignment, all_nodes, dispatch_time))
+                
     def _route_and_execute_task(self, assignment, all_nodes, dispatch_time):
             task_id = assignment["task_id"]
             data = assignment["data"]
@@ -725,7 +791,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
 
             ap_origin = path_up[0] if path_up else globals.global_access_point[0].name
 
-            # --- 1. TRANSIENT ROUTING TASK CREATION ---
+            # --- 1. TRANSIENT ROUTING TASK INITIALIZATION ---
             routing_task = Task(
                 task_id=task_id,
                 current_node=ap_origin,
@@ -752,13 +818,13 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
                 
                 if not is_greedy:
                     # ==========================================
-                    # PHASE A: PLANNED ROUTE NAVIGATION (ILP)
+                    # PHASE A: NOMINAL PLANNED ROUTING (ILP)
                     # ==========================================
                     next_planned = path_up[path_index + 1] if path_index < len(path_up) - 1 else None
                     next_planned_obj = all_nodes.get(next_planned) if next_planned else None
 
                     if next_planned_obj and current_node_obj.get_bandwidth(next_planned_obj) > 0:
-                        # Active link: follow Orchestrator plan
+                        # Active link: traverse planned ISL trajectory
                         yield self.env.process(
                             utils.sendTask(self.env, routing_task, current_node_obj, next_planned_obj, "ILP_Centralized")
                         )
@@ -766,7 +832,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
                         routing_task.visited.add(next_planned)
                     else:
                         # BROKEN LINK: Trigger greedy recovery fallback!
-                        print(f"[{self.env.now:.3f}] Orchestrator: Interrupted link at node {current_node_name} (Task {task_id}). Activating GREEDY Fallback!")
+                        print(f"[{self.env.now:.3f}] Orchestrator: Broken link at node {current_node_name} (Task {task_id}). Activating GREEDY Fallback!")
                         is_greedy = True
                         
                 if is_greedy:
@@ -788,7 +854,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
 
                     best_server = None
                     for neighbor_tuple in ranker_neighbors:
-                        # Prevent loops between adjacent satellites
+                        # Loop prevention: avoid visited satellites
                         if neighbor_tuple[0].name not in routing_task.visited:
                             best_server = neighbor_tuple[0]
                             break
@@ -805,7 +871,9 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
                         globals.gbl_tasks.append(routing_task)
                         return
 
-
+                # ==========================================
+                # PHASE C: COMMON SAFETY CONTROLS
+                # ==========================================
                 if getattr(routing_task, 'label', '') == 'TTL_EXPIRED':
                     print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} dropped due to expired TTL during routing.")
                     globals.gbl_tasks.append(routing_task)
@@ -813,7 +881,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
 
                 current_node_name = routing_task.current_node
 
-            # --- 3. FINAL DESTINATION ARRIVAL ---
+            # --- 3. DESTINATION REACHED ---
             transfer_time_up = self.env.now - data.get("arrival_time", dispatch_time)
             final_hops = routing_task.hop
             init_time = routing_task.routingInitTime
@@ -822,7 +890,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
 
             print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} arrived at {sen_name} in {transfer_time_up:.3f}s (Hops: {final_hops})")
 
-            # --- 4. METRICS & DATASET LOGGING ---
+            # --- 4. DATASET METRIC LOGGING ---
             globals.initial_server_counter[sen_name] = globals.initial_server_counter.get(sen_name, 0) + 1
             globals.gbl_task_hops[str(task_id)] = final_hops
             globals.gbl_task_final_hops[str(task_id)] = final_hops
@@ -834,7 +902,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
                 "final_hops": final_hops, "execution_server": sen_name
             })
 
-            # --- 5. DISCRETE-EVENT CPU SIMULATION EXECUTION ---
+            # --- 5. SIMULATE CPU ON-BOARD COMPUTATION ---
             yield self.env.process(
                 ILP_simulation.TaskAssignment_ILP(
                     env=self.env, selected_server=sen_obj, task_id=task_id, image_size=data["image_size"],
@@ -845,7 +913,7 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
                 )
             )
 
-            # --- 6. POST-EXECUTION METRICS SYNCHRONIZATION ---
+            # --- 6. POST-EXECUTION METRIC SYNCHRONIZATION ---
             final_task = next((t for t in globals.gbl_tasks if t.id == task_id), None)
             if final_task:
                 final_task.hop = final_hops
@@ -883,6 +951,7 @@ For a batch containing $|R|$ requests and $|S|$ candidate Satellite Edge Nodes:
 \end{itemize}
 While solving general 0-1 Integer Linear Programs is NP-hard, with a worst-case time complexity of $\mathcal{O}(2^{|R| \cdot |S|})$, the branch-and-cut algorithm in \texttt{HiGHS} solves the linear relaxation at each search node in polynomial time. 
 The dynamic batching threshold $BS \le 20$ guarantees that the active problem space remains strictly bounded, maintaining mean solving times below $10~\text{ms}$ in practical regional operations.
+
 \subsection{Hybrid Routing Complexity}
 Under nominal operation, planned packet forwarding requires $\mathcal{O}(h_{up})$ pointer lookups along pre-computed paths. 
 In the event of link failure, the greedy fallback evaluates the spatial distance of adjacent neighbors ($k$) in $\mathcal{O}(k \log k)$ time per hop. 
