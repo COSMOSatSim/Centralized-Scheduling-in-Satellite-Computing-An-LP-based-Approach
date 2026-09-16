@@ -2,15 +2,15 @@
 \label{chap:ilp_architecture}
 
 This chapter provides a comprehensive dissertation on the theoretical framework, mathematical optimization formulation, and concrete software architecture of the proposed Centralized Integer Linear Programming (ILP) Orchestrator. 
-To avoid conceptual disconnection between the theoretical modeling and its practical realization, each section progressively couples the formal system dynamics with its executable implementation in Python, utilizing the \texttt{SimPy} discrete-event simulation engine and the \texttt{PuLP} mathematical programming library backed by the \texttt{HiGHS} solver. 
+To avoid conceptual disconnection between the theoretical modeling and its practical realization, each section progressively couples the formal system dynamics with its executable implementation in Python, utilizing the \texttt{SimPy} discrete-event simulation engine~\cite{simpy2023} and the \texttt{PuLP} mathematical programming library~\cite{pulp2011} backed by the open-source \texttt{HiGHS} solver~\cite{huangfu2018highs}. 
 
 We formalize the regional Low Earth Orbit (LEO) constellation environment, derive the multi-objective optimization problem governing task assignment and multi-hop Inter-Satellite Link (ISL) routing, detail the dynamic batching and greedy recovery mechanisms, and conclude with a rigorous computational complexity analysis.
 
 \section{Regional Constellation Architecture and Offloading Model}
 \label{sec:system_model}
 
-We consider a regional orbital edge computing network deployed within a Low Earth Orbit (LEO) satellite constellation. 
-The system comprises a set of candidate Satellite Edge Nodes (SENs), denoted by $S = \{1, 2, \dots, n\}$, and a set of regional Access Points (APs) or satellite gateways $AP_{global}$. 
+We consider a regional orbital edge computing network deployed within a Low Earth Orbit (LEO) satellite constellation~\cite{survey_orbital_edge_2023}. 
+The orbital network is modeled as a regional Walker-Delta LEO geometry~\cite{walker1984satellite}. The system comprises a set of candidate Satellite Edge Nodes (SENs), denoted by $S = \{1, 2, \dots, n\}$, and a set of regional Access Points (APs) or satellite gateways $AP_{global}$~\cite{icdcs_satellite_2025}. 
 Within the operational region, a designated \emph{Master} functions as the centralized orchestrator, maintaining global visibility over constellation kinematics, dynamic processor queue occupancies, residual battery energy budgets, and active inter-satellite link topologies.
 
 Ground Users (GUs) generate computational requests that arrive dynamically at the regional gateways. 
@@ -18,12 +18,12 @@ Each offloading request $r \in R$ is characterized by a five-element tuple:
 \begin{equation}
     r = \left( d_{cpu}, D_r, s_r, t_{arr}, AP_r \right)
 \end{equation}
-where $d_{cpu}$ is the computational CPU workload demand, $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input/output image size (in MB), $t_{arr}$ is the generation timestamp, and $AP_r \in AP_{global}$ identifies the originating entry point.
+where $d_{cpu}$ is the computational CPU workload demand, $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input/output image size (in MB), $t_{arr}$ is the generation timestamp, and $AP_r \in AP_{global}$ identifies the originating entry point~\cite{icdcs_satellite_2025}.
 
 To achieve robust real-time execution in highly dynamic space environments, the operational lifecycle of task $r$ is modeled as a decoupled, three-phase circuit:
 \begin{enumerate}
-    \item \textbf{Uplink Control and Forwarding Phase ($T_{up}$):} The originating gateway $AP_r$ injects a lightweight control payload $S_{req} = 2~\text{KB}$ into the orbital plane, which is routed across $h_{up}(r,i)$ ISL hops to candidate satellite $i \in S$.
-    \item \textbf{On-Board Computational Execution Phase ($T_{cpu}$):} Satellite $i$ processes $d_{cpu}$ units of work, incurring both the deterministic waiting time in the on-board processor queue $W_{cpu,i}$ and the physical execution delay.
+    \item \textbf{Uplink Control and Forwarding Phase ($T_{up}$):} The originating gateway $AP_r$ injects a lightweight control payload $S_{req} = 2~\text{KB}$ into the orbital plane, which is routed across $h_{up}(r,i)$ ISL hops to candidate satellite $i \in S$~\cite{icdcs_satellite_2025}.
+    \item \textbf{On-Board Computational Execution Phase ($T_{cpu}$):} Satellite $i$ processes $d_{cpu}$ units of work, incurring both the deterministic waiting time in the on-board processor queue $W_{cpu,i}$ and the physical execution delay~\cite{denby2019orbital, icdcs_satellite_2025}.
     \item \textbf{Post-Execution Geographic Result Delivery ($T_{down}$):} Upon computation completion, the generated output payload is routed back from the executing satellite $i$ to the originating Access Point $AP_r$ across the dynamic ISL topology via an autonomous geographic greedy routing protocol.
 \end{enumerate}
 
@@ -88,8 +88,8 @@ and operational parameters adopted throughout the system model and ILP formulati
 \section{Event-Driven Dynamic Batching Engine}
 \label{sec:dynamic_batching}
 
-In a high-throughput satellite environment, invoking an NP-hard ILP solver upon each individual task arrival introduces prohibitive computational overhead and CPU starvation. 
-To address this, the Master Orchestrator implements an event-driven dynamic batching mechanism inside a \texttt{SimPy} discrete-event framework, governed by two competing thresholds:
+In a high-throughput satellite environment, invoking an NP-hard ILP solver upon each individual task arrival introduces prohibitive computational overhead and CPU starvation~\cite{wolsey1998integer, icdcs_satellite_2025}. 
+To address this, the Master Orchestrator implements an event-driven dynamic batching mechanism inside a \texttt{SimPy} discrete-event framework~\cite{simpy2023}, governed by two competing thresholds:
 \begin{itemize}
     \item \textbf{Maximum Batch Size ($BS$):} A structural threshold (\texttt{centralized\_batch\_size}) that limits the maximum number of requests solved concurrently, bounding the solver variable space $|R| \times |S|$.
     \item \textbf{Batch Timeout ($BT$):} A temporal threshold (\texttt{centralized\_batch\_timeout}) that enforces a maximum buffering delay, ensuring requests are not stalled indefinitely.
@@ -99,7 +99,7 @@ The execution loop remains quiescent until the arrival of the first request into
 The batch is dispatched when either $|Q| \ge BS$ (triggering \texttt{batch\_ready\_event}) or when the elapsed time satisfies $\Delta t \ge BT$.
 
 A critical design requirement in discrete-event simulation is ensuring state consistency. 
-Because satellite positions, CPU queue lengths, and energy levels evolve continuously, the orchestrator executes a zero-delay yield (\texttt{yield self.env.timeout(0)}) immediately prior to batch processing. 
+Because satellite positions, CPU queue lengths, and energy levels evolve continuously according to orbital ephemeris~\cite{vallado2006sgp4}, the orchestrator executes a zero-delay yield (\texttt{yield self.env.timeout(0)}) immediately prior to batch processing. 
 This yields thread execution back to the \texttt{SimPy} event loop, ensuring that all physical updates across the constellation at timestamp $t$ are fully committed before optimization begins.
 
 Listing~\ref{lst:orchestrator_init} presents the software architecture of the \texttt{Orchestrator} class initialization, request enqueuing, and the background lifecycle process.
@@ -211,17 +211,17 @@ class Orchestrator:
 \label{sec:constellation_mapping}
 
 Before formulating the optimization model, the Master Orchestrator must compute the optimal multi-hop ISL routing paths from every active ground Access Point to all candidate Satellite Edge Nodes. 
-This is handled by the \texttt{\_map\_constellation} method using a Multi-Source Dijkstra path algorithm.
+This is handled by the \texttt{\_map\_constellation} method using a Multi-Source Dijkstra shortest-path algorithm~\cite{dijkstra1959note}.
 
 Evaluating dynamic satellite links with raw physical dimensions introduces dimensional bias (e.g., comparing milliseconds of propagation delay against microjoules of radio energy). 
-To achieve uniform metric evaluation across heterogeneous links, each directed edge $(u, v)$ with latency $\tau_{u,v}$ and bandwidth $B_{u,v}$ (in Bytes/s) is evaluated against a standardized reference payload $S_{ref} = 1~\text{MB}$ ($1024^2~\text{bytes}$):
+To achieve uniform metric evaluation across heterogeneous links, each directed edge $(u, v)$ with latency $\tau_{u,v}$ and bandwidth $B_{u,v}$ (in Bytes/s) is evaluated against a standardized reference payload $S_{ref} = 1~\text{MB}$ ($1024^2~\text{bytes}$) over optical ISL channels~\cite{chen2021isl, chaudhry2021laser}:
 \begin{equation}
     t_{link}(u,v) = \tau_{u,v} + \frac{S_{ref}}{B_{u,v}}
 \end{equation}
 \begin{equation}
     e_{link}(u,v) = P_{net} \cdot \frac{S_{ref}}{B_{u,v}}
 \end{equation}
-where $P_{net}$ is the radio transmission power (\texttt{Ptrasm}).
+where $P_{net}$ is the radio/laser transmission power (\texttt{Ptrasm})~\cite{icdcs_satellite_2025}.
 
 The edge metrics are normalized against theoretical upper bounds ($T_{max}$ and $E_{max}$) derived from minimum network bandwidth ($B_{min} = 100~\text{KB/s}$) and maximum link latency ($\tau_{max} = 100~\text{ms}$):
 \begin{equation}
@@ -371,20 +371,20 @@ Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of th
 \label{sec:mathematical_model}
 
 Let $R$ be the set of tasks extracted in the active batch and $S$ the set of candidate Satellite Edge Nodes. 
-The optimization problem defines two families of binary decision variables:
+Following classical combinatorial and linear programming principles~\cite{wolsey1998integer, boyd2004convex}, the optimization problem defines two families of binary decision variables:
 \begin{align}
     x_{r,i} &\in \{0, 1\}, \quad \forall r \in R, \, \forall i \in S \quad \text{(1 if task $r$ is allocated to satellite $i$; 0 otherwise)} \\
     y_r &\in \{0, 1\}, \quad \forall r \in R \quad \text{(1 if task $r$ is explicitly rejected; 0 otherwise)}
 \end{align}
 
 \subsection{Latency, Energy, and Orbital Eclipse Modeling}
-For each candidate allocation $(r, i)$, the end-to-end processing delay $R_{r,i}$ evaluated by the solver accounts for multi-hop uplink ISL transmission across path $\vec{P}_{up}(AP_r, i)$ and local computing delay:
+For each candidate allocation $(r, i)$, the end-to-end processing delay $R_{r,i}$ evaluated by the solver accounts for multi-hop uplink ISL transmission across path $\vec{P}_{up}(AP_r, i)$ and local computing delay~\cite{icdcs_satellite_2025}:
 \begin{equation}
     R_{r,i} = \underbrace{\sum_{(u,v) \in \vec{P}_{up}} \left( W_{net,u} + \frac{S_{req}}{B_{u,v}} + \tau_{u,v} \right)}_{T_{up}(r,i)} + \left( W_{cpu,i} + d_{cpu,r} \right)
     \label{eq:total_latency}
 \end{equation}
 
-The cumulative fleet energy expenditure $\epsilon_{r,i}$ evaluates the network forwarding energy across all intermediate ISL nodes along $\vec{P}_{up}$ alongside local CPU execution:
+The cumulative fleet energy expenditure $\epsilon_{r,i}$ evaluates the network forwarding energy across all intermediate ISL nodes along $\vec{P}_{up}$ alongside local CPU execution~\cite{icdcs_satellite_2025}:
 \begin{equation}
     \epsilon_{r,i} = \sum_{(u,v) \in \vec{P}_{up}} P_{net} \frac{S_{req}}{B_{u,v}} + \kappa_i \cdot d_{cpu,r} \cdot C_{sen,i}^3
     \label{eq:total_energy}
@@ -408,7 +408,7 @@ The aggregated fleet latency ($Z_{time}$), energy ($Z_{energy}$), and eclipse pe
     Z_{sunset} &= \sum_{r \in R} \sum_{i \in S} x_{r,i} \Omega_i
 \end{align}
 
-Depending on the configuration parameter \texttt{centralized\_primary\_objective} (Time vs. Energy), the objective function $Z$ applies hierarchical weighting parameters ($\alpha$, $\beta$, and $\gamma$):
+Depending on the configuration parameter \texttt{centralized\_primary\_objective} (Time vs. Energy), the objective function $Z$ applies hierarchical weighting parameters ($\alpha$, $\beta$, and $\gamma$)~\cite{boyd2004convex, zhong2025leo}:
 
 \begin{equation}
     \min Z = \begin{cases}
@@ -425,22 +425,22 @@ The optimization space is constrained by four strict linear relations:
     \begin{equation}
         \sum_{i \in S} x_{r,i} + y_r = 1, \quad \forall r \in R
     \end{equation}
-    \item \textbf{Strict Service Processing Deadline:} Enforces that uplink forwarding and local execution do not exceed the deadline $D_r$:
+    \item \textbf{Strict Service Processing Deadline:} Enforces that uplink forwarding and local execution do not exceed the deadline $D_r$~\cite{icdcs_satellite_2025}:
     \begin{equation}
         x_{r,i} \cdot R_{r,i} \le D_r, \quad \forall r \in R, \, \forall i \in S
     \end{equation}
-    \item \textbf{Distributed Fleet Energy Budget:} Enforces that the total energy allocated to satellite node $k$ (across all tasks where $k$ is an intermediate ISL forwarder or execution node) remains within its residual battery capacity $B_k$:
+    \item \textbf{Distributed Fleet Energy Budget:} Enforces that the total energy allocated to satellite node $k$ (across all tasks where $k$ is an intermediate ISL forwarder or execution node) remains within its residual battery capacity $B_k$~\cite{icdcs_satellite_2025}:
     \begin{equation}
         \sum_{r \in R} \sum_{i \in S} x_{r,i} \cdot \epsilon_{r,i,k} \le B_k, \quad \forall k \in S
     \end{equation}
-    \item \textbf{Constellation Load Balancing (Anti-Congestion):} Prevents processor queue bottlenecks by bounding the maximum simultaneous task allocations per node:
+    \item \textbf{Constellation Load Balancing (Anti-Congestion):} Prevents processor queue bottlenecks by bounding the maximum simultaneous task allocations per node~\cite{tang2003loadbalancing}:
     \begin{equation}
         \sum_{r \in R} x_{r,i} \le \left\lfloor \frac{|R|}{|S|} \right\rfloor + 5, \quad \forall i \in S
     \end{equation}
 \end{enumerate}
 
 \subsection{Solver Routine and Cascade Rejection Diagnostics}
-The model is constructed in Python using \texttt{PuLP} and executed via the \texttt{HiGHS} solver engine. 
+The model is constructed in Python using \texttt{PuLP}~\cite{pulp2011} and executed via the \texttt{HiGHS} solver engine~\cite{huangfu2018highs}. 
 Upon resolution, if a task is rejected ($y_r = 1$), the orchestrator executes a cascade diagnostic evaluation across all reachable SENs to classify the primary drop reason:
 \begin{itemize}
     \item \texttt{"No\_Route"}: No viable ISL path exists from $AP_r$ to any satellite.
@@ -930,26 +930,26 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
 \section{Computational Complexity and Scalability Analysis}
 \label{sec:complexity_analysis}
 
-To understand the computational trade-offs of centralized ILP orchestration compared to distributed heuristics, we formally analyze the algorithmic time and space complexity across all pipeline stages.
+To understand the computational trade-offs of centralized ILP orchestration compared to distributed heuristics, we formally analyze the algorithmic time and space complexity across all pipeline stages~\cite{icdcs_satellite_2025}.
 
 \subsection{Topology Mapping Complexity}
-The constellation mapping routine executes Dijkstra's algorithm from each active Access Point $|AP|$ across the constellation graph $G = (V, E)$, where $V = AP_{global} \cup S$ and $E$ is the set of active ISL and ground links. 
-Using a binary min-heap priority queue, the asymptotic time complexity is:
+The constellation mapping routine executes Dijkstra's algorithm~\cite{dijkstra1959note} from each active Access Point $|AP|$ across the constellation graph $G = (V, E)$, where $V = AP_{global} \cup S$ and $E$ is the set of active ISL and ground links. 
+Using a binary min-heap priority queue (implemented via Python's native \texttt{heapq} module), the asymptotic time complexity is:
 \begin{equation}
     \mathcal{O}\left( |AP| \cdot \left( |E| + |V| \log |V| \right) \right)
 \end{equation}
-Because satellite node degree in regular grid LEO constellations (e.g., Walker delta) is bounded by physical ISL transceivers ($|E| \le 4 |S|$), the mapping stage scales linearly with constellation size $|S|$.
+Because satellite node degree in regular grid LEO constellations (e.g., Walker delta) is bounded by physical ISL transceivers ($|E| \le 4 |S|$)~\cite{walker1984satellite, chen2021isl}, the mapping stage scales linearly with constellation size $|S|$.
 
 \subsection{ILP Formulation and Solver Complexity}
 For a batch containing $|R|$ requests and $|S|$ candidate Satellite Edge Nodes:
 \begin{itemize}
-    \item \textbf{Decision Variable Space:} The model instantiates $|R| \cdot |S|$ binary assignment variables $x_{r,i}$ and $|R|$ rejection variables $y_r$, yielding a total binary dimension of $\mathcal{O}(|R| \cdot |S|)$.
+    \item \textbf{Decision Variable Space:} The model instantiates $|R| \cdot |S|$ binary assignment variables $x_{r,i}$ and $|R|$ rejection variables $y_r$, yielding a total binary dimension of $\mathcal{O}(|R| \cdot |S|)$~\cite{wolsey1998integer}.
     \item \textbf{Constraint Space:} The formulation constructs $|R|$ uniqueness constraints, $|R| \cdot |S|$ deadline constraints, $|S|$ fleet battery constraints, and $|S|$ load-balancing constraints, yielding an exact row complexity of:
     \begin{equation}
         \mathcal{O}\left( |R| \cdot |S| + |R| + 2|S| \right)
     \end{equation}
 \end{itemize}
-While solving general 0-1 Integer Linear Programs is NP-hard, with a worst-case time complexity of $\mathcal{O}(2^{|R| \cdot |S|})$, the branch-and-cut algorithm in \texttt{HiGHS} solves the linear relaxation at each search node in polynomial time. 
+While solving general 0-1 Integer Linear Programs is NP-hard, with a worst-case time complexity of $\mathcal{O}(2^{|R| \cdot |S|})$~\cite{wolsey1998integer}, the branch-and-cut algorithm in \texttt{HiGHS} solves the linear relaxation at each search node in polynomial time~\cite{huangfu2018highs}. 
 The dynamic batching threshold $BS \le 20$ guarantees that the active problem space remains strictly bounded, maintaining mean solving times below $10~\text{ms}$ in practical regional operations.
 
 \subsection{Hybrid Routing Complexity}

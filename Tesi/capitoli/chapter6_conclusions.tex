@@ -1,9 +1,9 @@
 \chapter{Conclusions and Future Work}
 \label{chap:conclusions}
 
-This thesis investigated the operational feasibility, performance boundaries, and systemic trade-offs of centralized mathematical optimization for computational task offloading and multi-hop routing in Low Earth Orbit (LEO) satellite networks[cite: 4, 5, 9]. By designing, formalizing, and implementing a Centralized Integer Linear Programming (ILP) Orchestrator coupled with an event-driven dynamic batching mechanism within a \texttt{SimPy} discrete-event simulation environment, this work systematically explored the viability of orbital edge intelligence under realistic spaceborne constraints[cite: 3, 4].
+This thesis investigated the operational feasibility, performance boundaries, and systemic trade-offs of centralized mathematical optimization for computational task offloading and multi-hop routing in Low Earth Orbit (LEO) satellite networks~\cite{survey_orbital_edge_2023, icdcs_satellite_2025}. By designing, formalizing, and implementing a Centralized Integer Linear Programming (ILP) Orchestrator coupled with an event-driven dynamic batching mechanism within a \texttt{SimPy} discrete-event simulation environment~\cite{simpy2023}, this work systematically explored the viability of orbital edge intelligence under realistic spaceborne constraints~\cite{denby2019orbital, icdcs_satellite_2025}.
 
-This concluding chapter synthesizes the primary findings and answers the core research question formulated at the outset of the thesis[cite: 9]. Furthermore, it details the critical physical and architectural limitations inherent to centralized space computing and outlines promising future research directions toward resilient, hybrid orbital orchestration paradigms[cite: 5, 7].
+This concluding chapter synthesizes the primary findings and answers the core research question formulated at the outset of the thesis. Furthermore, it details the critical physical and architectural limitations inherent to centralized space computing and outlines promising future research directions toward resilient, hybrid orbital orchestration paradigms~\cite{denby2020asplos, survey_orbital_edge_2023}.
 
 % =============================================================================
 % SECTION 6.1: SYNTHESIS OF CONTRIBUTIONS AND RESEARCH QUESTION RESOLUTION
@@ -14,29 +14,29 @@ This concluding chapter synthesizes the primary findings and answers the core re
 \subsection{Answering the Core Research Question}
 \label{subsec:concl_rq_resolution}
 
-In Section~\ref{sec:intro_objectives}, this thesis posed the foundational research question: \textit{To what extent can a centralized optimization approach maintain global allocation efficiency in high-density satellite networks before queuing and solver overhead cause systemic performance degradation?}[cite: 9]
+In Section~\ref{sec:intro_objectives}, this thesis posed the foundational research question: \textit{To what extent can a centralized optimization approach maintain global allocation efficiency in high-density satellite networks before queuing and solver overhead cause systemic performance degradation?}
 
-Based on the multi-tiered experimental evaluations conducted across Chapters~\ref{chap:performance_analysis} and~\ref{chap:comparative_benchmark}, the answer is clear: **the performance ceiling of centralized orbital orchestration is fundamentally architectural rather than computational**[cite: 14].
+Based on the multi-tiered experimental evaluations conducted across Chapters~\ref{chap:performance_analysis} and~\ref{chap:comparative_benchmark}, the answer is clear: \textbf{the performance ceiling of centralized orbital orchestration is fundamentally architectural rather than computational}.
 
 \begin{itemize}
-    \item \textbf{Computational Tractability of the Solver:} Contrary to the conventional assumption that NP-hard mathematical optimization is prohibitively slow for real-time spaceborne execution, the open-source \texttt{HiGHS} branch-and-cut solver demonstrated remarkable computational efficiency[cite: 3, 4]. By bounding the active optimization batch size ($BS \le 20$), the decision variable space remained strictly constrained, maintaining pure solver execution times at $T_{exec} \le 0.30\text{--}0.60\text{ ms}$ across all tested arrival rates ($\lambda \in [2, 10]\text{ req/s}$)[cite: 3, 4, 14]. This proves that solving regional linear formulations is computationally viable on contemporary space-qualified onboard processing units[cite: 3, 11].
+    \item \textbf{Computational Tractability of the Solver:} Contrary to the conventional assumption that NP-hard mathematical optimization is prohibitively slow for real-time spaceborne execution, the open-source \texttt{HiGHS} branch-and-cut solver demonstrated remarkable computational efficiency~\cite{huangfu2018highs}. By bounding the active optimization batch size ($BS \le 20$), the decision variable space remained strictly constrained, maintaining pure solver execution times at $T_{exec} \le 0.30\text{--}0.60\text{ ms}$ across all tested arrival rates ($\lambda \in [2, 10]\text{ req/s}$). This proves that solving regional linear formulations is computationally viable on contemporary space-qualified onboard processing units~\cite{denby2020asplos}.
 
-    \item \textbf{Ingress Queuing as the Systemic Bottleneck:} System throughput collapse under elevated arrival rates ($\lambda \ge 6\text{ req/s}$) is governed almost entirely by the ingress queuing latency ($T_{wait}$) accumulated within the orchestrator buffer prior to solver invocation[cite: 3, 14]. As traffic scales, request aggregation delays severely erode task slack margins ($\Delta t_{rem} = D_r - t_{queue}$), triggering cascade \textit{Deadline Exceeded} dropouts before the scheduling algorithm can be executed[cite: 3, 14].
+    \item \textbf{Ingress Queuing as the Systemic Bottleneck:} System throughput collapse under elevated arrival rates ($\lambda \ge 6\text{ req/s}$) is governed almost entirely by the ingress queuing latency ($T_{wait}$) accumulated within the orchestrator buffer prior to solver invocation. As traffic scales, request aggregation delays severely erode task slack margins ($\Delta t_{rem} = D_r - t_{queue}$), triggering cascade \textit{Deadline Exceeded} dropouts before the scheduling algorithm can be executed.
 
-    \item \textbf{Primacy of Fast-Dispatch Policies:} To prevent queue-induced deadline collapse, centralized orchestrators must adopt responsive dispatch mechanisms[cite: 3]. Operating with an aggressive timeout ($BS = 20, BT \le 0.05\text{ s}$) maintains near-zero buffer residence times, effectively transforming the batching pipeline into a semi-continuous dispatch engine that sustains competitive completion rates ($74\%\text{--}78\%$ at low traffic, $40\%\text{--}44\%$ under stress)[cite: 3, 14].
+    \item \textbf{Primacy of Fast-Dispatch Policies:} To prevent queue-induced deadline collapse, centralized orchestrators must adopt responsive dispatch mechanisms. Operating with an aggressive timeout ($BS = 20, BT \le 0.05\text{ s}$) maintains near-zero buffer residence times, effectively transforming the batching pipeline into a semi-continuous dispatch engine that sustains competitive completion rates ($74\%\text{--}78\%$ at low traffic, $40\%\text{--}44\%$ under stress).
 \end{itemize}
 
 \subsection{Algorithmic Archetypes and Workload Sensitivity}
 \label{subsec:concl_workload_sensitivity}
 
-The comparative benchmark in Chapter~\ref{chap:comparative_benchmark} established distinct operational envelopes across heterogeneous application profiles[cite: 3, 14]:
+The comparative benchmark in Chapter~\ref{chap:comparative_benchmark} established distinct operational envelopes across heterogeneous application profiles~\cite{icdcs_satellite_2025}:
 
 \begin{itemize}
-    \item \textbf{Computation-Heavy Workloads ($\boldsymbol{\beta} = (0, 1, 0)$):} Distributed online heuristics (\texttt{OrbitAware}, \texttt{DTS-base}, \texttt{DTS-Optimal}) demonstrate superior resilience, achieving $72\%\text{--}74\%$ success rates at peak load ($\lambda = 10\text{ req/s}$)[cite: 5, 14]. Crucially, the rejection diagnostics revealed a complete operational divide[cite: 3]: heuristics dropped $100\%$ of rejected tasks due to physical capacity exhaustion (\textit{Insufficient CPU}), whereas ILP models suffered $60\%\text{--}88\%$ of their failures due to \textit{Deadline Exceeded}[cite: 3, 14]. In compute-bound environments, instantaneous local assignment without ingress buffering is essential to prevent temporal expiration[cite: 3, 14].
+    \item \textbf{Computation-Heavy Workloads ($\boldsymbol{\beta} = (0, 1, 0)$):} Distributed online heuristics (\texttt{OrbitAware}, \texttt{DTS-base}, \texttt{DTS-Optimal}) demonstrate superior resilience, achieving $72\%\text{--}74\%$ success rates at peak load ($\lambda = 10\text{ req/s}$)~\cite{icdcs_satellite_2025}. Crucially, the rejection diagnostics revealed a complete operational divide: heuristics dropped $100\%$ of rejected tasks due to physical capacity exhaustion (\textit{Insufficient CPU}), whereas ILP models suffered $60\%\text{--}88\%$ of their failures due to \textit{Deadline Exceeded}. In compute-bound environments, instantaneous local assignment without ingress buffering is essential to prevent temporal expiration.
 
-    \item \textbf{Communication-Heavy Workloads ($\boldsymbol{\beta} = (0, 0, 1)$):} The centralized optimization paradigm achieves clear superiority in data-intensive environments[cite: 14]. When offloading large datasets ($20\text{--}50\text{ MB}$), global visibility of multi-hop Inter-Satellite Link (ISL) states enabled the ILP formulations to attain near-perfect completion rates ($98\%\text{--}100\%$) under low-to-moderate loads, outperforming greedy heuristics[cite: 4, 14]. Furthermore, data-intensive workloads exhibited strong elasticity with respect to satellite battery capacity: expanding battery reserves from $40\text{ kJ}$ to $80\text{ kJ}$ yielded a $+15\%\text{--}25\%$ throughput recovery, proving that mathematically coordinated routing paths preserve energy across optical transceivers[cite: 3, 14, 17].
+    \item \textbf{Communication-Heavy Workloads ($\boldsymbol{\beta} = (0, 0, 1)$):} The centralized optimization paradigm achieves clear superiority in data-intensive environments. When offloading large datasets ($20\text{--}50\text{ MB}$), global visibility of multi-hop Inter-Satellite Link (ISL) states enabled the ILP formulations to attain near-perfect completion rates ($98\%\text{--}100\%$) under low-to-moderate loads, outperforming greedy heuristics. Furthermore, data-intensive workloads exhibited strong elasticity with respect to satellite battery capacity: expanding battery reserves from $40\text{ kJ}$ to $80\text{ kJ}$ yielded a $+15\%\text{--}25\%$ throughput recovery, proving that mathematically coordinated routing paths preserve energy across optical transceivers~\cite{chaudhry2021laser, icdcs_satellite_2025}.
 
-    \item \textbf{Multi-Objective Weight Calibration ($\alpha^* = 1000, \gamma^* = 8$):} The micro-tuning campaign proved that dominating the primary objective ($\alpha^* = 1000$) ensures that solver decisions are driven strictly by deadline compliance and capacity limits, yielding an average $+21\%$ gain in success rate[cite: 3]. Simultaneously, calibrating the orbital eclipse penalty to $\gamma^* = 8$ completely eliminated \textit{Sunset} drops ($0\%$ loss across all runs) while avoiding the $55\%$ latency inflation and topological path-bloat that occurs when the eclipse penalty is over-weighted ($\gamma \ge 1000$)[cite: 3, 6].
+    \item \textbf{Multi-Objective Weight Calibration ($\alpha^* = 1000, \gamma^* = 8$):} The micro-tuning campaign proved that dominating the primary objective ($\alpha^* = 1000$) ensures that solver decisions are driven strictly by deadline compliance and capacity limits, yielding an average $+21\%$ gain in success rate. Simultaneously, calibrating the orbital eclipse penalty to $\gamma^* = 8$ completely eliminated \textit{Sunset} drops ($0\%$ loss across all runs) while avoiding the $55\%$ latency inflation and topological path-bloat that occurs when the eclipse penalty is over-weighted ($\gamma \ge 1000$).
 \end{itemize}
 
 % =============================================================================
@@ -45,29 +45,29 @@ The comparative benchmark in Chapter~\ref{chap:comparative_benchmark} establishe
 \section{Critical Limitations of the Centralized Approach}
 \label{sec:concl_limitations}
 
-Despite the mathematical rigor and global optimality demonstrated by the proposed framework, deploying a pure centralized orchestrator in operational mega-constellations involves severe structural limitations[cite: 5, 7].
+Despite the mathematical rigor and global optimality demonstrated by the proposed framework, deploying a pure centralized orchestrator in operational mega-constellations involves severe structural limitations~\cite{denby2020asplos, survey_orbital_edge_2023}.
 
 \subsection{Ingress Buffering and the Batching Dilemma}
 \label{subsec:limitations_batching}
 
-Centralized mathematical scheduling requires aggregating incoming discrete requests into batches to instantiate the linear program[cite: 3, 4]. This creates an inescapable trade-off between optimization horizon and buffering latency[cite: 3, 9]:
+Centralized mathematical scheduling requires aggregating incoming discrete requests into batches to instantiate the linear program~\cite{wolsey1998integer}. This creates an inescapable trade-off between optimization horizon and buffering latency:
 \begin{equation}
     T_{total}(r) = T_{wait}(BS, BT, \lambda) + T_{up}(r, i) + W_{cpu,i} + \frac{d_{cpu,r}}{C_{sen,i}} + T_{down}(i, AP_r)
     \label{eq:concl_latency_chain}
 \end{equation}
-While larger batch sizes ($BS \ge 8$) allow the branch-and-cut algorithm to uncover superior combinatorial placement patterns across the fleet, the static wait time $T_{wait}$ directly consumes the application deadline slack[cite: 3, 4]. For mission-critical real-time services characterized by tight latency bounds ($D_r \le 1.0\text{ s}$), any artificial queuing introduced before solver execution severely degrades service availability[cite: 3, 9].
+While larger batch sizes ($BS \ge 8$) allow the branch-and-cut algorithm to uncover superior combinatorial placement patterns across the fleet, the static wait time $T_{wait}$ directly consumes the application deadline slack. For mission-critical real-time services characterized by tight latency bounds ($D_r \le 1.0\text{ s}$), any artificial queuing introduced before solver execution severely degrades service availability~\cite{leyva2023satellite}.
 
 \subsection{Single Point of Failure and Space Hazards}
 \label{subsec:limitations_spof}
 
-Relying on a designated orbital Master node introduces an acute Single Point of Failure (SPOF)[cite: 5, 7]. Spaceborne edge computing operates in an exceptionally harsh environment subject to extreme thermal cycling, total ionizing dose (TID), and single-event upsets (SEUs) induced by cosmic rays and solar particle events[cite: 7, 9]. If the central Master satellite suffers a radiation-induced latch-up, an onboard computer reboot, an attitude control anomaly, or requires an autonomous orbital collision avoidance maneuver, the entire task scheduling and forwarding pipeline across the constellation is immediately paralyzed[cite: 5, 7].
+Relying on a designated orbital Master node introduces an acute Single Point of Failure (SPOF)~\cite{denby2020asplos}. Spaceborne edge computing operates in an exceptionally harsh environment subject to extreme thermal cycling, total ionizing dose (TID), and single-event upsets (SEUs) induced by cosmic rays and solar particle events~\cite{denby2019orbital, denby2020asplos}. If the central Master satellite suffers a radiation-induced latch-up, an onboard computer reboot, an attitude control anomaly, or requires an autonomous orbital collision avoidance maneuver, the entire task scheduling and forwarding pipeline across the constellation is immediately paralyzed.
 
 \subsection{State Telemetry Overhead and Information Staleness}
 \label{subsec:limitations_staleness}
 
-To formulate an accurate mathematical representation of constellation constraints, the orchestrator must maintain an updated global state matrix containing processor queue lengths ($W_{cpu,i}$), residual battery levels ($B_i$), and active ISL bandwidths ($B_{u,v}$)[cite: 4]. Transmitting this telemetry across dynamic inter-satellite links incurs control signaling overhead that scales with the number of satellites ($\mathcal{O}(|S|)$)[cite: 4, 5]. 
+To formulate an accurate mathematical representation of constellation constraints, the orchestrator must maintain an updated global state matrix containing processor queue lengths ($W_{cpu,i}$), residual battery levels ($B_i$), and active ISL bandwidths ($B_{u,v}$). Transmitting this telemetry across dynamic inter-satellite links incurs control signaling overhead that scales with the number of satellites ($\mathcal{O}(|S|)$)~\cite{survey_orbital_edge_2023}. 
 
-Due to the extreme orbital velocities of LEO spacecraft ($\sim 7.5\text{ km/s}$), continuous relative motion alters line-of-sight angles and link propagation delays[cite: 4, 5]. Consequently, by the time state telemetry is gathered, buffered, and solved, the physical state of the constellation may have drifted[cite: 5]. This state staleness risks rendering calculated schedules sub-optimal or infeasible mid-execution, necessitating reliance on emergency greedy fallback routines[cite: 4].
+Due to the extreme orbital velocities of LEO spacecraft ($\sim 7.5\text{ km/s}$), continuous relative motion alters line-of-sight angles and link propagation delays~\cite{chen2021isl}. Consequently, by the time state telemetry is gathered, buffered, and solved, the physical state of the constellation may have drifted. This state staleness risks rendering calculated schedules sub-optimal or infeasible mid-execution, necessitating reliance on emergency greedy fallback routines.
 
 % =============================================================================
 % SECTION 6.3: FUTURE RESEARCH DIRECTIONS
@@ -75,36 +75,36 @@ Due to the extreme orbital velocities of LEO spacecraft ($\sim 7.5\text{ km/s}$)
 \section{Future Research Directions}
 \label{sec:concl_future_work}
 
-The conclusions and limitations identified in this thesis pave the way for several natural extensions and advanced research trajectories[cite: 4, 5].
+The conclusions and limitations identified in this thesis pave the way for several natural extensions and advanced research trajectories.
 
 \subsection{Two-Tier Hybrid Orchestration Architectures}
 \label{subsec:future_hybrid}
 
-To overcome the trade-off between centralized optimality and distributed responsiveness, future architectures should investigate two-tier hierarchical frameworks[cite: 5]:
+To overcome the trade-off between centralized optimality and distributed responsiveness, future architectures should investigate two-tier hierarchical frameworks:
 \begin{itemize}
-    \item \textbf{Tier 1 (Fast-Path Heuristic Layer):} Time-critical and CPU-intensive requests are evaluated immediately at the local Access Point using decentralized, zero-queuing heuristics (such as \texttt{OrbitAware} or \texttt{DTS-Optimal}), ensuring sub-millisecond dispatching[cite: 5, 8].
-    \item \textbf{Tier 2 (Global Optimization Layer):} Computationally relaxed, data-intensive tasks (such as delay-tolerant Earth Observation image filtering) are buffered and offloaded to localized cluster-head ILP solvers[cite: 4, 5]. This dual-track paradigm harnesses mathematical efficiency for bandwidth-heavy traffic while preserving ultra-low latency for time-sensitive services[cite: 3, 5].
+    \item \textbf{Tier 1 (Fast-Path Heuristic Layer):} Time-critical and CPU-intensive requests are evaluated immediately at the local Access Point using decentralized, zero-queuing heuristics (such as \texttt{OrbitAware} or \texttt{DTS-Optimal}), ensuring sub-millisecond dispatching~\cite{icdcs_satellite_2025}.
+    \item \textbf{Tier 2 (Global Optimization Layer):} Computationally relaxed, data-intensive tasks (such as delay-tolerant Earth Observation image filtering) are buffered and offloaded to localized cluster-head ILP solvers~\cite{zhong2025leo, jiang2025remote}. This dual-track paradigm harnesses mathematical efficiency for bandwidth-heavy traffic while preserving ultra-low latency for time-sensitive services.
 \end{itemize}
 
 \subsection{Traffic-Aware Adaptive Batching via Reinforcement Learning}
 \label{subsec:future_adaptive_batching}
 
-The static batching thresholds ($BS, BT$) evaluated in this work could be replaced by an intelligent, dynamic batching engine[cite: 3, 4]. A lightweight Reinforcement Learning (RL) agent—such as a contextual bandit or Q-learning controller—could be deployed at the ingress gateway to dynamically modulate the timeout threshold $BT(t)$ in real time[cite: 4, 5]:
+The static batching thresholds ($BS, BT$) evaluated in this work could be replaced by an intelligent, dynamic batching engine. A lightweight Reinforcement Learning (RL) agent—such as a contextual bandit or Q-learning controller—could be deployed at the ingress gateway to dynamically modulate the timeout threshold $BT(t)$ in real time~\cite{fan2025satellite}:
 \begin{equation}
     BT(t) = f\left( \hat{\lambda}(t), \, \min_{r \in Q} \{D_r - t_{arr,r}\}, \, \bar{W}_{cpu}(t) \right)
     \label{eq:adaptive_bt}
 \end{equation}
-By tracking traffic arrival surges ($\hat{\lambda}$) and the minimum residual slack time of buffered requests, the orchestrator could trigger immediate flushes during high-risk intervals and expand batch sizes during traffic lulls, optimizing the trade-off between scheduling efficiency and deadline preservation[cite: 3, 4].
+By tracking traffic arrival surges ($\hat{\lambda}$) and the minimum residual slack time of buffered requests, the orchestrator could trigger immediate flushes during high-risk intervals and expand batch sizes during traffic lulls, optimizing the trade-off between scheduling efficiency and deadline preservation.
 
 \subsection{Multi-Agent Distributed Reinforcement Learning (MADRL)}
 \label{subsec:future_madrl}
 
-To eliminate the centralized Single Point of Failure and bypass the communication overhead of global telemetry aggregation, decentralized Multi-Agent Deep Reinforcement Learning (MADRL) presents a compelling alternative[cite: 5, 7]. Equipping each Satellite Edge Node with an autonomous actor-critic policy trained under Centralized Training with Decentralized Execution (CTDE) would allow satellites to make collaborative routing and scheduling decisions based solely on localized, one-hop neighborhood observations[cite: 4, 5]. This model could approximate the global efficiency of ILP solutions while achieving the instantaneous decision speeds characteristic of distributed heuristics[cite: 4, 5].
+To eliminate the centralized Single Point of Failure and bypass the communication overhead of global telemetry aggregation, decentralized Multi-Agent Deep Reinforcement Learning (MADRL) presents a compelling alternative~\cite{fan2025satellite}. Equipping each Satellite Edge Node with an autonomous actor-critic policy trained under Centralized Training with Decentralized Execution (CTDE) would allow satellites to make collaborative routing and scheduling decisions based solely on localized, one-hop neighborhood observations~\cite{fan2025satellite}. This model could approximate the global efficiency of ILP solutions while achieving the instantaneous decision speeds characteristic of distributed heuristics.
 
 \subsection{Hardware-in-the-Loop (HIL) Prototyping on Space-Qualified Hardware}
 \label{subsec:future_hil}
 
-Finally, extending this simulation-based validation toward physical implementation requires testing the optimization pipeline on physical embedded hardware architectures[cite: 4]. Deploying the \texttt{HiGHS} solver and the batching engine on radiation-hardened system-on-chip (SoC) architectures—such as the ARM Cortex-R52, Cortex-A53, or fault-tolerant space-grade RISC-V platforms (e.g., NOEL-V)—will provide empirical measurements of CPU instruction overhead, memory footprint, cache contention, and power consumption during real-time solver execution[cite: 4, 11].
+Finally, extending this simulation-based validation toward physical implementation requires testing the optimization pipeline on physical embedded hardware architectures. Deploying the \texttt{HiGHS} solver~\cite{huangfu2018highs} and the batching engine on radiation-hardened system-on-chip (SoC) architectures—such as the ARM Cortex-R52, Cortex-A53, or fault-tolerant space-grade RISC-V platforms (e.g., NOEL-V)—will provide empirical measurements of CPU instruction overhead, memory footprint, cache contention, and power consumption during real-time solver execution~\cite{denby2020asplos}.
 
 % =============================================================================
 % SECTION 6.4: CONCLUDING REMARKS
@@ -112,6 +112,6 @@ Finally, extending this simulation-based validation toward physical implementati
 \section{Concluding Remarks}
 \label{sec:concl_closing}
 
-The transition from passive bent-pipe relaying to active Orbital Edge Computing marks a significant evolution in space-based information systems[cite: 4, 5]. This thesis demonstrated that centralized Integer Linear Programming is computationally viable on spaceborne processing platforms, effectively bounding solver execution latency within sub-millisecond limits[cite: 4, 11, 14]. However, the temporal latency imposed by request buffering in ingress queues represents a fundamental physical boundary that limits the scalability of centralized scheduling under high-frequency traffic[cite: 3, 14]. 
+The transition from passive bent-pipe relaying to active Orbital Edge Computing marks a significant evolution in space-based information systems~\cite{denby2019orbital, survey_orbital_edge_2023}. This thesis demonstrated that centralized Integer Linear Programming is computationally viable on spaceborne processing platforms, effectively bounding solver execution latency within sub-millisecond limits~\cite{huangfu2018highs}. However, the temporal latency imposed by request buffering in ingress queues represents a fundamental physical boundary that limits the scalability of centralized scheduling under high-frequency traffic. 
 
-By quantifying the operational trade-offs between centralized mathematical optimization, distributed hierarchical solvers, and autonomous heuristics across diverse mission profiles, this work provides architectural guidelines for designing the next generation of resilient, energy-aware orbital computing systems[cite: 3, 5, 14].
+By quantifying the operational trade-offs between centralized mathematical optimization, distributed hierarchical solvers, and autonomous heuristics across diverse mission profiles, this work provides architectural guidelines for designing the next generation of resilient, energy-aware orbital computing systems~\cite{icdcs_satellite_2025}.

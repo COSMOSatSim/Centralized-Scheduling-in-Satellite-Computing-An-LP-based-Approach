@@ -1,10 +1,15 @@
 % =============================================================================
 % BIBLIOGRAFIA TESI DI LAUREA
 % Candidato: Claudio Bagini (Matricola 2045337)
-% Titolo: Orchestratore ILP centralizzato per il routing di task su reti satellitari
+% Titolo: Centralized ILP Orchestrator for Task Scheduling in Satellite Networks
+% Corso di Laurea in Informatica - Sapienza Università di Roma
+% Anno Accademico: 2025/2026
 % =============================================================================
 
-% --- PAPER DI RIFERIMENTO PRINCIPALE (IEEE ICDCS) ---
+% =============================================================================
+% 1. PAPER DI RIFERIMENTO DEL RELATORE (IEEE ICDCS)
+% =============================================================================
+
 @inproceedings{icdcs_satellite_2025,
   author    = {Casalicchio, Emiliano and others},
   title     = {Handling of Energy- and Time-Constrained Heterogeneous Satellite Computing Services},
@@ -14,7 +19,10 @@
   publisher = {IEEE}
 }
 
-% --- SATELLITE COMPUTING & ORBITAL EDGE COMPUTING ---
+% =============================================================================
+% 2. SATELLITE COMPUTING & ORBITAL EDGE COMPUTING (OEC)
+% =============================================================================
+
 @article{denby2019orbital,
   author    = {Denby, Bradley and Lucia, Brandon},
   title     = {Orbital Edge Computing: Nanosatellite Clusters as Accelerators for Earth Observation},
@@ -26,15 +34,12 @@
   publisher = {IEEE}
 }
 
-@article{tiansuan2023,
-  author    = {Wang, Shangguang and Zhang, Qun and Zhao, Chun and others},
-  title     = {Satellite Computing: Vision and Challenges -- Tiansuan Constellation},
-  journal   = {IEEE Internet of Things Journal},
-  volume    = {10},
-  number    = {20},
-  pages     = {17550--17563},
-  year      = {2023},
-  publisher = {IEEE}
+@inproceedings{denby2020asplos,
+  author    = {Denby, Bradley and Lucia, Brandon},
+  title     = {Orbital Edge Computing: Nanosatellite Constellations as a New Class of Computer System},
+  booktitle = {Proceedings of the 25th International Conference on Architectural Support for Programming Languages and Operating Systems (ASPLOS)},
+  pages     = {939--954},
+  year      = {2020}
 }
 
 @article{survey_orbital_edge_2023,
@@ -48,9 +53,20 @@
   publisher = {IEEE}
 }
 
+@article{tiansuan2023,
+  author    = {Wang, Shangguang and Zhang, Qun and Zhao, Chun and others},
+  title     = {Satellite Computing: Vision and Challenges -- {Tiansuan} Constellation},
+  journal   = {IEEE Internet of Things Journal},
+  volume    = {10},
+  number    = {20},
+  pages     = {17550--17563},
+  year      = {2023},
+  publisher = {IEEE}
+}
+
 @article{zhong2025leo,
   author    = {Zhong, L. and Li, Y. and Ge, M.-F. and Feng, M. and Mao, S.},
-  title     = {Joint Task Offloading and Resource Allocation for LEO Satellite-Based Mobile Edge Computing Systems with Heterogeneous Task Demands},
+  title     = {Joint Task Offloading and Resource Allocation for {LEO} Satellite-Based Mobile Edge Computing Systems with Heterogeneous Task Demands},
   journal   = {IEEE Transactions on Vehicular Technology},
   volume    = {74},
   number    = {7},
@@ -61,7 +77,7 @@
 
 @article{fan2025satellite,
   author    = {Fan, W. and Meng, Q. and Wang, G. and Bian, H. and Liu, Y.},
-  title     = {Satellite Edge Intelligence: DRL-Based Resource Management for Task Inference in LEO-Based Satellite-Ground Collaborative Networks},
+  title     = {Satellite Edge Intelligence: {DRL}-Based Resource Management for Task Inference in {LEO}-Based Satellite-Ground Collaborative Networks},
   journal   = {IEEE Transactions on Mobile Computing},
   volume    = {24},
   number    = {10},
@@ -70,7 +86,53 @@
   publisher = {IEEE}
 }
 
-% --- OTTIMIZZAZIONE E PROGRAMMAZIONE LINEARE INTERA (ILP) ---
+@article{jiang2025remote,
+  author    = {Jiang, Q. and Zheng, L. and Zhou, Y. and Liu, H. and Kong, Q. and Zhang, Y. and Chen, B.},
+  title     = {Efficient On-Orbit Remote Sensing Imagery Processing via Satellite Edge Computing Resource Scheduling Optimization},
+  journal   = {IEEE Transactions on Geoscience and Remote Sensing},
+  volume    = {63},
+  pages     = {1--19},
+  year      = {2025},
+  publisher = {IEEE}
+}
+
+@article{peng2025blocked,
+  author    = {Peng, P. and Xu, T. and Chen, X. and Zarakovitis, C. C. and Wu, C.},
+  title     = {Blocked-Job-Offloading-Based Computing Resources Sharing in {LEO} Satellite Networks},
+  journal   = {IEEE Internet of Things Journal},
+  volume    = {12},
+  number    = {2},
+  pages     = {2287--2290},
+  year      = {2025},
+  publisher = {IEEE}
+}
+
+@article{chen2021isl,
+  author    = {Chen, Qian and Giambene, Giovanni and Yang, Lian and Fan, Chen and Chen, Xiaomin},
+  title     = {Analysis of Inter-Satellite Link Paths for {LEO} Mega-Constellation Networks},
+  journal   = {IEEE Transactions on Vehicular Technology},
+  volume    = {70},
+  number    = {3},
+  pages     = {2743--2755},
+  year      = {2021},
+  publisher = {IEEE}
+}
+
+@article{leyva2023satellite,
+  author    = {Leyva-Mayorga, Israel and Martinez-Gost, Marc and Moretti, Marco and P{\'e}rez-Neira, Ana and V{\'a}zquez, Miguel and Popovski, Petar and Soret, Beatriz},
+  title     = {Satellite Edge Computing for Real-Time and Very-High Resolution Earth Observation},
+  journal   = {IEEE Transactions on Communications},
+  volume    = {71},
+  number    = {10},
+  pages     = {6180--6194},
+  year      = {2023},
+  publisher = {IEEE}
+}
+
+% =============================================================================
+% 3. RICERCA OPERATIVA E PROGRAMMAZIONE LINEARE INTERA (ILP)
+% =============================================================================
+
 @book{wolsey1998integer,
   author    = {Wolsey, Laurence A.},
   title     = {Integer Programming},
@@ -87,36 +149,135 @@
   address   = {Cambridge, UK}
 }
 
-@manual{gurobi2024,
-  author    = {{Gurobi Optimization, LLC}},
-  title     = {Gurobi Optimizer Reference Manual},
-  year      = {2024},
-  url       = {https://www.gurobi.com}
+% =============================================================================
+% 4. SOLUTORI, MODELLATORI E FRAMEWORK DI SIMULAZIONE
+% =============================================================================
+
+@article{huangfu2018highs,
+  author    = {Huangfu, Qi and Hall, J. A. Julian},
+  title     = {Parallelizing the Dual Revised Simplex Method},
+  journal   = {Mathematical Programming Computation},
+  volume    = {10},
+  number    = {1},
+  pages     = {119--142},
+  year      = {2018},
+  publisher = {Springer}
 }
 
-% --- PROTOCOLLI DI ROUTING E METRICHE DI RETE ---
-@techreport{batman_protocol,
-  author      = {Neumann, Axel and Aichele, Corinna and Lindner, Marek and Fux, Simon},
-  title       = {Better Approach To Mobile Ad-hoc Networking (B.A.T.M.A.N.)},
-  institution = {IETF Draft},
-  year        = {2008},
-  note        = {draft-wunderlich-openmesh-manet-routing-00}
+@techreport{pulp2011,
+  author      = {Mitchell, Stuart and O'Sullivan, Michael and Dambrosio, Antony},
+  title       = {PuLP: A Linear Programming Toolkit for {Python}},
+  institution = {The University of Auckland},
+  year        = {2011},
+  note        = {Version 2.8}
 }
+
+@manual{simpy2023,
+  author    = {Scherfke, Stefan and L{\"u}nsdorf, Ontje},
+  title     = {SimPy: Discrete Event Simulation for {Python}},
+  year      = {2023},
+  note      = {Version 4.1.1},
+  url       = {https://simpy.readthedocs.io/}
+}
+
+% =============================================================================
+% 5. LIBRERIE SCIENTIFICHE E COMPUTAZIONALI PYTHON
+% =============================================================================
+
+@article{harris2020numpy,
+  author    = {Harris, Charles R. and Millman, K. Jarrod and van der Walt, St{\'e}fan J. and Gommers, Ralf and Virtanen, Pauli and Cournapeau, David and Wieser, Eric and Taylor, Julian and Berg, Sebastian and Smith, Nathaniel J. and others},
+  title     = {Array programming with {NumPy}},
+  journal   = {Nature},
+  volume    = {585},
+  number    = {7825},
+  pages     = {357--362},
+  year      = {2020},
+  publisher = {Nature Publishing Group}
+}
+
+@article{hunter2007matplotlib,
+  author    = {Hunter, John D.},
+  title     = {Matplotlib: A 2D Graphics Environment},
+  journal   = {Computing in Science \& Engineering},
+  volume    = {9},
+  number    = {3},
+  pages     = {90--95},
+  year      = {2007},
+  publisher = {IEEE Computer Society}
+}
+
+@article{virtanen2020scipy,
+  author    = {Virtanen, Pauli and Gommers, Ralf and Oliphant, Travis E. and Haberland, Matt and Reddy, Tyler and Cournapeau, David and Burovski, Evgeni and Peterson, Pearu and Weckesser, Warren and Bright, Jonathan and others},
+  title     = {{SciPy} 1.0: Fundamental Algorithms for Scientific Computing in {Python}},
+  journal   = {Nature Methods},
+  volume    = {17},
+  number    = {3},
+  pages     = {261--272},
+  year      = {2020},
+  publisher = {Nature Publishing Group}
+}
+
+@inproceedings{vallado2006sgp4,
+  author    = {Vallado, David and Crawford, Paul and Hujsak, Richard and Kelso, T. S.},
+  title     = {Revisiting Spacetrack Report No. 3: Rev 2},
+  booktitle = {AIAA/AAS Astrodynamics Specialist Conference and Exhibit},
+  pages     = {6753},
+  year      = {2006}
+}
+
+% =============================================================================
+% 6. PROTOCOLLI DI RETE E METRICHE DI LOAD BALANCING
+% =============================================================================
 
 @inproceedings{tang2003loadbalancing,
-  author    = {Tang, X. and Yi, X.},
-  title     = {A General Metric of Load Balancing in $\delta$-range},
-  booktitle = {Advanced Parallel Processing Technologies},
+  author    = {Yang, X. and Dai, H. and Tang, Y. and Yi, X.},
+  title     = {A General Metric of Load Balancing in $\delta$-Range},
+  booktitle = {Proceedings of Advanced Parallel Processing Technologies (APPT)},
   pages     = {311--321},
   year      = {2003},
   publisher = {Springer}
 }
 
-% --- STRUMENTI DI SIMULAZIONE ---
-@manual{simpy2023,
-  author    = {Scherfke, Stefan and L{\"u}nsdorf, Ontje},
-  title     = {SimPy: Discrete Event Simulation for Python},
-  year      = {2023},
-  note      = {Version 4.1.1},
-  url       = {https://simpy.readthedocs.io/}
+@techreport{batman_protocol,
+  author      = {Neumann, Axel and Aichele, Corinna and Lindner, Marek and Fux, Simon},
+  title       = {Better Approach To Mobile Ad-hoc Networking ({B.A.T.M.A.N.})},
+  institution = {IETF Draft},
+  year        = {2008},
+  note        = {draft-wunderlich-openmesh-manet-routing-00}
+}
+
+
+% =============================================================================
+% TOPOLOGIA ORBITALE, LINK LASER E CAMMINI MINIMI
+% =============================================================================
+
+@article{walker1984satellite,
+  author    = {Walker, John G.},
+  title     = {Satellite Constellations},
+  journal   = {Journal of the British Interplanetary Society},
+  volume    = {37},
+  pages     = {559--571},
+  year      = {1984}
+}
+
+@article{chaudhry2021laser,
+  author    = {Chaudhry, A. U. and Yanikomeroglu, H.},
+  title     = {Laser Intersatellite Links in a {Starlink} Constellation: A Classification and Analysis},
+  journal   = {IEEE Vehicular Technology Magazine},
+  volume    = {16},
+  number    = {2},
+  pages     = {48--56},
+  year      = {2021},
+  publisher = {IEEE}
+}
+
+@article{dijkstra1959note,
+  author    = {Dijkstra, Edsger W.},
+  title     = {A Note on Two Problems in Connexion with Graphs},
+  journal   = {Numerische Mathematik},
+  volume    = {1},
+  number    = {1},
+  pages     = {269--271},
+  year      = {1959},
+  publisher = {Springer}
 }

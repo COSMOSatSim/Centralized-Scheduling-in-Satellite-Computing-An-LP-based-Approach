@@ -7,51 +7,56 @@ A level-1 auxiliary file: capitoli/chapter3_ilp_architecture.aux
 A level-1 auxiliary file: capitoli/chapter4_performance_analysis.aux
 A level-1 auxiliary file: capitoli/chapter5_comparative_benchmark.aux
 A level-1 auxiliary file: capitoli/chapter6_conclusions.aux
-The style file: sapthesis.bst
+The style file: IEEEtran.bst
 Reallocated singl_function (elt_size=8) to 100 items from 50.
-Reallocated glb_str_ptr (elt_size=8) to 20 items from 10.
-Reallocated global_strs (elt_size=200001) to 20 items from 10.
-Reallocated glb_str_end (elt_size=8) to 20 items from 10.
+Reallocated singl_function (elt_size=8) to 100 items from 50.
+Reallocated singl_function (elt_size=8) to 100 items from 50.
 Reallocated wiz_functions (elt_size=8) to 6000 items from 3000.
+Reallocated singl_function (elt_size=8) to 100 items from 50.
 Database file #1: bibliografia.bib
-You've used 12 entries,
-            3472 wiz_defined-function locations,
-            775 strings with 7918 characters,
-and the built_in function-call counts, 6557 in all, are:
-= -- 570
-> -- 248
-< -- 2
-+ -- 126
-- -- 68
-* -- 341
-:= -- 815
-add.period$ -- 40
-call.type$ -- 12
-change.case$ -- 71
-chr.to.int$ -- 0
-cite$ -- 12
-duplicate$ -- 443
-empty$ -- 566
-format.name$ -- 78
-if$ -- 1564
+-- IEEEtran.bst version 1.14 (2015/08/26) by Michael Shell.
+-- http://www.michaelshell.org/tex/ieeetran/bibtex/
+-- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
+
+Done.
+You've used 25 entries,
+            4087 wiz_defined-function locations,
+            982 strings with 12496 characters,
+and the built_in function-call counts, 21943 in all, are:
+= -- 1794
+> -- 565
+< -- 210
++ -- 328
+- -- 115
+* -- 1079
+:= -- 3198
+add.period$ -- 51
+call.type$ -- 25
+change.case$ -- 25
+chr.to.int$ -- 480
+cite$ -- 25
+duplicate$ -- 1515
+empty$ -- 1620
+format.name$ -- 118
+if$ -- 5098
 int.to.chr$ -- 0
-int.to.str$ -- 12
-missing$ -- 110
-newline$ -- 65
-num.names$ -- 24
-pop$ -- 283
+int.to.str$ -- 25
+missing$ -- 270
+newline$ -- 100
+num.names$ -- 25
+pop$ -- 579
 preamble$ -- 1
-purify$ -- 56
-quote$ -- 0
-skip$ -- 367
+purify$ -- 0
+quote$ -- 2
+skip$ -- 1669
 stack$ -- 0
-substring$ -- 185
-swap$ -- 272
-text.length$ -- 2
+substring$ -- 1202
+swap$ -- 1338
+text.length$ -- 50
 text.prefix$ -- 0
-top$ -- 0
-type$ -- 44
+top$ -- 5
+type$ -- 25
 warning$ -- 0
-while$ -- 35
-width$ -- 14
-write$ -- 131
+while$ -- 102
+width$ -- 27
+write$ -- 277

@@ -524,7 +524,6 @@ INPUT capitoli/chapter6_conclusions.tex
 INPUT ./Tesi_Satellite_Computing_Bagini_2045337.bbl
 INPUT ./Tesi_Satellite_Computing_Bagini_2045337.bbl
 INPUT Tesi_Satellite_Computing_Bagini_2045337.bbl
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
 INPUT Tesi_Satellite_Computing_Bagini_2045337.aux
 INPUT ./capitoli/chapter1_introduction.aux
 INPUT ./capitoli/chapter1_introduction.aux
@@ -549,7 +548,6 @@ INPUT ./Tesi_Satellite_Computing_Bagini_2045337.out
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmbx10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmbx12.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmbxi10.pfb
-INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmex10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi12.pfb

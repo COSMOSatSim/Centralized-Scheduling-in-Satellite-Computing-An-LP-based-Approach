@@ -1,7 +1,7 @@
 \chapter{Performance Analysis, Optimization, and Experimental Evaluation}
 \label{chap:performance_analysis}
 
-This chapter presents the experimental evaluation, systematic parametric tuning, and consolidated validation of the proposed Centralized Integer Linear Programming (ILP) Orchestrator. While Chapter~\ref{chap:ilp_architecture} established the formal mathematical optimization model and its discrete-event simulation architecture, deploying exact centralized scheduling in Low Earth Orbit (LEO) constellations introduces fundamental operational trade-offs. In particular, centralized optimization must balance the queuing latency introduced by task accumulation in ingress buffers against the physical dynamics of dynamic inter-satellite topologies and strict application deadlines.
+This chapter presents the experimental evaluation, systematic parametric tuning, and consolidated validation of the proposed Centralized Integer Linear Programming (ILP) Orchestrator~\cite{icdcs_satellite_2025}. While Chapter~\ref{chap:ilp_architecture} established the formal mathematical optimization model and its discrete-event simulation architecture, deploying exact centralized scheduling in Low Earth Orbit (LEO) constellations introduces fundamental operational trade-offs~\cite{denby2019orbital, survey_orbital_edge_2023}. In particular, centralized optimization must balance the queuing latency introduced by task accumulation in ingress buffers against the physical dynamics of dynamic inter-satellite topologies and strict application deadlines~\cite{icdcs_satellite_2025, zhong2025leo}.
 
 To address these challenges, this chapter follows a progressive two-stage tuning methodology concluded by an ablation validation:
 \begin{enumerate}
@@ -16,28 +16,28 @@ To address these challenges, this chapter follows a progressive two-stage tuning
 \section{Simulation Environment and Methodological Setup}
 \label{sec:exp_setup}
 
-The experimental campaign was carried out using an event-driven discrete-event simulation engine implemented in Python with \texttt{SimPy}, interfaced with the \texttt{PuLP} mathematical programming library and solved via the open-source \texttt{HiGHS} branch-and-cut solver. The simulator models orbital kinematics, optical Inter-Satellite Links (ISLs), dynamic ground-to-satellite line-of-sight contact windows, and heterogeneous onboard Satellite Edge Nodes (SENs).
+The experimental campaign was carried out using an event-driven discrete-event simulation engine implemented in Python with \texttt{SimPy}~\cite{simpy2023}, interfaced with the \texttt{PuLP} mathematical programming library~\cite{pulp2011} and solved via the open-source \texttt{HiGHS} branch-and-cut solver~\cite{huangfu2018highs}. Numerical telemetry and array manipulations were processed using \texttt{NumPy}~\cite{harris2020numpy} and \texttt{SciPy}~\cite{virtanen2020scipy}, while performance distributions and diagnostic curves were generated using \texttt{Matplotlib}~\cite{hunter2007matplotlib}. The simulator models orbital kinematics~\cite{vallado2006sgp4}, optical Inter-Satellite Links (ISLs)~\cite{chen2021isl, chaudhry2021laser}, dynamic ground-to-satellite line-of-sight contact windows, and heterogeneous onboard Satellite Edge Nodes (SENs)~\cite{icdcs_satellite_2025}.
 
 \subsection{Constellation Topology and Scenario Parameters}
 \label{subsec:topology_params}
 
-The orbital network is modeled as a regional Walker-Delta LEO constellation operating at an altitude of $600\text{ km}$ with an inclination of $53^\circ$. Satellites are interconnected via full-duplex optical ISLs characterized by nominal transmission bandwidths of $B_{u,v} = 1\text{ Gbps}$ and propagation delays $\tau_{u,v}$ computed dynamically from orbital positions. A designated Master satellite in the operational region collects offloaded task requests forwarded by Ground Users (GUs) through regional Ground Access Points ($AP_{global}$).
+The orbital network is modeled as a regional Walker-Delta LEO constellation operating at an altitude of $600\text{ km}$ with an inclination of $53^\circ$~\cite{walker1984satellite}. Satellites are interconnected via full-duplex optical ISLs characterized by nominal transmission bandwidths of $B_{u,v} = 1\text{ Gbps}$ and propagation delays $\tau_{u,v}$ computed dynamically from orbital positions~\cite{chaudhry2021laser}. A designated Master satellite in the operational region collects offloaded task requests forwarded by Ground Users (GUs) through regional Ground Access Points ($AP_{global}$)~\cite{icdcs_satellite_2025}.
 
-Workload demands and request dimensions are parameterized through three profiling vectors:
+Workload demands and request dimensions are parameterized through three profiling vectors, consistent with recent benchmarking literature~\cite{icdcs_satellite_2025}:
 \begin{itemize}
-    \item \textbf{Workload Distribution Vector $\boldsymbol{\beta} = (\beta_G, \beta_C, \beta_{CD})$:} Dictates the proportion of Generic tasks, CPU-intensive tasks, and Data-intensive tasks. In the baseline batching and tuning experiments, the default multi-service profile is set to $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$.
-    \item \textbf{Real-Time Payload Vector $\boldsymbol{\alpha} = (\alpha_M, \alpha_L, \alpha_V)$:} Governs the distribution of input/output dataset dimensions across Medium ($1\text{--}5\text{ MB}$), Large ($5\text{--}20\text{ MB}$), and Very Large ($20\text{--}50\text{ MB}$) files, parameterized as $\boldsymbol{\alpha} = (0.30, 0.50, 0.20)$.
-    \item \textbf{Batch Task Data Vector $\boldsymbol{\gamma}_{data} = (\gamma_L, \gamma_V)$:} Controls delay-tolerant background transfers, fixed to $\boldsymbol{\gamma}_{data} = (0.70, 0.30)$.
+    \item \textbf{Workload Distribution Vector $\boldsymbol{\beta} = (\beta_G, \beta_C, \beta_{CD})$:} Dictates the proportion of Generic tasks, CPU-intensive tasks, and Data-intensive tasks. In the baseline batching and tuning experiments, the default multi-service profile is set to $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$~\cite{icdcs_satellite_2025}.
+    \item \textbf{Real-Time Payload Vector $\boldsymbol{\alpha} = (\alpha_M, \alpha_L, \alpha_V)$:} Governs the distribution of input/output dataset dimensions across Medium ($1\text{--}5\text{ MB}$), Large ($5\text{--}20\text{ MB}$), and Very Large ($20\text{--}50\text{ MB}$) files, parameterized as $\boldsymbol{\alpha} = (0.30, 0.50, 0.20)$~\cite{icdcs_satellite_2025, leyva2023satellite}.
+    \item \textbf{Batch Task Data Vector $\boldsymbol{\gamma}_{data} = (\gamma_L, \gamma_V)$:} Controls delay-tolerant background transfers, fixed to $\boldsymbol{\gamma}_{data} = (0.70, 0.30)$~\cite{denby2019orbital}.
 \end{itemize}
 
-Candidate edge nodes are assigned operational battery reserves of $E_i \in \{40, 80\}\text{ kJ}$ per orbital pass. The request arrival rate $\lambda$ varies systematically from $2\text{ req/s}$ (low-load, mean inter-arrival time of $0.50\text{ s}$) up to $10\text{ req/s}$ (heavy-load stress regime, mean inter-arrival time of $0.10\text{ s}$).
+Candidate edge nodes are assigned operational battery reserves of $E_i \in \{40, 80\}\text{ kJ}$ per orbital pass~\cite{icdcs_satellite_2025, peng2025blocked}. The request arrival rate $\lambda$ varies systematically from $2\text{ req/s}$ (low-load, mean inter-arrival time of $0.50\text{ s}$) up to $10\text{ req/s}$ (heavy-load stress regime, mean inter-arrival time of $0.10\text{ s}$)~\cite{icdcs_satellite_2025}.
 
 \subsection{Two-Tier Optimization Methodology}
 \label{subsec:methodology_roadmap}
 
 Directly testing all permutations of batching thresholds, objective weights, and network loads would require thousands of simulations and obscure the physical origins of performance bottlenecks. We therefore decouple the optimization process:
 \begin{itemize}
-    \item \textbf{Architectural Decoupling:} Ingress batching ($BS, BT$) governs the static waiting time of tasks in the coordinator queue \textit{before} the ILP model is instantiated. Conversely, objective function weights ($\alpha, \gamma$) guide the mathematical branch-and-bound trade-offs \textit{during} solver execution.
+    \item \textbf{Architectural Decoupling:} Ingress batching ($BS, BT$) governs the static waiting time of tasks in the coordinator queue \textit{before} the ILP model is instantiated. Conversely, objective function weights ($\alpha, \gamma$) guide the mathematical branch-and-bound trade-offs \textit{during} solver execution~\cite{wolsey1998integer, boyd2004convex}.
     \item \textbf{Sequential Tuning:} By first sweeping $BS \times BT$ under default weights, we isolate the feasible batching configurations that do not cause queue-induced deadline collapse. Next, we tune the objective weights ($\alpha, \gamma$) under heavy stress on these selected batching archetypes. Finally, we benchmark the optimized configurations against the pre-tuning baseline across the entire workload spectrum.
 \end{itemize}
 
@@ -47,7 +47,7 @@ Directly testing all permutations of batching thresholds, objective weights, and
 \section{\texorpdfstring{Macro-Tuning: Exploration and Selection of Batching Policies ($BS \times BT$)}{Macro-Tuning: Exploration and Selection of Batching Policies (BS x BT)}}
 \label{sec:batching_exploration}
 
-In a centralized orchestrator, incoming requests are buffered until either the Batch Size ($BS$) or the Batch Timeout ($BT$) threshold is triggered. This introduces a fundamental trade-off: larger batches enlarge the joint solution space, enabling the solver to achieve higher allocation efficiency, but prolonged buffering erodes task deadline margins.
+In a centralized orchestrator, incoming requests are buffered until either the Batch Size ($BS$) or the Batch Timeout ($BT$) threshold is triggered. This introduces a fundamental trade-off: larger batches enlarge the joint solution space, enabling the solver to achieve higher allocation efficiency, but prolonged buffering erodes task deadline margins~\cite{icdcs_satellite_2025}.
 
 To quantify this trade-off, a parametric sweep of 28 configurations was executed across arrival rates $\lambda \in [2, 10]\text{ req/s}$ under both Energy Mapping ($w_{lat}=0, w_{en}=1$) and Time Mapping ($w_{lat}=1, w_{en}=0$), evaluated across deadline relaxation levels $\Delta D \in \{10\%, 20\%, 30\%\}$.
 
@@ -73,7 +73,7 @@ Figures~\ref{fig:line_sr_energy} and~\ref{fig:line_sr_time} show the Task Succes
 The empirical trends highlight three critical dynamics:
 \begin{itemize}
     \item \textbf{Performance Collapse in High-Timeout Regimes:} Configurations relying on long buffering timeouts (e.g., $BS=20$ with $BT \ge 0.4\text{ s}$, orange and yellow curves) exhibit severe degradation, dropping below $55\%$ at $\lambda=2\text{ req/s}$ and falling under $30\%$ at $\lambda=10\text{ req/s}$.
-    \item \textbf{Dominance of Fast-Dispatch Policies:} Configurations that enforce immediate dispatch—such as $BS=1$, $BS=2$ with $BT=2.0\text{ s}$, or $BS=20$ with $BT \le 0.05\text{ s}$—achieve peak completion rates exceeding $90\%$ at low arrival rates ($\lambda \le 3\text{ req/s}$) and maintain higher resilience under stress.
+    \item \textbf{Dominance of Fast-Dispatch Policies:} Configurations that enforce immediate dispatch—such as $BS=1$, $BS=2$ with $BT=2.0\text{ s}$, or $BS=20$ with $BT \le 0.05\text{ s}$—achieve peak completion rates exceeding $90\%$ at low arrival rates ($\lambda \le 3\text{ req/s}$) and maintain higher resilience under stress~\cite{icdcs_satellite_2025}.
     \item \textbf{Mapping Strategy Invariance:} The success curves for Time Mapping and Energy Mapping are virtually identical (differing by less than $2.5\%$), confirming that under heavy traffic, system throughput is bounded primarily by queue dwell times rather than the objective metric.
 \end{itemize}
 
@@ -126,7 +126,7 @@ These plots validate a central property of the centralized orchestrator:
     T_{exec} \approx \text{const} \le 0.60\text{ ms}, \quad \text{while} \quad T_{net+wait} \propto \frac{1}{\mu - \lambda}
     \label{eq:latency_asymptote}
 \end{equation}
-The solver runtime ($T_{exec}$) remains virtually constant regardless of the arrival rate, demonstrating that solving instances of bounded size ($|R| \le 20, |S| \le 15$) is computationally practical on space-qualified hardware. The latency growth observed under high traffic is driven almost entirely by the queuing component ($T_{net+wait}$), which rises from $\approx 0.40\text{ ms}$ to over $1.70\text{ ms}$.
+The solver runtime ($T_{exec}$) remains virtually constant regardless of the arrival rate, demonstrating that solving instances of bounded size ($|R| \le 20, |S| \le 15$) is computationally practical on space-qualified hardware using efficient branch-and-cut solvers~\cite{huangfu2018highs, wolsey1998integer}. The latency growth observed under high traffic is driven almost entirely by the queuing component ($T_{net+wait}$), which rises from $\approx 0.40\text{ ms}$ to over $1.70\text{ ms}$.
 
 \subsection{Selection of Viable Batching Archetypes}
 \label{subsec:selection_archetypes}
@@ -143,7 +143,7 @@ The sweep results rule out all batching policies with $BT \ge 0.2\text{ s}$ or $
 \section{\texorpdfstring{Micro-Tuning: Multi-Objective Weight Calibration under Stress ($\gamma \times \alpha$)}{Micro-Tuning: Multi-Objective Weight Calibration under Stress (gamma x alpha)}}
 \label{sec:cross_sensitivity}
 
-Having isolated the viable batching configurations ($BS=2, BT=2.0\text{ s}$ and $BS=20, BT=0.05\text{ s}$), we calibrate the scalarization weights of the multi-objective function:
+Having isolated the viable batching configurations ($BS=2, BT=2.0\text{ s}$ and $BS=20, BT=0.05\text{ s}$), we calibrate the scalarization weights of the multi-objective function~\cite{boyd2004convex}:
 \begin{equation}
     \min Z = \begin{cases}
         \alpha Z_{time} + \beta Z_{energy} + \gamma Z_{sunset}, & \text{if primary objective is Time} \\
@@ -151,7 +151,7 @@ Having isolated the viable batching configurations ($BS=2, BT=2.0\text{ s}$ and 
     \end{cases}
     \label{eq:multi_obj_evaluation}
 \end{equation}
-where $\beta = 1.0$, the primary objective weight is evaluated across $\alpha \in \{10, 50, 1000\}$, and the orbital sunset deterrent penalty is evaluated across $\gamma \in \{2, 4, 6, 8, 10, 1000, 5000, 10000\}$. The cross-sensitivity experiment was conducted under heavy stress loads of $\lambda = 8\text{ req/s}$ and $\lambda = 10\text{ req/s}$, comparing both Dijkstra-Time and Dijkstra-Energy link routing metrics.
+where $\beta = 1.0$, the primary objective weight is evaluated across $\alpha \in \{10, 50, 1000\}$, and the orbital sunset deterrent penalty is evaluated across $\gamma \in \{2, 4, 6, 8, 10, 1000, 5000, 10000\}$. The cross-sensitivity experiment was conducted under heavy stress loads of $\lambda = 8\text{ req/s}$ and $\lambda = 10\text{ req/s}$, comparing both Dijkstra-Time and Dijkstra-Energy link routing metrics~\cite{dijkstra1959note, icdcs_satellite_2025}.
 
 \subsection{Impact on Success Rate}
 \label{subsec:cross_sr}
@@ -285,9 +285,9 @@ Figure~\ref{fig:confronto_failures} illustrates the evolution of failure cause d
 
 The breakdown confirms three qualitative shifts:
 \begin{itemize}
-    \item \textbf{Mitigation of Premature Task Drops:} Under $BS=2, BT=2.0\text{ s}$, the optimized weight configuration substantially reduces the proportion of \textit{Insufficient CPU} drops by forcing the solver to distribute tasks across available SENs rather than overloading localized nodes.
+    \item \textbf{Mitigation of Premature Task Drops:} Under $BS=2, BT=2.0\text{ s}$, the optimized weight configuration substantially reduces the proportion of \textit{Insufficient CPU} drops by forcing the solver to distribute tasks across available SENs rather than overloading localized nodes~\cite{tang2003loadbalancing}.
     \item \textbf{Elimination of Orbital Sunset Drops:} In the baseline runs (\textit{Prima}), occasional task losses occurred due to satellites transitioning past the visibility horizon during routing. In the post-optimization runs (\textit{Dopo}), drops categorized as \textit{Sunset} are completely eliminated across all arrival rates.
-    \item \textbf{Dominance of Physical Boundaries:} At high arrival rates ($\lambda \ge 8\text{ req/s}$), rejections in the optimized system are driven primarily by physical resource exhaustion (\textit{Insufficient CPU+NET}) and strict deadline limits, verifying that the solver is operating at the physical capacity boundary of the constellation.
+    \item \textbf{Dominance of Physical Boundaries:} At high arrival rates ($\lambda \ge 8\text{ req/s}$), rejections in the optimized system are driven primarily by physical resource exhaustion (\textit{Insufficient CPU+NET}) and strict deadline limits, verifying that the solver is operating at the physical capacity boundary of the constellation~\cite{icdcs_satellite_2025}.
 \end{itemize}
 
 \subsection{Response Time Containment}
@@ -315,7 +315,7 @@ The latency decomposition highlights:
 \section{Summary of Findings and Architectural Readiness}
 \label{sec:summary_findings}
 
-The empirical evaluation and tuning campaign yield four foundational conclusions regarding centralized ILP orchestration in LEO satellite networks:
+The empirical evaluation and tuning campaign yield four foundational conclusions regarding centralized ILP orchestration in LEO satellite networks~\cite{icdcs_satellite_2025}:
 \begin{enumerate}
     \item \textbf{Queuing Dwell Time is the Dominant Bottleneck:} Solver computation time remains negligible ($T_{exec} \le 0.60\text{ ms}$) across practical batch sizes. System degradation under heavy load is driven primarily by buffer residence times during batch aggregation, which trigger deadline violations before optimization begins.
     \item \textbf{Necessity of Fast Dispatch:} To maintain service feasibility, centralized orchestrators must operate with aggressive timeouts ($BT \le 0.05\text{ s}$) or minimal batch capacities ($BS \le 2$), keeping buffer residence times well below application deadlines.
@@ -323,4 +323,4 @@ The empirical evaluation and tuning campaign yield four foundational conclusions
     \item \textbf{Architectural Readiness for Multi-Algorithm Benchmarking:} The two calibrated configurations—reactive fast-dispatch ($BS=20, BT=0.05\text{ s}$) and controlled small-batching ($BS=2, BT=2.0\text{ s}$) with $\alpha=1000$ and $\gamma=8$—represent the optimized operating envelope of the centralized ILP approach.
 \end{enumerate}
 
-These fully tuned centralized configurations provide the baseline for Chapter~\ref{chap:benchmark}, where their performance is benchmarked against state-of-the-art distributed heuristics (OrbitAware, DTS-base, DTS-APopt) and hierarchical ILP formulations across heterogeneous workload profiles.
+These fully tuned centralized configurations provide the baseline for Chapter~\ref{chap:comparative_benchmark}, where their performance is benchmarked against state-of-the-art distributed heuristics (OrbitAware, DTS-base, DTS-APopt) and hierarchical ILP formulations across heterogeneous workload profiles~\cite{icdcs_satellite_2025}.
