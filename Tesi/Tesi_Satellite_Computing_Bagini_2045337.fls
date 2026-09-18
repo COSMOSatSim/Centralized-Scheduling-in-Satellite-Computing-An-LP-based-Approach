@@ -365,6 +365,9 @@ INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbxi10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmr12.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/lmmi12.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/lmsy10.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx12.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx10.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx7.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT ./figures/01_Line_Success_Rate_ENERGY.png
@@ -372,6 +375,7 @@ INPUT ./figures/01_Line_Success_Rate_ENERGY.png
 INPUT ./figures/01_Line_Success_Rate_ENERGY.png
 INPUT ./figures/01_Line_Success_Rate_ENERGY.png
 INPUT ./figures/01_Line_Success_Rate_ENERGY.png
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx5.tfm
 INPUT ./figures/01_Line_Success_Rate_TIME.png
 INPUT ./figures/01_Line_Success_Rate_TIME.png
 INPUT ./figures/01_Line_Success_Rate_TIME.png
@@ -429,9 +433,6 @@ INPUT ./figures/03_Cross_Response_Time_AR_10.png
 INPUT ./figures/03_Cross_Response_Time_AR_10.png
 INPUT ./figures/03_Cross_Response_Time_AR_10.png
 INPUT ./figures/03_Cross_Response_Time_AR_10.png
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx10.tfm
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx7.tfm
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx5.tfm
 INPUT ./figures/01_Confronto_Success_Rate_DijkTime.png
 INPUT ./figures/01_Confronto_Success_Rate_DijkTime.png
 INPUT ./figures/01_Confronto_Success_Rate_DijkTime.png
