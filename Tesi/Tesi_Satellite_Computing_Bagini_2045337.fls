@@ -293,10 +293,7 @@ INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam7.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr8.tfm
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr6.tfm
 INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc
-INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr17.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbx12.tfm
 INPUT ./Tesi_Satellite_Computing_Bagini_2045337.toc
@@ -312,7 +309,10 @@ INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/lmmib7.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/lmbsy10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/lmbsy10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/lmbsy7.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr8.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr6.tfm
 INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathsy.enc
+INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-rm.enc
 OUTPUT Tesi_Satellite_Computing_Bagini_2045337.toc
 INPUT ./capitoli/chapter1_introduction.tex
 INPUT ./capitoli/chapter1_introduction.tex
@@ -335,7 +335,6 @@ INPUT ./capitoli/chapter2_state_of_the_art.tex
 INPUT capitoli/chapter2_state_of_the_art.tex
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr12.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbx12.tfm
-INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc
 INPUT ./capitoli/chapter3_ilp_architecture.tex
 INPUT ./capitoli/chapter3_ilp_architecture.tex
 OUTPUT capitoli/chapter3_ilp_architecture.aux
@@ -355,6 +354,7 @@ INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/lmsy9.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msam10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmtti10.tfm
+INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc
 INPUT ./capitoli/chapter4_performance_analysis.tex
 INPUT ./capitoli/chapter4_performance_analysis.tex
 OUTPUT capitoli/chapter4_performance_analysis.aux

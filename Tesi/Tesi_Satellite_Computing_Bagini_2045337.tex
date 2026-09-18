@@ -45,7 +45,7 @@
 }
 
 % --- Candidate and Thesis Metadata ---
-\title{Centralized ILP Orchestrator for Task Scheduling in Satellite Networks}
+\title{Centralized Scheduling in Satellite Computing:\\ An LP-based Approach}
 \author{Claudio Bagini}
 \IDnumber{2045337}
 \course{Computer Science}
@@ -53,8 +53,7 @@
 \submitdate{2025/2026}
 \copyyear{2026}
 \advisor{Dr. Emiliano Casalicchio}
-\coadvisor{}
-\authoremail{bagini.2045337@studenti.uniroma1.it}
+\authoremail{claudio.bagini@gmail.com}
 \versiondate{\today}
 \thesistype{Bachelor's Thesis}
 
@@ -69,11 +68,11 @@ and the version of me that refused to drop the task.}
 \begin{abstract}
 The evolution of Low Earth Orbit (LEO) satellite megaconstellations has opened new perspectives for Satellite Computing, enabling the extension of edge computing capabilities directly into space (Orbital Edge Computing). However, the highly dynamic network topology, stringent energy constraints of satellite nodes, and strict deadlines of real-time applications make task orchestration and offloading critical challenges.
 
-This thesis presents the design, implementation, and performance evaluation of a centralized orchestrator based on Integer Linear Programming (ILP). To mitigate solver computational costs and prevent starvation, the system integrates a dynamic batching mechanism controlled by Batch Size ($BS$) and Batch Timeout ($BT$) metrics, along with a coordinated formulation of timing constraints that accounts for queuing delay prior to resolution.
+This thesis presents the design, implementation, and experimental evaluation of a centralized orchestrator based on Integer Linear Programming (ILP). To mitigate solver computational costs and prevent starvation, the system integrates an event-driven dynamic batching mechanism controlled by Batch Size ($BS$) and Batch Timeout ($BT$) thresholds, along with a coordinated formulation of timing constraints that accounts for queuing delay prior to resolution.
 
-Using discrete-event simulations developed with the SimPy framework, the architecture was evaluated under stress across varying request arrival rates ($\lambda$), comparing \emph{Mapping Time} and \emph{Mapping Energy} optimization strategies. A detailed analysis revealed that system collapse under heavy loads ($\lambda > 6 \text{ req/s}$) is predominantly driven by timeout deadlines (\emph{Deadline Exceeded}) rather than physical compute resource saturation. Furthermore, sensitivity experiments demonstrated the effectiveness of deadline relaxation ($\Delta D$) in recovering high completion rates.
+Using discrete-event simulations developed within the SimPy framework, the proposed architecture is evaluated under stress conditions across varying request arrival rates ($\lambda$), comparing \emph{Mapping Time} and \emph{Mapping Energy} optimization strategies. The analysis investigates the systemic bottlenecks that emerge under elevated workloads, examining the interplay between physical compute capacity, network saturation, and temporal deadline constraints.
 
-Finally, the centralized orchestrator was benchmarked against state-of-the-art distributed and heuristic solutions (\emph{OrbitAware}, \emph{DTS-base}, \emph{DTS-APopt}, and distributed ILP). The results quantify the fundamental trade-off between the theoretical global optimality of centralized allocation and the impact of queuing latency compared to the responsiveness of distributed models.
+Finally, the centralized orchestrator is benchmarked against state-of-the-art distributed and heuristic solutions (\emph{OrbitAware}, \emph{DTS-base}, \emph{DTS-APopt}, and distributed ILP) across heterogeneous workload profiles and operational energy budgets. Through this comprehensive evaluation, the thesis aims to characterize the operational boundaries and fundamental trade-offs between the theoretical global optimality of centralized mathematical scheduling and the responsiveness of decentralized models.
 \end{abstract}
 
 \begin{acknowledgments}

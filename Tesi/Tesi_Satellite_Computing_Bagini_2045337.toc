@@ -9,78 +9,78 @@
 \contentsline {section}{\numberline {2.2}Task Offloading and Routing in LEO Networks}{6}{section.2.2}%
 \contentsline {subsection}{\numberline {2.2.1}System Entities and Network Topology}{6}{subsection.2.2.1}%
 \contentsline {subsection}{\numberline {2.2.2}Workload Profiles and Constraints}{7}{subsection.2.2.2}%
-\contentsline {section}{\numberline {2.3}Centralized vs. Distributed Orchestration}{7}{section.2.3}%
-\contentsline {subsection}{\numberline {2.3.1}Centralized Orchestration}{7}{subsection.2.3.1}%
+\contentsline {section}{\numberline {2.3}Centralized vs. Distributed Orchestration}{8}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Centralized Orchestration}{8}{subsection.2.3.1}%
 \contentsline {subsection}{\numberline {2.3.2}Distributed Orchestration}{8}{subsection.2.3.2}%
 \contentsline {section}{\numberline {2.4}State-of-the-Art Approaches}{8}{section.2.4}%
-\contentsline {subsection}{\numberline {2.4.1}Distributed Heuristic Frameworks}{8}{subsection.2.4.1}%
-\contentsline {subsection}{\numberline {2.4.2}Optimization-Based and Distributed ILP Formulations}{8}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.1}Distributed Heuristic Frameworks}{9}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Optimization-Based and Distributed ILP Formulations}{9}{subsection.2.4.2}%
 \contentsline {section}{\numberline {2.5}Research Gap and Thesis Positioning}{9}{section.2.5}%
-\contentsline {chapter}{\numberline {3}System Architecture, Mathematical Formulation, and Implementation}{10}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Regional Constellation Architecture and Offloading Model}{10}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Event-Driven Dynamic Batching Engine}{13}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Constellation Topology Mapping and Metric Normalization}{15}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Centralized Integer Linear Programming Formulation}{18}{section.3.4}%
-\contentsline {subsection}{\numberline {3.4.1}Latency, Energy, and Orbital Eclipse Modeling}{18}{subsection.3.4.1}%
-\contentsline {subsection}{\numberline {3.4.2}Multi-Objective Function and System Constraints}{19}{subsection.3.4.2}%
-\contentsline {subsection}{\numberline {3.4.3}Solver Routine and Cascade Rejection Diagnostics}{20}{subsection.3.4.3}%
-\contentsline {section}{\numberline {3.5}Task Execution and Resilient Hybrid Routing}{26}{section.3.5}%
-\contentsline {section}{\numberline {3.6}Computational Complexity and Scalability Analysis}{30}{section.3.6}%
-\contentsline {subsection}{\numberline {3.6.1}Topology Mapping Complexity}{30}{subsection.3.6.1}%
-\contentsline {subsection}{\numberline {3.6.2}ILP Formulation and Solver Complexity}{30}{subsection.3.6.2}%
-\contentsline {subsection}{\numberline {3.6.3}Hybrid Routing Complexity}{31}{subsection.3.6.3}%
-\contentsline {chapter}{\numberline {4}Performance Analysis, Optimization, and Experimental Evaluation}{32}{chapter.4}%
-\contentsline {section}{\numberline {4.1}Simulation Environment and Methodological Setup}{33}{section.4.1}%
-\contentsline {subsection}{\numberline {4.1.1}Constellation Topology and Scenario Parameters}{33}{subsection.4.1.1}%
-\contentsline {subsection}{\numberline {4.1.2}Two-Tier Optimization Methodology}{33}{subsection.4.1.2}%
-\contentsline {section}{\numberline {4.2}Macro-Tuning: Exploration and Selection of Batching Policies ($BS \times BT$)}{34}{section.4.2}%
-\contentsline {subsection}{\numberline {4.2.1}Success Rate Dynamics}{34}{subsection.4.2.1}%
-\contentsline {subsection}{\numberline {4.2.2}Diagnostics of Failure Causes}{37}{subsection.4.2.2}%
-\contentsline {subsection}{\numberline {4.2.3}Response Time Decomposition}{39}{subsection.4.2.3}%
-\contentsline {subsection}{\numberline {4.2.4}Selection of Viable Batching Archetypes}{41}{subsection.4.2.4}%
-\contentsline {section}{\numberline {4.3}Micro-Tuning: Multi-Objective Weight Calibration under Stress ($\gamma \times \alpha $)}{41}{section.4.3}%
-\contentsline {subsection}{\numberline {4.3.1}Impact on Success Rate}{41}{subsection.4.3.1}%
-\contentsline {subsection}{\numberline {4.3.2}Failure Diagnostics and Sunset Drop Elimination}{43}{subsection.4.3.2}%
-\contentsline {subsection}{\numberline {4.3.3}Latency Inflation and Path-Bloat Dynamics}{44}{subsection.4.3.3}%
-\contentsline {subsection}{\numberline {4.3.4}Selection of Calibrated Objective Weights}{46}{subsection.4.3.4}%
-\contentsline {section}{\numberline {4.4}Consolidated Validation: Pre- vs. Post-Optimization Benchmark}{46}{section.4.4}%
-\contentsline {subsection}{\numberline {4.4.1}Success Rate Recovery}{46}{subsection.4.4.1}%
-\contentsline {subsection}{\numberline {4.4.2}Rejection Causes Evolution}{47}{subsection.4.4.2}%
-\contentsline {subsection}{\numberline {4.4.3}Response Time Containment}{48}{subsection.4.4.3}%
-\contentsline {section}{\numberline {4.5}Summary of Findings and Architectural Readiness}{49}{section.4.5}%
-\contentsline {chapter}{\numberline {5}Comparative Benchmark}{51}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{51}{section.5.1}%
-\contentsline {subsection}{\numberline {5.1.1}Benchmark Dimensioning and Scenario Parameters}{51}{subsection.5.1.1}%
-\contentsline {subsection}{\numberline {5.1.2}Evaluated Algorithms and State-of-the-Art Baselines}{52}{subsection.5.1.2}%
-\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation across Workload Profiles}{54}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Mixed Multi-Service Workload Profile ($\boldsymbol {\beta } = (0.40, 0.35, 0.25)$)}{54}{subsection.5.2.1}%
-\contentsline {subsubsection}{Success Rate Dynamics}{54}{section*.22}%
-\contentsline {subsubsection}{Response Time Analysis}{55}{section*.23}%
-\contentsline {subsubsection}{Failure Diagnostics}{56}{section*.24}%
-\contentsline {subsection}{\numberline {5.2.2}Computation-Heavy Stress: CPU-Intensive Profile ($\boldsymbol {\beta } = (0, 1, 0)$)}{56}{subsection.5.2.2}%
-\contentsline {subsubsection}{Success Rate Dynamics}{56}{section*.28}%
-\contentsline {subsubsection}{The Fundamental Rejection Dichotomy}{58}{section*.29}%
-\contentsline {subsection}{\numberline {5.2.3}Communication-Heavy Stress: Data-Intensive Profile ($\boldsymbol {\beta } = (0, 0, 1)$)}{58}{subsection.5.2.3}%
-\contentsline {subsubsection}{Success Rate and Global Optimality Supremacy}{58}{section*.33}%
-\contentsline {subsubsection}{Structural Uniformity of Rejection Causes}{60}{section*.34}%
-\contentsline {section}{\numberline {5.3}Trade-Off Analysis and Operational Discussion}{60}{section.5.3}%
-\contentsline {subsection}{\numberline {5.3.1}Theoretical Global Optimality vs. Ingress Queuing Latency}{60}{subsection.5.3.1}%
-\contentsline {subsection}{\numberline {5.3.2}Energy Budget Sensitivity Across Computational Dimensions}{60}{subsection.5.3.2}%
-\contentsline {subsection}{\numberline {5.3.3}Fast-Dispatch ($BT=0.05\text { s}$) vs. Controlled Small-Batching ($BS=2$)}{61}{subsection.5.3.3}%
-\contentsline {subsection}{\numberline {5.3.4}Architectural Synthesis and Deployment Guidelines}{61}{subsection.5.3.4}%
-\contentsline {section}{\numberline {5.4}Summary of Chapter Findings}{61}{section.5.4}%
-\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{63}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Synthesis of Contributions and Research Question Resolution}{63}{section.6.1}%
-\contentsline {subsection}{\numberline {6.1.1}Answering the Core Research Question}{63}{subsection.6.1.1}%
-\contentsline {subsection}{\numberline {6.1.2}Algorithmic Archetypes and Workload Sensitivity}{64}{subsection.6.1.2}%
-\contentsline {section}{\numberline {6.2}Critical Limitations of the Centralized Approach}{65}{section.6.2}%
-\contentsline {subsection}{\numberline {6.2.1}Ingress Buffering and the Batching Dilemma}{65}{subsection.6.2.1}%
-\contentsline {subsection}{\numberline {6.2.2}Single Point of Failure and Space Hazards}{65}{subsection.6.2.2}%
-\contentsline {subsection}{\numberline {6.2.3}State Telemetry Overhead and Information Staleness}{65}{subsection.6.2.3}%
-\contentsline {section}{\numberline {6.3}Future Research Directions}{66}{section.6.3}%
-\contentsline {subsection}{\numberline {6.3.1}Two-Tier Hybrid Orchestration Architectures}{66}{subsection.6.3.1}%
-\contentsline {subsection}{\numberline {6.3.2}Traffic-Aware Adaptive Batching via Reinforcement Learning}{66}{subsection.6.3.2}%
-\contentsline {subsection}{\numberline {6.3.3}Multi-Agent Distributed Reinforcement Learning (MADRL)}{66}{subsection.6.3.3}%
-\contentsline {subsection}{\numberline {6.3.4}Hardware-in-the-Loop (HIL) Prototyping on Space-Qualified Hardware}{67}{subsection.6.3.4}%
-\contentsline {section}{\numberline {6.4}Concluding Remarks}{67}{section.6.4}%
-\contentsline {chapter}{Bibliography}{68}{section*.36}%
+\contentsline {chapter}{\numberline {3}System Architecture, Mathematical Formulation, and Implementation}{11}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Regional Constellation Architecture and Offloading Model}{11}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Event-Driven Dynamic Batching Engine}{14}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Constellation Topology Mapping and Metric Normalization}{16}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Centralized Integer Linear Programming Formulation}{19}{section.3.4}%
+\contentsline {subsection}{\numberline {3.4.1}Latency, Energy, and Orbital Eclipse Modeling}{19}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Multi-Objective Function and System Constraints}{20}{subsection.3.4.2}%
+\contentsline {subsection}{\numberline {3.4.3}Solver Routine and Cascade Rejection Diagnostics}{21}{subsection.3.4.3}%
+\contentsline {section}{\numberline {3.5}Task Execution and Resilient Hybrid Routing}{27}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Computational Complexity and Scalability Analysis}{31}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Topology Mapping Complexity}{31}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}ILP Formulation and Solver Complexity}{31}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Hybrid Routing Complexity}{32}{subsection.3.6.3}%
+\contentsline {chapter}{\numberline {4}Performance Analysis, Optimization, and Experimental Evaluation}{33}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Simulation Environment and Methodological Setup}{34}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Constellation Topology and Scenario Parameters}{34}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Two-Tier Optimization Methodology}{34}{subsection.4.1.2}%
+\contentsline {section}{\numberline {4.2}Macro-Tuning: Exploration and Selection of Batching Policies ($BS \times BT$)}{35}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Success Rate Dynamics}{35}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Diagnostics of Failure Causes}{38}{subsection.4.2.2}%
+\contentsline {subsection}{\numberline {4.2.3}Response Time Decomposition}{40}{subsection.4.2.3}%
+\contentsline {subsection}{\numberline {4.2.4}Selection of Viable Batching Archetypes}{42}{subsection.4.2.4}%
+\contentsline {section}{\numberline {4.3}Micro-Tuning: Multi-Objective Weight Calibration under Stress ($\gamma \times \alpha $)}{42}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Impact on Success Rate}{42}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Failure Diagnostics and Sunset Drop Elimination}{44}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Latency Inflation and Path-Bloat Dynamics}{45}{subsection.4.3.3}%
+\contentsline {subsection}{\numberline {4.3.4}Selection of Calibrated Objective Weights}{47}{subsection.4.3.4}%
+\contentsline {section}{\numberline {4.4}Consolidated Validation: Pre- vs. Post-Optimization Benchmark}{47}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Success Rate Recovery}{47}{subsection.4.4.1}%
+\contentsline {subsection}{\numberline {4.4.2}Rejection Causes Evolution}{48}{subsection.4.4.2}%
+\contentsline {subsection}{\numberline {4.4.3}Response Time Containment}{49}{subsection.4.4.3}%
+\contentsline {section}{\numberline {4.5}Summary of Findings and Architectural Readiness}{50}{section.4.5}%
+\contentsline {chapter}{\numberline {5}Comparative Benchmark}{52}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{52}{section.5.1}%
+\contentsline {subsection}{\numberline {5.1.1}Benchmark Dimensioning and Scenario Parameters}{52}{subsection.5.1.1}%
+\contentsline {subsection}{\numberline {5.1.2}Evaluated Algorithms and State-of-the-Art Baselines}{53}{subsection.5.1.2}%
+\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation across Workload Profiles}{55}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Mixed Multi-Service Workload Profile ($\boldsymbol {\beta } = (0.40, 0.35, 0.25)$)}{55}{subsection.5.2.1}%
+\contentsline {subsubsection}{Success Rate Dynamics}{55}{section*.22}%
+\contentsline {subsubsection}{Response Time Analysis}{56}{section*.23}%
+\contentsline {subsubsection}{Failure Diagnostics}{57}{section*.24}%
+\contentsline {subsection}{\numberline {5.2.2}Computation-Heavy Stress: CPU-Intensive Profile ($\boldsymbol {\beta } = (0, 1, 0)$)}{57}{subsection.5.2.2}%
+\contentsline {subsubsection}{Success Rate Dynamics}{57}{section*.28}%
+\contentsline {subsubsection}{The Fundamental Rejection Dichotomy}{59}{section*.29}%
+\contentsline {subsection}{\numberline {5.2.3}Communication-Heavy Stress: Data-Intensive Profile ($\boldsymbol {\beta } = (0, 0, 1)$)}{59}{subsection.5.2.3}%
+\contentsline {subsubsection}{Success Rate and Global Optimality Supremacy}{59}{section*.33}%
+\contentsline {subsubsection}{Structural Uniformity of Rejection Causes}{61}{section*.34}%
+\contentsline {section}{\numberline {5.3}Trade-Off Analysis and Operational Discussion}{61}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Theoretical Global Optimality vs. Ingress Queuing Latency}{61}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Energy Budget Sensitivity Across Computational Dimensions}{61}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Fast-Dispatch ($BT=0.05\text { s}$) vs. Controlled Small-Batching ($BS=2$)}{62}{subsection.5.3.3}%
+\contentsline {subsection}{\numberline {5.3.4}Architectural Synthesis and Deployment Guidelines}{62}{subsection.5.3.4}%
+\contentsline {section}{\numberline {5.4}Summary of Chapter Findings}{62}{section.5.4}%
+\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{64}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Synthesis of Contributions and Research Question Resolution}{64}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Answering the Core Research Question}{64}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Algorithmic Archetypes and Workload Sensitivity}{65}{subsection.6.1.2}%
+\contentsline {section}{\numberline {6.2}Critical Limitations of the Centralized Approach}{66}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}Ingress Buffering and the Batching Dilemma}{66}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}Single Point of Failure and Space Hazards}{66}{subsection.6.2.2}%
+\contentsline {subsection}{\numberline {6.2.3}State Telemetry Overhead and Information Staleness}{66}{subsection.6.2.3}%
+\contentsline {section}{\numberline {6.3}Future Research Directions}{67}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Two-Tier Hybrid Orchestration Architectures}{67}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Traffic-Aware Adaptive Batching via Reinforcement Learning}{67}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Multi-Agent Distributed Reinforcement Learning (MADRL)}{67}{subsection.6.3.3}%
+\contentsline {subsection}{\numberline {6.3.4}Hardware-in-the-Loop (HIL) Prototyping on Space-Qualified Hardware}{68}{subsection.6.3.4}%
+\contentsline {section}{\numberline {6.4}Concluding Remarks}{68}{section.6.4}%
+\contentsline {chapter}{Bibliography}{69}{section*.36}%
