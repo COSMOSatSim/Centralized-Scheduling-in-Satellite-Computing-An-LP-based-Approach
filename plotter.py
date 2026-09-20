@@ -1,427 +1,273 @@
 import os
-import re
 import csv
-import math
-import numpy as np
+import re
 import matplotlib.pyplot as plt
+import numpy as np
 import matplotlib.patches as mpatches
 
 plt.rcParams['figure.dpi'] = 300
-plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
 
-# ==============================================================================
-# 1. CONFIGURAZIONE SORGENTI E ARCHETIPI
-# ==============================================================================
-DATA_SOURCES = {
-    'Prima': 'simulazioni_esp_8',
-    'Dopo':  'simulazioni_esp_11'
-}
+# ==========================================
+# 1. PARAMETRI E COLORAZIONI
+# ==========================================
+root_folder = "simulazioni_esp_8"  # Cartella con le simulazioni complete
 
-OUTPUT_DIR = 'plots_confronto_prima_dopo'
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+BS_VALUES = [1, 2, 4, 6, 8, 10]
+BT_VALUES = [0.0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
 
-TARGET_DL_PREFERENCE = 20
+# Palette graduate per i parametri di sweep
+BS_COLORS = {1: "#1a2a6c", 2: "#275efe", 4: "#00a896", 6: "#02c39a", 8: "#a8dadc", 10: "#ffd166"}
+BT_COLORS = {0.0: "#2b0938", 0.05: "#5c1363", 0.1: "#8c2981", 0.2: "#b73779", 
+             0.4: "#d85a63", 0.6: "#ed7e50", 0.8: "#fca636", 1.0: "#f0f921"}
 
-ORDERED_CONFIGS = [
-    'BS:2 | BT:2 [Prima]',
-    'BS:2 | BT:2 [Dopo]',
-    'BS:20 | BT:0.05 [Prima]',
-    'BS:20 | BT:0.05 [Dopo]'
-]
+DEADLINES = [10, 20, 30]
+ROUTINGS = ["Energy", "Time"]
+MAPPINGS = ["ENERGY", "TIME"]
 
-CONFIG_COLORS = {
-    'BS:2 | BT:2 [Prima]':     '#1f77b4',  # Blu scuro
-    'BS:2 | BT:2 [Dopo]':      '#aec7e8',  # Azzurro pastello
-    'BS:20 | BT:0.05 [Prima]': '#d95f02',  # Arancione scuro
-    'BS:20 | BT:0.05 [Dopo]':  '#fdbe85'   # Salmone chiaro
-}
-
-CONFIG_HATCHES = {
-    'BS:2 | BT:2 [Prima]':     '',
-    'BS:2 | BT:2 [Dopo]':      '///',
-    'BS:20 | BT:0.05 [Prima]': '..',
-    'BS:20 | BT:0.05 [Dopo]':  'xx'
-}
-
-CAUSE_KEYS = ['deadline', 'insuff_cn', 'insuff_c', 'no_server', 'ilp_infeasible', 'sunset']
-CAUSE_LABELS = ['Deadline exceeded', 'Insuff. CPU+NET', 'Insuff. CPU', 'No server found', 'ILP Infeasible', 'Sunset']
-CAUSE_COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-
-# ==============================================================================
-# 2. LOCALIZZAZIONE CARTELLE E PARSER ROBUSTO
-# ==============================================================================
-def resolve_folder_path(folder_name):
-    candidates = [
-        folder_name,
-        os.path.join('..', folder_name),
-        os.path.join('.', folder_name),
-        os.path.join('simulazioni', folder_name)
-    ]
-    for c in candidates:
-        if os.path.exists(c) and os.path.isdir(c):
-            return c
-    for root, dirs, _ in os.walk('.'):
-        for d in dirs:
-            if folder_name.lower() in d.lower():
-                return os.path.join(root, d)
-    return folder_name
-
-def read_csv_to_2d_array(file_path):
-    with open(file_path, newline='', encoding='utf-8') as f:
+# ==========================================
+# 2. FUNZIONI DI PARSING & STATISTICHE
+# ==========================================
+def read_csv_to_2d_array(filepath):
+    with open(filepath, newline='', encoding='utf-8') as f:
         return [row for row in csv.reader(f) if row]
 
-def extract_parameters(filepath, source_tag):
-    f_norm = filepath.replace('\\', '/')
-    f_lower = f_norm.lower()
-    parts = f_lower.split('/')
+def extract_metadata(filepath):
+    f_low = filepath.lower()
+    
+    ar_m = re.search(r'(?:arr_rate|at)[_=]([\d.]+)', f_low)
+    if not ar_m: return None
+    at = float(ar_m.group(1))
+    ar = int(round(1.0 / at)) if at <= 1.0 else int(round(at))
 
-    # 1. Arrival Rate
-    ar_val = None
-    ar_match = re.search(r'(?:arr_rate|arrival_rate|ar|rate|lambda)[_=:\-\s]*([\d.]+)', f_lower)
-    if ar_match:
-        v = float(ar_match.group(1))
-        ar_val = int(round(1.0 / v)) if v < 1.0 else int(round(v))
+    dl_m = re.search(r'deadline_(\d+)', f_low)
+    dl = int(dl_m.group(1)) if dl_m else None
+
+    bs_m = re.search(r'batch_size[_=](\d+)', f_low)
+    bt_m = re.search(r'batch_timeout[_=]([\d.]+)', f_low)
+    bs = int(bs_m.group(1)) if bs_m else None
+    bt = float(bt_m.group(1)) if bt_m else None
+
+    dijk_m = re.search(r'dijk[_=]([0-9.]+)[_=]([0-9.]+)', f_low)
+    if dijk_m:
+        routing = "Energy" if float(dijk_m.group(2)) > float(dijk_m.group(1)) else "Time"
     else:
-        at_match = re.search(r'at[_=:\-\s]*([\d.]+)', f_lower)
-        if at_match:
-            at_f = float(at_match.group(1))
-            ar_val = int(round(1.0 / at_f)) if at_f <= 1.0 else int(round(at_f))
+        routing = "Time"
 
-    # 2. Deadline
-    dl_match = re.search(r'(?:deadline|dl)[_=:\-\s]*(\d+)', f_lower)
-    dl_val = int(dl_match.group(1)) if dl_match else 20
+    mapping = None
+    if "obj_energy" in f_low or "/energy/" in f_low:
+        mapping = "ENERGY"
+    elif "obj_time" in f_low or "/time/" in f_low:
+        mapping = "TIME"
 
-    # 3. Objective Mapping Blindato (evita false corrispondenze con energy_budget e batch_timeout)
-    mapping_str = None
-    for p in parts[:-1]:
-        if p in ['obj_energy', 'opt_energy', 'energy_mapping', 'energy']:
-            mapping_str = 'ENERGY'
-            break
-        elif p in ['obj_time', 'opt_time', 'time_mapping', 'time']:
-            mapping_str = 'TIME'
-            break
+    return ar, dl, bs, bt, routing, mapping
 
-    if mapping_str is None:
-        obj_match = re.search(r'(?:obj|opt|mapping)[_=:\-\s]*(energy|time)', f_lower)
-        if obj_match:
-            mapping_str = obj_match.group(1).upper()
+def compute_times(lines):
+    comp = 0
+    tot_t, sys_t = 0.0, 0.0
+    for l in lines:
+        if len(l) <= 26: continue
+        if str(l[2]).strip() == "Completed" and str(l[26]).strip() != "N/A":
+            comp += 1
+            tot_t += float(l[9]) + float(l[15]) + float(l[26])
+            sys_t += float(l[9])
+    
+    if comp == 0:
+        return 0.0, 0.0
+    return sys_t / comp, max(0.0, (tot_t - sys_t) / comp)
 
-    if mapping_str is None:
-        # Fallback posizionale su /energy/ o /time/
-        if '/energy/' in f_norm:
-            mapping_str = 'ENERGY'
-        elif '/time/' in f_norm:
-            mapping_str = 'TIME'
-
-    # 4. Routing Dijkstra: SELEZIONA SOLO DIJKSTRA-TIME
-    dijk_str = 'Time'
-    dijk_weights = re.search(r'dijk[_=]?(?:w_r_)?([0-9.]+)[_=-]?(?:w_e_)?([0-9.]+)', f_lower)
-    if dijk_weights:
-        w_r, w_e = float(dijk_weights.group(1)), float(dijk_weights.group(2))
-        dijk_str = 'Energy' if w_e > w_r else 'Time'
-    elif any(k in f_lower for k in ['dijk_energy', 'dijkstra_energy', 'r_algo_energy']):
-        dijk_str = 'Energy'
-    elif any(k in f_lower for k in ['dijk_time', 'dijkstra_time', 'r_algo_time']):
-        dijk_str = 'Time'
-
-    if dijk_str == 'Energy':
-        return None, None, None, None
-
-    # 5. Batch Size e Timeout (gestisce anche '0_05')
-    bs_match = re.search(r'(?:batch_size|bs)[_=:\-\s]*(\d+)', f_lower)
-    bt_match = re.search(r'(?:batch_timeout|bt|timeout)[_=:\-\s]*([\d._]+)', f_lower)
-
-    if not (bs_match and bt_match):
-        return None, None, None, None
-
-    bs_val = int(bs_match.group(1))
-    raw_bt = bt_match.group(1).replace('_', '.')
-    try:
-        bt_val = float(raw_bt)
-    except ValueError:
-        return None, None, None, None
-
-    is_bs2  = (bs_val == 2) and (abs(bt_val - 2.0) < 0.1)
-    is_bs20 = (bs_val == 20) and (abs(bt_val - 0.05) < 0.02)
-
-    if not (is_bs2 or is_bs20):
-        return None, None, None, None
-
-    bt_label = '2' if is_bs2 else '0.05'
-    config_label = f"BS:{bs_val} | BT:{bt_label} [{source_tag}]"
-
-    return ar_val, dl_val, mapping_str, config_label
-
-def compute_stats(lines):
-    completed = rejected = deadline = insuff_cn = insuff_c = no_server = ilp_infeasible = sunset = 0
-    total_time = sys_time = 0.0
-
-    for line in lines:
-        if len(line) <= 26:
-            continue
-        status = str(line[2]).strip()
-        if status == 'Completed':
-            completed += 1
-            if str(line[26]).strip() != 'N/A':
-                total_time += float(line[9]) + float(line[15]) + float(line[26])
-                sys_time += float(line[9])
-        elif status == 'Rejected':
-            rejected += 1
-            reason = str(line[23]).lower()
-            if 'deadline' in reason:
-                deadline += 1
-            elif 'energy' in reason:
-                if 'net' in reason:
-                    insuff_cn += 1
-                else:
-                    insuff_c += 1
-            elif 'route' in reason:
-                no_server += 1
-            elif 'infeasible' in reason:
-                ilp_infeasible += 1
-            elif 'sunset' in reason:
-                sunset += 1
-
-    return {
-        'completed': completed, 'rejected': rejected,
-        'deadline': deadline, 'insuff_cn': insuff_cn, 'insuff_c': insuff_c,
-        'no_server': no_server, 'ilp_infeasible': ilp_infeasible, 'sunset': sunset,
-        'total_time': total_time, 'sys_time': sys_time
-    }
-
-# ==============================================================================
-# 3. SCANSIONE DATI E ALLINEAMENTO DINAMICO
-# ==============================================================================
-print("\n================ DIAGNOSTICA CARICAMENTO ================")
-data_store = {}
+# ==========================================
+# 3. RACCOLTA DATI
+# ==========================================
+print("Estrazione metriche temporali dai log di simulazione...")
+data = {m: {dl: {"BS": {}, "BT": {}} for dl in DEADLINES} for m in MAPPINGS}
 all_ars = set()
 
-for source_tag, folder_name in DATA_SOURCES.items():
-    actual_path = resolve_folder_path(folder_name)
-    if not os.path.exists(actual_path):
-        print(f"[-] Cartella '{folder_name}' NON trovata! Verifica il path.")
-        continue
+for root, _, files in os.walk(root_folder):
+    for f in files:
+        if f.endswith(".csv") and "results" in f:
+            fp = os.path.join(root, f)
+            meta = extract_metadata(fp)
+            if not meta: continue
+            ar, dl, bs, bt, rout, mapping = meta
+            if dl not in DEADLINES or mapping not in MAPPINGS: continue
+            all_ars.add(ar)
 
-    csv_count = 0
-    parsed_count = 0
-    mapping_counts = {'ENERGY': 0, 'TIME': 0}
+            rows = read_csv_to_2d_array(fp)
+            s_t, w_t = compute_times(rows)
 
-    for root, _, files in os.walk(actual_path):
-        for file in files:
-            if file.endswith('.csv'):
-                csv_count += 1
-                filepath = os.path.join(root, file)
-                ar, dl, mapping, config_label = extract_parameters(filepath, source_tag)
+            # Raggruppamento Sweep BS (BT fisso a 2.0s)
+            if bt == 2.0 and bs in BS_VALUES:
+                k = (bs, rout)
+                if k not in data[mapping][dl]["BS"]: data[mapping][dl]["BS"][k] = {}
+                data[mapping][dl]["BS"][k][ar] = (s_t, w_t)
 
-                if ar is not None and config_label is not None and mapping in ['ENERGY', 'TIME']:
-                    parsed_count += 1
-                    mapping_counts[mapping] += 1
-                    all_ars.add(ar)
-                    group_key = (mapping, dl)
-                    data_store.setdefault(group_key, {}).setdefault(config_label, {}).setdefault(ar, []).extend(read_csv_to_2d_array(filepath))
+            # Raggruppamento Sweep BT (BS fisso a 20)
+            if bs == 20 and bt in BT_VALUES:
+                k = (bt, rout)
+                if k not in data[mapping][dl]["BT"]: data[mapping][dl]["BT"][k] = {}
+                data[mapping][dl]["BT"][k][ar] = (s_t, w_t)
 
-    print(f"[+] '{source_tag}' -> Path: {actual_path}")
-    print(f"    - File .csv totali trovati: {csv_count}")
-    print(f"    - File validati (BS2/BS20, Dijkstra-Time): {parsed_count}")
-    print(f"      * Energy Mapping: {mapping_counts['ENERGY']}")
-    print(f"      * Time Mapping:   {mapping_counts['TIME']}")
+sorted_ars = sorted(list(all_ars))
 
-sorted_ars = sorted(list(all_ars)) if all_ars else [2, 3, 4, 6, 8, 10]
+# ==========================================
+# 4. GENERAZIONE GRAFICI (PER OGNI MAPPING)
+# ==========================================
+os.makedirs("plots_stacked_sweeps", exist_ok=True)
 
-dls_prima = {dl for (m, dl), cfgs in data_store.items() if any('[Prima]' in c for c in cfgs)}
-dls_dopo  = {dl for (m, dl), cfgs in data_store.items() if any('[Dopo]' in c for c in cfgs)}
+for mapping in MAPPINGS:
+    fig, axes = plt.subplots(3, 2, figsize=(20, 14), sharex=True)
+    fig.suptitle(f"Parametric Response Time Decomposition ({mapping} Mapping)", fontsize=16, fontweight='bold', y=0.98)
 
-print(f"\nDeadlines individuate: Prima={dls_prima}, Dopo={dls_dopo}")
+    for r_idx, dl in enumerate(DEADLINES):
+        # ----------------- Colonna Sinistra: BS Sweep -----------------
+        ax_left = axes[r_idx, 0]
+        configs_bs = [(b, rt) for b in BS_VALUES for rt in ROUTINGS]
+        n_cfg_bs = len(configs_bs)
+        step_bs = 0.85 / n_cfg_bs
+        w_bs = step_bs * 0.90
+        x_base_bs = np.arange(len(sorted_ars)) * (n_cfg_bs * step_bs + 0.5)
+        offsets_bs = np.linspace(-(n_cfg_bs * step_bs)/2 + step_bs/2, (n_cfg_bs * step_bs)/2 - step_bs/2, n_cfg_bs)
 
-if TARGET_DL_PREFERENCE in dls_prima and TARGET_DL_PREFERENCE in dls_dopo:
-    dl_prima_use = dl_dopo_use = TARGET_DL_PREFERENCE
-elif dls_prima.intersection(dls_dopo):
-    dl_prima_use = dl_dopo_use = sorted(list(dls_prima.intersection(dls_dopo)))[0]
-else:
-    dl_dopo_use = sorted(list(dls_dopo))[0] if dls_dopo else TARGET_DL_PREFERENCE
-    dl_prima_use = sorted(list(dls_prima))[0] if dls_prima else TARGET_DL_PREFERENCE
-
-mappings_to_plot = ['ENERGY', 'TIME']
-
-unified_plot_data = {}
-for m in mappings_to_plot:
-    unified_plot_data[m] = {}
-    for cfg, ar_dict in data_store.get((m, dl_prima_use), {}).items():
-        if '[Prima]' in cfg:
-            unified_plot_data[m][cfg] = ar_dict
-    for cfg, ar_dict in data_store.get((m, dl_dopo_use), {}).items():
-        if '[Dopo]' in cfg:
-            unified_plot_data[m][cfg] = ar_dict
-
-present_configs = [c for c in ORDERED_CONFIGS if any(c in unified_plot_data[m] for m in mappings_to_plot)]
-n_cfg = len(present_configs)
-
-print(f"Configurazioni finali pronte a grafico ({n_cfg}): {present_configs}\n")
-
-if n_cfg == 0:
-    print("[ERRORE] Nessuna configurazione idonea estratta.")
-    exit()
-
-# Geometria spaziale delle barre
-step_w = 0.85 / n_cfg
-bar_w = step_w * 0.88
-grp_w = n_cfg * step_w
-grp_space = 0.55
-x_base = np.arange(len(sorted_ars)) * (grp_w + grp_space)
-offsets = np.linspace(-grp_w/2 + step_w/2, grp_w/2 - step_w/2, n_cfg)
-
-def draw_cluster_separators(ax):
-    for x in x_base[:-1]:
-        ax.axvline(x + grp_w/2 + grp_space/2, color='gray', linestyle=':', alpha=0.45)
-
-dl_str = f"{dl_prima_use}%" if dl_prima_use == dl_dopo_use else f"Prima: {dl_prima_use}%, Dopo: {dl_dopo_use}%"
-
-# ==============================================================================
-# 4. GENERAZIONE FIGURE COMPARATIVE (SENZA WARNING E A ZERO SOVRAPPOSIZIONI)
-# ==============================================================================
-
-# FIGURA 1: SUCCESS RATE
-fig, axes = plt.subplots(1, 2, figsize=(16, 6.2), sharey=True, gridspec_kw={'wspace': 0.08})
-for m_idx, mapping in enumerate(mappings_to_plot):
-    ax = axes[m_idx]
-    grp_dict = unified_plot_data[mapping]
-    for i, cfg in enumerate(present_configs):
-        y_vals = []
-        for ar in sorted_ars:
-            rows = grp_dict.get(cfg, {}).get(ar, [])
-            st = compute_stats(rows)
-            c, r = st['completed'], st['rejected']
-            y_vals.append((c / (c + r) * 100) if (c + r) > 0 else 0.0)
-
-        ax.bar(x_base + offsets[i], y_vals, width=bar_w,
-               color=CONFIG_COLORS[cfg], edgecolor='black', linewidth=0.4)
-
-    draw_cluster_separators(ax)
-    ax.set_title(f"{mapping.capitalize()} Mapping", fontsize=13, fontweight='bold', pad=10)
-    ax.set_xlabel('Arrival Rate (req/sec)', fontsize=11)
-    ax.set_xticks(x_base)
-    ax.set_xticklabels([f"{ar}" for ar in sorted_ars], fontsize=10, fontweight='bold')
-    ax.set_ylim(0, 105)
-    ax.grid(axis='y', linestyle='--', alpha=0.4)
-    if m_idx == 0:
-        ax.set_ylabel('Success Rate (%)', fontsize=12)
-
-fig.subplots_adjust(top=0.90, bottom=0.20, left=0.06, right=0.98, wspace=0.08)
-
-cfg_patches = [mpatches.Patch(facecolor=CONFIG_COLORS[c], edgecolor='black', linewidth=0.5, label=c) for c in present_configs]
-fig.legend(handles=cfg_patches, loc='center', ncol=min(4, n_cfg), bbox_to_anchor=(0.5, 0.06),
-           fontsize=9.5, title="Evaluated Configurations (Dijkstra-Time)", title_fontsize=10.5,
-           frameon=True, facecolor='white', edgecolor='#cccccc')
-
-fig.suptitle(f"Success Rate Comparison: Prima vs Dopo (Dijkstra-Time, $\\Delta D$ = {dl_str})", fontsize=14, fontweight='bold', y=0.97)
-out_sr = os.path.join(OUTPUT_DIR, '01_Confronto_Success_Rate_DijkTime.png')
-plt.savefig(out_sr, bbox_inches='tight')
-plt.close()
-print(f"[OK] Generato: {out_sr}")
-
-# FIGURA 2: FAILURE CAUSES BREAKDOWN
-fig, axes = plt.subplots(1, 2, figsize=(17, 6.8), sharey=True, gridspec_kw={'wspace': 0.08})
-for m_idx, mapping in enumerate(mappings_to_plot):
-    ax = axes[m_idx]
-    grp_dict = unified_plot_data[mapping]
-    for i, cfg in enumerate(present_configs):
-        bottom = np.zeros(len(sorted_ars))
-        for k_idx, key in enumerate(CAUSE_KEYS):
-            y_vals = []
+        for i, (b_val, rt) in enumerate(configs_bs):
+            s_vals, w_vals = [], []
             for ar in sorted_ars:
-                rows = grp_dict.get(cfg, {}).get(ar, [])
-                st = compute_stats(rows)
-                rej = st['rejected']
-                y_vals.append((st[key] / rej * 100) if rej > 0 else 0.0)
+                st, wt = data[mapping][dl]["BS"].get((b_val, rt), {}).get(ar, (0.0, 0.0))
+                s_vals.append(st)
+                w_vals.append(wt)
+            
+            c = BS_COLORS[b_val]
+            h = "//" if rt == "Time" else ""
+            
+            # System execution in basso (opaca), Wait/Network in alto (traslucida)
+            ax_left.bar(x_base_bs + offsets_bs[i], s_vals, width=w_bs, color=c, edgecolor='black', linewidth=0.2, hatch=h)
+            ax_left.bar(x_base_bs + offsets_bs[i], w_vals, width=w_bs, bottom=s_vals, color=c, alpha=0.35, 
+                        edgecolor='black', linewidth=0.2, hatch=h)
 
-            ax.bar(x_base + offsets[i], y_vals, width=bar_w, bottom=bottom,
-                   color=CAUSE_COLORS[k_idx], hatch=CONFIG_HATCHES[cfg], edgecolor='black', linewidth=0.3)
-            bottom += np.array(y_vals)
+        for x in x_base_bs[:-1]:
+            ax_left.axvline(x + (n_cfg_bs * step_bs)/2 + 0.25, color='gray', linestyle=':', alpha=0.4)
 
-    draw_cluster_separators(ax)
-    ax.set_title(f"{mapping.capitalize()} Mapping", fontsize=13, fontweight='bold', pad=10)
-    ax.set_xlabel('Arrival Rate (req/sec)', fontsize=11)
-    ax.set_xticks(x_base)
-    ax.set_xticklabels([f"{ar}" for ar in sorted_ars], fontsize=10, fontweight='bold')
-    ax.set_ylim(0, 100)
-    ax.grid(axis='y', linestyle='--', alpha=0.4)
-    if m_idx == 0:
-        ax.set_ylabel('Rejection Breakdown (%)', fontsize=12)
+        ax_left.set_ylabel(f"Response Time (ms)\n[$\\Delta D = {dl}\\%$]", fontsize=10)
+        ax_left.grid(axis='y', linestyle='--', alpha=0.3)
+        if r_idx == 0:
+            ax_left.set_title("Batch Size Sweep ($BS$, $BT=2.0\\text{s}$)", fontsize=12, fontweight='bold')
 
-fig.subplots_adjust(top=0.90, bottom=0.23, left=0.06, right=0.98, wspace=0.08)
+        # ----------------- Colonna Destra: BT Sweep -----------------
+        ax_right = axes[r_idx, 1]
+        configs_bt = [(t, rt) for t in BT_VALUES for rt in ROUTINGS]
+        n_cfg_bt = len(configs_bt)
+        step_bt = 0.85 / n_cfg_bt
+        w_bt = step_bt * 0.90
+        x_base_bt = np.arange(len(sorted_ars)) * (n_cfg_bt * step_bt + 0.5)
+        offsets_bt = np.linspace(-(n_cfg_bt * step_bt)/2 + step_bt/2, (n_cfg_bt * step_bt)/2 - step_bt/2, n_cfg_bt)
 
-cause_patches = [mpatches.Patch(facecolor=CAUSE_COLORS[k], edgecolor='black', linewidth=0.5, label=CAUSE_LABELS[k]) for k in range(len(CAUSE_LABELS))]
-pattern_patches = [mpatches.Patch(facecolor='white', edgecolor='black', linewidth=0.5, hatch=CONFIG_HATCHES[c], label=c) for c in present_configs]
+        for i, (t_val, rt) in enumerate(configs_bt):
+            s_vals, w_vals = [], []
+            for ar in sorted_ars:
+                st, wt = data[mapping][dl]["BT"].get((t_val, rt), {}).get(ar, (0.0, 0.0))
+                s_vals.append(st)
+                w_vals.append(wt)
+            
+            c = BT_COLORS[t_val]
+            h = "//" if rt == "Time" else ""
+            
+            ax_right.bar(x_base_bt + offsets_bt[i], s_vals, width=w_bt, color=c, edgecolor='black', linewidth=0.2, hatch=h)
+            ax_right.bar(x_base_bt + offsets_bt[i], w_vals, width=w_bt, bottom=s_vals, color=c, alpha=0.35, 
+                         edgecolor='black', linewidth=0.2, hatch=h)
 
-fig.legend(handles=cause_patches, loc='center', ncol=3, bbox_to_anchor=(0.30, 0.075),
-           fontsize=8.5, title="Failure Causes", title_fontsize=9.5, frameon=True, facecolor='white', edgecolor='#cccccc')
-fig.legend(handles=pattern_patches, loc='center', ncol=min(2, math.ceil(n_cfg/2)), bbox_to_anchor=(0.76, 0.075),
-           fontsize=8, title="Configurations (Texture Pattern)", title_fontsize=9.5, frameon=True, facecolor='white', edgecolor='#cccccc')
+        for x in x_base_bt[:-1]:
+            ax_right.axvline(x + (n_cfg_bt * step_bt)/2 + 0.25, color='gray', linestyle=':', alpha=0.4)
 
-fig.suptitle(f"Failure Causes Evolution: Prima vs Dopo (Dijkstra-Time, $\\Delta D$ = {dl_str})", fontsize=14, fontweight='bold', y=0.97)
-out_fc = os.path.join(OUTPUT_DIR, '02_Confronto_Failure_Causes_DijkTime.png')
-plt.savefig(out_fc, bbox_inches='tight')
-plt.close()
-print(f"[OK] Generato: {out_fc}")
+        ax_right.grid(axis='y', linestyle='--', alpha=0.3)
+        if r_idx == 0:
+            ax_right.set_title("Batch Timeout Sweep ($BT$, $BS=20$)", fontsize=12, fontweight='bold')
 
-# FIGURA 3: RESPONSE TIME BREAKDOWN
-fig, axes = plt.subplots(1, 2, figsize=(16, 6.2), sharey=True, gridspec_kw={'wspace': 0.08})
-max_rt = 0.0
-for m in mappings_to_plot:
-    grp_dict = unified_plot_data[m]
-    for cfg in present_configs:
-        for ar in sorted_ars:
-            rows = grp_dict.get(cfg, {}).get(ar, [])
-            st = compute_stats(rows)
-            if st['completed'] > 0:
-                tot = st['total_time'] / st['completed']
-                if tot > max_rt:
-                    max_rt = tot
+    axes[2, 0].set_xticks(x_base_bs)
+    axes[2, 0].set_xticklabels(sorted_ars, fontsize=10)
+    axes[2, 0].set_xlabel("Arrival Rate (req/sec)", fontsize=11)
 
-for m_idx, mapping in enumerate(mappings_to_plot):
-    ax = axes[m_idx]
-    grp_dict = unified_plot_data[mapping]
-    for i, cfg in enumerate(present_configs):
-        y_sys, y_diff = [], []
-        for ar in sorted_ars:
-            rows = grp_dict.get(cfg, {}).get(ar, [])
-            st = compute_stats(rows)
-            comp = st['completed']
-            s_t = (st['sys_time'] / comp) if comp > 0 else 0.0
-            t_t = (st['total_time'] / comp) if comp > 0 else 0.0
-            y_sys.append(s_t)
-            y_diff.append(max(0.0, t_t - s_t))
+    axes[2, 1].set_xticks(x_base_bt)
+    axes[2, 1].set_xticklabels(sorted_ars, fontsize=10)
+    axes[2, 1].set_xlabel("Arrival Rate (req/sec)", fontsize=11)
+# ==============================================================================
+    # IMPOSTAZIONE SPAZI E LEGENDE SU SINGOLA RIGA (PARAMETRI ESPLICITI)
+    # ==============================================================================
+    # 1. Regolazione margini: riserva la fascia inferiore per la riga di legende
+    plt.tight_layout()
+    fig.subplots_adjust(bottom=0.09, top=0.94, hspace=0.15, wspace=0.12)
 
-        c = CONFIG_COLORS[cfg]
-        ax.bar(x_base + offsets[i], y_sys, width=bar_w, color=c, edgecolor='black', linewidth=0.4)
-        ax.bar(x_base + offsets[i], y_diff, width=bar_w, bottom=y_sys, color=c, alpha=0.35, edgecolor='black', linewidth=0.4)
+    # 2. Elementi grafici delle 4 legende
+    leg_bs = [mpatches.Patch(color=BS_COLORS[b], label=f"BS={b}") for b in BS_VALUES]
+    leg_bt = [mpatches.Patch(color=BT_COLORS[t], label=f"BT={t}s") for t in BT_VALUES]
+    leg_comp = [
+        mpatches.Patch(facecolor='gray', edgecolor='black', alpha=1.0, label='Execution (Bottom)'),
+        mpatches.Patch(facecolor='gray', edgecolor='black', alpha=0.35, label='Wait/Net (Top)')
+    ]
+    leg_rout = [
+        mpatches.Patch(facecolor='white', edgecolor='black', hatch='', label='Dijkstra-Energy'),
+        mpatches.Patch(facecolor='white', edgecolor='black', hatch='//', label='Dijkstra-Time')
+    ]
 
-    draw_cluster_separators(ax)
-    ax.set_title(f"{mapping.capitalize()} Mapping", fontsize=13, fontweight='bold', pad=10)
-    ax.set_xlabel('Arrival Rate (req/sec)', fontsize=11)
-    ax.set_xticks(x_base)
-    ax.set_xticklabels([f"{ar}" for ar in sorted_ars], fontsize=10, fontweight='bold')
-    ax.grid(axis='y', linestyle='--', alpha=0.4)
-    if m_idx == 0:
-        ax.set_ylabel('Response Time (ms)', fontsize=12)
+    # Quota verticale comune per allinearle tutte alla stessa altezza
+    y_pos = 0.042
 
-for ax in axes:
-    ax.set_ylim(0, max_rt * 1.15 if max_rt > 0 else 1.5)
+    # Box 1: Batch Size (allineato a sinistra)
+    l_bs = fig.legend(
+        handles=leg_bs,
+        loc='center',
+        bbox_to_anchor=(0.15, y_pos),
+        ncol=6,
+        title="Batch Size ($BS$, $BT=2.0\\text{s}$)",
+        title_fontsize=9.5,
+        fontsize=8.5,
+        frameon=True,
+        facecolor='white',
+        edgecolor='#cccccc'
+    )
 
-fig.subplots_adjust(top=0.90, bottom=0.20, left=0.06, right=0.98, wspace=0.08)
+    # Box 2: Time Component (centro-sinistra)
+    l_comp = fig.legend(
+        handles=leg_comp,
+        loc='center',
+        bbox_to_anchor=(0.38, y_pos),
+        ncol=2,
+        title="Time Component",
+        title_fontsize=9.5,
+        fontsize=8.5,
+        frameon=True,
+        facecolor='white',
+        edgecolor='#cccccc'
+    )
 
-time_patches = [
-    mpatches.Patch(facecolor='gray', edgecolor='black', alpha=1.0, label='System Execution (Bottom)'),
-    mpatches.Patch(facecolor='gray', edgecolor='black', alpha=0.35, label='Network / Wait Time (Top)')
-]
-fig.legend(handles=cfg_patches, loc='center', ncol=min(4, n_cfg), bbox_to_anchor=(0.35, 0.06),
-           fontsize=8.5, title="Configurations", title_fontsize=9.5, frameon=True, facecolor='white', edgecolor='#cccccc')
-fig.legend(handles=time_patches, loc='center', ncol=2, bbox_to_anchor=(0.78, 0.06),
-           fontsize=8.5, title="Time Component", title_fontsize=9.5, frameon=True, facecolor='white', edgecolor='#cccccc')
+    # Box 3: Routing Strategy (centro-destra)
+    l_rout = fig.legend(
+        handles=leg_rout,
+        loc='center',
+        bbox_to_anchor=(0.53, y_pos),
+        ncol=2,
+        title="Routing Strategy",
+        title_fontsize=9.5,
+        fontsize=8.5,
+        frameon=True,
+        facecolor='white',
+        edgecolor='#cccccc'
+    )
 
-fig.suptitle(f"Response Time Decomposition: Prima vs Dopo (Dijkstra-Time, $\\Delta D$ = {dl_str})", fontsize=14, fontweight='bold', y=0.97)
-out_rt = os.path.join(OUTPUT_DIR, '03_Confronto_Response_Time_DijkTime.png')
-plt.savefig(out_rt, bbox_inches='tight')
-plt.close()
-print(f"[OK] Generato: {out_rt}")
-print(f"\nSalvataggio ultimato con successo in '{OUTPUT_DIR}/'.")
+    # Box 4: Batch Timeout (allineato a destra)
+    l_bt = fig.legend(
+        handles=leg_bt,
+        loc='center',
+        bbox_to_anchor=(0.83, y_pos),
+        ncol=8,
+        title="Batch Timeout ($BT$, $BS=20$)",
+        title_fontsize=9.5,
+        fontsize=8.5,
+        frameon=True,
+        facecolor='white',
+        edgecolor='#cccccc'
+    )
+
+    # 3. Salvataggio con inclusione di tutte e quattro le legende
+    save_path = f"plots_stacked_sweeps/02_Stacked_Response_Time_{mapping}.png"
+    plt.savefig(save_path, bbox_inches='tight', bbox_extra_artists=(l_bs, l_comp, l_rout, l_bt))
+    plt.close()
+    print(f"Salvato con successo: {save_path}")
