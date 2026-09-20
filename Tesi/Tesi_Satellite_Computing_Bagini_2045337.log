@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.8.23)  20 SEP 2026 12:43
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.8.23)  20 SEP 2026 13:01
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -819,66 +819,66 @@ File: figures/03_Failure_Causes_TIME.png Graphic file (type png)
 Package pdftex.def Info: figures/03_Failure_Causes_TIME.png  used on input line 95.
 (pdftex.def)             Requested size: 597.50787pt x 383.52797pt.
  [40 <./figures/03_Failure_Causes_ENERGY.png>] [41 <./figures/03_Failure_Causes_TIME.png>]
-<figures/02_stacked_Response_Time_ENERGY.png, id=1578, 1506.1068pt x 952.7595pt>
-File: figures/02_stacked_Response_Time_ENERGY.png Graphic file (type png)
-<use figures/02_stacked_Response_Time_ENERGY.png>
-Package pdftex.def Info: figures/02_stacked_Response_Time_ENERGY.png  used on input line 126.
+<figures/02_Stacked_Response_Time_ENERGY.png, id=1578, 1506.1068pt x 952.7595pt>
+File: figures/02_Stacked_Response_Time_ENERGY.png Graphic file (type png)
+<use figures/02_Stacked_Response_Time_ENERGY.png>
+Package pdftex.def Info: figures/02_Stacked_Response_Time_ENERGY.png  used on input line 126.
 (pdftex.def)             Requested size: 597.50787pt x 377.98593pt.
  [42]
-<figures/02_stacked_Response_Time_TIME.png, id=1586, 1506.1068pt x 952.7595pt>
-File: figures/02_stacked_Response_Time_TIME.png Graphic file (type png)
-<use figures/02_stacked_Response_Time_TIME.png>
-Package pdftex.def Info: figures/02_stacked_Response_Time_TIME.png  used on input line 133.
+<figures/02_Stacked_Response_Time_TIME.png, id=1586, 1506.1068pt x 952.7595pt>
+File: figures/02_Stacked_Response_Time_TIME.png Graphic file (type png)
+<use figures/02_Stacked_Response_Time_TIME.png>
+Package pdftex.def Info: figures/02_Stacked_Response_Time_TIME.png  used on input line 133.
 (pdftex.def)             Requested size: 597.50787pt x 377.98593pt.
  [43 <./figures/02_Stacked_Response_Time_ENERGY.png>] [44 <./figures/02_Stacked_Response_Time_TIME.png>]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <14.4> on input line 170.
+(Font)              <14.4> on input line 171.
 
-Overfull \hbox (43.27383pt too wide) in paragraph at lines 180--182
+Overfull \hbox (43.27383pt too wide) in paragraph at lines 181--183
 \T1/lmr/m/n/10.95 (-20) and the or-bital sun-set de-ter-rent penalty is eval-u-ated across $\OML/lmm/m/it/10.95 ^^M \OMS/lmsy/m/n/10.95 2 f\OT1/lmr/m/n/10.95 (-20) 2\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 4\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 6\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 8\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 10\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 1000\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 5000\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 10000\OMS/lmsy/m/n/10.95 g$\T1/lmr/m/n/10.95 (-20) .
  []
 
 <figures/01_Cross_Success_Rate_AR_8.png, id=1604, 1871.793pt x 691.8648pt>
 File: figures/01_Cross_Success_Rate_AR_8.png Graphic file (type png)
 <use figures/01_Cross_Success_Rate_AR_8.png>
-Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_8.png  used on input line 190.
+Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_8.png  used on input line 191.
 (pdftex.def)             Requested size: 597.50787pt x 220.8523pt.
 [45]
 <figures/01_Cross_Success_Rate_AR_10.png, id=1613, 1871.793pt x 691.8648pt>
 File: figures/01_Cross_Success_Rate_AR_10.png Graphic file (type png)
 <use figures/01_Cross_Success_Rate_AR_10.png>
-Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_10.png  used on input line 197.
+Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_10.png  used on input line 198.
 (pdftex.def)             Requested size: 597.50787pt x 220.8523pt.
  [46 <./figures/01_Cross_Success_Rate_AR_8.png> <./figures/01_Cross_Success_Rate_AR_10.png>]
 <figures/02_Cross_Failure_Causes_AR_8.png, id=1624, 1871.793pt x 654.5253pt>
 File: figures/02_Cross_Failure_Causes_AR_8.png Graphic file (type png)
 <use figures/02_Cross_Failure_Causes_AR_8.png>
-Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_8.png  used on input line 217.
+Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_8.png  used on input line 218.
 (pdftex.def)             Requested size: 597.50787pt x 208.93303pt.
  [47]
 <figures/02_Cross_Failure_Causes_AR_10.png, id=1631, 1871.793pt x 654.5253pt>
 File: figures/02_Cross_Failure_Causes_AR_10.png Graphic file (type png)
 <use figures/02_Cross_Failure_Causes_AR_10.png>
-Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_10.png  used on input line 224.
+Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_10.png  used on input line 225.
 (pdftex.def)             Requested size: 597.50787pt x 208.93303pt.
  [48 <./figures/02_Cross_Failure_Causes_AR_8.png> <./figures/02_Cross_Failure_Causes_AR_10.png>]
 <figures/03_Cross_Response_Time_AR_8.png, id=1641, 1871.793pt x 654.5253pt>
 File: figures/03_Cross_Response_Time_AR_8.png Graphic file (type png)
 <use figures/03_Cross_Response_Time_AR_8.png>
-Package pdftex.def Info: figures/03_Cross_Response_Time_AR_8.png  used on input line 243.
+Package pdftex.def Info: figures/03_Cross_Response_Time_AR_8.png  used on input line 244.
 (pdftex.def)             Requested size: 597.50787pt x 208.93303pt.
 <figures/03_Cross_Response_Time_AR_10.png, id=1642, 1871.793pt x 654.5253pt>
 File: figures/03_Cross_Response_Time_AR_10.png Graphic file (type png)
 <use figures/03_Cross_Response_Time_AR_10.png>
-Package pdftex.def Info: figures/03_Cross_Response_Time_AR_10.png  used on input line 250.
+Package pdftex.def Info: figures/03_Cross_Response_Time_AR_10.png  used on input line 251.
 (pdftex.def)             Requested size: 597.50787pt x 208.93303pt.
  [49 <./figures/03_Cross_Response_Time_AR_8.png>]
-Overfull \hbox (2.19534pt too wide) in paragraph at lines 258--259
+Overfull \hbox (2.19534pt too wide) in paragraph at lines 259--260
 \OT1/lmr/m/n/10.95 (-20) 1000[]10000$ \T1/lmr/m/n/10.95 (-20) in $\OML/lmm/m/it/10.95 BS \OT1/lmr/m/n/10.95 (-20) = 2$ \T1/lmr/m/n/10.95 (-20) con-fig-u-ra-tions, to-tal re-sponse time surges to $\OT1/lmr/m/n/10.95 (-20) 1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 05[]1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 15[]$
  []
 
 
-Overfull \hbox (2.54549pt too wide) in paragraph at lines 274--274
+Overfull \hbox (2.54549pt too wide) in paragraph at lines 275--275
 []\T1/lmr/bx/n/14.4 (-20) Consolidated Val-i-da-tion: Pre- vs. Post-Optimization
  []
 
@@ -886,13 +886,13 @@ Overfull \hbox (2.54549pt too wide) in paragraph at lines 274--274
 <figures/01_Confronto_Success_Rate_DijkTime.png, id=1657, 1120.6668pt x 438.438pt>
 File: figures/01_Confronto_Success_Rate_DijkTime.png Graphic file (type png)
 <use figures/01_Confronto_Success_Rate_DijkTime.png>
-Package pdftex.def Info: figures/01_Confronto_Success_Rate_DijkTime.png  used on input line 290.
+Package pdftex.def Info: figures/01_Confronto_Success_Rate_DijkTime.png  used on input line 291.
 (pdftex.def)             Requested size: 597.50787pt x 233.76924pt.
  [51 <./figures/01_Confronto_Success_Rate_DijkTime.png>]
 <figures/02_Confronto_Failure_Causes_DijkTime.png, id=1665, 1187.1552pt x 475.0548pt>
 File: figures/02_Confronto_Failure_Causes_DijkTime.png Graphic file (type png)
 <use figures/02_Confronto_Failure_Causes_DijkTime.png>
-Package pdftex.def Info: figures/02_Confronto_Failure_Causes_DijkTime.png  used on input line 309.
+Package pdftex.def Info: figures/02_Confronto_Failure_Causes_DijkTime.png  used on input line 310.
 (pdftex.def)             Requested size: 597.50787pt x 239.0998pt.
  [52]
 <figures/03_Confronto_Response_Time_DijkTime.png, id=1672, 1117.2942pt x 436.7517pt>
@@ -1030,14 +1030,14 @@ Package rerunfilecheck Info: File `Tesi_Satellite_Computing_Bagini_2045337.out' 
  ) 
 Here is how much of TeX's memory you used:
  20876 strings out of 469515
- 338776 string characters out of 5470807
+ 338774 string characters out of 5470807
  2026571 words of memory out of 5000000
  47690 multiletter control sequences out of 15000+600000
- 797517 words of font info for 398 fonts, out of 8000000 for 9000
+ 797470 words of font info for 398 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  84i,14n,131p,1075b,2321s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmbxi10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmex10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi5.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi7.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmib10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr7.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmri10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmss10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmss17.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy7.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtt9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (82 pages, 18433380 bytes).
+Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (82 pages, 18433293 bytes).
 PDF statistics:
  2298 PDF objects out of 2487 (max. 8388607)
  2079 compressed objects within 21 object streams
