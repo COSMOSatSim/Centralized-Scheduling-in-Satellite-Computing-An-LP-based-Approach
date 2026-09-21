@@ -53,35 +53,34 @@
 \contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{56}{section.5.1}%
 \contentsline {subsection}{\numberline {5.1.1}Benchmark Dimensioning and Scenario Parameters}{56}{subsection.5.1.1}%
 \contentsline {subsection}{\numberline {5.1.2}Evaluated Algorithms and State-of-the-Art Baselines}{57}{subsection.5.1.2}%
-\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation across Workload Profiles}{59}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Mixed Multi-Service Workload Profile ($\boldsymbol {\beta } = (0.40, 0.35, 0.25)$)}{59}{subsection.5.2.1}%
-\contentsline {subsubsection}{Success Rate Dynamics}{60}{section*.22}%
-\contentsline {subsubsection}{Response Time Analysis}{61}{section*.23}%
-\contentsline {subsubsection}{Failure Diagnostics}{61}{section*.24}%
-\contentsline {subsection}{\numberline {5.2.2}Computation-Heavy Stress: CPU-Intensive Profile ($\boldsymbol {\beta } = (0, 1, 0)$)}{61}{subsection.5.2.2}%
-\contentsline {subsubsection}{Success Rate Dynamics}{63}{section*.28}%
-\contentsline {subsubsection}{The Fundamental Rejection Dichotomy}{63}{section*.29}%
-\contentsline {subsection}{\numberline {5.2.3}Joint Compute and Network Stress: CPU \& Data-Intensive Profile ($\boldsymbol {\beta } = (0, 0, 1)$)}{64}{subsection.5.2.3}%
-\contentsline {subsubsection}{Success Rate and Global Optimality Supremacy}{65}{section*.33}%
-\contentsline {subsubsection}{Structural Uniformity of Rejection Causes}{66}{section*.34}%
-\contentsline {section}{\numberline {5.3}Trade-Off Analysis and Operational Discussion}{66}{section.5.3}%
-\contentsline {subsection}{\numberline {5.3.1}Theoretical Global Optimality vs. Ingress Queuing Latency}{66}{subsection.5.3.1}%
-\contentsline {subsection}{\numberline {5.3.2}Energy Budget Sensitivity Across Computational Dimensions}{67}{subsection.5.3.2}%
-\contentsline {subsection}{\numberline {5.3.3}Fast-Dispatch ($BT=0.05\text { s}$) vs. Controlled Small-Batching ($BS=2$)}{67}{subsection.5.3.3}%
-\contentsline {subsection}{\numberline {5.3.4}Architectural Synthesis and Deployment Guidelines}{67}{subsection.5.3.4}%
-\contentsline {section}{\numberline {5.4}Summary of Chapter Findings}{68}{section.5.4}%
-\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{69}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Synthesis of Contributions and Research Question Resolution}{69}{section.6.1}%
-\contentsline {subsection}{\numberline {6.1.1}Answering the Core Research Question}{69}{subsection.6.1.1}%
-\contentsline {subsection}{\numberline {6.1.2}Algorithmic Archetypes and Workload Sensitivity}{70}{subsection.6.1.2}%
-\contentsline {section}{\numberline {6.2}Critical Limitations of the Centralized Approach}{71}{section.6.2}%
-\contentsline {subsection}{\numberline {6.2.1}Ingress Buffering and the Batching Dilemma}{71}{subsection.6.2.1}%
-\contentsline {subsection}{\numberline {6.2.2}Single Point of Failure and Space Hazards}{71}{subsection.6.2.2}%
-\contentsline {subsection}{\numberline {6.2.3}State Telemetry Overhead and Information Staleness}{71}{subsection.6.2.3}%
-\contentsline {section}{\numberline {6.3}Future Research Directions}{72}{section.6.3}%
-\contentsline {subsection}{\numberline {6.3.1}Two-Tier Hybrid Orchestration Architectures}{72}{subsection.6.3.1}%
-\contentsline {subsection}{\numberline {6.3.2}Traffic-Aware Adaptive Batching via Reinforcement Learning}{72}{subsection.6.3.2}%
-\contentsline {subsection}{\numberline {6.3.3}Multi-Agent Distributed Reinforcement Learning (MADRL)}{72}{subsection.6.3.3}%
-\contentsline {subsection}{\numberline {6.3.4}Hardware-in-the-Loop (HIL) Prototyping on Space-Qualified Hardware}{73}{subsection.6.3.4}%
-\contentsline {section}{\numberline {6.4}Concluding Remarks}{73}{section.6.4}%
-\contentsline {chapter}{Bibliography}{74}{section*.36}%
+\contentsline {section}{\numberline {5.2}Comparative Performance Evaluation across Workload Profiles}{58}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Mixed Multi-Service Workload Profile ($\boldsymbol {\beta } = (0.40, 0.35, 0.25)$)}{58}{subsection.5.2.1}%
+\contentsline {subsubsection}{Success Rate Dynamics}{62}{section*.21}%
+\contentsline {subsubsection}{Response Time Analysis}{62}{section*.22}%
+\contentsline {subsubsection}{Failure Diagnostics}{62}{section*.23}%
+\contentsline {subsection}{\numberline {5.2.2}Computation-Heavy Stress: CPU-Intensive Profile ($\boldsymbol {\beta } = (0, 1, 0)$)}{62}{subsection.5.2.2}%
+\contentsline {subsubsection}{Energy Inelasticity and Success Rate Dynamics}{66}{section*.27}%
+\contentsline {subsubsection}{The Fundamental Rejection Dichotomy}{66}{section*.28}%
+\contentsline {subsection}{\numberline {5.2.3}Communication-Heavy Stress: Data-Intensive Profile ($\boldsymbol {\beta } = (0, 0, 1)$)}{66}{subsection.5.2.3}%
+\contentsline {subsubsection}{Energy Elasticity and Global Optimality Supremacy}{70}{section*.32}%
+\contentsline {subsubsection}{Structural Uniformity of Rejection Causes}{70}{section*.33}%
+\contentsline {section}{\numberline {5.3}Trade-Off Analysis and Operational Discussion}{70}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Theoretical Global Optimality vs. Ingress Queuing Latency}{70}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Energy Budget Sensitivity Across Dimensional Boundaries}{71}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Architectural Synthesis and Deployment Guidelines}{71}{subsection.5.3.3}%
+\contentsline {section}{\numberline {5.4}Summary of Chapter Findings}{71}{section.5.4}%
+\contentsline {chapter}{\numberline {6}Conclusions and Future Work}{73}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Synthesis of Contributions and Research Question Resolution}{73}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Answering the Core Research Question}{73}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Algorithmic Archetypes and Workload Sensitivity}{74}{subsection.6.1.2}%
+\contentsline {section}{\numberline {6.2}Critical Limitations of the Centralized Approach}{75}{section.6.2}%
+\contentsline {subsection}{\numberline {6.2.1}Ingress Buffering and the Batching Dilemma}{75}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}Single Point of Failure and Space Hazards}{75}{subsection.6.2.2}%
+\contentsline {subsection}{\numberline {6.2.3}State Telemetry Overhead and Information Staleness}{75}{subsection.6.2.3}%
+\contentsline {section}{\numberline {6.3}Future Research Directions}{76}{section.6.3}%
+\contentsline {subsection}{\numberline {6.3.1}Two-Tier Hybrid Orchestration Architectures}{76}{subsection.6.3.1}%
+\contentsline {subsection}{\numberline {6.3.2}Traffic-Aware Adaptive Batching via Reinforcement Learning}{76}{subsection.6.3.2}%
+\contentsline {subsection}{\numberline {6.3.3}Multi-Agent Distributed Reinforcement Learning (MADRL)}{76}{subsection.6.3.3}%
+\contentsline {subsection}{\numberline {6.3.4}Hardware-in-the-Loop (HIL) Prototyping on Space-Qualified Hardware}{77}{subsection.6.3.4}%
+\contentsline {section}{\numberline {6.4}Concluding Remarks}{77}{section.6.4}%
+\contentsline {chapter}{Bibliography}{78}{section*.35}%
