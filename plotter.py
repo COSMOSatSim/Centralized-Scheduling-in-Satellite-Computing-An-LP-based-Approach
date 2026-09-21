@@ -1,273 +1,523 @@
 import os
 import csv
 import re
-import matplotlib.pyplot as plt
+from typing import Any, Dict, List, Optional, Tuple, cast
 import numpy as np
+import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
 
+# Configurazione rendering tipografico ad alta definizione
 plt.rcParams['figure.dpi'] = 300
+plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
 
-# ==========================================
-# 1. PARAMETRI E COLORAZIONI
-# ==========================================
-root_folder = "simulazioni_esp_8"  # Cartella con le simulazioni complete
+# ==============================================================================
+# 1. PARAMETRI GENERALI, ALGORITMI E STILI (ENGLISH)
+# ==============================================================================
+CANDIDATE_FOLDERS = [
+    'simulazioni_esp_10'
+]
 
-BS_VALUES = [1, 2, 4, 6, 8, 10]
-BT_VALUES = [0.0, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0]
+root_folder = None
+for cand in CANDIDATE_FOLDERS:
+    if os.path.exists(cand):
+        has_csv = False
+        for _, _, files in os.walk(cand):
+            if any(f.endswith('.csv') and 'result' in f.lower() for f in files):
+                has_csv = True
+                break
+        if has_csv:
+            root_folder = cand
+            break
 
-# Palette graduate per i parametri di sweep
-BS_COLORS = {1: "#1a2a6c", 2: "#275efe", 4: "#00a896", 6: "#02c39a", 8: "#a8dadc", 10: "#ffd166"}
-BT_COLORS = {0.0: "#2b0938", 0.05: "#5c1363", 0.1: "#8c2981", 0.2: "#b73779", 
-             0.4: "#d85a63", 0.6: "#ed7e50", 0.8: "#fca636", 1.0: "#f0f921"}
+if root_folder is None:
+    root_folder = 'simulazioni_esp_10'
 
-DEADLINES = [10, 20, 30]
-ROUTINGS = ["Energy", "Time"]
-MAPPINGS = ["ENERGY", "TIME"]
+OUTPUT_DIR = 'plots_workload_optimized'
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# ==========================================
-# 2. FUNZIONI DI PARSING & STATISTICHE
-# ==========================================
-def read_csv_to_2d_array(filepath):
-    with open(filepath, newline='', encoding='utf-8') as f:
+ARRIVAL_RATES = [2, 3, 4, 6, 8, 10]
+ENERGY_BUDGETS = [40, 80]
+
+BETA_PROFILES = [
+    ('(0, 1, 0)', 'CPU-Intensive - Beta (0, 1, 0)'),
+    ('(0, 0, 1)', 'Data-Intensive - Beta (0, 0, 1)'),
+    ('(0.4, 0.35, 0.25)', 'Mixed Workload - Beta (0.4, 0.35, 0.25)')
+]
+
+ALPHA_PROFILES = [
+    ('(0.3, 0.5, 0.2)', 'Alpha (0.3, 0.5, 0.2) [Std]'),
+    ('(0, 0.7, 0.3)',   'Alpha (0, 0.7, 0.3) [L-heavy]'),
+    ('(0, 0.3, 0.7)',   'Alpha (0, 0.3, 0.7) [VL-heavy]'),
+    ('(0, 1, 0)',       'Alpha (0, 1, 0) [Pure L]')
+]
+
+ALGO_ORDER = [
+    'DTS-base',
+    'DTS-Optimal',
+    'Orbit-aware',
+    'ILP-Hierarchical (Time)',
+    'ILP-Hierarchical (Energy)',
+    'ILP-Centr (BS20, BT0.05, Time)',
+    'ILP-Centr (BS20, BT0.05, Energy)',
+    'ILP-Centr (BS2, BT2, Time)',
+    'ILP-Centr (BS2, BT2, Energy)'
+]
+
+ALGO_STYLE: Dict[str, Dict[str, Any]] = {
+    'DTS-base':                         {'color': '#F59E0B', 'marker': 'o', 'linestyle': '-',  'ls': '-',  'light': '#FDE68A'},
+    'DTS-Optimal':                      {'color': '#2563EB', 'marker': 's', 'linestyle': '-',  'ls': '-',  'light': '#BAE6FD'},
+    'Orbit-aware':                      {'color': '#10B981', 'marker': '^', 'linestyle': '-',  'ls': '-',  'light': '#A7F3D0'},
+    'ILP-Hierarchical (Time)':          {'color': '#8B5CF6', 'marker': 'v', 'linestyle': '--', 'ls': '--', 'light': '#DDD6FE'},
+    'ILP-Hierarchical (Energy)':        {'color': '#D946EF', 'marker': '<', 'linestyle': '--', 'ls': '--', 'light': '#F5D0FE'},
+    'ILP-Centr (BS20, BT0.05, Time)':   {'color': '#EF4444', 'marker': 'D', 'linestyle': '-.', 'ls': '-.', 'light': '#FECACA'},
+    'ILP-Centr (BS20, BT0.05, Energy)': {'color': '#EA580C', 'marker': 'p', 'linestyle': '-.', 'ls': '-.', 'light': '#FED7AA'},
+    'ILP-Centr (BS2, BT2, Time)':       {'color': '#06B6D4', 'marker': 'P', 'linestyle': ':',  'ls': ':',  'light': '#CFFAFE'},
+    'ILP-Centr (BS2, BT2, Energy)':     {'color': '#64748B', 'marker': 'X', 'linestyle': ':',  'ls': ':',  'light': '#E2E8F0'}
+}
+
+ALGO_STYLE['OrbitAware'] = ALGO_STYLE['Orbit-aware']
+ALGO_STYLE['DTS-APopt'] = ALGO_STYLE['DTS-Optimal']
+ALGO_STYLE['DTS-opt'] = ALGO_STYLE['DTS-Optimal']
+ALGO_STYLE['ILP-Hierarchical-Time'] = ALGO_STYLE['ILP-Hierarchical (Time)']
+ALGO_STYLE['ILP-Hierarchical-Energy'] = ALGO_STYLE['ILP-Hierarchical (Energy)']
+
+DEFAULT_ALGO_STYLE: Dict[str, Any] = {
+    'color': '#64748B', 'marker': 'o', 'linestyle': '-', 'ls': '-', 'light': '#E2E8F0'
+}
+
+# Palette luminosa per le cause di fallimento
+LUMINOUS_CAUSE_COLORS = {
+    'deadline':       '#3B82F6',  # Blu cobalto vivo
+    'insuff_cn':      '#F59E0B',  # Ambra dorato brillante
+    'insuff_c':       '#10B981',  # Verde smeraldo
+    'no_server':      '#EF4444',  # Rosso corallo chiaro
+    'ilp_infeasible': '#8B5CF6',  # Lavanda / Violetto
+    'sunset':         '#94A3B8'   # Grigio perla chiaro
+}
+CAUSE_KEYS = ['deadline', 'insuff_cn', 'insuff_c', 'no_server', 'ilp_infeasible', 'sunset']
+CAUSE_LABELS = [
+    'Deadline exceeded', 'Insuff. CPU+NET', 'Insuff. CPU',
+    'No server found', 'ILP Infeasible', 'Sunset'
+]
+
+# ==============================================================================
+# 2. PARSING CSV E METRICHE
+# ==============================================================================
+def read_csv_to_2d_array(file_path: str) -> List[List[str]]:
+    with open(file_path, newline='', encoding='utf-8') as f:
         return [row for row in csv.reader(f) if row]
 
-def extract_metadata(filepath):
-    f_low = filepath.lower()
-    
-    ar_m = re.search(r'(?:arr_rate|at)[_=]([\d.]+)', f_low)
-    if not ar_m: return None
-    at = float(ar_m.group(1))
-    ar = int(round(1.0 / at)) if at <= 1.0 else int(round(at))
+def parse_workload_beta(path_str: str) -> Optional[str]:
+    p = path_str.lower()
+    if any(k in p for k in ['0.4_0.35_0.25', 'bg_0.4', 'b(0.4', 'beta_(0.4', 'beta_0.4']):
+        return '(0.4, 0.35, 0.25)'
+    if any(k in p for k in ['bcpui_1', 'bcpui_1.0', '0_1_0', '0.0_1.0_0.0', 'b(0, 1, 0)', 'beta_(0, 1, 0)']):
+        return '(0, 1, 0)'
+    if any(k in p for k in ['bcpudi_1', 'bcpudi_1.0', '0_0_1', '0.0_0.0_1.0', 'b(0, 0, 1)', 'beta_(0, 0, 1)']):
+        return '(0, 0, 1)'
+    return None
 
-    dl_m = re.search(r'deadline_(\d+)', f_low)
-    dl = int(dl_m.group(1)) if dl_m else None
+def parse_workload_alpha(path_str: str) -> Optional[str]:
+    p = path_str.lower()
+    if any(k in p for k in ['ah_1.0_avh_0', 'ah_1_avh_0', 'a(0, 1, 0)', 'alpha_(0, 1, 0)', 'pure l', 'pure_l']):
+        return '(0, 1, 0)'
+    if any(k in p for k in ['0.3_0.5_0.2', 'am_0.3', 'a(0.3', 'alpha_(0.3', 'std']):
+        return '(0.3, 0.5, 0.2)'
+    if any(k in p for k in ['0.7_0.3', 'ah_0.7', 'a(0, 0.7', 'alpha_(0, 0.7', 'l-heavy', 'l_heavy']):
+        return '(0, 0.7, 0.3)'
+    if any(k in p for k in ['0.3_0.7', 'ah_0.3_avh_0.7', 'a(0, 0.3', 'alpha_(0.3', 'vl-heavy', 'vl_heavy']):
+        return '(0, 0.3, 0.7)'
+    return None
 
-    bs_m = re.search(r'batch_size[_=](\d+)', f_low)
-    bt_m = re.search(r'batch_timeout[_=]([\d.]+)', f_low)
-    bs = int(bs_m.group(1)) if bs_m else None
-    bt = float(bt_m.group(1)) if bt_m else None
+def extract_parameters(filepath: str) -> Tuple[Optional[int], Optional[int], Optional[str], Optional[str], Optional[str]]:
+    f_lower = filepath.lower()
 
-    dijk_m = re.search(r'dijk[_=]([0-9.]+)[_=]([0-9.]+)', f_low)
-    if dijk_m:
-        routing = "Energy" if float(dijk_m.group(2)) > float(dijk_m.group(1)) else "Time"
+    ar_match = re.search(r'(?:arrival_time|arr_rate|arrival_rate|at|ar)[_=]([\d.]+)', f_lower)
+    if ar_match:
+        val = float(ar_match.group(1))
+        ar_val = int(round(1.0 / val)) if val <= 0.6 else int(round(val))
     else:
-        routing = "Time"
+        ar_val = None
 
-    mapping = None
-    if "obj_energy" in f_low or "/energy/" in f_low:
-        mapping = "ENERGY"
-    elif "obj_time" in f_low or "/time/" in f_low:
-        mapping = "TIME"
+    eb_match = re.search(r'(?:energy_budget|budget|eb)[_=](\d+)', f_lower)
+    if eb_match:
+        val_eb = int(eb_match.group(1))
+        eb_val = int(val_eb / 1000) if val_eb >= 1000 else val_eb
+    else:
+        eb_val = 40 if ('40k' in f_lower or '40000' in f_lower) else (80 if ('80k' in f_lower or '80000' in f_lower) else None)
 
-    return ar, dl, bs, bt, routing, mapping
+    beta_val = parse_workload_beta(f_lower)
+    alpha_val = parse_workload_alpha(f_lower)
 
-def compute_times(lines):
-    comp = 0
-    tot_t, sys_t = 0.0, 0.0
-    for l in lines:
-        if len(l) <= 26: continue
-        if str(l[2]).strip() == "Completed" and str(l[26]).strip() != "N/A":
-            comp += 1
-            tot_t += float(l[9]) + float(l[15]) + float(l[26])
-            sys_t += float(l[9])
-    
-    if comp == 0:
-        return 0.0, 0.0
-    return sys_t / comp, max(0.0, (tot_t - sys_t) / comp)
+    path_no_eb = re.sub(r'energy_budget_\d+|budget_\d+', '', f_lower)
+    algo_val = None
+    if 'orbit' in f_lower:
+        algo_val = 'Orbit-aware'
+    elif 'dts' in f_lower and any(k in f_lower for k in ['opt', 'apopt']):
+        algo_val = 'DTS-Optimal'
+    elif 'dts' in f_lower and 'base' in f_lower:
+        algo_val = 'DTS-base'
+    elif 'hierarchical' in f_lower:
+        if any(k in path_no_eb for k in ['/time/', '_time', 'hierarchical_time', 'hierarchical-time']):
+            algo_val = 'ILP-Hierarchical (Time)'
+        else:
+            algo_val = 'ILP-Hierarchical (Energy)'
+    elif any(k in f_lower for k in ['centr', 'ilp_centralized', 'ilp-centralized', 'ilp_sim_systemap']):
+        is_time = any(k in path_no_eb for k in ['obj_time', '/time/', 'opt_time'])
+        is_bs20 = any(k in f_lower for k in ['bs_20', 'bs20', 'batch_size_20'])
+        if is_bs20:
+            algo_val = 'ILP-Centr (BS20, BT0.05, Time)' if is_time else 'ILP-Centr (BS20, BT0.05, Energy)'
+        else:
+            algo_val = 'ILP-Centr (BS2, BT2, Time)' if is_time else 'ILP-Centr (BS2, BT2, Energy)'
 
-# ==========================================
-# 3. RACCOLTA DATI
-# ==========================================
-print("Estrazione metriche temporali dai log di simulazione...")
-data = {m: {dl: {"BS": {}, "BT": {}} for dl in DEADLINES} for m in MAPPINGS}
-all_ars = set()
+    return ar_val, eb_val, beta_val, alpha_val, algo_val
+
+def compute_stats(lines: List[List[str]]) -> Dict[str, Any]:
+    completed = rejected = deadline = insuff_cn = insuff_c = no_server = ilp_infeasible = sunset = 0
+    total_time = sys_time = 0.0
+
+    for line in lines:
+        if len(line) <= 26:
+            continue
+        status = str(line[2]).strip()
+        if status == 'Completed':
+            completed += 1
+            if str(line[26]).strip() != 'N/A':
+                total_time += float(line[9]) + float(line[15]) + float(line[26])
+                sys_time += float(line[9])
+        elif status == 'Rejected':
+            rejected += 1
+            reason = str(line[23]).lower()
+            if 'deadline' in reason:
+                deadline += 1
+            elif 'energy' in reason:
+                if 'net' in reason:
+                    insuff_cn += 1
+                else:
+                    insuff_c += 1
+            elif 'route' in reason:
+                no_server += 1
+            elif 'infeasible' in reason:
+                ilp_infeasible += 1
+            elif 'sunset' in reason:
+                sunset += 1
+
+    return {
+        'completed': completed, 'rejected': rejected,
+        'deadline': deadline, 'insuff_cn': insuff_cn, 'insuff_c': insuff_c,
+        'no_server': no_server, 'ilp_infeasible': ilp_infeasible, 'sunset': sunset,
+        'total_time': total_time, 'sys_time': sys_time
+    }
+
+# ==============================================================================
+# 3. CARICAMENTO DATI
+# ==============================================================================
+print(f"Scansione cartella: '{root_folder}'...")
+data_store: Dict[Any, Any] = {}
 
 for root, _, files in os.walk(root_folder):
-    for f in files:
-        if f.endswith(".csv") and "results" in f:
-            fp = os.path.join(root, f)
-            meta = extract_metadata(fp)
-            if not meta: continue
-            ar, dl, bs, bt, rout, mapping = meta
-            if dl not in DEADLINES or mapping not in MAPPINGS: continue
-            all_ars.add(ar)
+    for file in files:
+        if file.endswith('.csv') and 'result' in file.lower():
+            filepath = os.path.join(root, file)
+            ar, eb, beta, alpha, algo = extract_parameters(filepath)
+            if None not in (ar, eb, beta, alpha, algo):
+                data_store.setdefault(beta, {}).setdefault(eb, {}).setdefault(alpha, {}).setdefault(algo, {}).setdefault(ar, []).extend(read_csv_to_2d_array(filepath))
 
-            rows = read_csv_to_2d_array(fp)
-            s_t, w_t = compute_times(rows)
+# Calcolo posizioni orizzontali per i 3 micro-cluster:
+# [0,1,2] Heuristics | [3,4] Hierarchical | [5,6,7,8] Centralized
+bar_w = 0.075
+sub_gap = 0.040
+offsets_9 = []
+curr_x = 0.0
+for idx in range(9):
+    offsets_9.append(curr_x)
+    curr_x += bar_w
+    if idx == 2 or idx == 4:
+        curr_x += sub_gap
+total_span = curr_x
+offsets_9 = np.array(offsets_9) - (total_span / 2.0) + (bar_w / 2.0)
 
-            # Raggruppamento Sweep BS (BT fisso a 2.0s)
-            if bt == 2.0 and bs in BS_VALUES:
-                k = (bs, rout)
-                if k not in data[mapping][dl]["BS"]: data[mapping][dl]["BS"][k] = {}
-                data[mapping][dl]["BS"][k][ar] = (s_t, w_t)
-
-            # Raggruppamento Sweep BT (BS fisso a 20)
-            if bs == 20 and bt in BT_VALUES:
-                k = (bt, rout)
-                if k not in data[mapping][dl]["BT"]: data[mapping][dl]["BT"][k] = {}
-                data[mapping][dl]["BT"][k][ar] = (s_t, w_t)
-
-sorted_ars = sorted(list(all_ars))
-
-# ==========================================
-# 4. GENERAZIONE GRAFICI (PER OGNI MAPPING)
-# ==========================================
-os.makedirs("plots_stacked_sweeps", exist_ok=True)
-
-for mapping in MAPPINGS:
-    fig, axes = plt.subplots(3, 2, figsize=(20, 14), sharex=True)
-    fig.suptitle(f"Parametric Response Time Decomposition ({mapping} Mapping)", fontsize=16, fontweight='bold', y=0.98)
-
-    for r_idx, dl in enumerate(DEADLINES):
-        # ----------------- Colonna Sinistra: BS Sweep -----------------
-        ax_left = axes[r_idx, 0]
-        configs_bs = [(b, rt) for b in BS_VALUES for rt in ROUTINGS]
-        n_cfg_bs = len(configs_bs)
-        step_bs = 0.85 / n_cfg_bs
-        w_bs = step_bs * 0.90
-        x_base_bs = np.arange(len(sorted_ars)) * (n_cfg_bs * step_bs + 0.5)
-        offsets_bs = np.linspace(-(n_cfg_bs * step_bs)/2 + step_bs/2, (n_cfg_bs * step_bs)/2 - step_bs/2, n_cfg_bs)
-
-        for i, (b_val, rt) in enumerate(configs_bs):
-            s_vals, w_vals = [], []
-            for ar in sorted_ars:
-                st, wt = data[mapping][dl]["BS"].get((b_val, rt), {}).get(ar, (0.0, 0.0))
-                s_vals.append(st)
-                w_vals.append(wt)
-            
-            c = BS_COLORS[b_val]
-            h = "//" if rt == "Time" else ""
-            
-            # System execution in basso (opaca), Wait/Network in alto (traslucida)
-            ax_left.bar(x_base_bs + offsets_bs[i], s_vals, width=w_bs, color=c, edgecolor='black', linewidth=0.2, hatch=h)
-            ax_left.bar(x_base_bs + offsets_bs[i], w_vals, width=w_bs, bottom=s_vals, color=c, alpha=0.35, 
-                        edgecolor='black', linewidth=0.2, hatch=h)
-
-        for x in x_base_bs[:-1]:
-            ax_left.axvline(x + (n_cfg_bs * step_bs)/2 + 0.25, color='gray', linestyle=':', alpha=0.4)
-
-        ax_left.set_ylabel(f"Response Time (ms)\n[$\\Delta D = {dl}\\%$]", fontsize=10)
-        ax_left.grid(axis='y', linestyle='--', alpha=0.3)
-        if r_idx == 0:
-            ax_left.set_title("Batch Size Sweep ($BS$, $BT=2.0\\text{s}$)", fontsize=12, fontweight='bold')
-
-        # ----------------- Colonna Destra: BT Sweep -----------------
-        ax_right = axes[r_idx, 1]
-        configs_bt = [(t, rt) for t in BT_VALUES for rt in ROUTINGS]
-        n_cfg_bt = len(configs_bt)
-        step_bt = 0.85 / n_cfg_bt
-        w_bt = step_bt * 0.90
-        x_base_bt = np.arange(len(sorted_ars)) * (n_cfg_bt * step_bt + 0.5)
-        offsets_bt = np.linspace(-(n_cfg_bt * step_bt)/2 + step_bt/2, (n_cfg_bt * step_bt)/2 - step_bt/2, n_cfg_bt)
-
-        for i, (t_val, rt) in enumerate(configs_bt):
-            s_vals, w_vals = [], []
-            for ar in sorted_ars:
-                st, wt = data[mapping][dl]["BT"].get((t_val, rt), {}).get(ar, (0.0, 0.0))
-                s_vals.append(st)
-                w_vals.append(wt)
-            
-            c = BT_COLORS[t_val]
-            h = "//" if rt == "Time" else ""
-            
-            ax_right.bar(x_base_bt + offsets_bt[i], s_vals, width=w_bt, color=c, edgecolor='black', linewidth=0.2, hatch=h)
-            ax_right.bar(x_base_bt + offsets_bt[i], w_vals, width=w_bt, bottom=s_vals, color=c, alpha=0.35, 
-                         edgecolor='black', linewidth=0.2, hatch=h)
-
-        for x in x_base_bt[:-1]:
-            ax_right.axvline(x + (n_cfg_bt * step_bt)/2 + 0.25, color='gray', linestyle=':', alpha=0.4)
-
-        ax_right.grid(axis='y', linestyle='--', alpha=0.3)
-        if r_idx == 0:
-            ax_right.set_title("Batch Timeout Sweep ($BT$, $BS=20$)", fontsize=12, fontweight='bold')
-
-    axes[2, 0].set_xticks(x_base_bs)
-    axes[2, 0].set_xticklabels(sorted_ars, fontsize=10)
-    axes[2, 0].set_xlabel("Arrival Rate (req/sec)", fontsize=11)
-
-    axes[2, 1].set_xticks(x_base_bt)
-    axes[2, 1].set_xticklabels(sorted_ars, fontsize=10)
-    axes[2, 1].set_xlabel("Arrival Rate (req/sec)", fontsize=11)
 # ==============================================================================
-    # IMPOSTAZIONE SPAZI E LEGENDE SU SINGOLA RIGA (PARAMETRI ESPLICITI)
-    # ==============================================================================
-    # 1. Regolazione margini: riserva la fascia inferiore per la riga di legende
-    plt.tight_layout()
-    fig.subplots_adjust(bottom=0.09, top=0.94, hspace=0.15, wspace=0.12)
+# 4. GRAFICO 1: SUCCESS RATE (LINE PLOT COMPATTO SENZA BIANCO)
+# ==============================================================================
+def generate_workload_success_rate(beta_key: str, beta_label: str):
+    # Altezza figura ridotta da 9.0 a 7.6 pollici
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(22, 7.6), sharex=True, sharey=True)
 
-    # 2. Elementi grafici delle 4 legende
-    leg_bs = [mpatches.Patch(color=BS_COLORS[b], label=f"BS={b}") for b in BS_VALUES]
-    leg_bt = [mpatches.Patch(color=BT_COLORS[t], label=f"BT={t}s") for t in BT_VALUES]
-    leg_comp = [
-        mpatches.Patch(facecolor='gray', edgecolor='black', alpha=1.0, label='Execution (Bottom)'),
-        mpatches.Patch(facecolor='gray', edgecolor='black', alpha=0.35, label='Wait/Net (Top)')
-    ]
-    leg_rout = [
-        mpatches.Patch(facecolor='white', edgecolor='black', hatch='', label='Dijkstra-Energy'),
-        mpatches.Patch(facecolor='white', edgecolor='black', hatch='//', label='Dijkstra-Time')
-    ]
+    for r_idx, eb in enumerate(ENERGY_BUDGETS):
+        for c_idx, (a_key, a_lbl) in enumerate(ALPHA_PROFILES):
+            ax = axes[r_idx, c_idx]
 
-    # Quota verticale comune per allinearle tutte alla stessa altezza
-    y_pos = 0.042
+            for algo in ALGO_ORDER:
+                y_vals = []
+                for ar in ARRIVAL_RATES:
+                    rows = data_store.get(beta_key, {}).get(eb, {}).get(a_key, {}).get(algo, {}).get(ar, [])
+                    st = compute_stats(rows)
+                    tot = st['completed'] + st['rejected']
+                    y_vals.append((st['completed'] / tot * 100.0) if tot > 0 else 0.0)
 
-    # Box 1: Batch Size (allineato a sinistra)
-    l_bs = fig.legend(
-        handles=leg_bs,
-        loc='center',
-        bbox_to_anchor=(0.15, y_pos),
-        ncol=6,
-        title="Batch Size ($BS$, $BT=2.0\\text{s}$)",
-        title_fontsize=9.5,
-        fontsize=8.5,
-        frameon=True,
-        facecolor='white',
-        edgecolor='#cccccc'
+                cfg = ALGO_STYLE.get(algo, DEFAULT_ALGO_STYLE)
+                ls_val: Any = cast(Any, cfg.get('linestyle', cfg.get('ls', '-')))
+
+                ax.plot(
+                    ARRIVAL_RATES, y_vals,
+                    color=cfg.get('color', '#333333'),
+                    linestyle=ls_val,
+                    marker=cfg.get('marker', 'o'),
+                    markersize=5.5,
+                    linewidth=1.8,
+                    alpha=0.92,
+                    label=algo
+                )
+
+            ax.set_title(f'{eb} kJ | {a_lbl}', fontsize=10.5, fontweight='bold', pad=8)
+            ax.set_ylim(-2, 105)
+            ax.grid(True, linestyle='--', alpha=0.45)
+            if c_idx == 0:
+                ax.set_ylabel(f'{eb} kJ Budget\nSuccess Rate (%)', fontsize=11, fontweight='semibold')
+
+    for col in range(4):
+        axes[1, col].set_xticks(ARRIVAL_RATES)
+        axes[1, col].set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=10.5)
+        axes[1, col].set_xlabel('Arrival Rate (req/sec)', fontsize=11, labelpad=5)
+
+    fig.tight_layout()
+    # Margine bottom a 0.14: aderente all'asse X
+    fig.subplots_adjust(top=0.90, bottom=0.14, hspace=0.20, wspace=0.06)
+
+    handles = []
+    for a in ALGO_ORDER:
+        cfg = ALGO_STYLE.get(a, DEFAULT_ALGO_STYLE)
+        ls_val_leg: Any = cast(Any, cfg.get('linestyle', cfg.get('ls', '-')))
+        handles.append(
+            Line2D([0], [0],
+                   color=cfg.get('color', '#333333'),
+                   linestyle=ls_val_leg,
+                   marker=cfg.get('marker', 'o'),
+                   lw=2.0,
+                   markersize=7,
+                   label=a)
+        )
+
+    leg = fig.legend(
+        handles=handles, loc='upper center', bbox_to_anchor=(0.5, 0.065),
+        ncol=5, fontsize=9.5, title='Evaluated Algorithms', title_fontsize=10.5,
+        frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
     )
 
-    # Box 2: Time Component (centro-sinistra)
-    l_comp = fig.legend(
-        handles=leg_comp,
-        loc='center',
-        bbox_to_anchor=(0.38, y_pos),
-        ncol=2,
-        title="Time Component",
-        title_fontsize=9.5,
-        fontsize=8.5,
-        frameon=True,
-        facecolor='white',
-        edgecolor='#cccccc'
-    )
+    clean_name = re.sub(r'[^\w]+', '_', beta_key).strip('_')
+    fig.suptitle(f'Success Rate across Arrival Rates: {beta_label}', fontsize=15, fontweight='bold', y=0.975)
 
-    # Box 3: Routing Strategy (centro-destra)
-    l_rout = fig.legend(
-        handles=leg_rout,
-        loc='center',
-        bbox_to_anchor=(0.53, y_pos),
-        ncol=2,
-        title="Routing Strategy",
-        title_fontsize=9.5,
-        fontsize=8.5,
-        frameon=True,
-        facecolor='white',
-        edgecolor='#cccccc'
-    )
-
-    # Box 4: Batch Timeout (allineato a destra)
-    l_bt = fig.legend(
-        handles=leg_bt,
-        loc='center',
-        bbox_to_anchor=(0.83, y_pos),
-        ncol=8,
-        title="Batch Timeout ($BT$, $BS=20$)",
-        title_fontsize=9.5,
-        fontsize=8.5,
-        frameon=True,
-        facecolor='white',
-        edgecolor='#cccccc'
-    )
-
-    # 3. Salvataggio con inclusione di tutte e quattro le legende
-    save_path = f"plots_stacked_sweeps/02_Stacked_Response_Time_{mapping}.png"
-    plt.savefig(save_path, bbox_inches='tight', bbox_extra_artists=(l_bs, l_comp, l_rout, l_bt))
+    out_path = os.path.join(OUTPUT_DIR, f'01_Success_Rate_Beta_{clean_name}.png')
+    plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg,))
     plt.close()
-    print(f"Salvato con successo: {save_path}")
+    print(f"[OK] Generato Success Rate: {out_path}")
+
+# ==============================================================================
+# 5. GRAFICO 2: REJECTION CAUSES (CON NUMERI 1-9 SULLE BARRE E LEGENDA VICINA)
+# ==============================================================================
+def generate_workload_rejection_causes(beta_key: str, beta_label: str):
+    # Altezza calibrata a 8.2 pollici
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(24, 8.2), sharex=True, sharey=True)
+    ar_indices = np.arange(len(ARRIVAL_RATES))
+
+    for r_idx, eb in enumerate(ENERGY_BUDGETS):
+        for c_idx, (a_key, a_lbl) in enumerate(ALPHA_PROFILES):
+            ax = axes[r_idx, c_idx]
+
+            for i in range(len(ARRIVAL_RATES)):
+                if i % 2 == 1:
+                    ax.axvspan(i - 0.5, i + 0.5, color='#F8FAFC', zorder=0)
+
+            for i in range(len(ARRIVAL_RATES) - 1):
+                ax.axvline(i + 0.5, color='#E2E8F0', linestyle='-', linewidth=0.75, zorder=1)
+
+            for a_idx, ar in enumerate(ARRIVAL_RATES):
+                c_x = ar_indices[a_idx]
+                for alg_idx, algo in enumerate(ALGO_ORDER):
+                    x_pos = c_x + offsets_9[alg_idx]
+                    rows = data_store.get(beta_key, {}).get(eb, {}).get(a_key, {}).get(algo, {}).get(ar, [])
+                    st = compute_stats(rows)
+                    rej_tot = st['rejected']
+                    bottom = 0.0
+
+                    for key in CAUSE_KEYS:
+                        val_pct = (st[key] / rej_tot * 100.0) if rej_tot > 0 else 0.0
+                        if val_pct > 0:
+                            ax.bar(
+                                x_pos, val_pct, bottom=bottom, width=bar_w * 0.90,
+                                color=LUMINOUS_CAUSE_COLORS[key],
+                                edgecolor='#1E293B',
+                                linewidth=0.25,
+                                zorder=3
+                            )
+                            bottom += val_pct
+
+                    # Stampa del numero algoritmo (1-9) direttamente sulla cima della barra
+                    if rej_tot > 0:
+                        ax.text(
+                            x_pos, 102.0, f'{alg_idx + 1}',
+                            ha='center', va='bottom',
+                            fontsize=5.5, fontweight='bold',
+                            color='#1E293B', zorder=4
+                        )
+
+            ax.set_title(f'{eb} kJ | {a_lbl}', fontsize=10.5, fontweight='bold', pad=8)
+            ax.set_ylim(0, 114)  # Spazio riservato per stampare '1'..'9' senza tagliare
+            ax.set_yticks([0, 20, 40, 60, 80, 100])
+            ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
+            if c_idx == 0:
+                ax.set_ylabel(f'{eb} kJ Budget\nRejection Breakdown (%)', fontsize=11, fontweight='semibold')
+
+    for col in range(4):
+        axes[1, col].set_xticks(ar_indices)
+        axes[1, col].set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=10.5)
+        axes[1, col].set_xlabel('Arrival Rate (req/sec)', fontsize=11, labelpad=5)
+
+    fig.tight_layout()
+    # Bottom ricalibrato a 0.16 per eliminare il gap bianco
+    fig.subplots_adjust(top=0.90, bottom=0.16, hspace=0.20, wspace=0.06)
+
+    cause_patches = [
+        mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#475569', linewidth=0.5, label=l)
+        for k, l in zip(CAUSE_KEYS, CAUSE_LABELS)
+    ]
+    order_patches = [
+        Line2D([0], [0], marker=f'${i+1}$', color='none', markeredgecolor='#0F172A',
+               markerfacecolor='#F1F5F9', markersize=9, label=f'[{i+1}] {algo}')
+        for i, algo in enumerate(ALGO_ORDER)
+    ]
+
+    leg1 = fig.legend(
+        handles=cause_patches, loc='upper center', bbox_to_anchor=(0.28, 0.075),
+        ncol=3, fontsize=9.5, title='Failure Causes Breakdown', title_fontsize=10.5,
+        frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
+    )
+    leg2 = fig.legend(
+        handles=order_patches, loc='upper center', bbox_to_anchor=(0.74, 0.075),
+        ncol=3, fontsize=9.0, title='Algorithm Bar Clusters [Heuristics (1-3) | Hierarchical (4-5) | Centralized (6-9)]',
+        title_fontsize=10.0, frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
+    )
+
+    clean_name = re.sub(r'[^\w]+', '_', beta_key).strip('_')
+    fig.suptitle(f'Failure Causes Evolution: {beta_label}', fontsize=15, fontweight='bold', y=0.975)
+
+    out_path = os.path.join(OUTPUT_DIR, f'03_Rejection_Causes_Beta_{clean_name}.png')
+    plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
+    plt.close()
+    print(f"[OK] Generato Rejection Causes: {out_path}")
+
+# ==============================================================================
+# 6. GRAFICO 3: RESPONSE TIME (CON NUMERI 1-9 SULLE BARRE E LEGENDA ADERENTE)
+# ==============================================================================
+def generate_workload_response_time(beta_key: str, beta_label: str):
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(24, 8.2), sharex=True)
+    ar_indices = np.arange(len(ARRIVAL_RATES))
+    max_y = 0.0
+
+    for r_idx, eb in enumerate(ENERGY_BUDGETS):
+        for c_idx, (a_key, a_lbl) in enumerate(ALPHA_PROFILES):
+            ax = axes[r_idx, c_idx]
+
+            for i in range(len(ARRIVAL_RATES)):
+                if i % 2 == 1:
+                    ax.axvspan(i - 0.5, i + 0.5, color='#F8FAFC', zorder=0)
+
+            for i in range(len(ARRIVAL_RATES) - 1):
+                ax.axvline(i + 0.5, color='#E2E8F0', linestyle='-', linewidth=0.75, zorder=1)
+
+            for a_idx, ar in enumerate(ARRIVAL_RATES):
+                c_x = ar_indices[a_idx]
+                for alg_idx, algo in enumerate(ALGO_ORDER):
+                    x_pos = c_x + offsets_9[alg_idx]
+                    rows = data_store.get(beta_key, {}).get(eb, {}).get(a_key, {}).get(algo, {}).get(ar, [])
+                    st = compute_stats(rows)
+                    comp = st['completed']
+
+                    sys_t = (st['sys_time'] / comp) if comp > 0 else 0.0
+                    tot_t = (st['total_time'] / comp) if comp > 0 else 0.0
+                    wait_t = max(0.0, tot_t - sys_t)
+                    if tot_t > max_y:
+                        max_y = tot_t
+
+                    cfg = ALGO_STYLE.get(algo, DEFAULT_ALGO_STYLE)
+
+                    ax.bar(
+                        x_pos, sys_t, width=bar_w * 0.90,
+                        color=cfg['color'], edgecolor='#0F172A', linewidth=0.35, zorder=3
+                    )
+                    ax.bar(
+                        x_pos, wait_t, bottom=sys_t, width=bar_w * 0.90,
+                        color=cfg['light'], edgecolor='#0F172A', linewidth=0.35, zorder=3
+                    )
+
+                    # Numero identificativo (1-9) stampato sopra la barra di latenza totale
+                    if comp > 0 and tot_t > 0:
+                        ax.text(
+                            x_pos, tot_t, f'{alg_idx + 1}',
+                            ha='center', va='bottom',
+                            fontsize=5.0, fontweight='bold',
+                            color='#1E293B', zorder=4
+                        )
+
+            ax.set_title(f'{eb} kJ | {a_lbl}', fontsize=10.5, fontweight='bold', pad=8)
+            ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
+            if c_idx == 0:
+                ax.set_ylabel(f'{eb} kJ Budget\nResponse Time (ms)', fontsize=11, fontweight='semibold')
+
+    for r in range(2):
+        for c in range(4):
+            axes[r, c].set_ylim(0, max_y * 1.18 if max_y > 0 else 1.0)
+
+    for col in range(4):
+        axes[1, col].set_xticks(ar_indices)
+        axes[1, col].set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=10.5)
+        axes[1, col].set_xlabel('Arrival Rate (req/sec)', fontsize=11, labelpad=5)
+
+    fig.tight_layout()
+    fig.subplots_adjust(top=0.90, bottom=0.15, hspace=0.20, wspace=0.06)
+
+    algo_patches = [
+        mpatches.Patch(color=ALGO_STYLE.get(a, DEFAULT_ALGO_STYLE)['color'], label=f'[{i+1}] {a}')
+        for i, a in enumerate(ALGO_ORDER)
+    ]
+    comp_patches = [
+        mpatches.Patch(facecolor='#475569', edgecolor='#0F172A', linewidth=0.5, label='System Execution (Solid Bottom)'),
+        mpatches.Patch(facecolor='#CBD5E1', edgecolor='#0F172A', linewidth=0.5, label='Network / Queuing Delay (Opaque Tint Top)')
+    ]
+
+    leg1 = fig.legend(
+        handles=algo_patches, loc='upper center', bbox_to_anchor=(0.40, 0.07),
+        ncol=5, fontsize=8.8, title='Evaluated Algorithms (Numbered 1-9)', title_fontsize=10.0,
+        frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
+    )
+    leg2 = fig.legend(
+        handles=comp_patches, loc='upper center', bbox_to_anchor=(0.84, 0.07),
+        ncol=1, fontsize=8.8, title='Latency Breakdown', title_fontsize=10.0,
+        frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
+    )
+
+    clean_name = re.sub(r'[^\w]+', '_', beta_key).strip('_')
+    fig.suptitle(f'Response Time Decomposition: {beta_label}', fontsize=15, fontweight='bold', y=0.975)
+
+    out_path = os.path.join(OUTPUT_DIR, f'02_Response_Time_Beta_{clean_name}.png')
+    plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
+    plt.close()
+    print(f"[OK] Generato Response Time: {out_path}")
+
+# ==============================================================================
+# 7. ESECUZIONE SU TUTTI I PROFILI BETA
+# ==============================================================================
+if __name__ == '__main__':
+    print("--- AVVIO GENERAZIONE PLOT WORKLOAD BENCHMARK (CON BADGE NUMERATI) ---")
+    for beta_key, beta_label in BETA_PROFILES:
+        if beta_key in data_store:
+            print(f"\nElaborazione: {beta_label}")
+            generate_workload_success_rate(beta_key, beta_label)
+            generate_workload_rejection_causes(beta_key, beta_label)
+            generate_workload_response_time(beta_key, beta_label)
+        else:
+            print(f"[SKIP] Dati non trovati per {beta_label}")
+
+    print(f"\nGenerazione completata con successo! File salvati in: '{OUTPUT_DIR}/'.")
