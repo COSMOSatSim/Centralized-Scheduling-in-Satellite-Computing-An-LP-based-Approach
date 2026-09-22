@@ -38,7 +38,6 @@ The comparative benchmark in Chapter~\ref{chap:comparative_benchmark} establishe
 
     \item \textbf{Mixed Multi-Service Workloads ($\boldsymbol{\beta} = (0.40, 0.35, 0.25)$):} Heterogeneous operational profiles exhibit a clear architectural trade-off between admission volume and latency control. When the mission objective prioritizes raw task throughput, distributed heuristics achieve the highest completion rates ($79\%\text{--}84\%$ at peak load) by eliminating ingress queuing dwell times. Conversely, when the mission requires centralized multi-tenant coordination and SLA enforcement, small-batching (\texttt{ILP-Centr [BS2, BT2, Time]}) provides the only viable mathematical compromise, sustaining $55\%\text{--}67\%$ success without queue collapse. Furthermore, for low-to-moderate traffic ($\lambda \le 4\text{ req/s}$), centralized fast-dispatch (\texttt{ILP-Centr [BS20, BT0.05, Time]}) delivers the lowest end-to-end response time across the entire benchmark ($0.55\text{--}0.62\text{ ms}$).
 
-    \item \textbf{Multi-Objective Weight Calibration ($\alpha^* = 1000, \gamma^* = 8$):} The micro-tuning campaign proved that dominating the primary objective weight ($\alpha^* = 1000$) ensures that solver decisions are driven strictly by deadline compliance and capacity limits, yielding an average $+21\%$ gain in success rate. Simultaneously, calibrating the orbital eclipse penalty to $\gamma^* = 8$ completely eliminated \textit{Sunset} drops ($0\%$ loss across all runs) while avoiding the $55\%$ latency inflation and topological path-bloat that occurs when the eclipse penalty is over-weighted ($\gamma \ge 1000$).
 \end{itemize}
 
 % =============================================================================
@@ -52,11 +51,7 @@ Despite the mathematical rigor and global optimality demonstrated by the propose
 \subsection{Ingress Buffering and the Batching Dilemma}
 \label{subsec:limitations_batching}
 
-Centralized mathematical scheduling requires aggregating incoming discrete requests into batches to instantiate the linear program~\cite{wolsey1998integer, boyd2004convex}. This creates an inescapable trade-off between optimization horizon and buffering latency:
-\begin{equation}
-    T_{total}(r) = T_{wait}(BS, BT, \lambda) + T_{up}(r, i) + W_{cpu,i} + \frac{d_{cpu,r}}{C_{sen,i}} + T_{down}(i, AP_r)
-    \label{eq:concl_latency_chain}
-\end{equation}
+Centralized mathematical scheduling requires aggregating incoming discrete requests into batches to instantiate the linear program~\cite{wolsey1998integer, boyd2004convex}. This creates an inescapable trade-off between optimization horizon and buffering latency.
 While larger batch sizes allow the branch-and-cut algorithm to uncover superior combinatorial placement patterns across the fleet, the static wait time $T_{wait}$ directly consumes application deadline slack. For mission-critical real-time services characterized by tight sub-second latency bounds ($D_r \le 500\text{ ms}\text{--}1.0\text{ s}$), any artificial queuing introduced before solver execution severely degrades service availability~\cite{leyva2023satellite}.
 
 \subsection{Single Point of Failure and Space Hazards}

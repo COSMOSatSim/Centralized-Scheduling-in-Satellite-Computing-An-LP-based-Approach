@@ -7,27 +7,6 @@ import utils
 from Task import Task
 from EdgeServer import get_pos_proximity
 
-#simulazioni con configurazioni bs 20 bt 0.05, bs 2 bt 2
-
-
-#gamma = 2, 4, 6, 8, 10, 1000, 5000, 10000 
-#alpha beta invariati
-
-#trovato gamma
-#alpha e beta = 10, 50, 1000 (l'altro sempre ad 1)
-
-
-"""Info per laurea:
-        Relatore
-        Correlatore
-        Relatore aggiuntivo
-        Relatore esterno
-        Titolo tesi
-        Materia tesi
-        Allegati"""
-
-
-
 class Orchestrator:
     def __init__(self, env, config):
         self.env = env
@@ -313,13 +292,13 @@ class Orchestrator:
                     
                     if b_isl > 0:
                         Wn = network_state["node_states"].get(node_curr.name, {}).get("W_net_simpy", 0.0)
-                        d_net_hop = S_REQ_BYTES / b_isl
+                        d_net_hop = s_r_bytes / b_isl
                         t_up += Wn + d_net_hop + lat
 
                         if hasattr(node_curr, 'compute_routing_energy'):
-                            e_hop_fwd = node_curr.compute_routing_energy(S_REQ_BYTES, b_isl, p_net)
+                            e_hop_fwd = node_curr.compute_routing_energy(s_r_bytes, b_isl, p_net)
                         else:
-                            e_hop_fwd = p_net * (S_REQ_BYTES / b_isl)
+                            e_hop_fwd = p_net * (s_r_bytes / b_isl)
                             
                         e_fwd_total += e_hop_fwd
                         
