@@ -56,16 +56,16 @@ To quantify this trade-off, a parametric sweep of 28 configurations was executed
 
 Figures~\ref{fig:line_sr_energy} and~\ref{fig:line_sr_time} show the Task Success Rate across the parameter space for Energy and Time mapping, respectively.
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/01_Line_Success_Rate_ENERGY.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Line_Success_Rate_ENERGY.png}
     \caption{Success Rate across arrival rates under Energy Mapping for $BS$-sweep ($BT=2.0\text{ s}$) and $BT$-sweep ($BS=20$) across deadline relaxation levels $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:line_sr_energy}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/01_Line_Success_Rate_TIME.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Line_Success_Rate_TIME.png}
     \caption{Success Rate across arrival rates under Time Mapping for $BS$-sweep ($BT=2.0\text{ s}$) and $BT$-sweep ($BS=20$) across deadline relaxation levels $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:line_sr_time}
 \end{figure}
@@ -83,16 +83,16 @@ The empirical trends highlight four critical dynamics across the parameter space
 
 Figures~\ref{fig:failure_causes_energy} and~\ref{fig:failure_causes_time} illustrate the relative distribution of rejection causes across the parameter sweeps.
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/03_Failure_Causes_ENERGY.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Failure_Causes_ENERGY.png}
     \caption{Rejection causes distribution across arrival rates under Energy Mapping, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:failure_causes_energy}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/03_Failure_Causes_TIME.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Failure_Causes_TIME.png}
     \caption{Rejection causes distribution across arrival rates under Time Mapping, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:failure_causes_time}
 \end{figure}
@@ -121,16 +121,16 @@ The failure diagnostics reveal distinct operational regimes governed by the inte
 
 Figures~\ref{fig:line_rt_energy} and~\ref{fig:line_rt_time} show the end-to-end response time decomposed into Onboard Task Execution Time ($T_{exec}$) and Network/Wait Time ($T_{net+wait}$).
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/02_Stacked_Response_Time_ENERGY.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Stacked_Response_Time_ENERGY.png}
     \caption{Response Time decomposition under Energy Mapping across arrival rates for $BS$-sweep and $BT$-sweep configurations under $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:line_rt_energy}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/02_Stacked_Response_Time_TIME.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Stacked_Response_Time_TIME.png}
     \caption{Response Time decomposition under Time Mapping across arrival rates for $BS$-sweep and $BT$-sweep configurations under $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:line_rt_time}
 \end{figure}
@@ -186,16 +186,16 @@ where $\beta = 1.0$, the primary objective weight is evaluated across $\alpha \i
 
 Figures~\ref{fig:cross_sr_8} and~\ref{fig:cross_sr_10} depict the Task Success Rate across the $(\gamma \times \alpha)$ parameter space for $\lambda = 8\text{ req/s}$ and $\lambda = 10\text{ req/s}$, respectively.
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/01_Cross_Success_Rate_AR_8.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Cross_Success_Rate_AR_8.png}
     \caption{Cross-sensitivity Success Rate ($\gamma \times \alpha$) at $\lambda = 8\text{ req/s}$ across batching configurations, Dijkstra metrics, and mapping objectives.}
     \label{fig:cross_sr_8}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/01_Cross_Success_Rate_AR_10.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Cross_Success_Rate_AR_10.png}
     \caption{Cross-sensitivity Success Rate ($\gamma \times \alpha$) at $\lambda = 10\text{ req/s}$ across batching configurations, Dijkstra metrics, and mapping objectives.}
     \label{fig:cross_sr_10}
 \end{figure}
@@ -213,16 +213,16 @@ The empirical trends indicate:
 
 Figures~\ref{fig:cross_rej_8} and~\ref{fig:cross_rej_10} show the failure cause distributions across the $(\gamma \times \alpha)$ test matrix.
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/02_Cross_Failure_Causes_AR_8.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Cross_Failure_Causes_AR_8.png}
     \caption{Distribution of rejection causes across the $(\gamma \times \alpha)$ parameter space at $\lambda = 8\text{ req/s}$.}
     \label{fig:cross_rej_8}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/02_Cross_Failure_Causes_AR_10.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Cross_Failure_Causes_AR_10.png}
     \caption{Distribution of rejection causes across the $(\gamma \times \alpha)$ parameter space at $\lambda = 10\text{ req/s}$.}
     \label{fig:cross_rej_10}
 \end{figure}
@@ -239,16 +239,16 @@ The failure diagnostics reveal the exact operational boundary of the sunset dete
 
 Figures~\ref{fig:cross_rt_8} and~\ref{fig:cross_rt_10} present the response time decomposition across the $(\gamma \times \alpha)$ configurations into onboard task execution ($T_{exec}$, bottom solid bars) and network transmission/queuing delay ($T_{net+wait}$, top translucent bars).
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/03_Cross_Response_Time_AR_8.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Cross_Response_Time_AR_8.png}
     \caption{Response Time decomposition across the $(\gamma \times \alpha)$ parameter space at $\lambda = 8\text{ req/s}$.}
     \label{fig:cross_rt_8}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/03_Cross_Response_Time_AR_10.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Cross_Response_Time_AR_10.png}
     \caption{Response Time decomposition across the $(\gamma \times \alpha)$ parameter space at $\lambda = 10\text{ req/s}$.}
     \label{fig:cross_rt_10}
 \end{figure}
@@ -286,9 +286,9 @@ To validate the multi-objective calibration and quantify the performance gains a
 
 Figure~\ref{fig:confronto_sr} presents the direct comparison of Task Success Rate between the baseline and calibrated configurations under both Energy Mapping and Time Mapping.
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/01_Confronto_Success_Rate_DijkTime.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Confronto_Success_Rate_DijkTime.png}
     \caption{Success Rate comparison: Pre-optimization baseline vs. Post-optimization calibrated model for $BS=2, BT=2.0\text{ s}$ and $BS=20, BT=0.05\text{ s}$ under Dijkstra-Time routing ($\Delta D = 10\%$).}
     \label{fig:confronto_sr}
 \end{figure}
@@ -305,9 +305,9 @@ The empirical evaluation reveals a clear operational divide depending on the pri
 
 Figure~\ref{fig:confronto_failures} illustrates the breakdown of failure causes across all evaluated configurations.
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/02_Confronto_Failure_Causes_DijkTime.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Confronto_Failure_Causes_DijkTime.png}
     \caption{Rejection causes distribution comparison: Pre-optimization baseline vs. Post-optimization calibrated model across arrival rates ($\Delta D = 10\%$).}
     \label{fig:confronto_failures}
 \end{figure}
@@ -323,9 +323,9 @@ The diagnostic breakdown highlights three definitive shifts:
 
 Figure~\ref{fig:confronto_rt} compares the stacked response time decomposition between baseline and calibrated models.
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
     \centering
-    \makebox[\textwidth][c]{\includegraphics[width=\paperwidth]{figures/03_Confronto_Response_Time_DijkTime.png}}
+    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Confronto_Response_Time_DijkTime.png}
     \caption{Response Time decomposition comparison: Pre-optimization baseline vs. Post-optimization calibrated model showing execution stabilization ($\Delta D = 10\%$).}
     \label{fig:confronto_rt}
 \end{figure}
