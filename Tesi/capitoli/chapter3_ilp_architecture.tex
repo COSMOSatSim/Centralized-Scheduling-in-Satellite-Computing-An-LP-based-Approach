@@ -16,18 +16,18 @@ Within the operational region, a designated \emph{Master} functions as the centr
 Ground Users (GUs) generate computational requests that arrive dynamically at the regional gateways. 
 Each offloading request $r \in R$ is characterized by a five-element tuple:
 \begin{equation}
-    r = \left( d_{cpu}, D_r, s_r, t_{arr}, AP_r \right)
+    r = \left( d_{cpu,r}, D_r, s_r, t_{arr}, AP_r \right)
 \end{equation}
-where $d_{cpu}$ is the computational CPU workload demand, $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input/output image size (in MB), $t_{arr}$ is the generation timestamp, and $AP_r \in AP_{global}$ identifies the originating entry point~\cite{icdcs_satellite_2025}.
+where $d_{cpu,r}$ is the computational CPU workload execution demand (in seconds), $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input/output dataset payload size (in MB), $t_{arr}$ is the generation timestamp, and $AP_r \in AP_{global}$ identifies the originating entry point~\cite{icdcs_satellite_2025}.
 
 To achieve robust real-time execution in highly dynamic space environments, the operational lifecycle of task $r$ is modeled as a decoupled, three-phase circuit:
 \begin{enumerate}
-    \item \textbf{Uplink Control and Forwarding Phase ($T_{up}$):} The originating gateway $AP_r$ injects the payload into the orbital plane, which is routed across $h_{up}(r,i)$ ISL hops to candidate satellite $i \in S$~\cite{icdcs_satellite_2025}.
-    \item \textbf{On-Board Computational Execution Phase ($T_{cpu}$):} Satellite $i$ processes $d_{cpu}$ units of work, incurring both the deterministic waiting time in the on-board processor queue $W_{cpu,i}$ and the physical execution delay~\cite{denby2019orbital, icdcs_satellite_2025}.
+    \item \textbf{Uplink Control and Data Forwarding Phase ($T_{up}$):} The originating gateway $AP_r$ injects the actual task payload $s_r$ into the orbital plane, which is routed across $h_{up}(r,i)$ ISL hops to candidate satellite $i \in S$~\cite{icdcs_satellite_2025}.
+    \item \textbf{On-Board Computational Execution Phase ($T_{cpu}$):} Satellite $i$ processes $d_{cpu,r}$ duration of work, incurring both the deterministic waiting time in the on-board processor queue $W_{cpu,i}$ and the physical execution delay~\cite{denby2019orbital, icdcs_satellite_2025}.
     \item \textbf{Post-Execution Geographic Result Delivery ($T_{down}$):} Upon computation completion, the generated output payload is routed back from the executing satellite $i$ to the originating Access Point $AP_r$ across the dynamic ISL topology via an autonomous geographic greedy routing protocol.
 \end{enumerate}
 
-Because result return is governed dynamically in real time by the autonomous greedy protocol, the centralized ILP orchestrator focuses its optimization capacity on the joint satellite selection, uplink multi-hop routing, and processing deadline compliance.
+Because result return is governed dynamically in real time by the autonomous greedy protocol, the centralized ILP orchestrator focuses its optimization capacity on the joint satellite selection, uplink multi-hop routing, transmission delay and energy minimization, and processing deadline compliance.
 
 To formalize the optimization problem and network dynamics unambiguously, 
 Table~\ref{tab:system_notations} summarizes the foundational notations, sets, 
@@ -51,15 +51,15 @@ and operational parameters adopted throughout the system model and ILP formulati
 \midrule
 \multirow{6}{*}{\textbf{Task Requests}}
 & $r$ & Task tuple: $r = (d_{cpu,r}, D_r, s_r, t_{arr}, AP_r)$. \\
-& $d_{cpu,r}$ & Computational workload processing demand. \\
+& $d_{cpu,r}$ & Computational workload processing demand (execution duration in seconds). \\
 & $D_r$ & Maximum allowable end-to-end service completion deadline. \\
-& $s_r$ & Input/output dataset payload size. \\
+& $s_r$ & Input/output dataset payload size (in MB; $s_r^{bytes} = s_r \cdot 1024^2$). \\
 & $t_{arr}$ & Task generation timestamp at the Access Point. \\
-& $S_{req}, S_{ref}$ & Uplink control payload and reference link payload. \\
+& $S_{ref}$ & Reference link payload for topological Dijkstra normalization ($1\text{ MB}$). \\
 \midrule
 \multirow{6}{*}{\textbf{Network Links}}
 & $\tau_{u,v}$ & Propagation delay of the directed link $(u,v)$. \\
-& $B_{u,v}$ & Available transmission bandwidth of link $(u,v)$. \\
+& $B_{u,v}$ & Available transmission bandwidth of link $(u,v)$ (in Bytes/s). \\
 & $P_{net}$ & Radio frequency / optical laser transmission power coefficient ($P_{trasm}$). \\
 & $c_{link}(u,v)$ & Normalized dimensionless cost of link $(u,v)$ in Dijkstra mapping. \\
 & $w_R, w_e$ & Routing cost strategy weights for delay and energy ($w_R + w_e = 1$). \\
@@ -76,7 +76,7 @@ and operational parameters adopted throughout the system model and ILP formulati
 \multirow{7}{*}{\textbf{Optimization \& ILP}}
 & $x_{r,i}$ & Binary decision variable ($1$ if task $r$ is assigned to SEN $i$; $0$ otherwise). \\
 & $y_r$ & Binary rejection variable ($1$ if task $r$ is dropped by the solver; $0$ otherwise). \\
-& $R_{r,i}$ & Total predicted response time for assigning task $r$ to satellite $i$. \\
+& $R_{r,i}$ & Total predicted response time for routing and executing task $r$ on satellite $i$. \\
 & $\epsilon_{r,i}$ & Fleet cumulative energy expenditure for routing and executing task $r$ on $i$. \\
 & $P_{drop}$ & Heavy penalty scalar applied to rejected tasks ($P_{drop} = 10^6$). \\
 & $\alpha, \beta, \gamma$ & Multi-objective hierarchical weighting factors (Time, Energy, Sunset). \\
@@ -96,7 +96,7 @@ To address this, the Master Orchestrator implements an event-driven dynamic batc
 \end{itemize}
 
 The execution loop remains quiescent until the arrival of the first request into \texttt{task\_buffer}, which immediately succeeds \texttt{item\_arrived\_event} and initiates the timeout timer. 
-The batch is dispatched when either $|Q| \ge BS$ (triggering \texttt{batch\_ready\_event}) or when the elapsed time satisfies $\Delta t \ge BT$.
+The batch is dispatched when either the accumulated buffer size satisfies $|R| \ge BS$ (triggering \texttt{batch\_ready\_event}) or when the elapsed time satisfies $\Delta t \ge BT$.
 
 A critical design requirement in discrete-event simulation is ensuring state consistency. 
 Because satellite positions, CPU queue lengths, and energy levels evolve continuously according to orbital ephemeris~\cite{vallado2006sgp4}, the orchestrator executes a zero-delay yield (\texttt{yield self.env.timeout(0)}) immediately prior to batch processing. 
@@ -196,11 +196,6 @@ class Orchestrator:
 
         # C. Dispatch tasks based on optimization results
         self._dispatch_tasks(assignments)
-
-        # Clear task buffer for subsequent batch
-        self.task_buffer.clear()
-
-
 \end{lstlisting}
 \end{adjustwidth}
 
@@ -211,7 +206,7 @@ Before formulating the optimization model, the Master Orchestrator must compute 
 This is handled by the \texttt{\_map\_constellation} method using a Multi-Source Dijkstra shortest-path algorithm~\cite{dijkstra1959note}.
 
 Evaluating dynamic satellite links with raw physical dimensions introduces dimensional bias (e.g., comparing milliseconds of propagation delay against microjoules of radio energy). 
-To achieve uniform metric evaluation across heterogeneous links, each directed edge $(u, v)$ with latency $\tau_{u,v}$ and bandwidth $B_{u,v}$ (in Bytes/s) is evaluated against a standardized reference payload $S_{ref} = 1~\text{MB}$ ($1024^2~\text{bytes}$) over optical ISL channels~\cite{chen2021isl, chaudhry2021laser}:
+To achieve uniform metric evaluation across heterogeneous links during topology exploration, each directed edge $(u, v)$ with latency $\tau_{u,v}$ and bandwidth $B_{u,v}$ (in Bytes/s) is evaluated against a standardized reference payload $S_{ref} = 1~\text{MB}$ ($1024^2~\text{bytes}$) over optical ISL channels~\cite{chen2021isl, chaudhry2021laser}:
 \begin{equation}
     t_{link}(u,v) = \tau_{u,v} + \frac{S_{ref}}{B_{u,v}}
 \end{equation}
@@ -228,6 +223,8 @@ The composite dimensionless edge weight $c_{link}(u,v)$ is computed as a convex 
 \begin{equation}
     c_{link}(u,v) = w_R \cdot \hat{t}_{link}(u,v) + w_e \cdot \hat{e}_{link}(u,v)
 \end{equation}
+
+While the Multi-Source Dijkstra mapping employs $S_{ref}$ to discover structurally optimal topological backbones independent of instantaneous request sizes, the subsequent ILP optimization formulation dynamically evaluates per-hop link latencies and forwarding energy costs tailored to the exact payload size $s_r$ of each offloaded task.
 
 Concurrently, the routine queries all candidate nodes in \texttt{globals.edge\_servers} to capture residual energy $B_i$, processor queue occupancy $W_{cpu,i}$ (\texttt{W\_cpu\_simpy}), network queue occupancy $W_{net,i}$ (\texttt{W\_net\_simpy}), processor clock speed $C_{sen,i}$, CPU energy coefficient $\kappa_i$ (\texttt{e\_coeff}), and orbital sunset timestamp $t_{sunset,i}$.
 
@@ -375,15 +372,16 @@ Following classical combinatorial and linear programming principles~\cite{wolsey
 \end{align}
 
 \subsection{Latency, Energy, and Orbital Eclipse Modeling}
-For each candidate allocation $(r, i)$, the end-to-end processing delay $R_{r,i}$ evaluated by the solver accounts for multi-hop uplink ISL transmission across path $\vec{P}_{up}(AP_r, i)$ and local computing delay~\cite{icdcs_satellite_2025}:
+For each candidate allocation $(r, i)$, the end-to-end processing delay $R_{r,i}$ evaluated by the solver accounts for multi-hop uplink ISL forwarding of the actual task payload $s_r^{bytes}$ across path $\vec{P}_{up}(AP_r, i)$ alongside local computing queue and execution delays~\cite{icdcs_satellite_2025}:
 \begin{equation}
-    R_{r,i} = \underbrace{\sum_{(u,v) \in \vec{P}_{up}} \left( W_{net,u} + \frac{S_{req}}{B_{u,v}} + \tau_{u,v} \right)}_{T_{up}(r,i)} + \left( W_{cpu,i} + d_{cpu,r} \right)
+    R_{r,i} = \underbrace{\sum_{(u,v) \in \vec{P}_{up}(AP_r, i)} \left( W_{net,u} + \frac{s_r^{bytes}}{B_{u,v}} + \tau_{u,v} \right)}_{T_{up}(r,i)} + \left( W_{cpu,i} + d_{cpu,r} \right)
     \label{eq:total_latency}
 \end{equation}
+where $s_r^{bytes} = s_r \cdot 1024^2$ represents the input data volume in bytes, ensuring that link transmission latency directly scales with individual payload footprints.
 
-The cumulative fleet energy expenditure $\epsilon_{r,i}$ evaluates the network forwarding energy across all intermediate ISL nodes along $\vec{P}_{up}$ alongside local CPU execution~\cite{icdcs_satellite_2025}:
+Similarly, the cumulative fleet energy expenditure $\epsilon_{r,i}$ evaluates the network forwarding energy across all intermediate ISL nodes along $\vec{P}_{up}(AP_r, i)$ as a function of the exact transferred data volume, alongside the dynamic energy expended for local CPU execution~\cite{icdcs_satellite_2025}:
 \begin{equation}
-    \epsilon_{r,i} = \sum_{(u,v) \in \vec{P}_{up}} P_{net} \frac{S_{req}}{B_{u,v}} + \kappa_i \cdot d_{cpu,r} \cdot C_{sen,i}^3
+    \epsilon_{r,i} = \sum_{(u,v) \in \vec{P}_{up}(AP_r, i)} P_{net} \frac{s_r^{bytes}}{B_{u,v}} + \kappa_i \cdot d_{cpu,r} \cdot C_{sen,i}^3
     \label{eq:total_energy}
 \end{equation}
 
@@ -461,9 +459,6 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
 
         # Configuration parameters
         primary_obj = self.config.get("centralized_primary_objective", "time")
-        
-        # Fixed uplink control payload (2 KB)
-        S_REQ_BYTES = 2048  
         p_net = self.config.get("Ptrasm", 1.0)
         
         R_set = tasks
@@ -473,7 +468,6 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
 
         # Decision variable definitions
         x = pulp.LpVariable.dicts("x", ((r, i) for r in range(len(R_set)) for i in S_set), cat='Binary')
-        
         y = pulp.LpVariable.dicts("y", (r for r in range(len(R_set))), cat='Binary')
 
         # --- CONSTRAINT 1: Decision Uniqueness (Assign or Drop) ---
@@ -483,7 +477,6 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
 
         time_costs = {}
         energy_costs = {}
-        
         node_energy_expressions = {k: [] for k in S_set}
 
         # 2. Construct link metrics and operational constraints
@@ -520,13 +513,13 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                     
                     if b_isl > 0:
                         Wn = network_state["node_states"].get(node_curr.name, {}).get("W_net_simpy", 0.0)
-                        d_net_hop = S_REQ_BYTES / b_isl
+                        d_net_hop = s_r_bytes / b_isl
                         t_up += Wn + d_net_hop + lat
 
                         if hasattr(node_curr, 'compute_routing_energy'):
-                            e_hop_fwd = node_curr.compute_routing_energy(S_REQ_BYTES, b_isl, p_net)
+                            e_hop_fwd = node_curr.compute_routing_energy(s_r_bytes, b_isl, p_net)
                         else:
-                            e_hop_fwd = p_net * (S_REQ_BYTES / b_isl)
+                            e_hop_fwd = p_net * (s_r_bytes / b_isl)
                             
                         e_fwd_total += e_hop_fwd
                         
@@ -677,7 +670,6 @@ Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} i
                         else:
                             specific_reason = "Unknown"
 
-
                     print(f"[{self.env.now:.3f}] Orchestrator: Task {task['task_id']} rejected by ILP. Cause: {specific_reason}")
 
                     assignments.append({
@@ -780,147 +772,147 @@ Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution ro
             self.env.process(self._route_and_execute_task(assignment, all_nodes, dispatch_time))
                 
     def _route_and_execute_task(self, assignment, all_nodes, dispatch_time):
-            task_id = assignment["task_id"]
-            data = assignment["data"]
-            sen_name = assignment["assigned_sen"]
-            sen_obj = all_nodes.get(sen_name)
-            path_up = assignment.get("routing_path_up", [])
+        task_id = assignment["task_id"]
+        data = assignment["data"]
+        sen_name = assignment["assigned_sen"]
+        sen_obj = all_nodes.get(sen_name)
+        path_up = assignment.get("routing_path_up", [])
 
-            ap_origin = path_up[0] if path_up else globals.global_access_point[0].name
+        ap_origin = path_up[0] if path_up else globals.global_access_point[0].name
 
-            # --- 1. TRANSIENT ROUTING TASK INITIALIZATION ---
-            routing_task = Task(
-                task_id=task_id,
-                current_node=ap_origin,
-                dest_node=sen_name,
-                routingInitTime=dispatch_time,
-                task_type=data["type"],
-                image_size=data["image_size"]
-            )
-            routing_task.weight = data["image_size"]
-            routing_task.visited.add(ap_origin) 
-            
-            start_node = all_nodes.get(ap_origin)
-            if start_node and routing_task not in start_node.tasks:
-                start_node.tasks.append(routing_task)
-
-            # --- 2. DYNAMIC NAVIGATION LOOP (Hybrid Routing: ILP -> GREEDY) ---
-            current_node_name = ap_origin
-            target_dest_name = sen_name
-            path_index = 0
-            is_greedy = False 
+        # --- 1. TRANSIENT ROUTING TASK INITIALIZATION ---
+        routing_task = Task(
+            task_id=task_id,
+            current_node=ap_origin,
+            dest_node=sen_name,
+            routingInitTime=dispatch_time,
+            task_type=data["type"],
+            image_size=data["image_size"]
+        )
+        routing_task.weight = data["image_size"]
+        routing_task.visited.add(ap_origin) 
         
-            while current_node_name != target_dest_name:
-                current_node_obj = all_nodes.get(current_node_name)
-                
-                if not is_greedy:
-                    # ==========================================
-                    # PHASE A: NOMINAL PLANNED ROUTING (ILP)
-                    # ==========================================
-                    next_planned = path_up[path_index + 1] if path_index < len(path_up) - 1 else None
-                    next_planned_obj = all_nodes.get(next_planned) if next_planned else None
+        start_node = all_nodes.get(ap_origin)
+        if start_node and routing_task not in start_node.tasks:
+            start_node.tasks.append(routing_task)
 
-                    if next_planned_obj and current_node_obj.get_bandwidth(next_planned_obj) > 0:
-                        # Active link: traverse planned ISL trajectory
-                        yield self.env.process(
-                            utils.sendTask(self.env, routing_task, current_node_obj, next_planned_obj, "ILP_Centralized")
-                        )
-                        path_index += 1
-                        routing_task.visited.add(next_planned)
-                    else:
-                        # BROKEN LINK: Trigger greedy recovery fallback!
-                        print(f"[{self.env.now:.3f}] Orchestrator: Broken link at node {current_node_name} (Task {task_id}). Activating GREEDY Fallback!")
-                        is_greedy = True
-                        
-                if is_greedy:
-                    # ==========================================
-                    # PHASE B: EMERGENCY RECOVERY NAVIGATION (GREEDY)
-                    # ==========================================
-                    target_dest_obj = all_nodes.get(target_dest_name)
-                    dest_pos = target_dest_obj.getPositionVector(globals.ist_in_conf)
-                    ranker_neighbors = []
-                    neighbors_list = getattr(current_node_obj, 'neighbors', current_node_obj.get_neighbors())
-
-                    for server in neighbors_list:
-                        if current_node_obj.get_bandwidth(server) > 0:
-                            neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.ist_in_conf))
-                            is_ap = getattr(server, 'is_acc_point', False)
-                            ranker_neighbors.append((server, neighbor_distance, is_ap))
-
-                    ranker_neighbors.sort(key=lambda x: (not x[2], x[1]))
-
-                    best_server = None
-                    for neighbor_tuple in ranker_neighbors:
-                        # Loop prevention: avoid visited satellites
-                        if neighbor_tuple[0].name not in routing_task.visited:
-                            best_server = neighbor_tuple[0]
-                            break
-
-                    if best_server:
-                        yield self.env.process(
-                            utils.sendTask(self.env, routing_task, current_node_obj, best_server, 'GREEDY_FALLBACK')
-                        )
-                        routing_task.visited.add(best_server.name)
-                    else:
-                        print(f"[{self.env.now:.3f}] Orchestrator: GREEDY Fallback failed (dead-end) at node {current_node_name}. Task {task_id} dropped.")
-                        routing_task.routingEndTime = self.env.now
-                        routing_task.label = "DROPPED_GREEDY_DEADEND"
-                        globals.gbl_tasks.append(routing_task)
-                        return
-
+        # --- 2. DYNAMIC NAVIGATION LOOP (Hybrid Routing: ILP -> GREEDY) ---
+        current_node_name = ap_origin
+        target_dest_name = sen_name
+        path_index = 0
+        is_greedy = False 
+    
+        while current_node_name != target_dest_name:
+            current_node_obj = all_nodes.get(current_node_name)
+            
+            if not is_greedy:
                 # ==========================================
-                # PHASE C: SAFETY CONTROLS
+                # PHASE A: NOMINAL PLANNED ROUTING (ILP)
                 # ==========================================
-                if getattr(routing_task, 'label', '') == 'TTL_EXPIRED':
-                    print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} dropped due to expired TTL during routing.")
+                next_planned = path_up[path_index + 1] if path_index < len(path_up) - 1 else None
+                next_planned_obj = all_nodes.get(next_planned) if next_planned else None
+
+                if next_planned_obj and current_node_obj.get_bandwidth(next_planned_obj) > 0:
+                    # Active link: traverse planned ISL trajectory
+                    yield self.env.process(
+                        utils.sendTask(self.env, routing_task, current_node_obj, next_planned_obj, "ILP_Centralized")
+                    )
+                    path_index += 1
+                    routing_task.visited.add(next_planned)
+                else:
+                    # BROKEN LINK: Trigger greedy recovery fallback!
+                    print(f"[{self.env.now:.3f}] Orchestrator: Broken link at node {current_node_name} (Task {task_id}). Activating GREEDY Fallback!")
+                    is_greedy = True
+                    
+            if is_greedy:
+                # ==========================================
+                # PHASE B: EMERGENCY RECOVERY NAVIGATION (GREEDY)
+                # ==========================================
+                target_dest_obj = all_nodes.get(target_dest_name)
+                dest_pos = target_dest_obj.getPositionVector(globals.ist_in_conf)
+                ranker_neighbors = []
+                neighbors_list = getattr(current_node_obj, 'neighbors', current_node_obj.get_neighbors())
+
+                for server in neighbors_list:
+                    if current_node_obj.get_bandwidth(server) > 0:
+                        neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.ist_in_conf))
+                        is_ap = getattr(server, 'is_acc_point', False)
+                        ranker_neighbors.append((server, neighbor_distance, is_ap))
+
+                ranker_neighbors.sort(key=lambda x: (not x[2], x[1]))
+
+                best_server = None
+                for neighbor_tuple in ranker_neighbors:
+                    # Loop prevention: avoid visited satellites
+                    if neighbor_tuple[0].name not in routing_task.visited:
+                        best_server = neighbor_tuple[0]
+                        break
+
+                if best_server:
+                    yield self.env.process(
+                        utils.sendTask(self.env, routing_task, current_node_obj, best_server, 'GREEDY_FALLBACK')
+                    )
+                    routing_task.visited.add(best_server.name)
+                else:
+                    print(f"[{self.env.now:.3f}] Orchestrator: GREEDY Fallback failed (dead-end) at node {current_node_name}. Task {task_id} dropped.")
+                    routing_task.routingEndTime = self.env.now
+                    routing_task.label = "DROPPED_GREEDY_DEADEND"
                     globals.gbl_tasks.append(routing_task)
                     return
 
-                current_node_name = routing_task.current_node
-
-            # --- 3. DESTINATION REACHED ---
-            transfer_time_up = self.env.now - data.get("arrival_time", dispatch_time)
-            final_hops = routing_task.hop
-            init_time = routing_task.routingInitTime
-            end_time = self.env.now
-            algos = routing_task.algorithms_used
-
-            print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} arrived at {sen_name} in {transfer_time_up:.3f}s (Hops: {final_hops})")
-
-            # --- 4. DATASET METRIC LOGGING ---
-            globals.initial_server_counter[sen_name] = globals.initial_server_counter.get(sen_name, 0) + 1
-            globals.gbl_task_hops[str(task_id)] = final_hops
-            globals.gbl_task_final_hops[str(task_id)] = final_hops
-            globals.gbl_generated_tasks_data.append({
-                "task_id": task_id, "arrival_time": data.get("arrival_time", dispatch_time), "type": data["type"],
-                "ram": data.get("required_ram", 0), "disk": data.get("required_disk", 0),
-                "image_size": data["image_size"], "exec_time": data["d_cpu"],
-                "transfer_time": transfer_time_up, "performed_transfers": final_hops,
-                "final_hops": final_hops, "execution_server": sen_name
-            })
-
-            # --- 5. SIMULATE CPU ON-BOARD COMPUTATION ---
-            yield self.env.process(
-                ILP_simulation.TaskAssignment_ILP(
-                    env=self.env, selected_server=sen_obj, task_id=task_id, image_size=data["image_size"],
-                    arrival_time_system=data.get("arrival_time", dispatch_time), num_hops=final_hops, 
-                    transfer_time=transfer_time_up, task_type=data["type"], d_cpu=data["d_cpu"], D_r=data["deadline"],
-                    net_bw_override_Bps=None, result_sink={}, allow_retry=False,              
-                    routing_already_charged=True, routing_energy_from=None, transfer_already_simulated=True
-                )
-            )
-
-            # --- 6. POST-EXECUTION METRIC SYNCHRONIZATION ---
-            final_task = next((t for t in globals.gbl_tasks if t.id == task_id), None)
-            if final_task:
-                final_task.hop = final_hops
-                final_task.routingInitTime = init_time
-                final_task.routingEndTime = end_time
-                final_task.algorithms_used = algos
-            else:
-                routing_task.routingEndTime = end_time
-                routing_task.label = "REJECTED_POST_ROUTING"
+            # ==========================================
+            # PHASE C: SAFETY CONTROLS
+            # ==========================================
+            if getattr(routing_task, 'label', '') == 'TTL_EXPIRED':
+                print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} dropped due to expired TTL during routing.")
                 globals.gbl_tasks.append(routing_task)
+                return
+
+            current_node_name = routing_task.current_node
+
+        # --- 3. DESTINATION REACHED ---
+        transfer_time_up = self.env.now - data.get("arrival_time", dispatch_time)
+        final_hops = routing_task.hop
+        init_time = routing_task.routingInitTime
+        end_time = self.env.now
+        algos = routing_task.algorithms_used
+
+        print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} arrived at {sen_name} in {transfer_time_up:.3f}s (Hops: {final_hops})")
+
+        # --- 4. DATASET METRIC LOGGING ---
+        globals.initial_server_counter[sen_name] = globals.initial_server_counter.get(sen_name, 0) + 1
+        globals.gbl_task_hops[str(task_id)] = final_hops
+        globals.gbl_task_final_hops[str(task_id)] = final_hops
+        globals.gbl_generated_tasks_data.append({
+            "task_id": task_id, "arrival_time": data.get("arrival_time", dispatch_time), "type": data["type"],
+            "ram": data.get("required_ram", 0), "disk": data.get("required_disk", 0),
+            "image_size": data["image_size"], "exec_time": data["d_cpu"],
+            "transfer_time": transfer_time_up, "performed_transfers": final_hops,
+            "final_hops": final_hops, "execution_server": sen_name
+        })
+
+        # --- 5. SIMULATE CPU ON-BOARD COMPUTATION ---
+        yield self.env.process(
+            ILP_simulation.TaskAssignment_ILP(
+                env=self.env, selected_server=sen_obj, task_id=task_id, image_size=data["image_size"],
+                arrival_time_system=data.get("arrival_time", dispatch_time), num_hops=final_hops, 
+                transfer_time=transfer_time_up, task_type=data["type"], d_cpu=data["d_cpu"], D_r=data["deadline"],
+                net_bw_override_Bps=None, result_sink={}, allow_retry=False,              
+                routing_already_charged=True, routing_energy_from=None, transfer_already_simulated=True
+            )
+        )
+
+        # --- 6. POST-EXECUTION METRIC SYNCHRONIZATION ---
+        final_task = next((t for t in globals.gbl_tasks if t.id == task_id), None)
+        if final_task:
+            final_task.hop = final_hops
+            final_task.routingInitTime = init_time
+            final_task.routingEndTime = end_time
+            final_task.algorithms_used = algos
+        else:
+            routing_task.routingEndTime = end_time
+            routing_task.label = "REJECTED_POST_ROUTING"
+            globals.gbl_tasks.append(routing_task)
 \end{lstlisting}
 \end{adjustwidth}
 

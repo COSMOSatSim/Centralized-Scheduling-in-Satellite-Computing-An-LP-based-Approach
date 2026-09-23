@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.8.23)  22 SEP 2026 19:07
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026/Arch Linux) (preloaded format=pdflatex 2026.8.23)  23 SEP 2026 14:57
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -770,7 +770,10 @@ Overfull \hbox (41.27986pt too wide) in paragraph at lines 41--86
  [][] 
  []
 
-[12] [13]
+[12]
+Overfull \vbox (20.92024pt too high) has occurred while \output is active []
+
+ [13]
 Overfull \hbox (19.49316pt too wide) in paragraph at lines 94--95
 []\T1/lmr/bx/n/10.95 (-20) Maximum Batch Size ($\OML/lmm/m/it/10.95 BS$\T1/lmr/bx/n/10.95 (-20) ): \T1/lmr/m/n/10.95 (-20) A struc-tural thresh-old (\T1/lmtt/m/n/10.95 centralized_batch_size\T1/lmr/m/n/10.95 (-20) )
  []
@@ -788,13 +791,13 @@ LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <9> not available
 (Font)              Font shape `T1/lmtt/b/n' tried instead on input line 109.
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <9> on input line 109.
- [14] [15] [16] [17] [18] [19{/usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}] [20] [21] [22] [23] [24] [25] [26]
-Overfull \hbox (34.08319pt too wide) in paragraph at lines 734--735
+ [14] [15] [16] [17] [18] [19] [20{/usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc}] [21] [22] [23] [24] [25] [26]
+Overfull \hbox (34.08319pt too wide) in paragraph at lines 726--727
 \T1/lmr/m/n/10.95 (-20) wards the packet to the clos-est non-visited node. Vis-ited sets (\T1/lmtt/m/n/10.95 routing_task.visited\T1/lmr/m/n/10.95 (-20) )
  []
 
 
-Overfull \hbox (20.14828pt too wide) in paragraph at lines 737--739
+Overfull \hbox (20.14828pt too wide) in paragraph at lines 729--731
 \T1/lmr/m/n/10.95 (-20) cess yields to the discrete-event CPU sim-u-la-tor (\T1/lmtt/m/n/10.95 ILP_simulation.TaskAssignment_ILP\T1/lmr/m/n/10.95 (-20) ).
  []
 
@@ -814,112 +817,102 @@ Overfull \hbox (1.34387pt too wide) in paragraph at lines 33--34
  []
 
 [35]
-<figures/01_Line_Success_Rate_ENERGY.png, id=1581, 1293.633pt x 893.739pt>
+<figures/01_Line_Success_Rate_ENERGY.png, id=1571, 1149.093pt x 754.2579pt>
 File: figures/01_Line_Success_Rate_ENERGY.png Graphic file (type png)
 <use figures/01_Line_Success_Rate_ENERGY.png>
 Package pdftex.def Info: figures/01_Line_Success_Rate_ENERGY.png  used on input line 61.
-(pdftex.def)             Requested size: 387.00723pt x 267.37372pt.
-<figures/01_Line_Success_Rate_TIME.png, id=1583, 1293.633pt x 893.739pt>
+(pdftex.def)             Requested size: 395.99918pt x 259.93153pt.
+<figures/01_Line_Success_Rate_TIME.png, id=1573, 1149.093pt x 754.2579pt>
 File: figures/01_Line_Success_Rate_TIME.png Graphic file (type png)
 <use figures/01_Line_Success_Rate_TIME.png>
 Package pdftex.def Info: figures/01_Line_Success_Rate_TIME.png  used on input line 68.
-(pdftex.def)             Requested size: 387.00723pt x 267.37372pt.
- [36 <./figures/01_Line_Success_Rate_ENERGY.png>] [37 <./figures/01_Line_Success_Rate_TIME.png>]
-<figures/03_Failure_Causes_ENERGY.png, id=1599, 1438.173pt x 894.9435pt>
+(pdftex.def)             Requested size: 395.99918pt x 259.93153pt.
+ [36] [37 <./figures/01_Line_Success_Rate_ENERGY.png> <./figures/01_Line_Success_Rate_TIME.png>]
+<figures/03_Failure_Causes_ENERGY.png, id=1589, 1438.173pt x 894.9435pt>
 File: figures/03_Failure_Causes_ENERGY.png Graphic file (type png)
 <use figures/03_Failure_Causes_ENERGY.png>
-Package pdftex.def Info: figures/03_Failure_Causes_ENERGY.png  used on input line 88.
+Package pdftex.def Info: figures/03_Failure_Causes_ENERGY.png  used on input line 89.
 (pdftex.def)             Requested size: 395.99255pt x 246.41748pt.
-<figures/03_Failure_Causes_TIME.png, id=1600, 1438.173pt x 894.9435pt>
+<figures/03_Failure_Causes_TIME.png, id=1590, 1438.173pt x 894.9435pt>
 File: figures/03_Failure_Causes_TIME.png Graphic file (type png)
 <use figures/03_Failure_Causes_TIME.png>
-Package pdftex.def Info: figures/03_Failure_Causes_TIME.png  used on input line 95.
+Package pdftex.def Info: figures/03_Failure_Causes_TIME.png  used on input line 96.
 (pdftex.def)             Requested size: 395.99255pt x 246.41748pt.
- [38 <./figures/03_Failure_Causes_ENERGY.png>] [39 <./figures/03_Failure_Causes_TIME.png>]
-<figures/02_Stacked_Response_Time_ENERGY.png, id=1615, 1506.1068pt x 952.7595pt>
+ [38] [39 <./figures/03_Failure_Causes_ENERGY.png> <./figures/03_Failure_Causes_TIME.png>]
+<figures/02_Stacked_Response_Time_ENERGY.png, id=1605, 1365.903pt x 816.651pt>
 File: figures/02_Stacked_Response_Time_ENERGY.png Graphic file (type png)
 <use figures/02_Stacked_Response_Time_ENERGY.png>
-Package pdftex.def Info: figures/02_Stacked_Response_Time_ENERGY.png  used on input line 126.
-(pdftex.def)             Requested size: 395.99095pt x 250.5029pt.
-<figures/02_Stacked_Response_Time_TIME.png, id=1616, 1506.1068pt x 952.7595pt>
+Package pdftex.def Info: figures/02_Stacked_Response_Time_ENERGY.png  used on input line 129.
+(pdftex.def)             Requested size: 395.99751pt x 236.76042pt.
+<figures/02_Stacked_Response_Time_TIME.png, id=1606, 1365.903pt x 816.651pt>
 File: figures/02_Stacked_Response_Time_TIME.png Graphic file (type png)
 <use figures/02_Stacked_Response_Time_TIME.png>
-Package pdftex.def Info: figures/02_Stacked_Response_Time_TIME.png  used on input line 133.
-(pdftex.def)             Requested size: 395.99095pt x 250.5029pt.
- [40 <./figures/02_Stacked_Response_Time_ENERGY.png>] [41 <./figures/02_Stacked_Response_Time_TIME.png>]
+Package pdftex.def Info: figures/02_Stacked_Response_Time_TIME.png  used on input line 136.
+(pdftex.def)             Requested size: 395.99751pt x 236.76042pt.
+ [40] [41 <./figures/02_Stacked_Response_Time_ENERGY.png> <./figures/02_Stacked_Response_Time_TIME.png>] [42]
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <14.4> on input line 171.
-
-Overfull \hbox (43.27383pt too wide) in paragraph at lines 181--183
-\T1/lmr/m/n/10.95 (-20) and the or-bital sun-set de-ter-rent penalty is eval-u-ated across $\OML/lmm/m/it/10.95 ^^M \OMS/lmsy/m/n/10.95 2 f\OT1/lmr/m/n/10.95 (-20) 2\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 4\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 6\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 8\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 10\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 1000\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 5000\OML/lmm/m/it/10.95 ; \OT1/lmr/m/n/10.95 (-20) 10000\OMS/lmsy/m/n/10.95 g$\T1/lmr/m/n/10.95 (-20) .
- []
-
-<figures/01_Cross_Success_Rate_AR_8.png, id=1636, 1578.3768pt x 591.1686pt>
+(Font)              <14.4> on input line 200.
+ [43]
+<figures/01_Cross_Success_Rate_AR_8.png, id=1657, 1578.3768pt x 591.1686pt>
 File: figures/01_Cross_Success_Rate_AR_8.png Graphic file (type png)
 <use figures/01_Cross_Success_Rate_AR_8.png>
-Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_8.png  used on input line 191.
+Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_8.png  used on input line 220.
 (pdftex.def)             Requested size: 395.99011pt x 148.31497pt.
-<figures/01_Cross_Success_Rate_AR_10.png, id=1637, 1578.3768pt x 591.1686pt>
+<figures/01_Cross_Success_Rate_AR_10.png, id=1658, 1578.3768pt x 591.1686pt>
 File: figures/01_Cross_Success_Rate_AR_10.png Graphic file (type png)
 <use figures/01_Cross_Success_Rate_AR_10.png>
-Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_10.png  used on input line 198.
+Package pdftex.def Info: figures/01_Cross_Success_Rate_AR_10.png  used on input line 227.
 (pdftex.def)             Requested size: 395.99011pt x 148.31497pt.
-[42 <./figures/01_Cross_Success_Rate_AR_8.png>]
-<figures/02_Cross_Failure_Causes_AR_8.png, id=1652, 1727.253pt x 634.2897pt>
+ [44 <./figures/01_Cross_Success_Rate_AR_8.png> <./figures/01_Cross_Success_Rate_AR_10.png>]
+<figures/02_Cross_Failure_Causes_AR_8.png, id=1670, 1727.253pt x 634.2897pt>
 File: figures/02_Cross_Failure_Causes_AR_8.png Graphic file (type png)
 <use figures/02_Cross_Failure_Causes_AR_8.png>
-Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_8.png  used on input line 218.
+Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_8.png  used on input line 247.
 (pdftex.def)             Requested size: 395.99477pt x 145.41899pt.
- [43 <./figures/01_Cross_Success_Rate_AR_10.png>]
-<figures/02_Cross_Failure_Causes_AR_10.png, id=1658, 1727.253pt x 634.2897pt>
+<figures/02_Cross_Failure_Causes_AR_10.png, id=1671, 1727.253pt x 634.2897pt>
 File: figures/02_Cross_Failure_Causes_AR_10.png Graphic file (type png)
 <use figures/02_Cross_Failure_Causes_AR_10.png>
-Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_10.png  used on input line 225.
+Package pdftex.def Info: figures/02_Cross_Failure_Causes_AR_10.png  used on input line 254.
 (pdftex.def)             Requested size: 395.99477pt x 145.41899pt.
- [44 <./figures/02_Cross_Failure_Causes_AR_8.png> <./figures/02_Cross_Failure_Causes_AR_10.png>]
-<figures/03_Cross_Response_Time_AR_8.png, id=1669, 1727.253pt x 620.0766pt>
+ [45] [46 <./figures/02_Cross_Failure_Causes_AR_8.png> <./figures/02_Cross_Failure_Causes_AR_10.png>]
+<figures/03_Cross_Response_Time_AR_8.png, id=1686, 1727.253pt x 620.0766pt>
 File: figures/03_Cross_Response_Time_AR_8.png Graphic file (type png)
 <use figures/03_Cross_Response_Time_AR_8.png>
-Package pdftex.def Info: figures/03_Cross_Response_Time_AR_8.png  used on input line 244.
+Package pdftex.def Info: figures/03_Cross_Response_Time_AR_8.png  used on input line 276.
 (pdftex.def)             Requested size: 395.99477pt x 142.16046pt.
-<figures/03_Cross_Response_Time_AR_10.png, id=1670, 1727.253pt x 620.0766pt>
+<figures/03_Cross_Response_Time_AR_10.png, id=1687, 1727.253pt x 620.0766pt>
 File: figures/03_Cross_Response_Time_AR_10.png Graphic file (type png)
 <use figures/03_Cross_Response_Time_AR_10.png>
-Package pdftex.def Info: figures/03_Cross_Response_Time_AR_10.png  used on input line 251.
+Package pdftex.def Info: figures/03_Cross_Response_Time_AR_10.png  used on input line 283.
 (pdftex.def)             Requested size: 395.99477pt x 142.16046pt.
- [45 <./figures/03_Cross_Response_Time_AR_8.png> <./figures/03_Cross_Response_Time_AR_10.png>]
-Overfull \hbox (2.19534pt too wide) in paragraph at lines 259--260
-\OT1/lmr/m/n/10.95 (-20) 1000[]10000$ \T1/lmr/m/n/10.95 (-20) in $\OML/lmm/m/it/10.95 BS \OT1/lmr/m/n/10.95 (-20) = 2$ \T1/lmr/m/n/10.95 (-20) con-fig-u-ra-tions, to-tal re-sponse time surges to $\OT1/lmr/m/n/10.95 (-20) 1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 05[]1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 15[]$
- []
-
-
-Overfull \hbox (2.54549pt too wide) in paragraph at lines 275--275
+ [47 <./figures/03_Cross_Response_Time_AR_8.png> <./figures/03_Cross_Response_Time_AR_10.png>]
+Overfull \hbox (2.54549pt too wide) in paragraph at lines 307--307
 []\T1/lmr/bx/n/14.4 (-20) Consolidated Val-i-da-tion: Pre- vs. Post-Optimization
  []
 
-<figures/01_Confronto_Success_Rate_DijkTime.png, id=1680, 1293.633pt x 514.5624pt>
+<figures/01_Confronto_Success_Rate_DijkTime.png, id=1698, 1293.633pt x 514.5624pt>
 File: figures/01_Confronto_Success_Rate_DijkTime.png Graphic file (type png)
 <use figures/01_Confronto_Success_Rate_DijkTime.png>
-Package pdftex.def Info: figures/01_Confronto_Success_Rate_DijkTime.png  used on input line 291.
+Package pdftex.def Info: figures/01_Confronto_Success_Rate_DijkTime.png  used on input line 323.
 (pdftex.def)             Requested size: 395.98859pt x 157.51054pt.
-[46]
-<figures/02_Confronto_Failure_Causes_DijkTime.png, id=1688, 1438.173pt x 548.5293pt>
+[48]
+<figures/02_Confronto_Failure_Causes_DijkTime.png, id=1707, 1438.173pt x 548.5293pt>
 File: figures/02_Confronto_Failure_Causes_DijkTime.png Graphic file (type png)
 <use figures/02_Confronto_Failure_Causes_DijkTime.png>
-Package pdftex.def Info: figures/02_Confronto_Failure_Causes_DijkTime.png  used on input line 310.
+Package pdftex.def Info: figures/02_Confronto_Failure_Causes_DijkTime.png  used on input line 342.
 (pdftex.def)             Requested size: 395.99255pt x 151.03433pt.
- [47 <./figures/01_Confronto_Success_Rate_DijkTime.png>]
-<figures/03_Confronto_Response_Time_DijkTime.png, id=1697, 1438.173pt x 548.5293pt>
+ [49 <./figures/01_Confronto_Success_Rate_DijkTime.png>]
+<figures/03_Confronto_Response_Time_DijkTime.png, id=1715, 1438.173pt x 548.5293pt>
 File: figures/03_Confronto_Response_Time_DijkTime.png Graphic file (type png)
 <use figures/03_Confronto_Response_Time_DijkTime.png>
-Package pdftex.def Info: figures/03_Confronto_Response_Time_DijkTime.png  used on input line 328.
+Package pdftex.def Info: figures/03_Confronto_Response_Time_DijkTime.png  used on input line 360.
 (pdftex.def)             Requested size: 395.99255pt x 151.03433pt.
- [48 <./figures/02_Confronto_Failure_Causes_DijkTime.png>] [49 <./figures/03_Confronto_Response_Time_DijkTime.png>]) [50]
+ [50 <./figures/02_Confronto_Failure_Causes_DijkTime.png>] [51 <./figures/03_Confronto_Response_Time_DijkTime.png>]) [52]
 \openout2 = `capitoli/chapter5_comparative_benchmark.aux'.
 
  (./capitoli/chapter5_comparative_benchmark.tex
 Chapter 5.
-[51
+[53
 
 
 
@@ -927,125 +920,125 @@ Chapter 5.
 ]
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
 (Font)              Font shape `T1/lmtt/b/n' tried instead on input line 53.
- [52]
+ [54]
 LaTeX Font Info:    External font `lmex10' loaded for size
 (Font)              <12> on input line 88.
-<figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png, id=1766, 1004.553pt x 600.5637pt>
+<figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png, id=1784, 1004.553pt x 600.5637pt>
 File: figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png Graphic file (type png)
 <use figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png>
 Package pdftex.def Info: figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png  used on input line 98.
 (pdftex.def)             Requested size: 396.00468pt x 236.74812pt.
-<figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png, id=1767, 1004.553pt x 600.5637pt>
+<figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png, id=1785, 1004.553pt x 600.5637pt>
 File: figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png Graphic file (type png)
 <use figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png>
 Package pdftex.def Info: figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png  used on input line 105.
 (pdftex.def)             Requested size: 396.00468pt x 236.74812pt.
- [53] [54 <./figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png> <./figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png>]
+ [55] [56 <./figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png> <./figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png>]
 Overfull \hbox (54.74564pt too wide) in paragraph at lines 118--119
 []\T1/lmr/bx/n/10.95 (-20) Hierarchical Through-put Col-lapse: \T1/lmr/m/n/10.95 (-20) The hi-er-ar-chi-cal for-mu-la-tions (\T1/lmtt/m/n/10.95 ILP-Hierarchical
  []
 
-<figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png, id=1789, 1112.958pt x 630.9171pt>
+<figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png, id=1807, 1112.958pt x 630.9171pt>
 File: figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png Graphic file (type png)
 <use figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png>
 Package pdftex.def Info: figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png  used on input line 128.
 (pdftex.def)             Requested size: 395.99443pt x 224.48254pt.
-<figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png, id=1790, 1112.958pt x 630.9171pt>
+<figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png, id=1808, 1112.958pt x 630.9171pt>
 File: figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png Graphic file (type png)
 <use figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png>
 Package pdftex.def Info: figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png  used on input line 135.
 (pdftex.def)             Requested size: 395.99443pt x 224.48254pt.
-[55] [56 <./figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png> <./figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png>]
-<figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png, id=1806, 1076.823pt x 626.0991pt>
+[57] [58 <./figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png> <./figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png>]
+<figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png, id=1823, 1076.823pt x 626.0991pt>
 File: figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png Graphic file (type png)
 <use figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png>
 Package pdftex.def Info: figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png  used on input line 155.
 (pdftex.def)             Requested size: 395.9865pt x 230.23912pt.
-<figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png, id=1807, 1076.823pt x 626.0991pt>
+<figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png, id=1824, 1076.823pt x 626.0991pt>
 File: figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png Graphic file (type png)
 <use figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png>
 Package pdftex.def Info: figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png  used on input line 162.
 (pdftex.def)             Requested size: 395.9865pt x 230.23912pt.
- [57] [58 <./figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png> <./figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png>]
+ [59] [60 <./figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png> <./figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png>]
 Overfull \hbox (7.29007pt too wide) in paragraph at lines 179--179
 []\T1/lmr/bx/n/12 (-20) Computation-Heavy Stress: CPU-Intensive Pro-file ($[] \OT1/lmr/m/n/12 (-20) = (0\OML/lmm/m/it/12 ; \OT1/lmr/m/n/12 (-20) 1\OML/lmm/m/it/12 ; \OT1/lmr/m/n/12 (-20) 0)$\T1/lmr/bx/n/12 (-20) ) 
  []
 
-<figures/01_Success_Rate_Beta_0_1_0_40kJ.png, id=1822, 1004.553pt x 600.5637pt>
+<figures/01_Success_Rate_Beta_0_1_0_40kJ.png, id=1840, 1004.553pt x 600.5637pt>
 File: figures/01_Success_Rate_Beta_0_1_0_40kJ.png Graphic file (type png)
 <use figures/01_Success_Rate_Beta_0_1_0_40kJ.png>
 Package pdftex.def Info: figures/01_Success_Rate_Beta_0_1_0_40kJ.png  used on input line 189.
 (pdftex.def)             Requested size: 396.00468pt x 236.74812pt.
-<figures/01_Success_Rate_Beta_0_1_0_80kJ.png, id=1823, 1004.553pt x 600.5637pt>
+<figures/01_Success_Rate_Beta_0_1_0_80kJ.png, id=1841, 1004.553pt x 600.5637pt>
 File: figures/01_Success_Rate_Beta_0_1_0_80kJ.png Graphic file (type png)
 <use figures/01_Success_Rate_Beta_0_1_0_80kJ.png>
 Package pdftex.def Info: figures/01_Success_Rate_Beta_0_1_0_80kJ.png  used on input line 196.
 (pdftex.def)             Requested size: 396.00468pt x 236.74812pt.
-[59] [60 <./figures/01_Success_Rate_Beta_0_1_0_40kJ.png> <./figures/01_Success_Rate_Beta_0_1_0_80kJ.png>]
+[61] [62 <./figures/01_Success_Rate_Beta_0_1_0_40kJ.png> <./figures/01_Success_Rate_Beta_0_1_0_80kJ.png>]
 Overfull \hbox (9.10825pt too wide) in paragraph at lines 209--210
 \T1/lmr/m/n/10.95 (-20) con-fig-u-ra-tion with la-tency op-ti-miza-tion (\T1/lmtt/m/n/10.95 ILP-Centr [BS2, BT2, Time]\T1/lmr/m/n/10.95 (-20) ) demon-
  []
 
-<figures/02_Response_Time_Beta_0_1_0_40kJ.png, id=1839, 1112.958pt x 630.9171pt>
+<figures/02_Response_Time_Beta_0_1_0_40kJ.png, id=1856, 1112.958pt x 630.9171pt>
 File: figures/02_Response_Time_Beta_0_1_0_40kJ.png Graphic file (type png)
 <use figures/02_Response_Time_Beta_0_1_0_40kJ.png>
 Package pdftex.def Info: figures/02_Response_Time_Beta_0_1_0_40kJ.png  used on input line 217.
 (pdftex.def)             Requested size: 395.99443pt x 224.48254pt.
-<figures/02_Response_Time_Beta_0_1_0_80kJ.png, id=1840, 1112.958pt x 630.9171pt>
+<figures/02_Response_Time_Beta_0_1_0_80kJ.png, id=1857, 1112.958pt x 630.9171pt>
 File: figures/02_Response_Time_Beta_0_1_0_80kJ.png Graphic file (type png)
 <use figures/02_Response_Time_Beta_0_1_0_80kJ.png>
 Package pdftex.def Info: figures/02_Response_Time_Beta_0_1_0_80kJ.png  used on input line 224.
 (pdftex.def)             Requested size: 395.99443pt x 224.48254pt.
-[61] [62 <./figures/02_Response_Time_Beta_0_1_0_40kJ.png> <./figures/02_Response_Time_Beta_0_1_0_80kJ.png>]
-<figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png, id=1855, 1076.823pt x 626.0991pt>
+[63] [64 <./figures/02_Response_Time_Beta_0_1_0_40kJ.png> <./figures/02_Response_Time_Beta_0_1_0_80kJ.png>]
+<figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png, id=1872, 1076.823pt x 626.0991pt>
 File: figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png Graphic file (type png)
 <use figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png>
 Package pdftex.def Info: figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png  used on input line 243.
 (pdftex.def)             Requested size: 395.9865pt x 230.23912pt.
-<figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png, id=1856, 1076.823pt x 626.0991pt>
+<figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png, id=1873, 1076.823pt x 626.0991pt>
 File: figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png Graphic file (type png)
 <use figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png>
 Package pdftex.def Info: figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png  used on input line 250.
 (pdftex.def)             Requested size: 395.9865pt x 230.23912pt.
- [63 <./figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png>]
-<figures/01_Success_Rate_Beta_0_0_1_40kJ.png, id=1866, 1004.553pt x 600.5637pt>
+ [65 <./figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png>]
+<figures/01_Success_Rate_Beta_0_0_1_40kJ.png, id=1883, 1004.553pt x 600.5637pt>
 File: figures/01_Success_Rate_Beta_0_0_1_40kJ.png Graphic file (type png)
 <use figures/01_Success_Rate_Beta_0_0_1_40kJ.png>
 Package pdftex.def Info: figures/01_Success_Rate_Beta_0_0_1_40kJ.png  used on input line 277.
 (pdftex.def)             Requested size: 396.00468pt x 236.74812pt.
-<figures/01_Success_Rate_Beta_0_0_1_80kJ.png, id=1867, 1004.553pt x 600.5637pt>
+<figures/01_Success_Rate_Beta_0_0_1_80kJ.png, id=1884, 1004.553pt x 600.5637pt>
 File: figures/01_Success_Rate_Beta_0_0_1_80kJ.png Graphic file (type png)
 <use figures/01_Success_Rate_Beta_0_0_1_80kJ.png>
 Package pdftex.def Info: figures/01_Success_Rate_Beta_0_0_1_80kJ.png  used on input line 284.
 (pdftex.def)             Requested size: 396.00468pt x 236.74812pt.
- [64 <./figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png>] [65 <./figures/01_Success_Rate_Beta_0_0_1_40kJ.png> <./figures/01_Success_Rate_Beta_0_0_1_80kJ.png>]
-<figures/02_Response_Time_Beta_0_0_1_40kJ.png, id=1883, 1112.958pt x 630.9171pt>
+ [66 <./figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png>] [67 <./figures/01_Success_Rate_Beta_0_0_1_40kJ.png> <./figures/01_Success_Rate_Beta_0_0_1_80kJ.png>]
+<figures/02_Response_Time_Beta_0_0_1_40kJ.png, id=1901, 1112.958pt x 630.9171pt>
 File: figures/02_Response_Time_Beta_0_0_1_40kJ.png Graphic file (type png)
 <use figures/02_Response_Time_Beta_0_0_1_40kJ.png>
 Package pdftex.def Info: figures/02_Response_Time_Beta_0_0_1_40kJ.png  used on input line 303.
 (pdftex.def)             Requested size: 395.99443pt x 224.48254pt.
-<figures/02_Response_Time_Beta_0_0_1_80kJ.png, id=1884, 1112.958pt x 630.9171pt>
+<figures/02_Response_Time_Beta_0_0_1_80kJ.png, id=1902, 1112.958pt x 630.9171pt>
 File: figures/02_Response_Time_Beta_0_0_1_80kJ.png Graphic file (type png)
 <use figures/02_Response_Time_Beta_0_0_1_80kJ.png>
 Package pdftex.def Info: figures/02_Response_Time_Beta_0_0_1_80kJ.png  used on input line 310.
 (pdftex.def)             Requested size: 395.99443pt x 224.48254pt.
- [66 <./figures/02_Response_Time_Beta_0_0_1_40kJ.png>]
+ [68 <./figures/02_Response_Time_Beta_0_0_1_40kJ.png>]
 Overfull \hbox (23.44447pt too wide) in paragraph at lines 321--322
 \T1/lmtt/m/n/10.95 ILP-Hierarchical \T1/lmr/m/n/10.95 (-20) main-tains sta-ble la-tency ($\OMS/lmsy/m/n/10.95 ^^Y \OT1/lmr/m/n/10.95 (-20) 1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 20[]1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 28[]$ \T1/lmr/m/n/10.95 (-20) in \T1/lmr/m/it/10.95 (-20) Std\T1/lmr/m/n/10.95 (-20) , $\OMS/lmsy/m/n/10.95 ^^Y \OT1/lmr/m/n/10.95 (-20) 1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 45[]1\OML/lmm/m/it/10.95 :\OT1/lmr/m/n/10.95 (-20) 55[]$
  []
 
-<figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png, id=1894, 1076.823pt x 626.0991pt>
+<figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png, id=1911, 1076.823pt x 626.0991pt>
 File: figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png Graphic file (type png)
 <use figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png>
 Package pdftex.def Info: figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png  used on input line 330.
 (pdftex.def)             Requested size: 395.9865pt x 230.23912pt.
-[67 <./figures/02_Response_Time_Beta_0_0_1_80kJ.png>]
-<figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png, id=1901, 1076.823pt x 626.0991pt>
+[69 <./figures/02_Response_Time_Beta_0_0_1_80kJ.png>]
+<figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png, id=1918, 1076.823pt x 626.0991pt>
 File: figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png Graphic file (type png)
 <use figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png>
 Package pdftex.def Info: figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png  used on input line 337.
 (pdftex.def)             Requested size: 395.9865pt x 230.23912pt.
- [68 <./figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png> <./figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png>] [69]
+ [70 <./figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png> <./figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png>] [71]
 Underfull \hbox (badness 3078) in paragraph at lines 417--417
 []|\T1/lmr/m/n/10 (+20) Global multi-hop flow vis-i-bil-
  []
@@ -1080,12 +1073,12 @@ Underfull \hbox (badness 2261) in paragraph at lines 417--417
 \T1/lmr/m/n/10 (+20) while avoid-ing queue col-lapse
  []
 
-[70] [71]) [72]
+[72] [73]) [74]
 \openout2 = `capitoli/chapter6_conclusions.aux'.
 
  (./capitoli/chapter6_conclusions.tex
 Chapter 6.
-[73
+[75
 
 
 
@@ -1095,33 +1088,33 @@ Overfull \hbox (3.12622pt too wide) in paragraph at lines 37--38
 \T1/lmtt/m/n/10.95 ILP-Hierarchical (Time) \T1/lmr/m/n/10.95 (-20) to at-tain near-perfect com-ple-tion rates ($\OT1/lmr/m/n/10.95 (-20) 99%[]100%$\T1/lmr/m/n/10.95 (-20) )
  []
 
-[74] [75] [76]) [77] (./Tesi_Satellite_Computing_Bagini_2045337.bbl [78
+[76] [77] [78]) [79] (./Tesi_Satellite_Computing_Bagini_2045337.bbl [80
 
 
 
 
 
-] [79]) [80] (./Tesi_Satellite_Computing_Bagini_2045337.aux (./capitoli/chapter1_introduction.aux) (./capitoli/chapter2_state_of_the_art.aux) (./capitoli/chapter3_ilp_architecture.aux) (./capitoli/chapter4_performance_analysis.aux) (./capitoli/chapter5_comparative_benchmark.aux) (./capitoli/chapter6_conclusions.aux))
+] [81]) [82] (./Tesi_Satellite_Computing_Bagini_2045337.aux (./capitoli/chapter1_introduction.aux) (./capitoli/chapter2_state_of_the_art.aux) (./capitoli/chapter3_ilp_architecture.aux) (./capitoli/chapter4_performance_analysis.aux) (./capitoli/chapter5_comparative_benchmark.aux) (./capitoli/chapter6_conclusions.aux))
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
  ***********
 Package rerunfilecheck Info: File `Tesi_Satellite_Computing_Bagini_2045337.out' has not changed.
-(rerunfilecheck)             Checksum: 356D017909C9E11C72E8200C66879EEE;24593.
+(rerunfilecheck)             Checksum: ACB0C5418468D8809FBBF70A58C693F5;24575.
  ) 
 Here is how much of TeX's memory you used:
- 21116 strings out of 469515
- 345090 string characters out of 5470807
- 2030625 words of memory out of 5000000
- 47899 multiletter control sequences out of 15000+600000
- 793546 words of font info for 402 fonts, out of 8000000 for 9000
+ 21117 strings out of 469515
+ 345044 string characters out of 5470807
+ 2092694 words of memory out of 5000000
+ 47897 multiletter control sequences out of 15000+600000
+ 794066 words of font info for 407 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  84i,18n,131p,1339b,2321s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf-dist/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmbx12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmbxi10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmex10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi7.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmi9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmmib10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr12.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr7.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmr8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmri10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmss10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmss17.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy6.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy8.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmsy9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtt9.pfb></usr/share/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (87 pages, 21952257 bytes).
+Output written on Tesi_Satellite_Computing_Bagini_2045337.pdf (89 pages, 22144333 bytes).
 PDF statistics:
- 2364 PDF objects out of 2487 (max. 8388607)
- 2125 compressed objects within 22 object streams
- 989 named destinations out of 1000 (max. 500000)
+ 2380 PDF objects out of 2487 (max. 8388607)
+ 2139 compressed objects within 22 object streams
+ 982 named destinations out of 1000 (max. 500000)
  92011 words of extra memory for PDF output out of 106986 (max. 10000000)
 

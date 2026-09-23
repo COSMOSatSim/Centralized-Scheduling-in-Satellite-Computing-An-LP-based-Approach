@@ -45,9 +45,13 @@ info.txt
 /Dome_Plots/
 .vscode/
 simulazioni_esp_8/
+simulazioni_esp_8_2/
 simulazioni_esp_9/
-simulazioni_esp_10/
-simulazioni_esp_11/
+simulazioni_esp_9_2/
+simulazioni_esp_10_2/
+simulazioni_esp_11_2/
+simulazioni_esp_12/
+plots/
 venv/
 .venv/
 parte-2/

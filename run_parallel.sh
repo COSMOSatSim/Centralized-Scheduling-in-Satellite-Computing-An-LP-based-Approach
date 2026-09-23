@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ----- CONFIGURAZIONE -----
-VENV_PATH="venv"
+VENV_PATH=".venv"
 PYTHON="$VENV_PATH/bin/python"
 
 MAIN="main.py"
@@ -9,7 +9,7 @@ MAIN="main.py"
 INPUT_DIR="SIMS_SETS"
 SECOND_DIR="SIMS_IMG_RESOLUTIONS"
 
-MAX_PARALLEL=8
+MAX_PARALLEL=6
 # --------------------------
 
 if [ ! -f "$PYTHON" ]; then

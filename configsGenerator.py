@@ -30,14 +30,14 @@ alpha_list = [(0.3, 0.5, 0.2)]                          # Alpha
 gamma_list = [(0.7, 0.3)]                               # Gamma
 
 # === PARAMETRI ILP CENTRALIZZATO ===
-centralized_batch_size = [20] 
-centralized_batch_timeout = [0.05]  # Timeout per il batch del Centralizzato 
+centralized_batch_size = [2] 
+centralized_batch_timeout = [2]  # Timeout per il batch del Centralizzato 
 centralized_lexi_tol = [0.1]
 centralized_dijkstra_weights = [(1, 0)]   # (w_r, w_e) Pesi per il Dijkstra del Centralizzato
 centralized_primary_objective = ["time", "energy"]  # Obiettivo primario per il Centralizzato
 centralized_primary_weight = [1000]  # Peso per l'obiettivo primario
 centralized_secondary_weight = [1]  # Peso per l'obiettivo secondario
-centralized_sunset_weight = [8]  # Peso per l'obiettivo sunset
+centralized_sunset_weight = [10]  # Peso per l'obiettivo sunset
 # ===================================
 
 OUTPUT_DIR_CONFIG = "SIMS_SETS"

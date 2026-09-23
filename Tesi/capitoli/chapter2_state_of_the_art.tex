@@ -27,8 +27,8 @@ Task offloading in Orbital Edge Computing involves receiving task execution requ
 
 An OEC network architecture consists of three core structural entities~\cite{icdcs_satellite_2025, walker1984satellite}:
 \begin{itemize}
-    \item \textbf{Ground Users (GUs) / Remote Sensors:} Distributed terrestrial entities that issue computational task requests $r_i$. Each request is characterized by a data payload size $D^{data}_r$ (in bits), required CPU compute cycles $W_r$, and a strict operational deadline $D_r$ (in seconds)~\cite{icdcs_satellite_2025}.
-    \item \textbf{Satellite Edge Nodes (SENs):} LEO satellites equipped with CPU cores, memory modules, and onboard energy reserves (solar panels and battery banks). Each SEN $s_j$ possesses a processing capacity $f_j$ (cycles/second) and an operational energy budget $E_j$~\cite{icdcs_satellite_2025, peng2025blocked}.
+    \item \textbf{Ground Users (GUs) / Remote Sensors:} Distributed terrestrial entities that issue computational task requests $r$. Each request is characterized by an input data payload size $s_r$ (in megabytes), a computational execution demand $d_{cpu,r}$ (in seconds), and a strict operational deadline $D_r$ (in seconds)~\cite{icdcs_satellite_2025}.
+    \item \textbf{Satellite Edge Nodes (SENs):} LEO satellites equipped with CPU cores, memory modules, and onboard energy reserves (solar panels and battery banks). Each SEN $s_j$ possesses a processing capacity $f_j$ (cycles/second) and an operational energy budget $E_j$~\cite{icdcs_satellite_2025}.
     \item \textbf{Inter-Satellite Links (ISLs):} High-speed communication channels connecting adjacent satellites. Intra-plane ISLs connect satellites within the same orbital plane (stable distance), whereas inter-plane ISLs connect satellites in adjacent planes (dynamically varying distance and pointing angles)~\cite{chen2021isl, chaudhry2021laser}. Each ISL link $(u, v)$ is constrained by bandwidth $B_{uv}$ and propagation delay $\tau_{uv}$.
 \end{itemize}
 
