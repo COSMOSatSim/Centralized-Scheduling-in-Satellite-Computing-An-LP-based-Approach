@@ -62,7 +62,7 @@ The comparative suite comprises 9 algorithmic configurations categorized into th
     \end{itemize}
 
     \item \textbf{Proposed Centralized ILP Orchestrator:}
-    Formulated under Integer Linear Programming principles~\cite{wolsey1998integer} using \texttt{PuLP}~\cite{pulp2011} and solved via exact dual simplex solvers~\cite{huangfu2018highs}. Following the micro-tuning calibration established in Chapter~\ref{chap:performance_analysis} (which identified the calibrated objective function weighting parameters as $W_1 = 1000$ and $W_2 = 10$, balancing primary task admission against secondary operational overhead), the orchestrator is evaluated under optimal weights across two viable batching archetypes:
+    Formulated under Integer Linear Programming principles~\cite{wolsey1998integer} using \texttt{PuLP}~\cite{pulp2011} and solved via exact dual simplex solvers~\cite{huangfu2018highs}. Following the micro-tuning calibration established in Chapter~\ref{chap:performance_analysis} (which identified the calibrated objective function weighting parameters as $\alpha^* = 1000$ and $\gamma^* = 10$, balancing primary task admission against secondary operational overhead), the orchestrator is evaluated under optimal weights across two viable batching archetypes:
     \begin{itemize}
         \item \textbf{\texttt{ILP-Centr (BS20, BT0.05, Time/Energy)}:} Reactive fast-dispatch configuration with an aggressive $50\text{ ms}$ timeout.
         \item \textbf{\texttt{ILP-Centr (BS2, BT2, Time/Energy)}:} Controlled small-batching policy ($BS=2$, $BT=2\text{ s}$) enabling pairwise combinatorial optimization.

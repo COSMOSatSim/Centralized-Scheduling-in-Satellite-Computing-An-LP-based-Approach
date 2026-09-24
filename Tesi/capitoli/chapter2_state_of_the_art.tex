@@ -90,7 +90,7 @@ Heuristic approaches sacrifice theoretical optimality in favor of computational 
 \begin{itemize}
     \item \textbf{OrbitAware Architecture:} A dynamic heuristic framework designed specifically for highly dynamic LEO topologies. \textit{OrbitAware} leverages periodic orbital trajectory updates to predict link availability and select shortest processing/routing paths locally, reducing control overhead at the cost of potential link queue saturation~\cite{icdcs_satellite_2025}.
     \item \textbf{DTS-base (Dynamic Task Scheduling - Base):} A greedy distributed scheduling baseline that assigns incoming tasks to the nearest available SEN with sufficient idle CPU capacity. While fast, it ignores global energy budgets and multi-hop link traffic~\cite{icdcs_satellite_2025}.
-    \item \textbf{DTS-APopt (Dynamic Task Scheduling - Access Point Optimized):} An enhanced version of \textit{DTS-base} that incorporates multi-criteria decision metrics, optimizing both the local access point selection and initial ISL hop bandwidth before dispatching tasks~\cite{icdcs_satellite_2025}.
+    \item \textbf{DTS-Optimal (Dynamic Task Scheduling - Access Point Optimized):} An enhanced version of \textit{DTS-base} that incorporates multi-criteria decision metrics, optimizing both the local access point selection and initial ISL hop bandwidth before dispatching tasks~\cite{icdcs_satellite_2025}.
 \end{itemize}
 
 \subsection{Optimization-Based and Distributed ILP Formulations}
@@ -113,5 +113,5 @@ This thesis addresses this exact gap by:
 \begin{enumerate}
     \item Formalizing a centralized ILP model that dynamically toggles between latency minimization (\textit{Mapping Time}) and energy conservation (\textit{Mapping Energy})~\cite{icdcs_satellite_2025}.
     \item Quantifying the systemic performance bounds of centralized optimization when coupled with dynamic request batching and queuing delay compensation.
-    \item Conducting a rigorous comparative benchmark against established state-of-the-art heuristics (\textit{OrbitAware}, \textit{DTS-base}, \textit{DTS-APopt}) and distributed ILP variants under realistic discrete-event simulation conditions (\texttt{SimPy})~\cite{simpy2023, icdcs_satellite_2025}.
+    \item Conducting a rigorous comparative benchmark against established state-of-the-art heuristics (\textit{OrbitAware}, \textit{DTS-base}, \textit{DTS-Optimal}) and distributed ILP variants under realistic discrete-event simulation conditions (\texttt{SimPy})~\cite{simpy2023, icdcs_satellite_2025}.
 \end{enumerate}
