@@ -1,3 +1,12 @@
+% --- Rilassamento parametri float per evitare pagine vuote ---
+\renewcommand{\topfraction}{0.95}       % Permette a una figura in alto di occupare fino al 95% della pagina
+\renewcommand{\bottomfraction}{0.95}    % Permette a una figura in basso di occupare fino al 95%
+\renewcommand{\textfraction}{0.05}      % Bastano 2-3 righe di testo per evitare una pagina vuota isolata
+\renewcommand{\floatpagefraction}{0.85} % Crea una pagina di sola figura solo se occupa almeno l'85%
+\setcounter{topnumber}{2}
+\setcounter{totalnumber}{3}
+
+
 \chapter{Performance Analysis, Optimization, and Experimental Evaluation}
 \label{chap:performance_analysis}
 
@@ -56,18 +65,13 @@ To isolate the queuing latency bottleneck and establish the viable operating env
 
 Figures~\ref{fig:line_sr_energy} and~\ref{fig:line_sr_time} report the Task Success Rate across the parameter space for Energy and Time mapping, respectively.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Line_Success_Rate_ENERGY.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Line_Success_Rate_ENERGY.png}%
+    }
     \caption{Success Rate across arrival rates under Energy Mapping for $BS$-sweep ($BT=2.0\text{ s}$) and $BT$-sweep ($BS=20$) across deadline relaxation levels $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:line_sr_energy}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Line_Success_Rate_TIME.png}
-    \caption{Success Rate across arrival rates under Time Mapping for $BS$-sweep ($BT=2.0\text{ s}$) and $BT$-sweep ($BS=20$) across deadline relaxation levels $\Delta D \in \{10\%, 20\%, 30\%\}$.}
-    \label{fig:line_sr_time}
 \end{figure}
 
 The empirical curves highlight five key operational dynamics:
@@ -75,6 +79,18 @@ The empirical curves highlight five key operational dynamics:
     \item \textbf{Peak Low-Load Throughput and Stress Convergence of Instantaneous Dispatch ($BT = 0.0\text{ s}$):} Enforcing an immediate dispatch policy ($BS=20, BT=0.0\text{ s}$, uppermost curve) maximizes throughput under light-to-moderate traffic, achieving $\approx 92\%\text{--}93\%$ success at $\lambda \le 3\text{ req/s}$ and maintaining $\approx 89\%$ at $\lambda=4\text{ req/s}$. Beyond moderate load, however, it experiences a steep decline, falling to $\approx 68\%\text{--}82\%$ at $\lambda=6\text{ req/s}$ and collapsing to $\approx 41\%\text{--}48\%$ at $\lambda=10\text{ req/s}$. Crucially, at peak load ($\lambda \ge 8\text{ req/s}$), the throughput of $BT=0.0\text{ s}$ intersects and converges with the reactive policy ($BT=0.05\text{ s}$) at $\approx 53\%$ ($\lambda=8\text{ req/s}$) and $\approx 41\%\text{--}42\%$ ($\lambda=10\text{ req/s}$), demonstrating that unbuffered single-task dispatch provides no throughput advantage under sustained high-rate arrivals.
     \item \textbf{Controlled Small-Batching Dynamics and High-Load Convergence ($BS$-Sweep):} Small aggregation quotas ($BS \in \{1, 2\}$ with $BT=2.0\text{ s}$) deliver robust performance across the arrival spectrum. While assembling larger batches under low traffic causes severe degradation due to prolonged timeout dwell times ($\approx 67\%$ for $BS \le 2$ vs. $\approx 44\%$ for $BS=10$ at $\lambda=2\text{ req/s}$ under Energy Mapping), all batch size configurations converge to a narrow band ($\approx 38\%\text{--}48\%$) at peak stress ($\lambda=10\text{ req/s}$). Under heavy load, the rapid inter-arrival window ($\approx 100\text{ ms}$) fills batch quotas within $0.2\text{--}1.0\text{ s}$, well before the $2.0\text{ s}$ timeout expiration.
     \item \textbf{Systematic Degradation under High-Timeout Regimes ($BT \ge 0.4\text{ s}$):} Relying on generous buffer timeouts ($BT \ge 0.4\text{ s}$, lower orange and yellow curves in the right panels) consistently degrades performance across all traffic regimes. Buffer residency directly consumes the deadline budget, capping success rates below $50\%$ even under light load ($\lambda=2\text{ req/s}$) and deteriorating to $30\%\text{--}35\%$ under peak load ($\lambda=10\text{ req/s}$).
+\end{itemize}
+
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Line_Success_Rate_TIME.png}%
+    }
+    \caption{Success Rate across arrival rates under Time Mapping for $BS$-sweep ($BT=2.0\text{ s}$) and $BT$-sweep ($BS=20$) across deadline relaxation levels $\Delta D \in \{10\%, 20\%, 30\%\}$.}
+    \label{fig:line_sr_time}
+\end{figure}
+
+\begin{itemize}
     \item \textbf{Mapping Metric Sensitivity at Low Load:} While Energy and Time mappings produce almost identical trends under the $BT$-sweep, the $BS$-sweep reveals an observable sensitivity to the mapping objective under light traffic ($\lambda \le 3\text{ req/s}$): Time Mapping achieves $\approx 78\%\text{--}82\%$ success for $BS \in \{1, 2\}$, outperforming Energy Mapping ($\approx 65\%\text{--}68\%$) by over $10\%$ through latency-minimal server selection. At higher loads ($\lambda \ge 8\text{ req/s}$), this divergence vanishes as physical resource scarcity dominates solver decisions.
     \item \textbf{Routing Parity and Localized Topological Spikes:} While Dijkstra-Energy (solid lines) and Dijkstra-Time (dashed lines) track each other closely in most operational regimes, Dijkstra-Time exhibits pronounced localized throughput gains at intermediate loads. Notably, at $\lambda=6\text{ req/s}$ for $BS=2$, Dijkstra-Time achieves an upward spike of $+14\%$ under Time Mapping ($\approx 72\%$ vs. $\approx 58\%$, $\Delta D=10\%$) and $+17\%$ under Energy Mapping ($\approx 62\%$ vs. $\approx 45\%$, $\Delta D=30\%$). This reflects specific orbital alignments where ISL delay minimization rescues borderline tasks from deadline expiration.
 \end{itemize}
@@ -84,18 +100,13 @@ The empirical curves highlight five key operational dynamics:
 
 Figures~\ref{fig:failure_causes_energy} and~\ref{fig:failure_causes_time} illustrate the relative distribution of rejection causes across the parameter sweeps.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Failure_Causes_ENERGY.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_ENERGY.png}%
+    }
     \caption{Rejection causes distribution across arrival rates under Energy Mapping, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:failure_causes_energy}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Failure_Causes_TIME.png}
-    \caption{Rejection causes distribution across arrival rates under Time Mapping, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
-    \label{fig:failure_causes_time}
 \end{figure}
 
 The failure diagnostics reveal three structural properties of the constellation orchestrator:
@@ -110,7 +121,18 @@ The failure diagnostics reveal three structural properties of the constellation 
     \end{itemize}
     \item \textbf{Rapid Deadline Collapse in Buffered Policies ($BT \ge 0.05\text{ s}$):} 
     Introducing even a marginal buffer delay alters the failure distribution. For $BT = 0.05\text{ s}$, \textit{Deadline Exceeded} accounts for $\approx 50\%\text{--}55\%$ of drops at $\lambda = 2\text{ req/s}$, escalating to $\approx 80\%\text{--}85\%$ at $\lambda = 10\text{ req/s}$. For $BT \ge 0.1\text{ s}$, buffer dwell time exhausts available application slack times, making \textit{Deadline Exceeded} the primary cause of rejection ($70\%\text{--}85\%$) across all loads, while physical resource rejections contract to $15\%\text{--}30\%$.
+\end{itemize}
 
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_TIME.png}%
+    }
+    \caption{Rejection causes distribution across arrival rates under Time Mapping, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
+    \label{fig:failure_causes_time}
+\end{figure}
+
+\begin{itemize}
     \item \textbf{Bottleneck Inversion in Batch Size Aggregation ($BS$-Sweep, $BT = 2.0\text{ s}$):} 
     The $BS$-sweep exhibits an inversion in rejection mechanics:
     \begin{itemize}
@@ -124,18 +146,13 @@ The failure diagnostics reveal three structural properties of the constellation 
 
 Figures~\ref{fig:line_rt_energy} and~\ref{fig:line_rt_time} show the end-to-end response time decomposed into Onboard Task Execution Time ($T_{exec}$) and Network/Wait Time ($T_{net+wait}$).
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Stacked_Response_Time_ENERGY.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Stacked_Response_Time_ENERGY.png}%
+    }
     \caption{Response Time decomposition under Energy Mapping across arrival rates for $BS$-sweep and $BT$-sweep configurations under $\Delta D \in \{10\%, 20\%, 30\%\}$.}
     \label{fig:line_rt_energy}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Stacked_Response_Time_TIME.png}
-    \caption{Response Time decomposition under Time Mapping across arrival rates for $BS$-sweep and $BT$-sweep configurations under $\Delta D \in \{10\%, 20\%, 30\%\}$.}
-    \label{fig:line_rt_time}
 \end{figure}
 
 The empirical decompositions validate the analytical response time model:
@@ -153,6 +170,15 @@ where onboard execution time ($T_{exec}$, bottom darker segments) is strongly go
 \end{equation}
 When larger batches are dispatched simultaneously, multiple co-allocated tasks enter satellite CPU execution queues concurrently, driving up $T_{exec}$. This behavior is directly visible in the $BT$-sweep ($BS=20$), where expanding $BT$ from $0.0\text{ s}$ to $1.0\text{ s}$ allows more tasks to accumulate per cycle, increasing $T_{exec}$ from $\approx 0.18\text{ s}$ to $\approx 0.58\text{ s}$.
 
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Stacked_Response_Time_TIME.png}%
+    }
+    \caption{Response Time decomposition under Time Mapping across arrival rates for $BS$-sweep and $BT$-sweep configurations under $\Delta D \in \{10\%, 20\%, 30\%\}$.}
+    \label{fig:line_rt_time}
+\end{figure}
+
 The transmission and coordinator wait time ($T_{net+wait}$, top translucent segments) governs the remaining latency:
 \begin{itemize}
     \item \textbf{Batch Size Sweep ($BT = 2.0\text{ s}$):} Small batch sizes limit total latency across all arrival rates ($T_{total} \approx 0.35\text{--}0.55\text{ s}$ for $BS=1$, and $\approx 0.40\text{--}0.65\text{ s}$ for $BS=2$). For large aggregations ($BS \ge 8$), ingress queuing and multi-task ISL contention maintain elevated latency across the entire spectrum, spanning $0.95\text{--}1.05\text{ s}$ at $\lambda=2\text{ req/s}$ and expanding up to $1.25\text{--}1.42\text{ s}$ at $\lambda \ge 6\text{ req/s}$.
@@ -166,14 +192,14 @@ Finally, comparing across the relaxation levels ($\Delta D \in \{10\%, 20\%, 30\
 \subsection{Selection of Viable Batching Archetypes}
 \label{subsec:selection_archetypes}
 
-The parametric exploration establishes clear operational boundaries for centralized orchestration in dynamic LEO satellite networks~\cite{icdcs_satellite_2025, survey_orbital_edge_2023}. On the one hand, configurations relying on generous buffering thresholds ($BT \ge 0.2\text{ s}$ or $BS \ge 6$) prove structurally unviable for delay-sensitive edge services: coordinator ingress dwell times systematically consume application slack times, resulting in severe deadline-induced drop rates ($70\%\text{--}85\%$, as shown in Figures~\ref{fig:failure_causes_energy} and~\ref{fig:failure_causes_time}) %[cite: 5, 6]
-and elevated end-to-end response times ($> 1.0\text{ s}$, Figures~\ref{fig:line_rt_energy} and~\ref{fig:line_rt_time})~\cite{icdcs_satellite_2025}. %[cite: 3, 4, 13]
+The parametric exploration establishes clear operational boundaries for centralized orchestration in dynamic LEO satellite networks~\cite{icdcs_satellite_2025, survey_orbital_edge_2023}. On the one hand, configurations relying on generous buffering thresholds ($BT \ge 0.2\text{ s}$ or $BS \ge 6$) prove structurally unviable for delay-sensitive edge services: coordinator ingress dwell times systematically consume application slack times, resulting in severe deadline-induced drop rates ($70\%\text{--}85\%$, as shown in Figures~\ref{fig:failure_causes_energy} and~\ref{fig:failure_causes_time})
+and elevated end-to-end response times ($> 1.0\text{ s}$, Figures~\ref{fig:line_rt_energy} and~\ref{fig:line_rt_time})~\cite{icdcs_satellite_2025}.
 On the other hand, while pure instantaneous dispatch ($BT = 0.0\text{ s}$) eliminates coordinator buffer latency, it introduces severe architectural and scheduling limitations:
 
 \begin{itemize}
     \item \textbf{Degeneration into Myopic Greedy Allocation:} Structuring the optimization problem around isolated single-task instances ($|R| = 1$) fundamentally collapses the combinatorial search space. The mathematical program degenerates into a single-request shortest-path and server selection routine, blinding the orchestrator to imminent concurrent demands. In dense arrival regimes where requests arrive within tens of milliseconds of each other, they are scheduled strictly sequentially without joint fleet awareness: the first request greedily claims the lowest-latency ISL hops and the closest edge compute cores, inadvertently forcing immediately subsequent requests onto congested multi-hop detours or causing their outright rejection due to newly saturated link capacities.
     
-    \item \textbf{Localized Onboard Queue Inflation and Deadline Collapse:} Because isolated single-task scheduling lacks joint visibility across concurrent demands, the solver repeatedly steers closely arriving tasks toward the same nominally optimal Satellite Edge Nodes. Although coordinator ingress buffering is eliminated ($T_{wait} = 0$), this uncoordinated dispatch rapidly congests destination node execution queues ($W_{cpu,i}$). As arrival rates exceed the processing capacity of individual satellites, the cumulative queuing delay onboard the spacecraft pushes overall task completion beyond strict application deadlines. This structural lack of multi-task coordination explains the steep throughput collapse observed under unbuffered dispatch at peak load ($\approx 41\%$--$42\%$ success at $\lambda = 10\text{ req/s}$, Figures 4.1 and 4.2).
+    \item \textbf{Localized Onboard Queue Inflation and Deadline Collapse:} Because isolated single-task scheduling lacks joint visibility across concurrent demands, the solver repeatedly steers closely arriving tasks toward the same nominally optimal Satellite Edge Nodes. Although coordinator ingress buffering is eliminated ($T_{wait} = 0$), this uncoordinated dispatch rapidly congests destination node execution queues ($W_{cpu,i}$). As arrival rates exceed the processing capacity of individual satellites, the cumulative queuing delay onboard the spacecraft pushes overall task completion beyond strict application deadlines. This structural lack of multi-task coordination explains the steep throughput collapse observed under unbuffered dispatch at peak load ($\approx 41\%$--$42\%$ success at $\lambda = 10\text{ req/s}$, Figures~\ref{fig:line_sr_energy} and~\ref{fig:line_sr_time}).
 \end{itemize}
 
 To harness the multi-task optimization potential of the centralized ILP formulation while maintaining strict temporal feasibility, an effective batching policy must strike an operational balance: it must accumulate enough requests to enable joint combinatorial scheduling, yet flush the queue rapidly enough to preserve application deadline margins.
@@ -182,13 +208,14 @@ We therefore select two complementary batching archetypes that capture these ope
 
 \begin{enumerate}
     \item \textbf{Reactive Fast-Dispatch ($BS=20, BT=0.05\text{ s}$):} 
-    This policy operates as a rate-limiting micro-batcher with an aggressive $50\text{ ms}$ timeout. Because the inter-arrival window across the evaluated arrival spectrum ($\lambda \in [2, 10]\text{ req/s}$) ranges between $100\text{ ms}$ and $500\text{ ms}$, the timeout triggers almost continuously, dispatching requests either individually or in tightly coupled burst pairs ($|R| \in \{1, 2\}$). By enforcing an explicit 50~ms ceiling on ingress delay, it caps end-to-end response times below 0.73~s (Figures 4.5 and 4.6) and prevents uncoordinated single-task allocation by coalescing sub-millisecond arrival bursts into a unified mathematical program, significantly reducing intermediate ISL contention and localized node congestion compared to unbuffered dispatch.
+    This policy operates as a rate-limiting micro-batcher with an aggressive $50\text{ ms}$ timeout. Because the inter-arrival window across the evaluated arrival spectrum ($\lambda \in [2, 10]\text{ req/s}$) ranges between $100\text{ ms}$ and $500\text{ ms}$, the timeout triggers almost continuously, dispatching requests either individually or in tightly coupled burst pairs ($|R| \in \{1, 2\}$). By enforcing an explicit 50~ms ceiling on ingress delay, it caps end-to-end response times below 0.73~s (Figures~\ref{fig:line_rt_energy} and~\ref{fig:line_rt_time}) and prevents uncoordinated single-task allocation by coalescing sub-millisecond arrival bursts into a unified mathematical program, significantly reducing intermediate ISL contention and localized node congestion compared to unbuffered dispatch.
 
     \item \textbf{Controlled Small-Batching ($BS=2, BT=2.0\text{ s}$):} 
-    This policy establishes the minimal non-trivial combinatorial optimization horizon ($|R|=2$) with a fallback timeout of $2.0\text{ s}$. At operational loads ($\lambda \ge 4\text{ req/s}$), the batch size threshold is fulfilled within $0.10\text{--}0.25\text{ s}$, triggering execution well before the timeout can expire. This provides the ILP solver with a joint optimization window across pairs of competing requests, enabling spatial load balancing~\cite{tang2003loadbalancing} %[cite: 13]
-    (e.g., allocating complementary CPU-intensive and Data-intensive tasks to disjoint SENs and non-overlapping ISL paths). This pairwise coupling bounds deadline-induced failures to $\le 10\%$ at medium-to-high loads (Figures~\ref{fig:failure_causes_energy} and~\ref{fig:failure_causes_time}) %[cite: 5, 6]
-    while maintaining compact response times ($T_{total} \le 0.65\text{ s}$, Figures~\ref{fig:line_rt_energy} and~\ref{fig:line_rt_time}). %[cite: 3, 4]
+    This policy establishes the minimal non-trivial combinatorial optimization horizon ($|R|=2$) with a fallback timeout of $2.0\text{ s}$. At operational loads ($\lambda \ge 4\text{ req/s}$), the batch size threshold is fulfilled within $0.10\text{--}0.25\text{ s}$, triggering execution well before the timeout can expire. This provides the ILP solver with a joint optimization window across pairs of competing requests, enabling spatial load balancing~\cite{tang2003loadbalancing}
+    (e.g., allocating complementary CPU-intensive and Data-intensive tasks to disjoint SENs and non-overlapping ISL paths). This pairwise coupling bounds deadline-induced failures to $\le 10\%$ at medium-to-high loads (Figures~\ref{fig:failure_causes_energy} and~\ref{fig:failure_causes_time})
+    while maintaining compact response times ($T_{total} \le 0.65\text{ s}$, Figures~\ref{fig:line_rt_energy} and~\ref{fig:line_rt_time}).
 \end{enumerate}
+
 % =============================================================================
 % SECTION 4.3: CROSS-SENSITIVITY ANALYSIS (GAMMA x ALPHA)
 % =============================================================================
@@ -210,24 +237,31 @@ where $\beta = 1.0$ serves as the secondary objective normalization, the primary
 
 Figures~\ref{fig:cross_sr_8} and~\ref{fig:cross_sr_10} depict the Task Success Rate across the $(\gamma \times \alpha)$ parameter space for $\lambda = 8\text{ req/s}$ and $\lambda = 10\text{ req/s}$, respectively.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Cross_Success_Rate_AR_8.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/01_Cross_Success_Rate_AR_8.png}%
+    }
     \caption{Cross-sensitivity Success Rate ($\gamma \times \alpha$) at $\lambda = 8\text{ req/s}$ across batching configurations, Dijkstra metrics, and mapping objectives.}
     \label{fig:cross_sr_8}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Cross_Success_Rate_AR_10.png}
-    \caption{Cross-sensitivity Success Rate ($\gamma \times \alpha$) at $\lambda = 10\text{ req/s}$ across batching configurations, Dijkstra metrics, and mapping objectives.}
-    \label{fig:cross_sr_10}
 \end{figure}
 
 The empirical trends indicate:
 \begin{itemize}
     \item \textbf{Decisive Impact of Primary Weight $\alpha = 1000$ in Latency-Centric Batching:} The influence of weight scaling is acutely concentrated in batching configurations governed by latency minimization (\textit{Time $|$ $BS:2, BT:2.0$}). In these panels, setting $\alpha = 1000$ (green dash-dotted lines) yields a stable $\approx 71\%\text{--}74\%$ completion rate at $\lambda=8\text{ req/s}$ and $\approx 67\%\text{--}68\%$ at $\lambda=10\text{ req/s}$, substantially outperforming the baseline weights $\alpha = 10$ ($\approx 50\%\text{--}53\%$) and $\alpha = 50$ ($\approx 55\%\text{--}58\%$). Because the solver jointly optimizes scheduling over pairs of requests, enforcing an aggressive primary weight compels the branch-and-cut routine to strictly prioritize deadline compliance over secondary scalarization terms.
     \item \textbf{Optimal Sunset Trade-off Window $\gamma \in [6, 10]$:} In configurations responsive to weight calibration, peak throughput consistently concentrates within $\gamma \in [6, 10]$. Under Dijkstra-Time at $\lambda=8\text{ req/s}$, $\alpha=1000$ achieves its maximum completion rate at $\gamma=10$ ($\approx 73.5\%$), while maintaining an equally robust plateau under Dijkstra-Energy ($\approx 72.5\%$). Within this parameter window, the orbital penalty effectively discourages assignments to borderline satellites without distorting overall route efficiency.
+\end{itemize}
+
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/01_Cross_Success_Rate_AR_10.png}%
+    }
+    \caption{Cross-sensitivity Success Rate ($\gamma \times \alpha$) at $\lambda = 10\text{ req/s}$ across batching configurations, Dijkstra metrics, and mapping objectives.}
+    \label{fig:cross_sr_10}
+\end{figure}
+
+\begin{itemize}
     \item \textbf{Performance Degradation in Over-Penalized Regimes ($\gamma \ge 1000$):} When the eclipse deterrent is set to extreme values ($\gamma \ge 1000$), the success rate of $\alpha=1000$ under $BS=2$ suffers a steep decline, retreating to $\approx 54\%$ at $\lambda=8\text{ req/s}$ and $\approx 46\%\text{--}50\%$ at $\lambda=10\text{ req/s}$, completely erasing the advantage gained over smaller weights. An inflated penalty term over-constrains the optimization search space: the solver becomes overly cautious, avoiding viable satellites nearing the eclipse boundary and rejecting requests that could otherwise complete safely.
     \item \textbf{Parametric Invariance in Fast-Dispatch and Energy Mapping:} Conversely, under fast-dispatch regimes (\textit{$BS:20, BT:0.05$}) and \textit{Energy Mapping}, the success rate exhibits structural invariance across all $(\alpha, \gamma)$ combinations, remaining flat at $\approx 51\%\text{--}54\%$ at $\lambda=8\text{ req/s}$ and $\approx 40\%\text{--}42\%$ at $\lambda=10\text{ req/s}$. 
 \end{itemize}
@@ -237,18 +271,13 @@ The empirical trends indicate:
 
 Figures~\ref{fig:cross_rej_8} and~\ref{fig:cross_rej_10} show the failure cause distributions across the $(\gamma \times \alpha)$ test matrix.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Cross_Failure_Causes_AR_8.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/02_Cross_Failure_Causes_AR_8.png}%
+    }
     \caption{Distribution of rejection causes across the $(\gamma \times \alpha)$ parameter space at $\lambda = 8\text{ req/s}$.}
     \label{fig:cross_rej_8}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Cross_Failure_Causes_AR_10.png}
-    \caption{Distribution of rejection causes across the $(\gamma \times \alpha)$ parameter space at $\lambda = 10\text{ req/s}$.}
-    \label{fig:cross_rej_10}
 \end{figure}
 
 The failure diagnostics reveal the exact operational boundary of the orchestrator under stress:
@@ -261,23 +290,27 @@ The failure diagnostics reveal the exact operational boundary of the orchestrato
     \end{itemize}
 \end{itemize}
 
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/02_Cross_Failure_Causes_AR_10.png}%
+    }
+    \caption{Distribution of rejection causes across the $(\gamma \times \alpha)$ parameter space at $\lambda = 10\text{ req/s}$.}
+    \label{fig:cross_rej_10}
+\end{figure}
+
 \subsection{Latency Inflation and Path-Bloat Dynamics}
 \label{subsec:cross_rt}
 
-Figures~\ref{fig:cross_rt_8} and~\ref{fig:cross_rt_10} present the response time decomposition across the $(\gamma \times \alpha)$ configurations into onboard task execution ($T_{exec}$, bottom solid bars) and network transmission/queuing delay ($T_{net+wait}$, top translucent bars).
+Figures~\ref{fig:cross_rt_8} and~\ref{fig:cross_rt_10} present the response time decomposition across the $(\gamma \times \alpha)$ configurations into onboard task execution ($T_{exec}$) and network transmission/queuing delay ($T_{net+wait}$).
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Cross_Response_Time_AR_8.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/03_Cross_Response_Time_AR_8.png}%
+    }
     \caption{Response Time decomposition across the $(\gamma \times \alpha)$ parameter space at $\lambda = 8\text{ req/s}$.}
     \label{fig:cross_rt_8}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Cross_Response_Time_AR_10.png}
-    \caption{Response Time decomposition across the $(\gamma \times \alpha)$ parameter space at $\lambda = 10\text{ req/s}$.}
-    \label{fig:cross_rt_10}
 \end{figure}
 
 These results illustrate the path-bloat phenomenon under oversized weights:
@@ -285,6 +318,15 @@ These results illustrate the path-bloat phenomenon under oversized weights:
     \item \textbf{Stable Operating Latency within $\gamma \in [2, 10]$:} In the recommended penalty region ($\gamma \le 10$), total response time remains tightly bounded around $\approx 0.58\text{--}0.70\text{ s}$ for $BS=2$ and $\approx 0.72\text{--}0.82\text{ s}$ for $BS=20$. Onboard task execution time on the assigned edge node ($T_{exec}$) remains stable and compact, consistently requiring $0.22\text{--}0.32\text{ s}$ across all operational runs.
     \item \textbf{Path-Bloat Surge at $\gamma \ge 1000$ in Small-Batching:} When $\gamma$ escalates to $1000\text{--}10000$ in $BS=2$ configurations, total response time surges to $0.95\text{--}1.15\text{ s}$, representing an approximate $55\%$ latency penalty. The stacked breakdown confirms that this surge is driven almost exclusively by the \textit{Network/Wait Time} component (which swells from $\approx 0.35\text{--}0.42\text{ s}$ to over $0.60\text{--}0.70\text{ s}$). To avoid the disproportionate penalty term $\gamma Z_{sunset}$, the ILP orchestrator detours packets through circuitous multi-hop ISL paths or delegates execution to distant nodes, inflating propagation delay and queue buildup.
 \end{itemize}
+
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/03_Cross_Response_Time_AR_10.png}%
+    }
+    \caption{Response Time decomposition across the $(\gamma \times \alpha)$ parameter space at $\lambda = 10\text{ req/s}$.}
+    \label{fig:cross_rt_10}
+\end{figure}
 
 \subsection{Selection of Calibrated Objective Weights}
 \label{subsec:optimal_weight_selection}
@@ -313,9 +355,11 @@ To validate the multi-objective calibration and quantify the performance gains a
 
 Figure~\ref{fig:confronto_sr} presents the direct comparison of Task Success Rate between the baseline and calibrated configurations under both Energy Mapping and Time Mapping.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Confronto_Success_Rate_DijkTime.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/01_Confronto_Success_Rate_DijkTime.png}%
+    }
     \caption{Success Rate comparison: Pre-optimization baseline vs. Post-optimization calibrated model for $BS=2, BT=2.0\text{ s}$ and $BS=20, BT=0.05\text{ s}$ under Dijkstra-Time routing ($\Delta D = 10\%$).}
     \label{fig:confronto_sr}
 \end{figure}
@@ -332,9 +376,11 @@ The empirical evaluation reveals a clear operational divide depending on the pri
 
 Figure~\ref{fig:confronto_failures} illustrates the breakdown of failure causes across all evaluated configurations, comparing the pre-optimization baseline against the calibrated post-optimization model.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Confronto_Failure_Causes_DijkTime.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/02_Confronto_Failure_Causes_DijkTime.png}%
+    }
     \caption{Rejection causes distribution comparison: Pre-optimization baseline vs. Post-optimization calibrated model across arrival rates ($\Delta D = 10\%$).}
     \label{fig:confronto_failures}
 \end{figure}
@@ -357,9 +403,11 @@ The diagnostic breakdown highlights four distinct operational behaviors across m
 
 Figure~\ref{fig:confronto_rt} compares the stacked response time decomposition between baseline and calibrated models.
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Confronto_Response_Time_DijkTime.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.5\textwidth]{figures/03_Confronto_Response_Time_DijkTime.png}%
+    }
     \caption{Response Time decomposition comparison: Pre-optimization baseline vs. Post-optimization calibrated model showing execution stabilization ($\Delta D = 10\%$).}
     \label{fig:confronto_rt}
 \end{figure}

@@ -93,16 +93,20 @@ The mixed workload profile represents a standard multi-tenant operational scenar
 \subsubsection{Success Rate Dynamics}
 \label{subsubsec:sr_mixed}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png}%
+    }
     \caption{Success Rate across arrival rates under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ for $40\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_mixed_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png}%
+    }
     \caption{Success Rate across arrival rates under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ for $80\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_mixed_80kJ}
 \end{figure}
@@ -123,16 +127,20 @@ Across payload distributions, shifting from \textit{Standard} $\boldsymbol{\alph
 \subsubsection{Response Time Analysis}
 \label{subsubsec:rt_mixed}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png}%
+    }
     \caption{Response Time decomposition under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ comparing Onboard Task Execution and Network/Wait latency for $40\text{ kJ}$.}
     \label{fig:rt_mixed_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png}%
+    }
     \caption{Response Time decomposition under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ comparing Onboard Task Execution and Network/Wait latency for $80\text{ kJ}$.}
     \label{fig:rt_mixed_80kJ}
 \end{figure}
@@ -150,16 +158,20 @@ The empirical results demonstrate a clear architectural bifurcation in latency d
 \subsubsection{Failure Diagnostics}
 \label{subsubsec:rej_mixed}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png}%
+    }
     \caption{Rejection Causes distribution under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ across arrival rates for $40\text{ kJ}$.}
     \label{fig:rej_mixed_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png}%
+    }
     \caption{Rejection Causes distribution under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ across arrival rates for $80\text{ kJ}$.}
     \label{fig:rej_mixed_80kJ}
 \end{figure}
@@ -183,16 +195,20 @@ When the workload consists entirely of compute-intensive requests with minimal p
 \subsubsection{Success Rate Dynamics and Invariance across Payload Distributions}
 \label{subsubsec:sr_cpu}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Success_Rate_Beta_0_1_0_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_1_0_40kJ.png}%
+    }
     \caption{Success Rate across arrival rates under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $40\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_cpu_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Success_Rate_Beta_0_1_0_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_1_0_80kJ.png}%
+    }
     \caption{Success Rate across arrival rates under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $80\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_cpu_80kJ}
 \end{figure}
@@ -211,16 +227,20 @@ Under these operating conditions, a marked performance differentiation is observ
 \subsubsection{Response Time Analysis}
 \label{subsubsec:rt_cpu}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Response_Time_Beta_0_1_0_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_1_0_40kJ.png}%
+    }
     \caption{Response Time decomposition under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $40\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rt_cpu_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Response_Time_Beta_0_1_0_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_1_0_80kJ.png}%
+    }
     \caption{Response Time decomposition under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $80\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rt_cpu_80kJ}
 \end{figure}
@@ -237,16 +257,20 @@ The analysis highlights a pronounced divergence in system latency behavior:
 \subsubsection{Failure Diagnostics and Bottleneck Analysis}
 \label{subsubsec:rej_cpu}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png}%
+    }
     \caption{Rejection Causes distribution under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $40\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_cpu_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png}%
+    }
     \caption{Rejection Causes distribution under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $80\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_cpu_80kJ}
 \end{figure}
@@ -272,16 +296,20 @@ In the data-intensive regime ($\boldsymbol{\beta} = (0, 0, 1)$), requests combin
 \subsubsection{Success Rate Dynamics and Optimality Supremacy}
 \label{subsubsec:sr_data}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Success_Rate_Beta_0_0_1_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_0_1_40kJ.png}%
+    }
     \caption{Success Rate across arrival rates under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $40\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_data_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/01_Success_Rate_Beta_0_0_1_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_0_1_80kJ.png}%
+    }
     \caption{Success Rate across arrival rates under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $80\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_data_80kJ}
 \end{figure}
@@ -298,16 +326,20 @@ The data-intensive regime produces a profound inversion in algorithmic ranking a
 \subsubsection{Response Time Analysis}
 \label{subsubsec:rt_data}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Response_Time_Beta_0_0_1_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_0_1_40kJ.png}%
+    }
     \caption{Response Time decomposition under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ across arrival rates for $40\text{ kJ}$.}
     \label{fig:rt_data_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/02_Response_Time_Beta_0_0_1_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_0_1_80kJ.png}%
+    }
     \caption{Response Time decomposition under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ across arrival rates for $80\text{ kJ}$.}
     \label{fig:rt_data_80kJ}
 \end{figure}
@@ -325,16 +357,20 @@ The empirical trends highlight four foundational behaviors:
 \subsubsection{Failure Diagnostics and Link Saturation}
 \label{subsubsec:rej_data}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png}%
+    }
     \caption{Rejection Causes distribution under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $40\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_data_40kJ}
 \end{figure}
 
-\begin{figure}[!htbp]
+\begin{figure}[!t]
     \centering
-    \includegraphics[width=\textwidth, height=0.42\textheight, keepaspectratio]{figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png}
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png}%
+    }
     \caption{Rejection Causes distribution under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $80\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_data_80kJ}
 \end{figure}
@@ -405,7 +441,7 @@ Synthesizing these trade-offs leads to prescriptive deployment guidelines for Or
 \renewcommand{\arraystretch}{1.3}
 \setlength{\tabcolsep}{8pt}
 \makebox[\textwidth][c]{%
-\begin{tabularx}{1.15\textwidth}{@{}p{4.8cm} p{5.0cm} X@{}}
+\begin{tabularx}{1.18\textwidth}{@{}p{4.8cm} p{5.0cm} X@{}}
 \toprule
 \textbf{Operational Context} & \textbf{Recommended Paradigm} & \textbf{Primary Rationale} \\ \midrule
 \textbf{Compute-Intensive} \newline ($\boldsymbol{\beta} = (0, 1, 0)$, all $\lambda$) & Distributed Heuristics \newline (\texttt{OrbitAware / DTS-Optimal}) & Zero ingress queuing; completely prevents deadline collapse by immediate greedy core allocation ($72\text{--}95\%$ completion rate, $100\%$ CPU-bounded drops). \\ \addlinespace[0.4em]
@@ -433,6 +469,7 @@ The comprehensive comparative benchmark across distributed heuristics, hierarchi
 
     \item \textbf{Algorithmic Inversion in Data-Intensive Regimes:} 
     Optimization models are not universally inferior to heuristics under heavy load. In data-intensive scenarios, \texttt{ILP-Hierarchical (Time)} decisively outperforms distributed heuristics ($99\text{--}100\%$ vs. $94\text{--}95\%$ at low load, and $81\text{--}89\%$ vs. $77\text{--}78\%$ at peak load under $80\text{ kJ}$). 
+
     \item \textbf{Bounded Nature of Physical Execution Time ($T_{exec}$):} 
     Across all evaluated algorithms, arrival rates, and workload profiles, the physical processing time on destination SEN cores remains tightly bounded ($T_{exec} \approx 0.17\text{--}0.48\text{ s}$ across heuristics, fast-dispatch, and small-batching, reaching at most $0.52\text{ s}$ in hierarchical models under mixed load and $0.65\text{ s}$ under data-intensive \textit{VL-heavy}). End-to-end latency expansion is driven primarily by ingress queuing, cluster aggregation delays, and optical transmission serialization ($T_{net+wait}$).
 

@@ -180,6 +180,8 @@ INPUT /usr/share/texmf-dist/tex/latex/tools/tabularx.sty
 INPUT /usr/share/texmf-dist/tex/latex/tools/tabularx.sty
 INPUT /usr/share/texmf-dist/tex/latex/tools/array.sty
 INPUT /usr/share/texmf-dist/tex/latex/tools/array.sty
+INPUT /usr/share/texmf-dist/tex/latex/base/flafter.sty
+INPUT /usr/share/texmf-dist/tex/latex/base/flafter.sty
 INPUT /usr/share/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 INPUT /usr/share/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 INPUT ./Tesi_Satellite_Computing_Bagini_2045337.aux
@@ -375,13 +377,13 @@ INPUT ./figures/01_Line_Success_Rate_ENERGY.png
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx7.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx5.tfm
-INPUT ./figures/01_Line_Success_Rate_TIME.png
-INPUT ./figures/01_Line_Success_Rate_TIME.png
-INPUT ./figures/01_Line_Success_Rate_TIME.png
-INPUT ./figures/01_Line_Success_Rate_TIME.png
-INPUT ./figures/01_Line_Success_Rate_TIME.png
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbx8.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbx6.tfm
+INPUT ./figures/01_Line_Success_Rate_TIME.png
+INPUT ./figures/01_Line_Success_Rate_TIME.png
+INPUT ./figures/01_Line_Success_Rate_TIME.png
+INPUT ./figures/01_Line_Success_Rate_TIME.png
+INPUT ./figures/01_Line_Success_Rate_TIME.png
 INPUT ./figures/03_Failure_Causes_ENERGY.png
 INPUT ./figures/03_Failure_Causes_ENERGY.png
 INPUT ./figures/03_Failure_Causes_ENERGY.png
