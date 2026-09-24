@@ -309,7 +309,7 @@ This combination provides an ideal operational setting: $\alpha = 1000$ ensures 
 
 To validate the multi-objective calibration and quantify the performance gains achieved over the initial setup, we execute a comparative validation benchmark. We re-evaluate the two selected operational configurations across the entire arrival rate spectrum ($\lambda \in [2, 10]\text{ req/s}$) under Dijkstra-Time routing with $\Delta D = 10\%$, comparing:
 \begin{itemize}
-    \item \textbf{Pre-Optimization Baseline:} The initial configuration employing default objective weights ($\alpha = 10, \gamma = 2$) as evaluated during the macro-tuning sweep.
+    \item \textbf{Pre-Optimization Baseline:} The initial configuration employing default objective weights ($\alpha = 10, \gamma = 5$) as evaluated during the macro-tuning sweep.
     \item \textbf{Post-Optimization Model:} The calibrated configuration integrating the tuned scalarization weights ($\alpha = 1000, \gamma = 10$) identified in the cross-sensitivity campaign.
 \end{itemize}
 
@@ -327,15 +327,15 @@ Figure~\ref{fig:confronto_sr} presents the direct comparison of Task Success Rat
 
 The empirical evaluation reveals a clear operational divide depending on the primary mapping objective:
 \begin{itemize}
-    \item \textbf{Throughput Recovery in Time Mapping:} For the batch-controlled regime ($BS=2, BT=2.0\text{ s}$), the calibrated weights unlock substantial throughput improvements under heavy load. While performance under light traffic remains naturally aligned with the macro-tuning baseline ($\approx 80\%\text{--}82\%$ at $\lambda=2\text{ req/s}$), the calibrated model delivers dramatic gains under stress, raising completion rates from $\approx 50\%$ to $\approx 73\%$ at $\lambda=8\text{ req/s}$ ($+23\%$) and from $\approx 48\%$ to $\approx 68\%$ under peak load ($\lambda=10\text{ req/s}$, $+20\%$). Enforcing $\alpha=1000$ compels the branch-and-cut solver to prioritize transmission and execution timeliness above all else, maximizing deadline compliance.
-    \item \textbf{Energy Mapping Saturation:} Conversely, under Energy Mapping, scaling $\alpha=1000$ yields no throughput recovery, with success rates tracking the baseline within a flat $42\%\text{--}45\%$ band under heavy traffic ($\lambda \ge 8\text{ req/s}$). Under an aggressive energy weight, the solver seeks strictly low-power computation and minimal radio transmission paths, frequently routing requests to energy-efficient satellites that exhibit longer computational queues. This confirms that scaling $\alpha=1000$ is structurally effective only when aligned with a latency-driven objective.
-    \item \textbf{Robustness in Fast-Dispatch Configurations:} For the reactive configuration ($BS=20, BT=0.05\text{ s}$), performance remains virtually identical between baseline and calibrated models ($\approx 51\%\text{--}53\%$ at $\lambda=8\text{ req/s}$ and $\approx 41\%\text{--}42\%$ at $\lambda=10\text{ req/s}$). Because the $50\text{ ms}$ timer dispatches requests almost immediately in micro-batches ($1\text{--}2$ tasks), the orchestrator has limited combinatorial freedom, making this policy intrinsically robust to internal weight tuning.
+    \item \textbf{Throughput Recovery in Time Mapping:} For the batch-controlled regime ($BS=2, BT=2.0\text{ s}$), the calibrated weights unlock substantial throughput improvements across the traffic spectrum. The success rate rises from $\approx 77.0\%$ to $\approx 89.0\%$ at $\lambda=2\text{ req/s}$ ($+12.0\%$), from $\approx 67.5\%$ to $\approx 87.0\%$ at $\lambda=4\text{ req/s}$ ($+19.5\%$), from $\approx 54.0\%$ to $\approx 73.5\%$ at $\lambda=8\text{ req/s}$ ($+19.5\%$), and from $\approx 51.0\%$ to $\approx 67.0\%$ under peak load ($\lambda=10\text{ req/s}$, $+16.0\%$). Enforcing $\alpha=1000$ compels the branch-and-cut solver to prioritize transmission and execution timeliness above all else, maximizing deadline compliance. The localized baseline plateau at $\lambda=6\text{ req/s}$ ($\approx 72.5\%$) reflects the topological alignment of Dijkstra-Time observed in Section~\ref{subsec:sr_batch_sweep}.
+    \item \textbf{Energy Mapping Saturation:} Conversely, under Energy Mapping, scaling $\alpha=1000$ yields no throughput recovery: the success rate of $BS=2$ tracks the baseline within a narrow band across all traffic loads ($60.0\%$ vs. $64.5\%$ at $\lambda=2\text{ req/s}$, converging to $\approx 44.0\%$ at $\lambda=10\text{ req/s}$). Under an aggressive energy weight, the solver seeks strictly low-power computation and minimal radio transmission paths, frequently routing requests to energy-efficient satellites that exhibit longer computational queues. This confirms that scaling $\alpha=1000$ is structurally effective only when aligned with a latency-driven objective.
+    \item \textbf{Robustness in Fast-Dispatch Configurations:} For the reactive configuration ($BS=20, BT=0.05\text{ s}$), performance exhibits minor adjustments under Time Mapping (improving from $\approx 52.0\%$ to $\approx 55.5\%$ at $\lambda=8\text{ req/s}$ and from $\approx 41.0\%$ to $\approx 42.5\%$ at $\lambda=10\text{ req/s}$), while remaining virtually identical in Energy Mapping across all arrival rates ($\approx 72.5\%$ at $\lambda=2\text{ req/s}$ down to $\approx 41.0\%$ at $\lambda=10\text{ req/s}$). Because the $50\text{ ms}$ timer dispatches requests almost immediately in micro-batches ($1\text{--}2$ tasks), the orchestrator has limited combinatorial freedom, making this policy intrinsically robust to internal weight tuning.
 \end{itemize}
 
 \subsection{Rejection Causes Evolution}
 \label{subsec:failures_pre_post}
 
-Figure~\ref{fig:confronto_failures} illustrates the breakdown of failure causes across all evaluated configurations.
+Figure~\ref{fig:confronto_failures} illustrates the breakdown of failure causes across all evaluated configurations, comparing the pre-optimization baseline against the calibrated post-optimization model.
 
 \begin{figure}[!htbp]
     \centering
@@ -344,10 +344,17 @@ Figure~\ref{fig:confronto_failures} illustrates the breakdown of failure causes 
     \label{fig:confronto_failures}
 \end{figure}
 
-The diagnostic breakdown highlights two definitive operational regimes:
+The diagnostic breakdown highlights four distinct operational behaviors across mapping schemes and batching archetypes:
 \begin{itemize}
-    \item \textbf{Capacity-Bounded Saturation in Calibrated $BS=2$:} In the tuned model ($\alpha=1000, \gamma=10$), deadline failures in $BS=2$ are kept strictly below $5\%$ under heavy load ($\lambda \ge 8\text{ req/s}$). The vast majority of rejected tasks stem directly from physical constellation saturation: \textit{Insufficient CPU} (green, $55\%\text{--}60\%$) and \textit{Insufficient CPU+NET} (orange, $35\%\text{--}40\%$). The calibrated objective effectively extracts maximum temporal efficiency, shifting the operating boundary until it meets hard physical hardware limits.
-    \item \textbf{Persistence of Queuing Bottlenecks in Fast-Dispatch:} In contrast to $BS=2$, the fast-dispatch configuration ($BS=20, BT=0.05\text{ s}$) remains heavily dominated by \textit{Deadline Exceeded} ($80\%\text{--}84\%$). At elevated arrival rates, the influx of uncoordinated single requests saturates onboard processors across candidate satellites, causing execution wait times to breach task deadlines regardless of weight scalarization.
+    \item \textbf{Load-Dependent Evolution in Time Mapping ($BS=2, BT=2.0\text{ s}$):} 
+    For controlled small-batching under Time Mapping, weight calibration shifts the nature of task drops according to traffic intensity:
+    \begin{itemize}
+        \item \textit{Low-Load Saturation ($\lambda \in [2, 3]\text{ req/s}$):} At $\lambda=2\text{ req/s}$, the proportion of rejections attributed to \textit{Deadline Exceeded} increases from $22\%$ in the baseline to $34\%$ in the calibrated model (and from $7\%$ to $11\%$ at $\lambda=3\text{ req/s}$). This relative increase stems directly from the dramatic rise in overall throughput: because the calibrated model ($\alpha=1000$) boosts the success rate from $77\%$ to $89\%$ at $\lambda=2\text{ req/s}$, total rejections contract to a marginal $11\%$ of incoming traffic. Within this tiny residual pool of rejected requests, failures are concentrated on borderline tasks whose deadlines cannot be physically satisfied even with maximal latency prioritization.
+        \item \textit{High-Load Capacity Bounding ($\lambda \ge 4\text{ req/s}$):} As traffic scales, timing violations are almost entirely suppressed: \textit{Deadline Exceeded} drops to $3\%$ at $\lambda=4\text{ req/s}$, reaches roughly $0\%$ at $\lambda \in \{6, 8\}\text{ req/s}$, and remains at $\approx 1\%$ at $\lambda=10\text{ req/s}$. Consequently, task drops become strictly capacity-bounded, partitioned between \textit{Insufficient CPU} ($56\%\text{--}60\%$, green) and \textit{Insufficient CPU+NET} ($40\%\text{--}41\%$, orange).
+    \end{itemize}
+
+    \item \textbf{Persistence of Queuing Bottlenecks in Fast-Dispatch ($BS=20, BT=0.05\text{ s}$):} 
+    In stark contrast to small-batching, the reactive fast-dispatch configuration remains overwhelmingly dominated by \textit{Deadline Exceeded} across both mappings ($\approx 66\%\text{--}75\%$ at $\lambda=2\text{ req/s}$, scaling up to $\approx 83\%\text{--}92\%$ at $\lambda \in [8, 10]\text{ req/s}$). The pre- and post-optimization bars exhibit nearly identical distributions. Because isolated single requests are dispatched without multi-task coordination, candidate satellites experience localized CPU execution queue buildup, pushing task completion beyond deadlines regardless of objective scalarization.
 \end{itemize}
 
 \subsection{Response Time Containment and Execution Flattening}
@@ -364,9 +371,8 @@ Figure~\ref{fig:confronto_rt} compares the stacked response time decomposition b
 
 The latency decomposition validates the efficiency of the tuned model:
 \begin{itemize}
-    \item \textbf{Response Time Stability under Stress:} Under peak traffic ($\lambda=10\text{ req/s}$), the total end-to-end response time for $BS=2, BT=2.0\text{ s}$ remains tightly stabilized at $\approx 0.62\text{--}0.65\text{ s}$ under Time Mapping and $\approx 0.70\text{--}0.73\text{ s}$ under Energy Mapping.
-    \item \textbf{System Execution Stabilization:} In the calibrated system, onboard task execution ($T_{exec}$, bottom solid segments) is compressed and tightly stabilized within $0.22\text{--}0.30\text{ s}$ across all arrival rates. By enforcing strict primary optimization, the solver assigns tasks to nodes with minimal local queuing, preventing CPU queue buildup.
-    \item \textbf{Controlled Network Residency:} Maintaining $\gamma = 10$ avoids the path-bloat latency surge ($>1.05\text{ s}$) observed when $\gamma \ge 1000$, keeping the transmission and queuing component ($T_{net+wait}$, top translucent segments) confined below $0.40\text{--}0.42\text{ s}$ across all arrival rates.
+    \item \textbf{Admission of Long-Path Tasks at Low Load:} Under Time Mapping at $\lambda=2\text{ req/s}$, the calibrated $BS=2$ configuration exhibits a slightly higher average response time compared to the baseline ($0.76\text{ s}$ vs. $0.58\text{ s}$). This is a direct consequence of the $+12.0\%$ increase in task admissions: borderline requests that were previously discarded due to tight deadlines are now successfully scheduled over multi-hop ISL paths, moderately inflating the average completion latency while boosting overall constellation yield.
+    \item \textbf{Controlled Network Residency without Path-Bloat:} Maintaining $\gamma = 10$ keeps the transmission and queuing component ($T_{net+wait}$, top translucent segments) confined within $0.36\text{--}0.44\text{ s}$ across all arrival rates, avoiding the severe path-bloat latency inflation ($> 1.05\text{ s}$) observed when $\gamma \ge 1000$.
 \end{itemize}
 
 % =============================================================================
@@ -378,13 +384,13 @@ The latency decomposition validates the efficiency of the tuned model:
 The empirical evaluation and progressive tuning campaign yield four foundational conclusions regarding centralized ILP orchestration in LEO satellite edge networks:
 \begin{enumerate}
     \item \textbf{Ingress Queuing Dwell Time is the Dominant Latency Bottleneck:} 
-    Pure onboard processing duration on the Satellite Edge Nodes remains tightly bounded and stable ($T_{exec} \approx 0.20\text{--}0.32\text{ s}$ under calibrated configurations). System throughput collapse under elevated arrival rates is driven primarily by buffer residence times during batch aggregation in the ingress queues ($T_{wait}$), which systematically consume application deadline slack before optimization and forwarding can take place.
+    Pure onboard processing duration on the Satellite Edge Nodes remains tightly bounded and stable ($T_{exec} \approx 0.22\text{--}0.32\text{ s}$ under calibrated configurations). System throughput collapse under elevated arrival rates is driven primarily by buffer residence times during batch aggregation in the ingress queues ($T_{wait}$), which systematically consume application deadline slack before optimization and forwarding can take place.
 
     \item \textbf{Necessity of Fast-Dispatch Mechanisms:} 
     To maintain temporal feasibility in dynamic space environments, centralized orchestrators must enforce low-latency dispatch policies. Operating with aggressive timeouts ($BT \le 0.05\text{ s}$) or minimal batch aggregation boundaries ($BS \le 2$) is mandatory to suppress buffer dwell times and prevent cascade \textit{Deadline Exceeded} rejections under heavy arrival regimes.
 
     \item \textbf{Objective-Dependent Impact of Weight Calibration:} 
-    Enforcing an aggressive primary weight ($\alpha = 1000$) provides asymmetric benefits: under \textit{Time Mapping}, it compels the branch-and-cut solver to prioritize transmission timeliness and deadline preservation, delivering up to $+23\%$ higher task completion rates under heavy traffic. Conversely, calibrating the orbital sunset penalty to $\gamma = 10$ maintains zero eclipse-induced task drops while strictly preventing the $55\%$ path-bloat latency inflation ($>1.05\text{ s}$) observed under excessive penalties ($\gamma \ge 1000$).
+    Enforcing an aggressive primary weight ($\alpha = 1000$) provides asymmetric benefits: under \textit{Time Mapping}, it compels the branch-and-cut solver to prioritize transmission timeliness and deadline preservation, delivering up to $+19.5\%$ higher task completion rates under heavy traffic. Conversely, calibrating the orbital sunset penalty to $\gamma = 10$ eliminates eclipse-induced task drops while strictly preventing the $55\%$ path-bloat latency inflation ($> 1.05\text{ s}$) observed under excessive penalties ($\gamma \ge 1000$).
 
     \item \textbf{Architectural Readiness for Multi-Algorithm Benchmarking:} 
     The two fully calibrated operational archetypes—reactive fast-dispatch ($BS=20, BT=0.05\text{ s}$) and controlled small-batching ($BS=2, BT=2.0\text{ s}$), configured with $\alpha=1000$ and $\gamma=10$—define the empirically optimized operating envelope of the centralized ILP approach.
