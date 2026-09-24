@@ -7,9 +7,20 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-# Configurazione rendering tipografico ad alta risoluzione
-plt.rcParams['figure.dpi'] = 300
-plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
+# ==============================================================================
+# CONFIGURAZIONE RENDERING TIPOGRAFICO AD ALTA RISOLUZIONE E FONT GLOBALI
+# ==============================================================================
+plt.rcParams.update({
+    'figure.dpi': 300,
+    'font.sans-serif': 'DejaVu Sans',
+    'font.size': 13.5,
+    'axes.labelsize': 15.0,
+    'axes.titlesize': 14.5,
+    'xtick.labelsize': 13.5,
+    'ytick.labelsize': 12.5,
+    'legend.fontsize': 10.5,
+    'legend.title_fontsize': 12.0
+})
 
 # ==============================================================================
 # 1. PARAMETRI GENERALI, ALGORITMI E STILI (ENGLISH)
@@ -237,13 +248,13 @@ total_span = curr_x
 offsets_9 = np.array(offsets_9) - (total_span / 2.0) + (bar_w / 2.0)
 
 # ==============================================================================
-# 4. GRAFICO 1: SUCCESS RATE (LEGENDA ADERENTE SENZA SPAZIO BIANCO)
+# 4. GRAFICO 1: SUCCESS RATE
 # ==============================================================================
 def generate_workload_success_rate(beta_key: str, beta_label: str):
     clean_name = re.sub(r'[^\w]+', '_', beta_key).strip('_')
 
     for eb in ENERGY_BUDGETS:
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(14, 8.5), sharex=True, sharey=True)
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(17.5, 10.0), sharex=True, sharey=True)
         ax_flat = axes.flatten()
 
         for c_idx, (a_key, a_lbl) in enumerate(ALPHA_PROFILES):
@@ -265,25 +276,26 @@ def generate_workload_success_rate(beta_key: str, beta_label: str):
                     color=cfg.get('color', '#333333'),
                     linestyle=ls_val,
                     marker=cfg.get('marker', 'o'),
-                    markersize=6.5,
-                    linewidth=2.0,
+                    markersize=7.0,
+                    linewidth=2.2,
                     alpha=0.92,
                     label=algo
                 )
 
-            ax.set_title(a_lbl, fontsize=11.5, fontweight='bold', pad=8)
+            ax.set_title(a_lbl, fontsize=14.0, fontweight='bold', pad=10)
             ax.set_ylim(-2, 105)
+            # Mostra i valori sull'asse Y per tutti i grafici (senza grassetto)
+            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
             ax.grid(True, linestyle='--', alpha=0.45)
             if c_idx % 2 == 0:
-                ax.set_ylabel('Success Rate (%)', fontsize=11.5, fontweight='semibold')
+                ax.set_ylabel('Success Rate (%)', fontsize=14.5)
             if c_idx >= 2:
                 ax.set_xticks(ARRIVAL_RATES)
-                ax.set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=10.5)
-                ax.set_xlabel('Arrival Rate (req/sec)', fontsize=11.5, labelpad=5)
+                ax.set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=13.5)
+                ax.set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, labelpad=8)
 
         fig.tight_layout()
-        # Bottom a 0.14: posizionamento aderente all'asse orizzontale
-        fig.subplots_adjust(top=0.91, bottom=0.14, hspace=0.20, wspace=0.08)
+        fig.subplots_adjust(top=0.90, bottom=0.21, hspace=0.25, wspace=0.14)
 
         handles = []
         for a in ALGO_ORDER:
@@ -294,18 +306,18 @@ def generate_workload_success_rate(beta_key: str, beta_label: str):
                        color=cfg.get('color', '#333333'),
                        linestyle=ls_val_leg,
                        marker=cfg.get('marker', 'o'),
-                       lw=2.0,
-                       markersize=7.0,
+                       lw=2.2,
+                       markersize=8.0,
                        label=a)
             )
 
         leg = fig.legend(
-            handles=handles, loc='upper center', bbox_to_anchor=(0.5, 0.065),
-            ncol=5, fontsize=9.2, title='Evaluated Algorithms', title_fontsize=10.5,
+            handles=handles, loc='center', bbox_to_anchor=(0.50, 0.08),
+            ncol=3, fontsize=11.0, title='Evaluated Algorithms', title_fontsize=12.5,
             frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
         )
 
-        fig.suptitle(f'Success Rate ({eb} kJ Budget) - {beta_label}', fontsize=14, fontweight='bold', y=0.975)
+        fig.suptitle(f'Success Rate ({eb} kJ Budget) - {beta_label}', fontsize=19.5, fontweight='bold', y=0.985)
 
         out_path = os.path.join(OUTPUT_DIR, f'01_Success_Rate_Beta_{clean_name}_{eb}kJ.png')
         plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg,))
@@ -313,14 +325,14 @@ def generate_workload_success_rate(beta_key: str, beta_label: str):
         print(f"[OK] Generato Success Rate: {out_path}")
 
 # ==============================================================================
-# 5. GRAFICO 2: REJECTION CAUSES (LEGENDE AFFIANCATE SIDE-BY-SIDE)
+# 5. GRAFICO 2: REJECTION CAUSES (LEGENDE SEPARATE A BORDO PAGINA)
 # ==============================================================================
 def generate_workload_rejection_causes(beta_key: str, beta_label: str):
     clean_name = re.sub(r'[^\w]+', '_', beta_key).strip('_')
     ar_indices = np.arange(len(ARRIVAL_RATES))
 
     for eb in ENERGY_BUDGETS:
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 8.8), sharex=True, sharey=True)
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(17.5, 10.2), sharex=True, sharey=True)
         ax_flat = axes.flatten()
 
         for c_idx, (a_key, a_lbl) in enumerate(ALPHA_PROFILES):
@@ -354,29 +366,30 @@ def generate_workload_rejection_causes(beta_key: str, beta_label: str):
                             )
                             bottom += val_pct
 
-                    # Numero identificativo (1-9) stampato nitido sopra la barra
+                    # Numero identificativo (1-9) stampato sopra la barra
                     if rej_tot > 0:
                         ax.text(
-                            x_pos, 102.2, f'{alg_idx + 1}',
+                            x_pos, 102.5, f'{alg_idx + 1}',
                             ha='center', va='bottom',
-                            fontsize=5.8, fontweight='bold',
+                            fontsize=6.5, fontweight='bold',
                             color='#0F172A', zorder=4
                         )
 
-            ax.set_title(a_lbl, fontsize=11.5, fontweight='bold', pad=8)
+            ax.set_title(a_lbl, fontsize=14.0, fontweight='bold', pad=10)
             ax.set_ylim(0, 114)
             ax.set_yticks([0, 20, 40, 60, 80, 100])
+            # Mostra i valori sull'asse Y per tutti i grafici (senza grassetto)
+            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
             ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
             if c_idx % 2 == 0:
-                ax.set_ylabel('Rejection Breakdown (%)', fontsize=11.5, fontweight='semibold')
+                ax.set_ylabel('Rejection Breakdown (%)', fontsize=14.5)
             if c_idx >= 2:
                 ax.set_xticks(ar_indices)
-                ax.set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=10.5)
-                ax.set_xlabel('Arrival Rate (req/sec)', fontsize=11.5, labelpad=5)
+                ax.set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=13.5)
+                ax.set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, labelpad=8)
 
         fig.tight_layout()
-        # Bottom a 0.15: spazio ideale per le due legende affiancate
-        fig.subplots_adjust(top=0.91, bottom=0.15, hspace=0.20, wspace=0.08)
+        fig.subplots_adjust(top=0.90, bottom=0.22, hspace=0.26, wspace=0.14)
 
         cause_patches = [
             mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#475569', linewidth=0.5, label=l)
@@ -384,23 +397,23 @@ def generate_workload_rejection_causes(beta_key: str, beta_label: str):
         ]
         order_patches = [
             Line2D([0], [0], marker=f'${i+1}$', color='none', markeredgecolor='#0F172A',
-                   markerfacecolor='#F1F5F9', markersize=8.5, label=f'[{i+1}] {algo}')
+                   markerfacecolor='#F1F5F9', markersize=9.0, label=f'[{i+1}] {algo}')
             for i, algo in enumerate(ALGO_ORDER)
         ]
 
-        # LEGENDE AFFIANCATE: Sinistra (Cause) e Destra (Algoritmi) alla stessa quota Y
+        # Legende ancorate ai bordi laterali: spazio centrale garantito, zero sovrapposizione
         leg1 = fig.legend(
-            handles=cause_patches, loc='upper center', bbox_to_anchor=(0.28, 0.068),
-            ncol=3, fontsize=9.0, title='Failure Causes Breakdown', title_fontsize=10.0,
+            handles=cause_patches, loc='center left', bbox_to_anchor=(0.03, 0.085),
+            ncol=2, fontsize=10.0, title='Failure Causes Breakdown', title_fontsize=11.5,
             frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
         )
         leg2 = fig.legend(
-            handles=order_patches, loc='upper center', bbox_to_anchor=(0.74, 0.068),
-            ncol=3, fontsize=8.5, title='Algorithm Bar Clusters [Heuristics (1-3) | Hierarchical (4-5) | Centralized (6-9)]',
-            title_fontsize=9.8, frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
+            handles=order_patches, loc='center right', bbox_to_anchor=(0.97, 0.085),
+            ncol=3, fontsize=9.8, title='Algorithm Clusters: [1-3] Heuristics | [4-5] Hierarchical | [6-9] Centralized',
+            title_fontsize=11.2, frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
         )
 
-        fig.suptitle(f'Rejection Causes ({eb} kJ Budget) - {beta_label}', fontsize=14, fontweight='bold', y=0.975)
+        fig.suptitle(f'Rejection Causes ({eb} kJ Budget) - {beta_label}', fontsize=19.5, fontweight='bold', y=0.985)
 
         out_path = os.path.join(OUTPUT_DIR, f'03_Rejection_Causes_Beta_{clean_name}_{eb}kJ.png')
         plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
@@ -408,7 +421,7 @@ def generate_workload_rejection_causes(beta_key: str, beta_label: str):
         print(f"[OK] Generato Rejection Causes: {out_path}")
 
 # ==============================================================================
-# 6. GRAFICO 3: RESPONSE TIME (LEGENDE ISOLATE E NUMERI SCAGLIONATI)
+# 6. GRAFICO 3: RESPONSE TIME (LEGENDE SEPARATE E NUMERI MAGGIORATI)
 # ==============================================================================
 def generate_workload_response_time(beta_key: str, beta_label: str):
     clean_name = re.sub(r'[^\w]+', '_', beta_key).strip('_')
@@ -416,8 +429,7 @@ def generate_workload_response_time(beta_key: str, beta_label: str):
 
     for eb in ENERGY_BUDGETS:
         max_y = 0.0
-        # Canvas allargato a 15.5 pollici per garantire aria alle legende laterali
-        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15.5, 9.2), sharex=True, sharey=True)
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(17.5, 10.2), sharex=True, sharey=True)
         ax_flat = axes.flatten()
 
         for c_idx, (a_key, a_lbl) in enumerate(ALPHA_PROFILES):
@@ -457,32 +469,33 @@ def generate_workload_response_time(beta_key: str, beta_label: str):
                         color=cfg['light'], edgecolor='#0F172A', linewidth=0.35, zorder=3
                     )
 
-                    # Scaglionamento verticale per evitare che i numeri si fondano
+                    # Numeri identificativi ingranditi (7.2pt) con offset verticale calibrato
                     if comp > 0 and tot_t > 0:
-                        v_offset = 0.020 if (alg_idx % 2 == 0) else 0.045
+                        v_offset = 0.030 if (alg_idx % 2 == 0) else 0.065
                         ax.text(
                             x_pos, tot_t + v_offset, f'{alg_idx + 1}',
                             ha='center', va='bottom',
-                            fontsize=5.0, fontweight='bold',
+                            fontsize=7.2, fontweight='bold',
                             color='#0F172A', zorder=4
                         )
 
-            ax.set_title(a_lbl, fontsize=11.5, fontweight='bold', pad=8)
+            ax.set_title(a_lbl, fontsize=14.0, fontweight='bold', pad=10)
+            # Mostra i valori sull'asse Y per tutti i grafici (senza grassetto)
+            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
             ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
             if c_idx % 2 == 0:
-                ax.set_ylabel('Response Time (s)', fontsize=11.5, fontweight='semibold')
+                ax.set_ylabel('Response Time (s)', fontsize=14.5)
             if c_idx >= 2:
                 ax.set_xticks(ar_indices)
-                ax.set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=10.5)
-                ax.set_xlabel('Arrival Rate (req/sec)', fontsize=11.5, labelpad=5)
+                ax.set_xticklabels([f'{ar}' for ar in ARRIVAL_RATES], fontsize=13.5)
+                ax.set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, labelpad=8)
 
-        # Margine superiore esteso per accogliere lo scaglionamento dei numerini
+        # Margine superiore esteso per evitare tagli dei numeri ingranditi
         for ax in ax_flat:
-            ax.set_ylim(0, max_y * 1.22 if max_y > 0 else 1.0)
+            ax.set_ylim(0, max_y * 1.25 if max_y > 0 else 1.0)
 
         fig.tight_layout()
-        # Spazio calibrato sul fondo per evitare sovrapposizioni con l'asse X
-        fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.22, wspace=0.08)
+        fig.subplots_adjust(top=0.90, bottom=0.22, hspace=0.26, wspace=0.14)
 
         algo_patches = [
             mpatches.Patch(color=ALGO_STYLE.get(a, DEFAULT_ALGO_STYLE)['color'], label=f'[{i+1}] {a}')
@@ -493,24 +506,25 @@ def generate_workload_response_time(beta_key: str, beta_label: str):
             mpatches.Patch(facecolor='#CBD5E1', edgecolor='#0F172A', linewidth=0.5, label='Network / Queuing Delay (Opaque Tint Top)')
         ]
 
-        # Ancoraggi asimmetrici: Sinistra (upper left) e Destra (upper right) con gap centrale garantito
+        # Legende ancorate verso i lati esterni: spazio centrale pulito
         leg1 = fig.legend(
-            handles=algo_patches, loc='upper left', bbox_to_anchor=(0.04, 0.075),
-            ncol=5, fontsize=8.2, title='Evaluated Algorithms (Numbered 1-9)', title_fontsize=9.2,
+            handles=algo_patches, loc='center left', bbox_to_anchor=(0.03, 0.085),
+            ncol=3, fontsize=9.8, title='Evaluated Algorithms (Numbered 1-9)', title_fontsize=11.2,
             frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
         )
         leg2 = fig.legend(
-            handles=comp_patches, loc='upper right', bbox_to_anchor=(0.96, 0.075),
-            ncol=1, fontsize=8.2, title='Latency Breakdown', title_fontsize=9.2,
+            handles=comp_patches, loc='center right', bbox_to_anchor=(0.97, 0.085),
+            ncol=1, fontsize=9.8, title='Latency Breakdown', title_fontsize=11.2,
             frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
         )
 
-        fig.suptitle(f'Response Time Decomposition ({eb} kJ Budget) - {beta_label}', fontsize=14, fontweight='bold', y=0.975)
+        fig.suptitle(f'Response Time Decomposition ({eb} kJ Budget) - {beta_label}', fontsize=19.5, fontweight='bold', y=0.985)
 
         out_path = os.path.join(OUTPUT_DIR, f'02_Response_Time_Beta_{clean_name}_{eb}kJ.png')
         plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
         plt.close()
         print(f"[OK] Generato Response Time: {out_path}")
+
 # ==============================================================================
 # 7. ESECUZIONE PIPELINE
 # ==============================================================================

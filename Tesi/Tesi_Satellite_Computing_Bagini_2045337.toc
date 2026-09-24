@@ -47,7 +47,7 @@
 \contentsline {section}{\numberline {4.4}Consolidated Validation: Pre- vs. Post-Optimization Benchmark}{50}{section.4.4}%
 \contentsline {subsection}{\numberline {4.4.1}Success Rate Recovery and Mapping Divergence}{50}{subsection.4.4.1}%
 \contentsline {subsection}{\numberline {4.4.2}Rejection Causes Evolution}{51}{subsection.4.4.2}%
-\contentsline {subsection}{\numberline {4.4.3}Response Time Containment and Execution Flattening}{52}{subsection.4.4.3}%
+\contentsline {subsection}{\numberline {4.4.3}Response Time Containment and Execution Flattening}{53}{subsection.4.4.3}%
 \contentsline {section}{\numberline {4.5}Summary of Findings and Architectural Readiness}{53}{section.4.5}%
 \contentsline {chapter}{\numberline {5}Comparative Benchmark}{55}{chapter.5}%
 \contentsline {section}{\numberline {5.1}Experimental Setup and Baseline Algorithms}{55}{section.5.1}%
@@ -59,18 +59,18 @@
 \contentsline {subsubsection}{\numberline {5.2.1.2}Response Time Analysis}{60}{subsubsection.5.2.1.2}%
 \contentsline {subsubsection}{\numberline {5.2.1.3}Failure Diagnostics}{61}{subsubsection.5.2.1.3}%
 \contentsline {subsection}{\numberline {5.2.2}Computation-Heavy Stress: CPU-Intensive Profile ($\boldsymbol {\beta } = (0, 1, 0)$)}{63}{subsection.5.2.2}%
-\contentsline {subsubsection}{\numberline {5.2.2.1}Success Rate Dynamics and Invariance across Payload Distributions}{64}{subsubsection.5.2.2.1}%
-\contentsline {subsubsection}{\numberline {5.2.2.2}Response Time Analysis}{66}{subsubsection.5.2.2.2}%
-\contentsline {subsubsection}{\numberline {5.2.2.3}Failure Diagnostics and Bottleneck Analysis}{68}{subsubsection.5.2.2.3}%
-\contentsline {subsection}{\numberline {5.2.3}Communication-Heavy Stress: Data-Intensive Profile ($\boldsymbol {\beta } = (0, 0, 1)$)}{70}{subsection.5.2.3}%
-\contentsline {subsubsection}{\numberline {5.2.3.1}Success Rate Dynamics and Optimality Supremacy}{70}{subsubsection.5.2.3.1}%
-\contentsline {subsubsection}{\numberline {5.2.3.2}Response Time Analysis}{72}{subsubsection.5.2.3.2}%
-\contentsline {subsubsection}{\numberline {5.2.3.3}Failure Diagnostics and Link Saturation}{74}{subsubsection.5.2.3.3}%
-\contentsline {section}{\numberline {5.3}Trade-Off Analysis and Operational Discussion}{76}{section.5.3}%
-\contentsline {subsection}{\numberline {5.3.1}Theoretical Global Optimality vs. Ingress Queuing Latency}{76}{subsection.5.3.1}%
-\contentsline {subsection}{\numberline {5.3.2}Energy Budget Sensitivity Across Dimensional Boundaries}{77}{subsection.5.3.2}%
+\contentsline {subsubsection}{\numberline {5.2.2.1}Success Rate Dynamics and Invariance across Payload Distributions}{63}{subsubsection.5.2.2.1}%
+\contentsline {subsubsection}{\numberline {5.2.2.2}Response Time Analysis}{65}{subsubsection.5.2.2.2}%
+\contentsline {subsubsection}{\numberline {5.2.2.3}Failure Diagnostics and Bottleneck Analysis}{67}{subsubsection.5.2.2.3}%
+\contentsline {subsection}{\numberline {5.2.3}Communication-Heavy Stress: Data-Intensive Profile ($\boldsymbol {\beta } = (0, 0, 1)$)}{69}{subsection.5.2.3}%
+\contentsline {subsubsection}{\numberline {5.2.3.1}Success Rate Dynamics and Optimality Supremacy}{69}{subsubsection.5.2.3.1}%
+\contentsline {subsubsection}{\numberline {5.2.3.2}Response Time Analysis}{71}{subsubsection.5.2.3.2}%
+\contentsline {subsubsection}{\numberline {5.2.3.3}Failure Diagnostics and Link Saturation}{72}{subsubsection.5.2.3.3}%
+\contentsline {section}{\numberline {5.3}Trade-Off Analysis and Operational Discussion}{74}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Theoretical Global Optimality vs. Ingress Queuing Latency}{74}{subsection.5.3.1}%
+\contentsline {subsection}{\numberline {5.3.2}Energy Budget Sensitivity Across Dimensional Boundaries}{76}{subsection.5.3.2}%
 \contentsline {subsection}{\numberline {5.3.3}Fast-Dispatch vs. Controlled Small-Batching Orchestration}{77}{subsection.5.3.3}%
-\contentsline {subsection}{\numberline {5.3.4}Architectural Synthesis and Deployment Guidelines}{78}{subsection.5.3.4}%
+\contentsline {subsection}{\numberline {5.3.4}Architectural Synthesis and Deployment Guidelines}{77}{subsection.5.3.4}%
 \contentsline {section}{\numberline {5.4}Summary of Chapter Findings}{78}{section.5.4}%
 \contentsline {chapter}{\numberline {6}Conclusions and Future Work}{80}{chapter.6}%
 \contentsline {section}{\numberline {6.1}Synthesis of Contributions and Research Question Resolution}{80}{section.6.1}%

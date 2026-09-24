@@ -6,9 +6,20 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-# Configurazione rendering ad alta definizione
-plt.rcParams['figure.dpi'] = 300
-plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
+# ==============================================================================
+# CONFIGURAZIONE RENDERING TIPOGRAFICO AD ALTA RISOLUZIONE E FONT GLOBALI
+# ==============================================================================
+plt.rcParams.update({
+    'figure.dpi': 300,
+    'font.sans-serif': 'DejaVu Sans',
+    'font.size': 13.5,
+    'axes.labelsize': 15.5,
+    'axes.titlesize': 13.0,
+    'xtick.labelsize': 13.5,
+    'ytick.labelsize': 12.5,
+    'legend.fontsize': 11.5,
+    'legend.title_fontsize': 13.0
+})
 
 # ==============================================================================
 # 1. PARAMETRI, COLORI E GRIGLIA SCENARI
@@ -20,7 +31,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 SUNSET_WEIGHTS = [2, 4, 6, 8, 10, 1000, 5000, 10000]
 ALPHA_VALS = [10, 50, 1000]
 
-# Palette luminosa per le Failure Causes (identica alla versione ottimizzata)
+# Palette luminosa per le Failure Causes
 LUMINOUS_CAUSE_COLORS = {
     'deadline':       '#3B82F6',  # Blu cobalto vivo
     'insuff_cn':      '#F59E0B',  # Ambra dorato brillante
@@ -153,7 +164,6 @@ def compute_stats(lines):
 # 3. CARICAMENTO DATI
 # ==============================================================================
 print(f"Scansione ricorsiva della cartella '{root_folder}'...")
-# Struttura: data_store[ar][scenario_key][sunw][alpha] = [rows]
 data_store = {}
 all_ars = set()
 
@@ -170,11 +180,10 @@ sorted_ars = sorted(list(all_ars)) if all_ars else [8, 10]
 print(f"-> Arrival Rates rilevati: {sorted_ars}")
 
 # ==============================================================================
-# 4. GRAFICO 1: CROSS SUCCESS RATE (LAYOUT COMPATTO E VICINO AI GRAFICI)
+# 4. GRAFICO 1: CROSS SUCCESS RATE
 # ==============================================================================
 def generate_cross_success_rate(ar_target):
-    # Altezza figura ridotta da 10.5 a 8.5 per eliminare l'eccesso di bianco
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(22, 8.5), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(25, 9.8), sharex=True, sharey=True)
     x_indices = np.arange(len(SUNSET_WEIGHTS))
 
     for row_idx, mapping in enumerate(['Energy', 'Time']):
@@ -192,50 +201,49 @@ def generate_cross_success_rate(ar_target):
 
                 cfg = ALPHA_STYLE[alpha]
                 ax.plot(x_indices, y_vals, color=cfg['color'], linestyle=cfg['ls'],
-                        marker=cfg['marker'], markersize=6, linewidth=1.9, alpha=0.9)
+                        marker=cfg['marker'], markersize=6.5, linewidth=2.2, alpha=0.92)
 
-            ax.set_title(scenario_key, fontsize=11, fontweight='bold', pad=8)
+            ax.set_title(scenario_key, fontsize=12.5, fontweight='bold', pad=10)
             ax.set_ylim(-2, 105)
+            # Mostra i valori sull'asse Y per ogni singolo subplot
+            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
             ax.grid(True, linestyle=':', alpha=0.6)
             if col_idx == 0:
-                ax.set_ylabel(f'{mapping} Mapping\nSuccess Rate (%)', fontsize=11, fontweight='semibold')
+                ax.set_ylabel(f'{mapping} Mapping\nSuccess Rate (%)', fontsize=14.5, fontweight='semibold')
 
     for col in range(4):
         axes[1, col].set_xticks(x_indices)
-        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=10, rotation=30)
-        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=11, labelpad=5)
+        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=13.5, rotation=30)
+        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=15.5, fontweight='semibold', labelpad=9)
 
     fig.tight_layout()
-    # Bottom a 0.15: lascia spazio esatto per l'asse X e la legenda subito sotto
-    fig.subplots_adjust(top=0.91, bottom=0.15, hspace=0.22, wspace=0.06)
+    # wspace aumentato a 0.13 per garantire spazio sufficiente alle etichette Y
+    fig.subplots_adjust(top=0.90, bottom=0.20, hspace=0.26, wspace=0.13)
 
     alpha_handles = [
         Line2D([0], [0], color=ALPHA_STYLE[a]['color'], linestyle=ALPHA_STYLE[a]['ls'],
-               marker=ALPHA_STYLE[a]['marker'], lw=2.0, markersize=7, label=ALPHA_STYLE[a]['label'])
+               marker=ALPHA_STYLE[a]['marker'], lw=2.2, markersize=8, label=ALPHA_STYLE[a]['label'])
         for a in ALPHA_VALS
     ]
-    # Ancorata dall'alto (upper center) a quota 0.065: aderente all'asse X
     leg = fig.legend(
-        handles=alpha_handles, loc='upper center', bbox_to_anchor=(0.5, 0.065),
-        ncol=3, fontsize=10.5, title='Primary Weight ($\\alpha$)', title_fontsize=11.5,
+        handles=alpha_handles, loc='center', bbox_to_anchor=(0.50, 0.075),
+        ncol=3, fontsize=12.0, title='Primary Weight ($\\alpha$)', title_fontsize=13.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
 
     fig.suptitle(f'Cross-Sensitivity Success Rate ($\\gamma \\times \\alpha$) at {ar_target} req/s',
-                 fontsize=15, fontweight='bold', y=0.975)
+                 fontsize=19.5, fontweight='bold', y=0.985)
 
     out_path = os.path.join(OUTPUT_DIR, f'01_Cross_Success_Rate_AR_{ar_target}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg,))
     plt.close()
     print(f"[OK] Generato Success Rate: {out_path}")
 
-
 # ==============================================================================
-# 5. GRAFICO 2: CROSS FAILURE CAUSES (LEGENDE SUBITO SOTTO L'ASSE X)
+# 5. GRAFICO 2: CROSS FAILURE CAUSES
 # ==============================================================================
 def generate_cross_rejection_causes(ar_target):
-    # Altezza calibrata a 9.2 pollici
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(24, 9.2), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(25, 10.0), sharex=True, sharey=True)
 
     n_sunw = len(SUNSET_WEIGHTS)
     x_indices = np.arange(n_sunw)
@@ -273,20 +281,21 @@ def generate_cross_rejection_causes(ar_target):
                                    edgecolor='#2d3748', linewidth=0.25, zorder=3)
                             bottom += val_pct
 
-            ax.set_title(scenario_key, fontsize=11, fontweight='bold', pad=8)
+            ax.set_title(scenario_key, fontsize=12.5, fontweight='bold', pad=10)
             ax.set_ylim(0, 100)
+            # Mostra i valori sull'asse Y per ogni singolo subplot
+            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
             ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
             if col_idx == 0:
-                ax.set_ylabel(f'{mapping} Mapping\nRejection Breakdown (%)', fontsize=11, fontweight='semibold')
+                ax.set_ylabel(f'{mapping} Mapping\nRejection Breakdown (%)', fontsize=14.5, fontweight='semibold')
 
     for col in range(4):
         axes[1, col].set_xticks(x_indices)
-        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=10, rotation=30)
-        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=11, labelpad=5)
+        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=13.5, rotation=30)
+        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=15.5, fontweight='semibold', labelpad=9)
 
     fig.tight_layout()
-    # Bottom a 0.17: proporzione corretta per non allontanare i box
-    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.22, wspace=0.06)
+    fig.subplots_adjust(top=0.90, bottom=0.21, hspace=0.26, wspace=0.13)
 
     cause_patches = [mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#4a5568', linewidth=0.5, label=l)
                      for k, l in zip(CAUSE_KEYS, CAUSE_LABELS)]
@@ -295,30 +304,29 @@ def generate_cross_rejection_causes(ar_target):
                      for a in ALPHA_VALS]
 
     leg1 = fig.legend(
-        handles=cause_patches, loc='upper center', bbox_to_anchor=(0.38, 0.08), ncol=3,
-        fontsize=9.5, title='Failure Causes Breakdown', title_fontsize=10.5,
+        handles=cause_patches, loc='center', bbox_to_anchor=(0.38, 0.08), ncol=3,
+        fontsize=11.5, title='Failure Causes Breakdown', title_fontsize=13.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
     leg2 = fig.legend(
-        handles=alpha_hatches, loc='upper center', bbox_to_anchor=(0.76, 0.08), ncol=3,
-        fontsize=9.5, title='Primary Weight Pattern ($\\alpha$)', title_fontsize=10.5,
+        handles=alpha_hatches, loc='center', bbox_to_anchor=(0.67, 0.08), ncol=3,
+        fontsize=11.5, title='Primary Weight Pattern ($\\alpha$)', title_fontsize=13.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
 
     fig.suptitle(f'Cross-Sensitivity Rejection Causes ($\\gamma \\times \\alpha$) at {ar_target} req/s',
-                 fontsize=15, fontweight='bold', y=0.975)
+                 fontsize=19.5, fontweight='bold', y=0.985)
 
     out_path = os.path.join(OUTPUT_DIR, f'02_Cross_Failure_Causes_AR_{ar_target}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
     plt.close()
     print(f"[OK] Generato Rejection Causes: {out_path}")
 
-
 # ==============================================================================
-# 6. GRAFICO 3: CROSS RESPONSE TIME (LEGENDE COMPATTE SENZA SPAZIO BIANCO)
+# 6. GRAFICO 3: CROSS RESPONSE TIME
 # ==============================================================================
 def generate_cross_response_time(ar_target):
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(24, 9.2), sharex=True)
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(25, 10.0), sharex=True)
 
     n_sunw = len(SUNSET_WEIGHTS)
     x_indices = np.arange(n_sunw)
@@ -358,10 +366,12 @@ def generate_cross_response_time(ar_target):
                     ax.bar(x_pos, wait_t, bottom=sys_t, width=bar_w * 0.88, color=base_c,
                            alpha=0.38, hatch='//', edgecolor='#1a202c', linewidth=0.35, zorder=3)
 
-            ax.set_title(scenario_key, fontsize=11, fontweight='bold', pad=8)
+            ax.set_title(scenario_key, fontsize=12.5, fontweight='bold', pad=10)
+            # Mostra i valori sull'asse Y per ogni singolo subplot
+            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
             ax.grid(axis='y', linestyle='--', alpha=0.4, zorder=2)
             if col_idx == 0:
-                ax.set_ylabel(f'{mapping} Mapping\nResponse Time (s)', fontsize=11, fontweight='semibold')
+                ax.set_ylabel(f'{mapping} Mapping\nResponse Time (s)', fontsize=14.5, fontweight='semibold')
 
     for r in range(2):
         for c in range(4):
@@ -369,11 +379,11 @@ def generate_cross_response_time(ar_target):
 
     for col in range(4):
         axes[1, col].set_xticks(x_indices)
-        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=10, rotation=30)
-        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=11, labelpad=5)
+        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=13.5, rotation=30)
+        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=15.5, fontweight='semibold', labelpad=9)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.22, wspace=0.06)
+    fig.subplots_adjust(top=0.90, bottom=0.21, hspace=0.26, wspace=0.13)
 
     alpha_patches = [mpatches.Patch(color=ALPHA_STYLE[a]['color'], label=ALPHA_STYLE[a]['label'])
                      for a in ALPHA_VALS]
@@ -383,18 +393,18 @@ def generate_cross_response_time(ar_target):
     ]
 
     leg1 = fig.legend(
-        handles=alpha_patches, loc='upper center', bbox_to_anchor=(0.38, 0.08), ncol=3,
-        fontsize=9.5, title='Primary Weight ($\\alpha$)', title_fontsize=10.5,
+        handles=alpha_patches, loc='center', bbox_to_anchor=(0.38, 0.08), ncol=3,
+        fontsize=11.5, title='Primary Weight ($\\alpha$)', title_fontsize=13.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
     leg2 = fig.legend(
-        handles=time_comp_patches, loc='upper center', bbox_to_anchor=(0.76, 0.08), ncol=2,
-        fontsize=9.5, title='Decomposition Component', title_fontsize=10.5,
+        handles=time_comp_patches, loc='center', bbox_to_anchor=(0.67, 0.08), ncol=2,
+        fontsize=11.5, title='Decomposition Component', title_fontsize=13.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
 
     fig.suptitle(f'Cross-Sensitivity Response Time Decomposition ($\\gamma \\times \\alpha$) at {ar_target} req/s',
-                 fontsize=15, fontweight='bold', y=0.975)
+                 fontsize=19.5, fontweight='bold', y=0.985)
 
     out_path = os.path.join(OUTPUT_DIR, f'03_Cross_Response_Time_AR_{ar_target}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))

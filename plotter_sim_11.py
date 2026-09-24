@@ -6,9 +6,20 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-# High-resolution rendering settings
-plt.rcParams['figure.dpi'] = 300
-plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
+# ==============================================================================
+# CONFIGURAZIONE RENDERING TIPOGRAFICO AD ALTA RISOLUZIONE E FONT GLOBALI
+# ==============================================================================
+plt.rcParams.update({
+    'figure.dpi': 300,
+    'font.sans-serif': 'DejaVu Sans',
+    'font.size': 13.5,
+    'axes.labelsize': 14.5,
+    'axes.titlesize': 16.5,
+    'xtick.labelsize': 13.0,
+    'ytick.labelsize': 13.0,
+    'legend.fontsize': 11.5,
+    'legend.title_fontsize': 13.5
+})
 
 # ==============================================================================
 # 1. PATHS, EXPERIMENTAL SETTINGS & STYLES (STRICTLY IN ENGLISH)
@@ -235,7 +246,7 @@ print(f"-> Validated Arrival Rates: {sorted_ars}")
 # 4. PLOT 1: SUCCESS RATE COMPARISON (CONTINUOUS LINE PLOT 1x2)
 # ==============================================================================
 def generate_confronto_success_rate():
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(18, 7.5), sharey=True)
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(18, 8.5), sharey=True)
 
     for col_idx, mapping in enumerate(MAPPINGS):
         ax = axes[col_idx]
@@ -252,35 +263,36 @@ def generate_confronto_success_rate():
             ax.plot(
                 sorted_ars, y_vals,
                 color=st_cfg['color'], linestyle=st_cfg['ls'],
-                marker=st_cfg['marker'], markersize=7, linewidth=2.0,
+                marker=st_cfg['marker'], markersize=7.5, linewidth=2.2,
                 alpha=0.92, label=st_cfg['label']
             )
 
-        ax.set_title(f'{mapping} Mapping', fontsize=13, fontweight='bold', pad=10)
-        ax.set_xlabel('Arrival Rate (req/sec)', fontsize=12, labelpad=6)
+        ax.set_title(f'{mapping} Mapping', fontsize=16.5, fontweight='bold', pad=12)
+        ax.set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
         ax.set_xticks(sorted_ars)
         ax.set_ylim(-2, 105)
+        ax.tick_params(labelsize=13)
         ax.grid(True, linestyle='--', alpha=0.5)
 
-    axes[0].set_ylabel('Success Rate (%)', fontsize=12, fontweight='semibold')
+    axes[0].set_ylabel('Success Rate (%)', fontsize=14.5, fontweight='semibold')
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.88, bottom=0.17, wspace=0.08)
+    fig.subplots_adjust(top=0.88, bottom=0.20, wspace=0.10)
 
     handles = [
         Line2D([0], [0], color=CONFIG_STYLES[c]['color'], linestyle=CONFIG_STYLES[c]['ls'],
-               marker=CONFIG_STYLES[c]['marker'], lw=2.0, markersize=8, label=CONFIG_STYLES[c]['label'])
+               marker=CONFIG_STYLES[c]['marker'], lw=2.2, markersize=8, label=CONFIG_STYLES[c]['label'])
         for c in CONFIG_ORDER
     ]
     leg = fig.legend(
-        handles=handles, loc='upper center', bbox_to_anchor=(0.5, 0.07),
-        ncol=4, fontsize=10.5, title='Evaluated Configurations (Dijkstra-Time)',
-        title_fontsize=11.5, frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
+        handles=handles, loc='center', bbox_to_anchor=(0.50, 0.08),
+        ncol=4, fontsize=12.0, title='Evaluated Configurations (Dijkstra-Time)',
+        title_fontsize=13.5, frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
     )
 
     fig.suptitle(
         f'Success Rate Comparison: Pre- vs. Post-Optimization (Dijkstra-Time, $\\Delta D = {TARGET_DL}\\%$)',
-        fontsize=15, fontweight='bold', y=0.97
+        fontsize=19.5, fontweight='bold', y=0.985
     )
 
     out_path = os.path.join(OUTPUT_DIR, '01_Confronto_Success_Rate_DijkTime.png')
@@ -292,7 +304,7 @@ def generate_confronto_success_rate():
 # 5. PLOT 2: FAILURE CAUSES BREAKDOWN (LUMINOUS STACKED BARS 1x2)
 # ==============================================================================
 def generate_confronto_rejection_causes():
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 8), sharey=True)
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 9.0), sharey=True)
 
     n_ars = len(sorted_ars)
     ar_indices = np.arange(n_ars)
@@ -305,7 +317,6 @@ def generate_confronto_rejection_causes():
     for col_idx, mapping in enumerate(MAPPINGS):
         ax = axes[col_idx]
 
-        # Subtle zebra striping for arrival rates
         for i in range(n_ars):
             if i % 2 == 1:
                 ax.axvspan(i - 0.5, i + 0.5, color='#F8FAFC', zorder=0)
@@ -337,17 +348,18 @@ def generate_confronto_rejection_causes():
                         )
                         bottom += val_pct
 
-        ax.set_title(f'{mapping} Mapping', fontsize=13, fontweight='bold', pad=10)
+        ax.set_title(f'{mapping} Mapping', fontsize=16.5, fontweight='bold', pad=12)
         ax.set_xticks(ar_indices)
-        ax.set_xticklabels([f'{ar}' for ar in sorted_ars], fontsize=11)
-        ax.set_xlabel('Arrival Rate (req/sec)', fontsize=12, labelpad=6)
+        ax.set_xticklabels([f'{ar}' for ar in sorted_ars], fontsize=13.0, fontweight='semibold')
+        ax.set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
         ax.set_ylim(0, 100)
+        ax.tick_params(labelsize=13)
         ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
 
-    axes[0].set_ylabel('Rejection Breakdown (%)', fontsize=12, fontweight='semibold')
+    axes[0].set_ylabel('Rejection Breakdown (%)', fontsize=14.5, fontweight='semibold')
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.88, bottom=0.18, wspace=0.08)
+    fig.subplots_adjust(top=0.88, bottom=0.20, wspace=0.10)
 
     cause_patches = [
         mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#4A5568', linewidth=0.5, label=l)
@@ -360,19 +372,19 @@ def generate_confronto_rejection_causes():
     ]
 
     leg1 = fig.legend(
-        handles=cause_patches, loc='upper center', bbox_to_anchor=(0.38, 0.08),
-        ncol=3, fontsize=9.5, title='Failure Causes Breakdown', title_fontsize=10.5,
+        handles=cause_patches, loc='center', bbox_to_anchor=(0.36, 0.08),
+        ncol=3, fontsize=11.5, title='Failure Causes Breakdown', title_fontsize=13.0,
         frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
     )
     leg2 = fig.legend(
-        handles=pattern_patches, loc='upper center', bbox_to_anchor=(0.78, 0.08),
-        ncol=2, fontsize=9.5, title='Evaluated Configurations (Pattern)', title_fontsize=10.5,
+        handles=pattern_patches, loc='center', bbox_to_anchor=(0.69, 0.08),
+        ncol=2, fontsize=11.5, title='Evaluated Configurations (Pattern)', title_fontsize=13.0,
         frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
     )
 
     fig.suptitle(
         f'Failure Causes Evolution: Pre- vs. Post-Optimization (Dijkstra-Time, $\\Delta D = {TARGET_DL}\\%$)',
-        fontsize=15, fontweight='bold', y=0.97
+        fontsize=19.5, fontweight='bold', y=0.985
     )
 
     out_path = os.path.join(OUTPUT_DIR, '02_Confronto_Failure_Causes_DijkTime.png')
@@ -384,7 +396,7 @@ def generate_confronto_rejection_causes():
 # 6. PLOT 3: RESPONSE TIME DECOMPOSITION (SOLID/OPAQUE STACKED BARS 1x2)
 # ==============================================================================
 def generate_confronto_response_time():
-    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 8), sharey=True)
+    fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(20, 9.0), sharey=True)
 
     n_ars = len(sorted_ars)
     ar_indices = np.arange(n_ars)
@@ -421,7 +433,6 @@ def generate_confronto_response_time():
 
                 style = RT_BAR_STYLES[cfg]
 
-                # Bottom Segment: System Execution Time (Solid & Saturated)
                 ax.bar(
                     x_pos, sys_t, width=bar_w * 0.90,
                     color=style['exec_color'],
@@ -430,7 +441,6 @@ def generate_confronto_response_time():
                     linewidth=0.4,
                     zorder=3
                 )
-                # Top Segment: Network / Queuing Delay (Opaque Tint, Zero bleeding)
                 ax.bar(
                     x_pos, wait_t, bottom=sys_t, width=bar_w * 0.90,
                     color=style['wait_color'],
@@ -440,18 +450,19 @@ def generate_confronto_response_time():
                     zorder=3
                 )
 
-        ax.set_title(f'{mapping} Mapping', fontsize=13, fontweight='bold', pad=10)
+        ax.set_title(f'{mapping} Mapping', fontsize=16.5, fontweight='bold', pad=12)
         ax.set_xticks(ar_indices)
-        ax.set_xticklabels([f'{ar}' for ar in sorted_ars], fontsize=11)
-        ax.set_xlabel('Arrival Rate (req/sec)', fontsize=12, labelpad=6)
+        ax.set_xticklabels([f'{ar}' for ar in sorted_ars], fontsize=13.0, fontweight='semibold')
+        ax.set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
+        ax.tick_params(labelsize=13)
         ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
 
-    axes[0].set_ylabel('Response Time (s)', fontsize=12, fontweight='semibold')
+    axes[0].set_ylabel('Response Time (s)', fontsize=14.5, fontweight='semibold')
     axes[0].set_ylim(0, max_y * 1.15 if max_y > 0 else 1.0)
     axes[1].set_ylim(0, max_y * 1.15 if max_y > 0 else 1.0)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.88, bottom=0.18, wspace=0.08)
+    fig.subplots_adjust(top=0.88, bottom=0.20, wspace=0.10)
 
     cfg_patches = [
         mpatches.Patch(
@@ -469,19 +480,19 @@ def generate_confronto_response_time():
     ]
 
     leg1 = fig.legend(
-        handles=cfg_patches, loc='upper center', bbox_to_anchor=(0.38, 0.08),
-        ncol=2, fontsize=9.5, title='Evaluated Configurations (Dijkstra-Time)', title_fontsize=10.5,
+        handles=cfg_patches, loc='center', bbox_to_anchor=(0.36, 0.08),
+        ncol=2, fontsize=11.5, title='Evaluated Configurations (Dijkstra-Time)', title_fontsize=13.0,
         frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
     )
     leg2 = fig.legend(
-        handles=comp_patches, loc='upper center', bbox_to_anchor=(0.78, 0.08),
-        ncol=2, fontsize=9.5, title='Latency Component Breakdown', title_fontsize=10.5,
+        handles=comp_patches, loc='center', bbox_to_anchor=(0.69, 0.08),
+        ncol=2, fontsize=11.5, title='Latency Component Breakdown', title_fontsize=13.0,
         frameon=True, facecolor='#FFFFFF', edgecolor='#CBD5E1'
     )
 
     fig.suptitle(
         f'Response Time Decomposition: Pre- vs. Post-Optimization (Dijkstra-Time, $\\Delta D = {TARGET_DL}\\%$)',
-        fontsize=15, fontweight='bold', y=0.97
+        fontsize=19.5, fontweight='bold', y=0.985
     )
 
     out_path = os.path.join(OUTPUT_DIR, '03_Confronto_Response_Time_DijkTime.png')

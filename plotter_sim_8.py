@@ -6,9 +6,20 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 
-# Configurazione rendering tipografico ad alta risoluzione
-plt.rcParams['figure.dpi'] = 300
-plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
+# ==============================================================================
+# CONFIGURAZIONE RENDERING TIPOGRAFICO AD ALTA RISOLUZIONE E FONT GLOBALI
+# ==============================================================================
+plt.rcParams.update({
+    'figure.dpi': 300,
+    'font.sans-serif': 'DejaVu Sans',
+    'font.size': 13.5,
+    'axes.labelsize': 14.5,
+    'axes.titlesize': 16.5,
+    'xtick.labelsize': 13.0,
+    'ytick.labelsize': 13.0,
+    'legend.fontsize': 11.5,
+    'legend.title_fontsize': 13.5
+})
 
 # ==============================================================================
 # 1. PARAMETRI GENERALI, SWEEP E PALETTE
@@ -39,7 +50,6 @@ CAUSE_LABELS = [
     'Sunset'
 ]
 
-# Tonalità vivaci e luminose: nessuno sfondo scuro, leggibilità immediata
 LUMINOUS_CAUSE_COLORS = {
     'deadline':       '#3B82F6',  # Blu cobalto vivido e chiaro
     'insuff_cn':      '#F59E0B',  # Ambra dorato brillante
@@ -85,7 +95,7 @@ def extract_parameters(filepath):
     bs_val = int(bs_match.group(1)) if bs_match else None
     bt_val = float(bt_match.group(1)) if bt_match else None
 
-    # 4. Objective Mapping (evita falsi positivi da "energy_budget")
+    # 4. Objective Mapping
     path_no_dijk = re.sub(r'dijk[a-z0-9_.\-]*|r_algo[a-z0-9_.\-]*', '', f_lower)
     if any(k in path_no_dijk for k in ['obj_energy', 'energy_mapping', 'opt_energy', '/energy/']):
         mapping_str = 'ENERGY'
@@ -184,7 +194,7 @@ print(f"-> Mappings identificati: {present_mappings}")
 # 4. GRAFICO 1: SUCCESS RATE LINE PLOT (3x2 GRID)
 # ==============================================================================
 def generate_line_success_rate(mapping):
-    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(16, 11), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(18, 12.5), sharex=True, sharey=True)
 
     for row, dl in enumerate(DEADLINES):
         ax_bs = axes[row, 0]
@@ -205,7 +215,7 @@ def generate_line_success_rate(mapping):
                 ls = '-' if dijk == 'Energy' else '--'
                 marker = 'o' if dijk == 'Energy' else 's'
                 ax_bs.plot(sorted_ars, y_vals, color=COLORS_BS[idx], linestyle=ls, marker=marker,
-                           markersize=5, linewidth=1.8, alpha=0.88)
+                           markersize=6.0, linewidth=2.2, alpha=0.9)
 
         # 2. BT Sweep (BS = 20)
         for idx, bt in enumerate(BT_VALS):
@@ -222,40 +232,42 @@ def generate_line_success_rate(mapping):
                 ls = '-' if dijk == 'Energy' else '--'
                 marker = 'o' if dijk == 'Energy' else 's'
                 ax_bt.plot(sorted_ars, y_vals, color=COLORS_BT[idx], linestyle=ls, marker=marker,
-                           markersize=5, linewidth=1.8, alpha=0.88)
+                           markersize=6.0, linewidth=2.2, alpha=0.9)
 
-        ax_bs.set_ylabel(f'Success Rate (%)\n[$\\Delta D = {dl}\\%$]', fontsize=11, fontweight='semibold')
+        ax_bs.set_ylabel(f'Success Rate (%)\n[$\\Delta D = {dl}\\%$]', fontsize=14.5, fontweight='semibold')
         ax_bs.set_ylim(-2, 105)
         ax_bt.set_ylim(-2, 105)
+        ax_bs.tick_params(labelsize=13)
+        ax_bt.tick_params(labelsize=13)
         ax_bs.grid(True, linestyle=':', alpha=0.55)
         ax_bt.grid(True, linestyle=':', alpha=0.55)
 
-    axes[0, 0].set_title('Batch Size Sweep ($BS$, $BT=2.0$s)', fontsize=12, fontweight='bold', pad=10)
-    axes[0, 1].set_title('Batch Timeout Sweep ($BT$, $BS=20$)', fontsize=12, fontweight='bold', pad=10)
-    axes[2, 0].set_xlabel('Arrival Rate (req/sec)', fontsize=11)
-    axes[2, 1].set_xlabel('Arrival Rate (req/sec)', fontsize=11)
+    axes[0, 0].set_title('Batch Size Sweep ($BS$, $BT=2.0$s)', fontsize=16.5, fontweight='bold', pad=12)
+    axes[0, 1].set_title('Batch Timeout Sweep ($BT$, $BS=20$)', fontsize=16.5, fontweight='bold', pad=12)
+    axes[2, 0].set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
+    axes[2, 1].set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
     axes[2, 0].set_xticks(sorted_ars)
     axes[2, 1].set_xticks(sorted_ars)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.92, bottom=0.12, hspace=0.12, wspace=0.08)
+    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.16, wspace=0.08)
 
-    # Legende strutturate in basso su tre box indipendenti
-    bs_lines = [Line2D([0], [0], color=COLORS_BS[i], lw=2.2, label=f'BS={bs}') for i, bs in enumerate(BS_VALS)]
-    bt_lines = [Line2D([0], [0], color=COLORS_BT[i], lw=2.2, label=f'BT={format_bt(bt)}s') for i, bt in enumerate(BT_VALS)]
+    # Legende strutturate su 2 righe per scatola: zero collisioni
+    bs_lines = [Line2D([0], [0], color=COLORS_BS[i], lw=2.4, label=f'BS={bs}') for i, bs in enumerate(BS_VALS)]
+    bt_lines = [Line2D([0], [0], color=COLORS_BT[i], lw=2.4, label=f'BT={format_bt(bt)}s') for i, bt in enumerate(BT_VALS)]
     routing_lines = [
-        Line2D([0], [0], color='#2b2b2b', linestyle='-', marker='o', lw=1.8, label='Dijkstra Energy'),
-        Line2D([0], [0], color='#2b2b2b', linestyle='--', marker='s', lw=1.8, label='Dijkstra Time')
+        Line2D([0], [0], color='#2b2b2b', linestyle='-', marker='o', lw=2.2, label='Dijkstra Energy'),
+        Line2D([0], [0], color='#2b2b2b', linestyle='--', marker='s', lw=2.2, label='Dijkstra Time')
     ]
 
-    leg1 = fig.legend(handles=bs_lines, loc='center', bbox_to_anchor=(0.22, 0.04), ncol=6, fontsize=8.5,
-                      title='Batch Size ($BS$)', title_fontsize=9.5, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
-    leg2 = fig.legend(handles=routing_lines, loc='center', bbox_to_anchor=(0.50, 0.04), ncol=2, fontsize=8.5,
-                      title='Routing Strategy', title_fontsize=9.5, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
-    leg3 = fig.legend(handles=bt_lines, loc='center', bbox_to_anchor=(0.78, 0.04), ncol=4, fontsize=8.5,
-                      title='Batch Timeout ($BT$)', title_fontsize=9.5, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    leg1 = fig.legend(handles=bs_lines, loc='center', bbox_to_anchor=(0.21, 0.065), ncol=3, fontsize=11.5,
+                      title='Batch Size ($BS$)', title_fontsize=13.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    leg2 = fig.legend(handles=routing_lines, loc='center', bbox_to_anchor=(0.50, 0.065), ncol=1, fontsize=11.5,
+                      title='Routing Strategy', title_fontsize=13.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    leg3 = fig.legend(handles=bt_lines, loc='center', bbox_to_anchor=(0.79, 0.065), ncol=4, fontsize=11.5,
+                      title='Batch Timeout ($BT$)', title_fontsize=13.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
 
-    fig.suptitle(f'Parametric Exploration of Success Rate (%) ({mapping} Mapping)', fontsize=15, fontweight='bold', y=0.98)
+    fig.suptitle(f'Parametric Exploration of Success Rate (%) ({mapping} Mapping)', fontsize=19.5, fontweight='bold', y=0.985)
 
     out_path = os.path.join(OUTPUT_DIR, f'01_Line_Success_Rate_{mapping}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2, leg3))
@@ -266,7 +278,7 @@ def generate_line_success_rate(mapping):
 # 5. GRAFICO 2: STACKED RESPONSE TIME (3x2 GRID)
 # ==============================================================================
 def generate_stacked_response_time(mapping):
-    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(19, 12), sharex=True)
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(20, 13.5), sharex=True)
 
     n_ars = len(sorted_ars)
     ar_indices = np.arange(n_ars)
@@ -309,9 +321,7 @@ def generate_stacked_response_time(mapping):
                     h = None if dijk == 'Energy' else '///'
                     c = COLORS_BS[g_idx]
 
-                    # Segmento inferiore: System Execution
                     ax_bs.bar(x_pos, sys_t, width=bs_bar_w, color=c, hatch=h, edgecolor='#222222', linewidth=0.25)
-                    # Segmento superiore: Waiting / Network Time
                     ax_bs.bar(x_pos, wait_t, bottom=sys_t, width=bs_bar_w, color=c, alpha=0.45, hatch=h, edgecolor='#222222', linewidth=0.25)
 
         # 2. BT Sweep (destra)
@@ -337,22 +347,24 @@ def generate_stacked_response_time(mapping):
                     ax_bt.bar(x_pos, sys_t, width=bt_bar_w, color=c, hatch=h, edgecolor='#222222', linewidth=0.25)
                     ax_bt.bar(x_pos, wait_t, bottom=sys_t, width=bt_bar_w, color=c, alpha=0.45, hatch=h, edgecolor='#222222', linewidth=0.25)
 
-        ax_bs.set_ylabel(f'Response Time (s)\n[$\\Delta D = {dl}\\%$]', fontsize=11, fontweight='semibold')
+        ax_bs.set_ylabel(f'Response Time (s)\n[$\\Delta D = {dl}\\%$]', fontsize=14.5, fontweight='semibold')
+        ax_bs.tick_params(labelsize=13)
+        ax_bt.tick_params(labelsize=13)
         ax_bs.grid(axis='y', linestyle=':', alpha=0.55)
         ax_bt.grid(axis='y', linestyle=':', alpha=0.55)
 
     for col in [0, 1]:
         axes[2, col].set_xticks(ar_indices)
-        axes[2, col].set_xticklabels([f'{ar}' for ar in sorted_ars], fontsize=11, fontweight='semibold')
-        axes[2, col].set_xlabel('Arrival Rate (req/sec)', fontsize=11)
+        axes[2, col].set_xticklabels([f'{ar}' for ar in sorted_ars], fontsize=13.0, fontweight='semibold')
+        axes[2, col].set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
 
-    axes[0, 0].set_title('Batch Size Sweep ($BS$, $BT=2.0$s)', fontsize=12, fontweight='bold', pad=10)
-    axes[0, 1].set_title('Batch Timeout Sweep ($BT$, $BS=20$)', fontsize=12, fontweight='bold', pad=10)
+    axes[0, 0].set_title('Batch Size Sweep ($BS$, $BT=2.0$s)', fontsize=16.5, fontweight='bold', pad=12)
+    axes[0, 1].set_title('Batch Timeout Sweep ($BT$, $BS=20$)', fontsize=16.5, fontweight='bold', pad=12)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.92, bottom=0.12, hspace=0.12, wspace=0.08)
+    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.16, wspace=0.08)
 
-    # Legende a 4 blocchi sul fondo
+    # Legende raggruppate e centrate con spaziatura ridotta
     bs_patches = [mpatches.Patch(color=COLORS_BS[i], label=f'BS={bs}') for i, bs in enumerate(BS_VALS)]
     bt_patches = [mpatches.Patch(color=COLORS_BT[i], label=f'BT={format_bt(bt)}s') for i, bt in enumerate(BT_VALS)]
     time_comp_patches = [
@@ -364,33 +376,30 @@ def generate_stacked_response_time(mapping):
         mpatches.Patch(facecolor='#cccccc', edgecolor='#222', hatch='///', label='Dijkstra Time (Hatched)')
     ]
 
-    l1 = fig.legend(handles=bs_patches, loc='center', bbox_to_anchor=(0.14, 0.04), ncol=3, fontsize=8,
-                    title='Batch Size ($BS$, $BT=2.0$s)', title_fontsize=9, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
-    l2 = fig.legend(handles=time_comp_patches, loc='center', bbox_to_anchor=(0.38, 0.04), ncol=1, fontsize=8,
-                    title='Time Component', title_fontsize=9, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
-    l3 = fig.legend(handles=routing_patches, loc='center', bbox_to_anchor=(0.58, 0.04), ncol=1, fontsize=8,
-                    title='Routing Strategy', title_fontsize=9, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
-    l4 = fig.legend(handles=bt_patches, loc='center', bbox_to_anchor=(0.84, 0.04), ncol=4, fontsize=8,
-                    title='Batch Timeout ($BT$, $BS=20$)', title_fontsize=9, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    l1 = fig.legend(handles=bs_patches, loc='center', bbox_to_anchor=(0.20, 0.065), ncol=3, fontsize=11.0,
+                    title='Batch Size ($BS$, $BT=2.0$s)', title_fontsize=12.5, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    l2 = fig.legend(handles=time_comp_patches, loc='center', bbox_to_anchor=(0.39, 0.065), ncol=1, fontsize=11.0,
+                    title='Time Component', title_fontsize=12.5, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    l3 = fig.legend(handles=routing_patches, loc='center', bbox_to_anchor=(0.57, 0.065), ncol=1, fontsize=11.0,
+                    title='Routing Strategy', title_fontsize=12.5, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    l4 = fig.legend(handles=bt_patches, loc='center', bbox_to_anchor=(0.79, 0.065), ncol=4, fontsize=11.0,
+                    title='Batch Timeout ($BT$, $BS=20$)', title_fontsize=12.5, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
 
-    fig.suptitle(f'Parametric Response Time Decomposition ({mapping} Mapping)', fontsize=15, fontweight='bold', y=0.98)
+    fig.suptitle(f'Parametric Response Time Decomposition ({mapping} Mapping)', fontsize=19.5, fontweight='bold', y=0.985)
 
     out_path = os.path.join(OUTPUT_DIR, f'02_Stacked_Response_Time_{mapping}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(l1, l2, l3, l4))
     plt.close()
     print(f"[OK] Generato: {out_path}")
 
-
-
-
 # ==============================================================================
-# FUNZIONE REJECTION CAUSES (LAYOUT LUMINOSO E TRATTEGGIO ALLEGGERITO)
+# 6. FUNZIONE REJECTION CAUSES
 # ==============================================================================
 def generate_rejection_causes_all_ar(mapping):
     n_ars = len(sorted_ars)
     ar_indices = np.arange(n_ars)
 
-    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(20, 13), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(21, 14), sharex=True, sharey=True)
 
     bs_bar_w = 0.050
     bs_pair_gap = 0.016
@@ -407,7 +416,6 @@ def generate_rejection_causes_all_ar(mapping):
         ax_bt = axes[row, 1]
         group_key = (mapping, dl)
 
-        # Sfondo alternato per raggruppare i blocchi Arrival Rate
         for i in range(n_ars):
             if i % 2 == 1:
                 ax_bs.axvspan(i - 0.5, i + 0.5, color='#f8fafc', zorder=0)
@@ -417,9 +425,7 @@ def generate_rejection_causes_all_ar(mapping):
             ax_bs.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
             ax_bt.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
 
-        # -----------------------------
         # 1. Colonna BS-Sweep
-        # -----------------------------
         for a_idx, ar in enumerate(sorted_ars):
             c_x = ar_indices[a_idx]
             for g_idx, bs in enumerate(BS_VALS):
@@ -431,7 +437,6 @@ def generate_rejection_causes_all_ar(mapping):
                     st = compute_stats(rows)
                     rej_tot = st['rejected']
 
-                    # Tratto singolo distanziato ('/') per non scurire la barra
                     hatch_pattern = None if dijk == 'Energy' else '/'
                     bottom = 0.0
 
@@ -448,9 +453,7 @@ def generate_rejection_causes_all_ar(mapping):
                             )
                             bottom += val_pct
 
-        # -----------------------------
         # 2. Colonna BT-Sweep
-        # -----------------------------
         for a_idx, ar in enumerate(sorted_ars):
             c_x = ar_indices[a_idx]
             for g_idx, bt in enumerate(BT_VALS):
@@ -479,24 +482,26 @@ def generate_rejection_causes_all_ar(mapping):
                             )
                             bottom += val_pct
 
-        ax_bs.set_ylabel(f'Rejection Breakdown (%)\n[$\\Delta D = {dl}\\%$]', fontsize=11, fontweight='semibold')
+        ax_bs.set_ylabel(f'Rejection Breakdown (%)\n[$\\Delta D = {dl}\\%$]', fontsize=14.5, fontweight='semibold')
         ax_bs.set_ylim(0, 100)
+        ax_bs.tick_params(labelsize=13)
+        ax_bt.tick_params(labelsize=13)
         ax_bs.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
         ax_bt.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
 
     # Assi inferiori
     for col_idx in [0, 1]:
         axes[2, col_idx].set_xticks(ar_indices)
-        axes[2, col_idx].set_xticklabels([f'{ar} req/s' for ar in sorted_ars], fontsize=11, fontweight='semibold')
-        axes[2, col_idx].set_xlabel('Arrival Rate ($\\lambda$)', fontsize=12, labelpad=8)
+        axes[2, col_idx].set_xticklabels([f'{ar} req/s' for ar in sorted_ars], fontsize=13.0, fontweight='semibold')
+        axes[2, col_idx].set_xlabel('Arrival Rate ($\\lambda$)', fontsize=15.0, fontweight='semibold', labelpad=8)
 
-    axes[0, 0].set_title('BS-Sweep: Bars paired by $BS \\in [1, 2, 4, 6, 8, 10]$ ($BT=2.0$s)', fontsize=12, fontweight='bold', pad=12)
-    axes[0, 1].set_title('BT-Sweep: Bars paired by $BT \\in [0.0 \\dots 1.0]$s ($BS=20$)', fontsize=12, fontweight='bold', pad=12)
+    axes[0, 0].set_title('BS-Sweep: Bars paired by $BS \\in [1, 2, 4, 6, 8, 10]$ ($BT=2.0$s)', fontsize=16.5, fontweight='bold', pad=12)
+    axes[0, 1].set_title('BT-Sweep: Bars paired by $BT \\in [0.0 \\dots 1.0]$s ($BS=20$)', fontsize=16.5, fontweight='bold', pad=12)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.93, bottom=0.14, hspace=0.12, wspace=0.08)
+    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.16, wspace=0.08)
 
-    # Legende chiare sul fondo
+    # Legende ravvicinate verso il centro
     cause_patches = [
         mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#4a5568', linewidth=0.5, label=label)
         for k, label in zip(CAUSE_KEYS, CAUSE_LABELS)
@@ -507,19 +512,19 @@ def generate_rejection_causes_all_ar(mapping):
     ]
 
     leg_causes = fig.legend(
-        handles=cause_patches, loc='upper center', bbox_to_anchor=(0.40, 0.07),
-        ncol=3, fontsize=9.5, title='Failure Causes Breakdown', title_fontsize=10.5,
+        handles=cause_patches, loc='center', bbox_to_anchor=(0.36, 0.07),
+        ncol=3, fontsize=12.0, title='Failure Causes Breakdown', title_fontsize=13.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
     leg_pattern = fig.legend(
-        handles=pattern_patches, loc='upper center', bbox_to_anchor=(0.78, 0.07),
-        ncol=2, fontsize=9.5, title='Routing Strategy', title_fontsize=10.5,
+        handles=pattern_patches, loc='center', bbox_to_anchor=(0.69, 0.07),
+        ncol=2, fontsize=12.0, title='Routing Strategy', title_fontsize=13.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
 
     fig.suptitle(
         f'Failure Causes Evolution Across Arrival Rates ({mapping} Mapping)',
-        fontsize=15, fontweight='bold', y=0.985
+        fontsize=19.5, fontweight='bold', y=0.985
     )
 
     out_path = os.path.join(OUTPUT_DIR, f'03_Failure_Causes_{mapping}.png')
