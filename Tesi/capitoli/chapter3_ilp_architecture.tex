@@ -209,13 +209,15 @@ Evaluating dynamic satellite links with raw physical dimensions introduces dimen
 To achieve uniform metric evaluation across heterogeneous links during topology exploration, each directed edge $(u, v)$ with latency $\tau_{u,v}$ and bandwidth $B_{u,v}$ (in Bytes/s) is evaluated against a standardized reference payload $S_{ref} = 1~\text{MB}$ ($1024^2~\text{bytes}$) over optical ISL channels~\cite{chen2021isl, chaudhry2021laser}:
 \begin{equation}
     t_{link}(u,v) = \tau_{u,v} + \frac{S_{ref}}{B_{u,v}}
+    \label{eq:t_link}
 \end{equation}
 \begin{equation}
     e_{link}(u,v) = P_{net} \cdot \frac{S_{ref}}{B_{u,v}}
+    \label{eq:e_link}
 \end{equation}
 where $P_{net}$ is the radio/laser transmission power (\texttt{Ptrasm})~\cite{icdcs_satellite_2025}.
 
-The edge metrics are normalized against theoretical upper bounds ($T_{max}$ and $E_{max}$) derived from minimum network bandwidth ($B_{min} = 100~\text{KB/s}$) and maximum link latency ($\tau_{max} = 100~\text{ms}$):
+The edge metrics are normalized against theoretical upper bounds ($T_{max}$ and $E_{max}$) derived from \ref{eq:t_link} and \ref{eq:e_link} in the case of minimum network bandwidth ($B_{min} = 100~\text{KB/s}$) and maximum link latency ($\tau_{max} = 100~\text{ms}$):
 \begin{equation}
     \hat{t}_{link}(u,v) = \frac{t_{link}(u,v)}{T_{max}}, \quad \hat{e}_{link}(u,v) = \frac{e_{link}(u,v)}{E_{max}}
 \end{equation}
@@ -226,7 +228,7 @@ The composite dimensionless edge weight $c_{link}(u,v)$ is computed as a convex 
 
 While the Multi-Source Dijkstra mapping employs $S_{ref}$ to discover structurally optimal topological backbones independent of instantaneous request sizes, the subsequent ILP optimization formulation dynamically evaluates per-hop link latencies and forwarding energy costs tailored to the exact payload size $s_r$ of each offloaded task.
 
-Concurrently, the routine queries all candidate nodes in \texttt{globals.edge\_servers} to capture residual energy $B_i$, processor queue occupancy $W_{cpu,i}$ (\texttt{W\_cpu\_simpy}), network queue occupancy $W_{net,i}$ (\texttt{W\_net\_simpy}), processor clock speed $C_{sen,i}$, CPU energy coefficient $\kappa_i$ (\texttt{e\_coeff}), and orbital sunset timestamp $t_{sunset,i}$.
+Concurrently, the routine queries all candidate nodes in \texttt{globals.edge\_servers} to capture residual energy $B_i$, processor queue wait $W_{cpu,i}$ (\texttt{W\_cpu\_simpy}), network queue wait $W_{net,i}$ (\texttt{W\_net\_simpy}), processor clock speed $C_{sen,i}$, CPU energy coefficient $\kappa_i$ (\texttt{e\_coeff}), and orbital sunset timestamp $t_{sunset,i}$.
 
 Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of the constellation mapping procedure.
 
@@ -432,6 +434,7 @@ The optimization space is constrained by four strict linear relations:
     \begin{equation}
         \sum_{r \in R} x_{r,i} \le \left\lfloor \frac{|R|}{|S|} \right\rfloor + 5, \quad \forall i \in S
     \end{equation}
+    Where $|R|$ denotes the total number of tasks and $|S|$ denotes the total number of satellite nodes.
 \end{enumerate}
 
 \subsection{Solver Routine and Cascade Rejection Diagnostics}
