@@ -17,6 +17,10 @@
 \usepackage{comment}
 \usepackage{tabularx}
 \usepackage{flafter}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+% Corregge il bug nativo di \Call con argomenti complessi o formule
+\renewcommand{\Call}[2]{\textproc{#1}(#2)}
 
 \setcounter{secnumdepth}{3} % Attiva la numerazione per le subsubsection
 \setcounter{tocdepth}{3}    % Inserisce le subsubsection nell'indice
@@ -63,7 +67,7 @@
 \versiondate{\today}
 \thesistype{Bachelor's Thesis}
 
-%Correggi: Grafici, Codice, github, bibliografia (aggiungi il github).
+%Correggi: Grafici, Codice, bibliografia (aggiungi references github).
 
 \begin{document}
 

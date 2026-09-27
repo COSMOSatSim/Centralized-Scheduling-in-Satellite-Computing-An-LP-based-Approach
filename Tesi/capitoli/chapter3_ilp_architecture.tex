@@ -2,36 +2,52 @@
 \label{chap:ilp_architecture}
 
 This chapter provides a comprehensive dissertation on the theoretical framework, mathematical optimization formulation, and concrete software architecture of the proposed Centralized Integer Linear Programming (ILP) Orchestrator. 
-To avoid conceptual disconnection between the theoretical modeling and its practical realization, each section progressively couples the formal system dynamics with its executable implementation in Python, utilizing the \texttt{SimPy} discrete-event simulation engine~\cite{simpy2023} and the \texttt{PuLP} mathematical programming library~\cite{pulp2011} backed by the open-source \texttt{HiGHS} solver~\cite{huangfu2018highs}. 
+In satellite edge computing, theoretical formulations often suffer from an abstraction penalty: static graph models fail to capture the physical reality of rapid orbital kinematics, fluctuating inter-satellite links, and discrete queue dynamics. 
+To bridge this gap, each section systematically couples the formal analytical modeling with its concrete algorithmic realization. The full simulation environment is developed in Python using the \texttt{SimPy} discrete-event engine~\cite{simpy2023} and the \texttt{PuLP} mathematical programming library~\cite{pulp2011} backed by the open-source \texttt{HiGHS} branch-and-cut solver~\cite{huangfu2018highs}. The complete, documented source code is publicly accessible in the reference repository~\cite{bagini_repo_2026}.
 
-We formalize the regional Low Earth Orbit (LEO) constellation environment, derive the multi-objective optimization problem governing task assignment and multi-hop Inter-Satellite Link (ISL) routing, detail the dynamic batching and greedy recovery mechanisms, and conclude with a rigorous computational complexity analysis.
+The remainder of this chapter is structured as follows. Section~\ref{sec:system_model} formalizes the regional Walker-Delta constellation, the offloading task abstraction, and the decoupled three-phase operational circuit. 
+Section~\ref{sec:dynamic_batching} details the event-driven batching engine designed to throttle solver invocation while enforcing bounded delay. 
+Section~\ref{sec:constellation_mapping} introduces the multi-source topology exploration and dimension-free metric normalization scheme. 
+Section~\ref{sec:mathematical_model} derives the multi-objective ILP formulation, its physical constraints, and the cascade diagnostic engine for dropped tasks. 
+Section~\ref{sec:task_execution_routing} elaborates on task dispatching, buffer re-enqueuing, and the hybrid routing protocol combining planned ILP paths with reactive greedy geometric recovery. 
+Finally, Section~\ref{sec:complexity_analysis} provides an asymptotic complexity and scalability analysis covering runtime footprint and control telemetry overhead.
 
 \section{Regional Constellation Architecture and Offloading Model}
 \label{sec:system_model}
 
-We consider a regional orbital edge computing network deployed within a Low Earth Orbit (LEO) satellite constellation~\cite{survey_orbital_edge_2023}. 
-The orbital network is modeled as a regional Walker-Delta LEO geometry~\cite{walker1984satellite}. The system comprises a set of candidate Satellite Edge Nodes (SENs), denoted by $S = \{1, 2, \dots, n\}$, and a set of regional Access Points (APs) or satellite gateways $AP_{global}$~\cite{icdcs_satellite_2025}. 
-Within the operational region, a designated \emph{Master} functions as the centralized orchestrator, maintaining global visibility over constellation kinematics, dynamic processor queue occupancies, residual battery energy budgets, and active inter-satellite link topologies.
+We model a regional Low Earth Orbit (LEO) satellite network operating within a Walker-Delta orbital constellation~\cite{walker1984satellite, survey_orbital_edge_2023}. 
+LEO satellites traverse circular orbits at altitudes ranging between $500\text{ km}$ and $1200\text{ km}$, resulting in orbital velocities exceeding $7.5\text{ km/s}$ and orbital periods of roughly $90\text{--}100\text{ minutes}$. 
+The operational network comprises a set of candidate Satellite Edge Nodes (SENs), denoted by $S = \{1, 2, \dots, n\}$, and a set of regional Access Points (APs) or satellite ground stations, denoted by $AP_{global}$~\cite{icdcs_satellite_2025}. 
+Each SEN is equipped with compute capabilities, a finite battery reserve, and inter-satellite communication transceivers. 
+Within the observed geographical region, a designated satellite acts as the centralized \emph{Master Orchestrator}. The Master maintains real-time visibility over constellation kinematics, dynamic processor queue occupancies, residual energy budgets, and active Inter-Satellite Link (ISL) topologies. 
+The orchestration logic and event management are implemented in the \texttt{Orchestrator} class, while the physical state of ground and orbital nodes is encapsulated in \texttt{EdgeServer.py}~\cite{bagini_repo_2026}.
 
-Ground Users (GUs) generate computational requests that arrive dynamically at the regional gateways. 
-Each offloading request $r \in R$ is characterized by a five-element tuple:
+Ground Users (GUs) deploy compute-intensive applications (e.g., Earth observation inference, disaster response imagery processing) whose requests arrive dynamically at regional gateways. 
+Each offloading request $r \in R$ is represented by a five-element tuple:
 \begin{equation}
     r = \left( d_{cpu,r}, D_r, s_r, t_{arr}, AP_r \right)
 \end{equation}
-where $d_{cpu,r}$ is the computational CPU workload execution demand (in seconds), $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input/output dataset payload size (in MB), $t_{arr}$ is the generation timestamp, and $AP_r \in AP_{global}$ identifies the originating entry point~\cite{icdcs_satellite_2025}.
+where $d_{cpu,r}$ is the computational workload execution demand (in seconds), $D_r$ represents the maximum allowable service processing deadline, $s_r$ denotes the input dataset payload size (in MB), $t_{arr}$ is the arrival timestamp at the entry node, and $AP_r \in AP_{global}$ denotes the originating ground access point~\cite{icdcs_satellite_2025}.
 
-To achieve robust real-time execution in highly dynamic space environments, the operational lifecycle of task $r$ is modeled as a decoupled, three-phase circuit:
+\subsection{The Decoupled Three-Phase Lifecycle}
+\label{subsec:decoupled_lifecycle}
+
+Due to the extreme relative velocity between the LEO space segment and ground reference points, the topology of the network is inherently time-varying. 
+A satellite visible to a ground station at arrival timestamp $t_{arr}$ may traverse its elevation cone and disappear behind the local horizon within $5\text{--}10\text{ minutes}$. 
+To prevent solver stale-state failure and guarantee deterministic execution, the lifecycle of each offloaded task $r$ is decoupled into three distinct operational phases:
 \begin{enumerate}
-    \item \textbf{Uplink Control and Data Forwarding Phase ($T_{up}$):} The originating gateway $AP_r$ injects the actual task payload $s_r$ into the orbital plane, which is routed across $h_{up}(r,i)$ ISL hops to candidate satellite $i \in S$~\cite{icdcs_satellite_2025}.
-    \item \textbf{On-Board Computational Execution Phase ($T_{cpu}$):} Satellite $i$ processes $d_{cpu,r}$ duration of work, incurring both the deterministic waiting time in the on-board processor queue $W_{cpu,i}$ and the physical execution delay~\cite{denby2019orbital, icdcs_satellite_2025}.
-    \item \textbf{Post-Execution Geographic Result Delivery ($T_{down}$):} Upon computation completion, the generated output payload is routed back from the executing satellite $i$ to the originating Access Point $AP_r$ across the dynamic ISL topology via an autonomous geographic greedy routing protocol.
+    \item \textbf{Uplink Multi-Hop Forwarding Phase ($T_{up}$):} The originating gateway $AP_r$ injects the task input payload $s_r$ into the orbital network. The payload is forwarded across a multi-hop ISL path $\vec{P}_{up}(AP_r, i)$, traversing $h_{up}(r,i)$ intermediate satellite hops until it reaches the selected compute node $i \in S$~\cite{icdcs_satellite_2025}.
+    \item \textbf{On-Board Computational Execution Phase ($T_{cpu}$):} Upon arrival at satellite $i$, the task is enqueued into the local processor schedule. The overall execution delay encompasses both the queuing wait time $W_{cpu,i}$ and the physical compute duration $d_{cpu,r}$~\cite{denby2019orbital, icdcs_satellite_2025}.
+    \item \textbf{Post-Execution Geographic Result Delivery ($T_{down}$):} Once computation terminates, the resulting output payload must be transferred back to the originating ground gateway $AP_r$. 
 \end{enumerate}
 
-Because result return is governed dynamically in real time by the autonomous greedy protocol, the centralized ILP orchestrator focuses its optimization capacity on the joint satellite selection, uplink multi-hop routing, transmission delay and energy minimization, and processing deadline compliance.
+\paragraph{Design Rationale for Algorithmic Decoupling.} 
+In traditional terrestrial edge computing, dispatchers optimize both forward and return paths simultaneously. In LEO networks, however, the latency required to execute long-running tasks ($W_{cpu,i} + d_{cpu,r} \gg 10\text{ s}$) frequently exceeds the stability window of individual laser ISL alignments. 
+Jointly planning the downlink path at time $t_{arr}$ would force the optimizer to rely on long-range topological predictions that are vulnerable to transient link disruptions, orbital plane crossings, and ground station visibility loss. 
+Consequently, the centralized ILP orchestrator restricts its search space to the joint optimization of satellite candidate selection, uplink ISL forwarding, energy conservation, and deadline compliance. 
+The return phase ($T_{down}$) is delegated to a distributed, autonomous geographic greedy routing protocol executed on-demand at execution completion time.
 
-To formalize the optimization problem and network dynamics unambiguously, 
-Table~\ref{tab:system_notations} summarizes the foundational notations, sets, 
-and operational parameters adopted throughout the system model and ILP formulation.
+Table~\ref{tab:system_notations} compiles the primary mathematical notations, parameters, and variable definitions utilized throughout the mathematical model and software implementation.
 
 \begin{table}[H]
 \centering
@@ -88,125 +104,93 @@ and operational parameters adopted throughout the system model and ILP formulati
 \section{Event-Driven Dynamic Batching Engine}
 \label{sec:dynamic_batching}
 
-In a high-throughput satellite environment, invoking an NP-hard ILP solver upon each individual task arrival introduces prohibitive computational overhead and CPU starvation~\cite{wolsey1998integer, icdcs_satellite_2025}. 
-To address this, the Master Orchestrator implements an event-driven dynamic batching mechanism inside a \texttt{SimPy} discrete-event framework~\cite{simpy2023}, governed by two competing thresholds:
+Formulating and solving an NP-hard Mixed-Integer Linear Program for every incoming task arrival introduces prohibitive computational latency. 
+Under high offloading request rates $\lambda$, instantaneous per-task optimization causes compute-orchestrator starvation: the time spent by the Master node searching the branch-and-bound tree exceeds the task inter-arrival time, resulting in an unstable queuing regime~\cite{wolsey1998integer, icdcs_satellite_2025}. 
+Conversely, static time-window batching introduces artificial buffering delay, potentially causing deadline violations for latency-sensitive tasks during light traffic periods.
+
+To reconcile these competing operational demands, the Master Orchestrator implements an event-driven dynamic batching mechanism within a \texttt{SimPy} discrete-event environment~\cite{simpy2023}. 
+The engine is parameterized by two complementary thresholds:
 \begin{itemize}
-    \item \textbf{Maximum Batch Size ($BS$):} A structural threshold (\texttt{centralized\_batch\_size}) that limits the maximum number of requests solved concurrently, bounding the solver variable space $|R| \times |S|$.
-    \item \textbf{Batch Timeout ($BT$):} A temporal threshold (\texttt{centralized\_batch\_timeout}) that enforces a maximum buffering delay, ensuring requests are not stalled indefinitely.
+    \item \textbf{Maximum Batch Size ($BS$):} A capacity ceiling (\texttt{centralized\_batch\_size}) that limits the cardinality of the task set $|R|$ submitted to the solver. Bounding $|R|$ bounds the binary variable space $|R| \times |S|$, establishing a deterministic upper limit on branch-and-cut execution time.
+    \item \textbf{Batch Timeout ($BT$):} A temporal window (\texttt{centralized\_batch\_timeout}) that bounds the maximum buffering delay experienced by any single request, preventing starvation during low-throughput operational phases.
 \end{itemize}
 
-The execution loop remains quiescent until the arrival of the first request into \texttt{task\_buffer}, which immediately succeeds \texttt{item\_arrived\_event} and initiates the timeout timer. 
-The batch is dispatched when either the accumulated buffer size satisfies $|R| \ge BS$ (triggering \texttt{batch\_ready\_event}) or when the elapsed time satisfies $\Delta t \ge BT$.
+\subsection{State Consistency and Discrete-Event Synchronization}
+\label{subsec:event_synchronization}
 
-A critical design requirement in discrete-event simulation is ensuring state consistency. 
-Because satellite positions, CPU queue lengths, and energy levels evolve continuously according to orbital ephemeris~\cite{vallado2006sgp4}, the orchestrator executes a zero-delay yield (\texttt{yield self.env.timeout(0)}) immediately prior to batch processing. 
-This yields thread execution back to the \texttt{SimPy} event loop, ensuring that all physical updates across the constellation at timestamp $t$ are fully committed before optimization begins.
+In a discrete-event simulation model, physical processes (e.g., satellite movement, inter-satellite distance variations, queue servicing) evolve concurrently across distinct simulation threads. 
+Satellite coordinates and elevation angles are updated dynamically according to orbital ephemeris~\cite{vallado2006sgp4}. 
+If the orchestrator were to capture constellation telemetry immediately upon the satisfaction of a batch trigger, pending thread events scheduled at the exact simulation time $t$ might remain uncommitted, leading to stale queue readings or inconsistent link states.
 
-Listing~\ref{lst:orchestrator_init} presents the software architecture of the \texttt{Orchestrator} class initialization, request enqueuing, and the background lifecycle process.
+To enforce strict state consistency, the orchestrator introduces a zero-delay event barrier:
+\begin{equation}
+    \mathbf{yield} \quad \Call{Timeout}{env, 0}
+\end{equation}
+This operational step temporarily relinquishes thread execution back to the \texttt{SimPy} event scheduler. 
+The engine flushes and commits all physical updates occurring at time $t$ across the entire constellation before the orchestrator initiates graph extraction and solver instantiation.
 
-\begin{adjustwidth}{-2cm}{-2cm}
-\begin{lstlisting}[language=Python, caption={Orchestrator Class Architecture and SimPy Event Loop.}, label={lst:orchestrator_init}]
-import heapq
-import simpy
-import globals
-import pulp
-import ILP_simulation
-import utils
-from Task import Task
-from EdgeServer import get_pos_proximity
+Algorithm~\ref{alg:dynamic_batching} formalizes the dual lifecycle of task ingestion and batch dispatching, corresponding to the \texttt{add\_task}, \texttt{\_run\_loop}, and \texttt{\_process\_batch} methods of \texttt{Orchestrator.py}~\cite{bagini_repo_2026}.
 
-
-class Orchestrator:
-    def __init__(self, env, config):
-        self.env = env
-        self.config = config
-        
-        # Retrieve batch parameters from configuration
-        self.batch_size = config.get("centralized_batch_size", 5)
-        self.batch_timeout = config.get("centralized_batch_timeout", 0.25)
-        
-        self.task_buffer = []
-        
-        # SimPy event handlers
-        self.item_arrived_event = self.env.event()
-        self.batch_ready_event = self.env.event()
-        
-        # Spawn orchestrator background process
-        self.env.process(self._run_loop())
-
-    def add_task(self, task_data, task_id, visible_aps):
-        """
-        Enqueues an incoming task into the buffer and evaluates event triggers.
-        """
-        if not self.task_buffer and not self.item_arrived_event.triggered:
-            self.item_arrived_event.succeed()
-
-        if "arrival_time" not in task_data:
-            task_data["arrival_time"] = self.env.now
-
-        self.task_buffer.append({
-            "task_id": task_id,
-            "data": task_data,
-            "visible_aps": visible_aps,
-            "arrival_time": self.env.now
-        })
-
-        if len(self.task_buffer) >= self.batch_size and not self.batch_ready_event.triggered:
-            self.batch_ready_event.succeed()
-
-    def _run_loop(self):
-        """
-        Main orchestrator lifecycle loop, handling non-blocking waits within the simulation.
-        """
-        while True:
-            # 1. Wait idle for the arrival of the FIRST task
-            if not self.task_buffer:
-                yield self.item_arrived_event
-
-            # 2. Start batch aggregation timer (Timeout)
-            timeout_event = self.env.timeout(self.batch_timeout)
-
-            # 3. Wait until either condition is met
-            yield self.batch_ready_event | timeout_event
-
-            # 4. Process accumulated batch tasks
-            if self.task_buffer:
-                trigger_reason = "Maximum Capacity" if self.batch_ready_event.triggered else "Timeout"
-                print(f"[{self.env.now:.3f}] Orchestrator: ILP trigger due to {trigger_reason} ({len(self.task_buffer)} tasks).")
-
-                # Yield control to event loop to process physical satellite state updates 
-                yield self.env.timeout(0)
-
-                self._process_batch()
-
-            # 5. Reset events for the subsequent cycle
-            self.item_arrived_event = self.env.event()
-            self.batch_ready_event = self.env.event()
-
-    def _process_batch(self):
-        """
-        Core routine orchestrating the resolution and dispatching pipeline.
-        """
-        # A. Map constellation topology and state
-        network_state = self._map_constellation()
-        
-        # B. Invoke PuLP ILP solver
-        assignments = self._solve_ilp(network_state, self.task_buffer)
-        print(f"[{self.env.now:.3f}] Orchestrator: ILP completed.")
-
-        # C. Dispatch tasks based on optimization results
-        self._dispatch_tasks(assignments)
-\end{lstlisting}
-\end{adjustwidth}
+\begin{algorithm}[H]
+\caption{Event-Driven Batch Ingestion and Orchestrator Lifecycle}
+\label{alg:dynamic_batching}
+\begin{algorithmic}[1]
+\Require Simulation environment $env$, buffer capacity $BS$, timeout duration $BT$
+\Ensure Aggregation of incoming tasks into batches and invocation of optimization pipeline
+\State \textbf{Global State:} $\mathcal{B} \gets [\,]$, $E_{arrival} \gets \Call{CreateEvent}{env}$, $E_{ready} \gets \Call{CreateEvent}{env}$
+\Statex
+\Procedure{AddTask}{$task\_data, task\_id, visible\_aps$} \Comment{Invoked upon task arrival}
+    \If{$\mathcal{B} = [\,]$ \textbf{and} $\neg \Call{IsTriggered}{E_{arrival}}$}
+        \State $\Call{TriggerEvent}{E_{arrival}}$ \Comment{Signal arrival of first batch task}
+    \EndIf
+    \State Append $(task\_id, task\_data, visible\_aps, env.now)$ to $\mathcal{B}$
+    \If{$|\mathcal{B}| \ge BS$ \textbf{and} $\neg \Call{IsTriggered}{E_{ready}}$}
+        \State $\Call{TriggerEvent}{E_{ready}}$ \Comment{Signal maximum capacity reached}
+    \EndIf
+\EndProcedure
+\Statex
+\Procedure{RunLifecycleLoop}{} \Comment{Continuous orchestrator background thread}
+    \Loop
+        \If{$\mathcal{B} = [\,]$}
+            \State \textbf{await} $E_{arrival}$ \Comment{Sleep until first request arrives}
+        \EndIf
+        \State $E_{timeout} \gets \Call{StartTimer}{env, BT}$ \Comment{Start temporal aggregation window}
+        \State \textbf{await} $E_{ready} \lor E_{timeout}$ \Comment{Wake on capacity reached or timeout expiration}
+        \If{$\mathcal{B} \neq [\,]$}
+            \State \textbf{yield} $\Call{Timeout}{env, 0}$ \Comment{Commit concurrent physical and orbital updates}
+            \State $\Call{ProcessBatch}{}$
+        \EndIf
+        \State $E_{arrival} \gets \Call{CreateEvent}{env}$, \quad $E_{ready} \gets \Call{CreateEvent}{env}$ \Comment{Reset triggers}
+    \EndLoop
+\EndProcedure
+\Statex
+\Procedure{ProcessBatch}{} \Comment{Batch execution pipeline}
+    \State $\mathcal{B}_{active} \gets \mathcal{B}, \quad \mathcal{B} \gets [\,]$
+    \State $(\mathcal{T}_{route}, \mathcal{M}_{nodes}) \gets \Call{MapConstellationTopology}{}$
+    \State $\mathcal{A} \gets \Call{SolveILP}{\mathcal{T}_{route}, \mathcal{M}_{nodes}, \mathcal{B}_{active}}$
+    \State $\Call{DispatchTasks}{\mathcal{A}}$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
 
 \section{Constellation Topology Mapping and Metric Normalization}
 \label{sec:constellation_mapping}
 
 Before formulating the optimization model, the Master Orchestrator must compute the optimal multi-hop ISL routing paths from every active ground Access Point to all candidate Satellite Edge Nodes. 
-This is handled by the \texttt{\_map\_constellation} method using a Multi-Source Dijkstra shortest-path algorithm~\cite{dijkstra1959note}.
+This exploration is conducted by the \texttt{\_map\_constellation} method in \texttt{Orchestrator.py} using a Multi-Source Dijkstra shortest-path algorithm~\cite{dijkstra1959note, bagini_repo_2026}.
 
-Evaluating dynamic satellite links with raw physical dimensions introduces dimensional bias (e.g., comparing milliseconds of propagation delay against microjoules of radio energy). 
-To achieve uniform metric evaluation across heterogeneous links during topology exploration, each directed edge $(u, v)$ with latency $\tau_{u,v}$ and bandwidth $B_{u,v}$ (in Bytes/s) is evaluated against a standardized reference payload $S_{ref} = 1~\text{MB}$ ($1024^2~\text{bytes}$) over optical ISL channels~\cite{chen2021isl, chaudhry2021laser}:
+\subsection{Dimensionless Link Cost Normalization}
+\label{subsec:metric_normalization}
+
+A major challenge in evaluating dynamic satellite links lies in the dimensional disparity between physical performance metrics. 
+Directly summing link propagation latency (measured in milliseconds) and radio frequency/optical transmission energy (measured in microjoules or joules) is physically inconsistent and introduces scale bias into shortest-path calculations. 
+Furthermore, the actual payload size $s_r$ varies across requests, making it impossible to compute a single static link weight that accurately reflects every pending task.
+
+To decouple graph exploration from individual task sizes, each directed inter-satellite edge $(u, v)$ is probed using a standardized reference payload:
+\begin{equation}
+    S_{ref} = 1~\text{MB} = 1024^2~\text{bytes}
+\end{equation}
+For an edge $(u, v)$ characterized by propagation delay $\tau_{u,v}$ and transmission bandwidth $B_{u,v}$ (in Bytes/s), the physical traversal time and energy consumption for the reference payload over optical ISL channels~\cite{chen2021isl, chaudhry2021laser} are formulated as:
 \begin{equation}
     t_{link}(u,v) = \tau_{u,v} + \frac{S_{ref}}{B_{u,v}}
     \label{eq:t_link}
@@ -215,198 +199,133 @@ To achieve uniform metric evaluation across heterogeneous links during topology 
     e_{link}(u,v) = P_{net} \cdot \frac{S_{ref}}{B_{u,v}}
     \label{eq:e_link}
 \end{equation}
-where $P_{net}$ is the radio/laser transmission power (\texttt{Ptrasm})~\cite{icdcs_satellite_2025}.
+where $P_{net}$ is the active laser transceiver power (\texttt{Ptrasm})~\cite{icdcs_satellite_2025}.
 
-The edge metrics are normalized against theoretical upper bounds ($T_{max}$ and $E_{max}$) derived from \ref{eq:t_link} and \ref{eq:e_link} in the case of minimum network bandwidth ($B_{min} = 100~\text{KB/s}$) and maximum link latency ($\tau_{max} = 100~\text{ms}$):
+To compute a composite, scale-free cost, the metrics are normalized against theoretical upper bounds, $T_{max}$ and $E_{max}$. 
+These bounds represent a worst-case link operating under minimum network bandwidth ($B_{min} = 100~\text{KB/s}$) and maximum slant propagation delay ($\tau_{max} = 100~\text{ms}$):
+\begin{equation}
+    T_{max} = \tau_{max} + \frac{S_{ref}}{B_{min}}, \quad E_{max} = P_{net} \cdot \frac{S_{ref}}{B_{min}}
+\end{equation}
+The dimensionless, normalized delay and energy metrics are thus:
 \begin{equation}
     \hat{t}_{link}(u,v) = \frac{t_{link}(u,v)}{T_{max}}, \quad \hat{e}_{link}(u,v) = \frac{e_{link}(u,v)}{E_{max}}
 \end{equation}
-The composite dimensionless edge weight $c_{link}(u,v)$ is computed as a convex combination parameterized by weights $w_R$ (\texttt{centralized\_w\_r}) and $w_e$ (\texttt{centralized\_w\_e}):
+The composite scalar cost $c_{link}(u,v) \in [0, 1]$ is established as a convex combination governed by the user-defined routing policy weights $w_R$ (\texttt{centralized\_w\_r}) and $w_e$ (\texttt{centralized\_w\_e}):
 \begin{equation}
-    c_{link}(u,v) = w_R \cdot \hat{t}_{link}(u,v) + w_e \cdot \hat{e}_{link}(u,v)
+    c_{link}(u,v) = w_R \cdot \hat{t}_{link}(u,v) + w_e \cdot \hat{e}_{link}(u,v), \quad \text{where } w_R + w_e = 1
 \end{equation}
 
-While the Multi-Source Dijkstra mapping employs $S_{ref}$ to discover structurally optimal topological backbones independent of instantaneous request sizes, the subsequent ILP optimization formulation dynamically evaluates per-hop link latencies and forwarding energy costs tailored to the exact payload size $s_r$ of each offloaded task.
+\paragraph{Structural Decoupling Principle.} 
+The Multi-Source Dijkstra procedure uses $S_{ref}$ solely to discover the structural shortest-path backbone $\vec{P}_{up}(AP_r, i)$ between access points and candidate satellites. 
+Once these paths are established, the subsequent ILP optimization model scales transmission delay and forwarding energy according to the actual input payload size $s_r^{bytes} = s_r \cdot 1024^2$ of each individual request. 
 
-Concurrently, the routine queries all candidate nodes in \texttt{globals.edge\_servers} to capture residual energy $B_i$, processor queue wait $W_{cpu,i}$ (\texttt{W\_cpu\_simpy}), network queue wait $W_{net,i}$ (\texttt{W\_net\_simpy}), processor clock speed $C_{sen,i}$, CPU energy coefficient $\kappa_i$ (\texttt{e\_coeff}), and orbital sunset timestamp $t_{sunset,i}$.
+Concurrently with path discovery, the orchestrator queries all candidate nodes in \texttt{globals.edge\_servers} to construct an up-to-date telemetry state snapshot:
+\begin{equation}
+    \mathbf{v}_i = \left[ B_i, W_{cpu,i}, W_{net,i}, C_{sen,i}, \kappa_i, t_{sunset,i} \right]
+\end{equation}
+capturing residual battery levels, CPU queue wait times, network queue buffer latencies, processor frequencies, switching capacitance coefficients, and orbital eclipse horizons. 
+The complete procedure is formalized in Algorithm~\ref{alg:constellation_mapping}.
 
-Listing~\ref{lst:orchestrator_mapping} shows the executable implementation of the constellation mapping procedure.
-
-\begin{adjustwidth}{-2cm}{-2cm}
-\begin{lstlisting}[language=Python, caption={Constellation Topology and SEN State Mapping via Multi-Source Dijkstra.}, label={lst:orchestrator_mapping}]
-    def _map_constellation(self):
-        """
-        Maps shortest paths from each AP to all candidate satellites (SENs) via Dijkstra.
-        Link cost is formulated as a weighted combination of Delay and Energy.
-        """
-        # Retrieve objective cost function weights from configuration
-        w_e = self.config.get("centralized_w_e", 0.5)
-        w_R = self.config.get("centralized_w_r", 0.5)
-        p_trasm = self.config.get("Ptrasm", 1.0)
-
-        # Standardize link metrics using a 1 MB reference payload (in bytes)
-        REF_DATA_BYTES = 1024 * 1024 
-
-        network_state = {
-            "routing_table": {}, # Format: {ap_name: {sen_name: {'cost': X, 'time': Y, 'energy': Z, 'path': [...]}}}
-            "node_states": {}    # Format: {sen_name: {'energy_residual': X, 'cpu_queue': Y, ...}}
-        }
-
-        # 1. Collect all topology nodes to facilitate network graph traversal
-        all_nodes = globals.global_access_point + globals.edge_servers
-        node_dict = {n.name: n for n in all_nodes}
-
-        # 2. Multi-Source Dijkstra: explore network topology from each AP
-        for ap in globals.global_access_point:
-            network_state["routing_table"][ap.name] = {}
-            
-            # Priority queue tuple structure:
-            # (total_cost, total_time, total_energy, current_node_name, path_so_far)
-            pq = [(0.0, 0.0, 0.0, ap.name, [ap.name])]
-            
-            # Track minimum discovered cost to reach each node from this AP
-            min_costs = {ap.name: 0.0}
-
-            while pq:
-                current_cost, current_time, current_energy, current_node_name, path = heapq.heappop(pq)
-                
-                # Skip obsolete (sub-optimal) popped paths
-                if current_cost > min_costs.get(current_node_name, float('inf')):
-                    continue
-
-                # If current node is a satellite (SEN), store its finalized shortest path
-                current_node_obj = node_dict[current_node_name]
-                if current_node_obj in globals.edge_servers:
-                    network_state["routing_table"][ap.name][current_node_name] = {
-                        "total_cost": current_cost,
-                        "total_time": current_time,
-                        "total_energy": current_energy,
-                        "path": path
-                    }
-
-                # Explore physical neighbors of current node
-                for neighbor in current_node_obj.get_neighbors():
-
-                    if neighbor.name not in node_dict:
-                        continue
-
-                    # Extract physical communication link metrics
-                    latency = current_node_obj.get_latency(neighbor) or 0.0
-                    bw_MBps = current_node_obj.get_bandwidth(neighbor) or 0.0
-                    bw_Bps = bw_MBps * (1024**2)
-
-                    # Interrupted link if available bandwidth is non-positive:
-                    if bw_Bps <= 0:
-                        continue
-
-                    # Set conservative estimates for network bandwidth lower bound and latency upper bound
-                    MIN_BW_BPS = 100000 # Example: 100 KB/s
-                    MAX_LATENCY = 0.1   # Example: 100 ms
-
-                    # Compute theoretical upper bounds for reference payload
-                    MAX_LINK_TIME = MAX_LATENCY + (REF_DATA_BYTES / MIN_BW_BPS)
-                    MAX_LINK_ENERGY = current_node_obj.compute_routing_energy(REF_DATA_BYTES, bw_Bps, p_trasm)
-                    
-                    # Compute latency and energy required to transmit reference payload
-                    trans_time = REF_DATA_BYTES / bw_Bps
-                    link_time = latency + trans_time
-                    link_energy = current_node_obj.compute_routing_energy(REF_DATA_BYTES, bw_Bps, p_trasm)
-
-                    # Min-Max Normalization
-                    norm_time = link_time / MAX_LINK_TIME if MAX_LINK_TIME > 0 else 0.0
-                    norm_energy = link_energy / MAX_LINK_ENERGY if MAX_LINK_ENERGY > 0 else 0.0
-
-                    # Composite dimensionless link cost
-                    link_cost = (w_R * norm_time) + (w_e * norm_energy)
-
-                    new_cost = current_cost + link_cost
-                    new_time = current_time + link_time
-                    new_energy = current_energy + link_energy
-
-                    # Update shortest path if a lower-cost route is found
-                    if new_cost < min_costs.get(neighbor.name, float('inf')):
-                        min_costs[neighbor.name] = new_cost
-                        heapq.heappush(pq, (new_cost, new_time, new_energy, neighbor.name, path + [neighbor.name]))
-
-        # 3. Map operational health and queue metrics of candidate SENs
-        for node in globals.edge_servers:
-            try:
-                w_cpu_simpy = node.W_cpu()
-            except Exception:
-                w_cpu_simpy = getattr(node, "W_cpu", lambda: 0.0)()
-
-            try:
-                w_net_simpy = node.W_net()
-            except Exception:
-                w_net_simpy = getattr(node, "W_net", lambda: 0.0)()
-
-            # ------------------------------
-            # Compute orbital sunset time
-            raw_sunset = getattr(node, "orbitalSunset", None)
-            if raw_sunset is not None:
-                safe_sunset = float(raw_sunset)
-            else:
-                safe_sunset = 0.0
-            # ------------------------------
-
-            # Construct node state snapshot
-            network_state["node_states"][node.name] = {
-                "energy_residual": node.energy,
-                "W_cpu_simpy": w_cpu_simpy,
-                "W_net_simpy": w_net_simpy,      
-                "C_sen": getattr(node, "C_sen", 1e9),
-                "e_coeff": self.config.get("energy_coefficient", 5e-26),
-                "sunset_time": safe_sunset
-            }
-
-        return network_state
-\end{lstlisting}
-\end{adjustwidth}
+\begin{algorithm}[H]
+\caption{Multi-Source Constellation Topology and Telemetry Mapping}
+\label{alg:constellation_mapping}
+\begin{algorithmic}[1]
+\Require Access points $AP_{global}$, satellites $S$, weights $w_R, w_e$, reference size $S_{ref}$, bounds $T_{max}, E_{max}$
+\Ensure Routing table $\mathcal{T}_{route}$ and node operational telemetry dictionary $\mathcal{M}_{nodes}$
+\State $\mathcal{T}_{route} \gets \emptyset, \quad \mathcal{M}_{nodes} \gets \emptyset$
+\ForAll{$ap \in AP_{global}$}
+    \State $\mathcal{T}_{route}[ap] \gets \emptyset$
+    \State Initialize min-heap $\mathcal{Q} \gets \emptyset$, distance map $dist[v] \gets \infty, \forall v \in (AP_{global} \cup S)$
+    \State $dist[ap] \gets 0.0$
+    \State $\Call{Push}{\mathcal{Q}, (0.0, 0.0, 0.0, ap, [ap])}$ \Comment{Store $(cost, time, energy, node, path)$}
+    \While{$\mathcal{Q} \neq \emptyset$}
+        \State $(cost, time, energy, u, path) \gets \Call{PopMin}{\mathcal{Q}}$
+        \If{$cost > dist[u]$}
+            \State \textbf{continue}
+        \EndIf
+        \If{$u \in S$}
+            \State $\mathcal{T}_{route}[ap][u] \gets \{ \text{cost}: cost, \text{time}: time, \text{energy}: energy, \text{path}: path \}$
+        \EndIf
+        \ForAll{$v \in \Call{Neighbors}{u}$}
+            \State $\tau_{u,v} \gets \Call{GetLatency}{u, v}, \quad B_{u,v} \gets \Call{GetBandwidth}{u, v} \cdot 1024^2$
+            \If{$B_{u,v} \le 0$} \Comment{Skip inactive or broken links}
+                \State \textbf{continue}
+            \EndIf
+            \State $t_{hop} \gets \tau_{u,v} + \frac{S_{ref}}{B_{u,v}}, \quad e_{hop} \gets P_{net} \cdot \frac{S_{ref}}{B_{u,v}}$
+            \State $\hat{t} \gets t_{hop} / T_{max}, \quad \hat{e} \gets e_{hop} / E_{max}$
+            \State $c_{link} \gets w_R \cdot \hat{t} + w_e \cdot \hat{e}$
+            \If{$dist[u] + c_{link} < dist[v]$}
+                \State $dist[v] \gets dist[u] + c_{link}$
+                \State $\Call{Push}{\mathcal{Q}, (dist[v], time + t_{hop}, energy + e_{hop}, v, path \cup [v])}$
+            \EndIf
+        \EndFor
+    \EndWhile
+\EndFor
+\ForAll{$i \in S$} \Comment{Capture telemetry snapshot across all candidate compute nodes}
+    \State $W_{cpu,i} \gets \Call{W\_cpu}{i}, \quad W_{net,i} \gets \Call{W\_net}{i}$
+    \State $B_i \gets \Call{GetEnergy}{i}, \quad C_{sen,i} \gets \Call{GetClockSpeed}{i}, \quad t_{sunset,i} \gets \Call{GetSunset}{i}$
+    \State $\mathcal{M}_{nodes}[i] \gets \{ B_i, W_{cpu,i}, W_{net,i}, C_{sen,i}, \kappa_i, t_{sunset,i} \}$
+\EndFor
+\State \Return $(\mathcal{T}_{route}, \mathcal{M}_{nodes})$
+\end{algorithmic}
+\end{algorithm}
 
 \section{Centralized Integer Linear Programming Formulation}
 \label{sec:mathematical_model}
 
-Let $R$ be the set of tasks extracted in the active batch and $S$ the set of candidate Satellite Edge Nodes. 
-Following classical combinatorial and linear programming principles~\cite{wolsey1998integer, boyd2004convex}, the optimization problem defines two families of binary decision variables:
+Let $R$ be the set of tasks accumulated within the current batch ($|R| \le BS$) and $S$ the set of candidate Satellite Edge Nodes. 
+Building upon combinatorial optimization theory~\cite{wolsey1998integer, boyd2004convex}, the decision space is modeled via two sets of binary decision variables:
 \begin{align}
-    x_{r,i} &\in \{0, 1\}, \quad \forall r \in R, \, \forall i \in S \quad \text{(1 if task $r$ is allocated to satellite $i$; 0 otherwise)} \\
+    x_{r,i} &\in \{0, 1\}, \quad \forall r \in R, \, \forall i \in S \quad \text{(1 if task $r$ is assigned to SEN $i$; 0 otherwise)} \\
     y_r &\in \{0, 1\}, \quad \forall r \in R \quad \text{(1 if task $r$ is explicitly rejected; 0 otherwise)}
 \end{align}
 
-\subsection{Latency, Energy, and Orbital Eclipse Modeling}
-For each candidate allocation $(r, i)$, the end-to-end processing delay $R_{r,i}$ evaluated by the solver accounts for multi-hop uplink ISL forwarding of the actual task payload $s_r^{bytes}$ across path $\vec{P}_{up}(AP_r, i)$ alongside local computing queue and execution delays~\cite{icdcs_satellite_2025}:
+\subsection{Physical Delay, Energy, and Orbital Eclipse Modeling}
+\label{subsec:latency_energy_models}
+
+For each candidate assignment pair $(r, i)$, the total predicted response time $R_{r,i}$ accounts for the multi-hop transmission delay of the actual payload $s_r^{bytes} = s_r \cdot 1024^2$ along path $\vec{P}_{up}(AP_r, i)$, network buffering delays at intermediate hops, and compute queue and execution times at satellite $i$~\cite{icdcs_satellite_2025}:
 \begin{equation}
     R_{r,i} = \underbrace{\sum_{(u,v) \in \vec{P}_{up}(AP_r, i)} \left( W_{net,u} + \frac{s_r^{bytes}}{B_{u,v}} + \tau_{u,v} \right)}_{T_{up}(r,i)} + \left( W_{cpu,i} + d_{cpu,r} \right)
     \label{eq:total_latency}
 \end{equation}
-where $s_r^{bytes} = s_r \cdot 1024^2$ represents the input data volume in bytes, ensuring that link transmission latency directly scales with individual payload footprints.
 
-Similarly, the cumulative fleet energy expenditure $\epsilon_{r,i}$ evaluates the network forwarding energy across all intermediate ISL nodes along $\vec{P}_{up}(AP_r, i)$ as a function of the exact transferred data volume, alongside the dynamic energy expended for local CPU execution~\cite{icdcs_satellite_2025}:
+Similarly, the cumulative fleet energy expenditure $\epsilon_{r,i}$ evaluates the communication energy expended by all intermediate forwarding satellites along $\vec{P}_{up}(AP_r, i)$, combined with the dynamic CPU energy consumed by destination node $i$ during local processing:
 \begin{equation}
     \epsilon_{r,i} = \sum_{(u,v) \in \vec{P}_{up}(AP_r, i)} P_{net} \frac{s_r^{bytes}}{B_{u,v}} + \kappa_i \cdot d_{cpu,r} \cdot C_{sen,i}^3
     \label{eq:total_energy}
 \end{equation}
+The CPU energy model is derived from dynamic CMOS switching power dissipation:
+\begin{equation}
+    P_{cpu} = \kappa_i \cdot C_{sen,i}^3
+\end{equation}
+which, integrated over the computational duration $d_{cpu,r}$, yields the second term in Equation~\eqref{eq:total_energy}~\cite{icdcs_satellite_2025}.
 
-To avoid assigning tasks to satellites nearing orbital eclipse, the orchestrator defines an orbital sunset penalty $\Omega_i \in [0, 1]$:
+To protect satellites approaching orbital eclipse from battery depletion, we define an orbital sunset penalty $\Omega_i \in [0, 1]$. 
+If a satellite is in direct sunlight, its photovoltaic arrays harvest solar energy; when entering the Earth's shadow (eclipse), the node must rely entirely on stored chemical battery reserves. 
+Assigning intensive tasks to a node nearing eclipse risks unexpected brownouts. 
+Let $t_{sunset,i}$ represent the remaining solar visibility time for satellite $i$. The penalty factor is defined as:
 \begin{equation}
     \Omega_i = \begin{cases}
         1.0 - \frac{t_{sunset,i}}{\max_{k \in S} (t_{sunset,k})}, & \text{if } \max_{k \in S} (t_{sunset,k}) > 0 \\
+        1.0, & \text{if } t_{sunset,i} = 0 \text{ (currently in eclipse)} \\
         0.0, & \text{otherwise}
     \end{cases}
 \end{equation}
-Satellites currently unreachable due to orbital eclipse ($t_{sunset,i} = 0$) receive the maximum penalty $\Omega_i = 1.0$.
+This term penalizes allocations to satellites entering eclipse without introducing non-linear step-function discontinuities into the objective function.
 
 \subsection{Multi-Objective Function and System Constraints}
-Let $P_{drop} = 10^6$ represent a massive penalty scalar ensuring that task rejection is strictly penalized unless physical constraints are violated. 
-The aggregated fleet latency ($Z_{time}$), energy ($Z_{energy}$), and eclipse penalty ($Z_{sunset}$) are defined as:
+\label{subsec:objective_constraints}
+
+Task rejection ($y_r = 1$) is penalized via a large scalar coefficient $P_{drop} = 10^6$. 
+This ensures that the solver rejects tasks only when physical capacity, energy, or deadline constraints make acceptance strictly infeasible. 
+The global fleet performance metrics for delay ($Z_{time}$), energy ($Z_{energy}$), and eclipse degradation ($Z_{sunset}$) are defined as:
 \begin{align}
     Z_{time} &= \sum_{r \in R} \sum_{i \in S} x_{r,i} R_{r,i} + \sum_{r \in R} y_r P_{drop} \\
     Z_{energy} &= \sum_{r \in R} \sum_{i \in S} x_{r,i} \epsilon_{r,i} + \sum_{r \in R} y_r P_{drop} \\
     Z_{sunset} &= \sum_{r \in R} \sum_{i \in S} x_{r,i} \Omega_i
 \end{align}
 
-Depending on the configuration parameter \texttt{centralized\_primary\_objective} (Time vs. Energy), the objective function $Z$ applies hierarchical weighting parameters ($\alpha$, $\beta$, and $\gamma$)~\cite{boyd2004convex, zhong2025leo}:
-
+Depending on the operational strategy configured via \texttt{centralized\_primary\_objective} (Time-first vs. Energy-first), the composite objective function $Z$ applies hierarchical scalar weights ($\alpha, \beta, \gamma$)~\cite{boyd2004convex, zhong2025leo}:
 \begin{equation}
     \min Z = \begin{cases}
         \alpha Z_{time} + \beta Z_{energy} + \gamma Z_{sunset}, & \text{if primary strategy is Time} \\
@@ -414,527 +333,226 @@ Depending on the configuration parameter \texttt{centralized\_primary\_objective
     \end{cases}
     \label{eq:objective_function}
 \end{equation}
-where $\alpha$ denotes the weight assigned to the primary performance metric, $\beta$ weights the secondary objective, and $\gamma$ scales the orbital sunset penalty factor.
+where $\alpha$ scales the primary objective, $\beta$ weights the secondary objective, and $\gamma$ governs the eclipse penalty.
 
-The optimization space is constrained by four strict linear relations:
+The feasible assignment space is governed by four linear constraints:
 \begin{enumerate}
-    \item \textbf{Decision Uniqueness:} Every task must be assigned to exactly one satellite or dropped:
+    \item \textbf{Decision Uniqueness:} Every offloaded request $r \in R$ must either be allocated to exactly one satellite node $i \in S$ or explicitly dropped:
     \begin{equation}
         \sum_{i \in S} x_{r,i} + y_r = 1, \quad \forall r \in R
+        \label{eq:constraint_uniqueness}
     \end{equation}
-    \item \textbf{Strict Service Processing Deadline:} Enforces that uplink forwarding and local execution do not exceed the deadline $D_r$~\cite{icdcs_satellite_2025}:
+    \item \textbf{Strict Processing Deadline Compliance:} The cumulative predicted latency (uplink forwarding, queue buffering, and execution) must not exceed the application deadline $D_r$~\cite{icdcs_satellite_2025}:
     \begin{equation}
         x_{r,i} \cdot R_{r,i} \le D_r, \quad \forall r \in R, \, \forall i \in S
+        \label{eq:constraint_deadline}
     \end{equation}
-    \item \textbf{Distributed Fleet Energy Budget:} Enforces that the total energy allocated to satellite node $k$ (across all tasks where $k$ is an intermediate ISL forwarder or execution node) remains within its residual battery capacity $B_k$~\cite{icdcs_satellite_2025}:
+    If candidate satellite $i$ cannot satisfy the deadline ($R_{r,i} > D_r$), the linear constraint forces $x_{r,i} = 0$.
+    \item \textbf{Distributed Fleet Energy Budget:} The total energy required from satellite $k \in S$—both as an intermediate packet forwarder along path $\vec{P}_{up}(AP_r, i)$ and as a compute node—must not exceed its usable residual battery budget $B_k$:
     \begin{equation}
         \sum_{r \in R} \sum_{i \in S} x_{r,i} \cdot \epsilon_{r,i,k} \le B_k, \quad \forall k \in S
+        \label{eq:constraint_energy}
     \end{equation}
-    \item \textbf{Constellation Load Balancing (Anti-Congestion):} Prevents processor queue bottlenecks by bounding the maximum simultaneous task allocations per node~\cite{tang2003loadbalancing}:
+    where $\epsilon_{r,i,k}$ captures the specific energy portion expended by satellite $k$ when task $r$ is processed on satellite $i$.
+    \item \textbf{Constellation Load Balancing (Anti-Congestion):} To prevent localized bottlenecks and head-of-line blocking in satellite compute queues, the solver caps the total number of tasks allocated to any single satellite within the batch:
     \begin{equation}
         \sum_{r \in R} x_{r,i} \le \left\lfloor \frac{|R|}{|S|} \right\rfloor + 5, \quad \forall i \in S
+        \label{eq:constraint_load_balancing}
     \end{equation}
-    Where $|R|$ denotes the total number of tasks and $|S|$ denotes the total number of satellite nodes.
+    The uniform distribution term $\lfloor |R| / |S| \rfloor$ establishes a fair-share baseline, while the constant slack term $+5$ allows the solver to opportunistically exploit high-performance or low-latency nodes when capacity permits~\cite{tang2003loadbalancing}.
 \end{enumerate}
 
-\subsection{Solver Routine and Cascade Rejection Diagnostics}
-The model is constructed in Python using \texttt{PuLP}~\cite{pulp2011} and executed via the \texttt{HiGHS} solver engine~\cite{huangfu2018highs}. 
-Upon resolution, if a task is rejected ($y_r = 1$), the orchestrator executes a cascade diagnostic evaluation across all reachable SENs to classify the primary drop reason:
-\begin{itemize}
-    \item \texttt{"No\_Route"}: No viable ISL path exists from $AP_r$ to any satellite.
-    \item \texttt{"Deadline\_Violation"}: Predicted response time $R_{r,i}$ exceeds $D_r$.
-    \item \texttt{"Sunset\_Violation"}: Response time exceeds available solar visibility horizon $t_{sunset,i}$.
-    \item \texttt{"Energy\_Exhaustion"}: Residual battery $B_k$ is insufficient for multi-hop transmission or computing.
-    \item \texttt{"Load\_Balancing\_Rejected"}: Satellite reached its maximum capacity threshold.
-    \item \texttt{"Global\_ILP\_Conflict"}: Task rejected to preserve global objective optimality under shared fleet constraints.
-\end{itemize}
+\subsection{Solver Resolution and Cascade Rejection Diagnostics}
+\label{subsec:cascade_diagnostics}
 
-Listing~\ref{lst:orchestrator_ilp} presents the complete \texttt{\_solve\_ilp} implementation.
+The mathematical program is built dynamically in Python via \texttt{PuLP}~\cite{pulp2011} within the \texttt{\_solve\_ilp} method and solved using \texttt{HiGHS}~\cite{huangfu2018highs, bagini_repo_2026}. 
+While conventional optimization formulations treat task rejection as an undifferentiated binary outcome ($y_r = 1$), root-cause attribution is essential for system monitoring and telemetry.
 
-\begin{adjustwidth}{-2cm}{-2cm}
-\begin{lstlisting}[language=Python, caption={PuLP ILP Formulation, HiGHS Resolution, and Cascade Rejection Diagnostics.}, label={lst:orchestrator_ilp}]
-    def _solve_ilp(self, network_state, tasks):
-        """
-        Open-Source Hierarchical PuLP Optimization Formulation
-        """
-        # Initialize minimization problem
-        m = pulp.LpProblem("SECMotionModel_Centralized_ILP", pulp.LpMinimize)
+To provide operational visibility, when $y_r^* = 1$, the orchestrator executes a post-solution cascade diagnostic evaluation across all reachable candidate satellites $S_{reach}(r) \subseteq S$. 
+For each candidate $i \in S_{reach}(r)$, the system evaluates physical feasibility conditions in order of operational priority:
+\begin{enumerate}
+    \item \textbf{No Route Found:} If the access point cannot establish a path to any candidate node ($S_{reach}(r) = \emptyset$), the drop cause is classified as \texttt{"No\_Route"}.
+    \item \textbf{Deadline Violation:} If the path and execution delay exceed the deadline ($R_{r,i} > D_r$), candidate $i$ is flagged as \texttt{"Deadline\_Violation"}.
+    \item \textbf{Eclipse/Sunset Infeasibility:} If the projected execution window extends past the satellite's solar horizon ($R_{r,i} > t_{sunset,i}$), the candidate is classified as \texttt{"Sunset\_Violation"}.
+    \item \textbf{Battery Energy Depletion:} If the node's residual battery is insufficient to cover compute or forwarding demands ($B_k - E_{allocated,k} < \epsilon_{r,i,k}$), candidate $i$ is labeled as \texttt{"Energy\_Exhaustion"}.
+    \item \textbf{Capacity Saturation:} If node $i$ has already reached its allocation cap under the load balancing bound, it is marked as \texttt{"Load\_Balancing\_Rejected"}.
+    \item \textbf{Global ILP Objective Trade-Off:} If candidate $i$ is physically capable of servicing the task, but the solver dropped it to avoid exceeding fleet-wide budget constraints or penalizing the global objective function, the assignment is recorded as \texttt{"Global\_ILP\_Conflict"}.
+\end{enumerate}
 
-        # Configuration parameters
-        primary_obj = self.config.get("centralized_primary_objective", "time")
-        p_net = self.config.get("Ptrasm", 1.0)
-        
-        R_set = tasks
-        S_set = list(network_state["node_states"].keys())
-        all_nodes = globals.global_access_point + globals.edge_servers
-        node_dict = {n.name: n for n in all_nodes}
+Algorithm~\ref{alg:ilp_formulation} details the complete optimization assembly, branch-and-cut resolution, and the post-solution cascade diagnostics implemented in \texttt{\_solve\_ilp}~\cite{bagini_repo_2026}.
 
-        # Decision variable definitions
-        x = pulp.LpVariable.dicts("x", ((r, i) for r in range(len(R_set)) for i in S_set), cat='Binary')
-        y = pulp.LpVariable.dicts("y", (r for r in range(len(R_set))), cat='Binary')
-
-        # --- CONSTRAINT 1: Decision Uniqueness (Assign or Drop) ---
-        for r_idx in range(len(R_set)):
-            # Exactly one satellite assignment or drop decision per task
-            m += pulp.lpSum(x[r_idx, i] for i in S_set) + y[r_idx] == 1, f"Assign_Or_Drop_{r_idx}"
-
-        time_costs = {}
-        energy_costs = {}
-        node_energy_expressions = {k: [] for k in S_set}
-
-        # 2. Construct link metrics and operational constraints
-        for r_idx, task in enumerate(R_set):
-            task_data = task["data"]
-            ap_origin = task["visible_aps"][0].name
-            d_cpu = task_data.get('d_cpu', 0.0)
-            deadline = task_data.get('deadline', 300.0)
-            s_r_bytes = task_data.get('image_size', 0.0) * 1024 * 1024
-            
-            for i in S_set:
-                route_info_up = network_state["routing_table"].get(ap_origin, {}).get(i)
-                
-                if not route_info_up:
-                    m += x[r_idx, i] == 0, f"NoRoute_{r_idx}_{i}"
-                    time_costs[r_idx, i] = 0
-                    energy_costs[r_idx, i] = 0
-                    continue
-
-                path_up = route_info_up["path"]
-                num_hops_up = len(path_up) - 1
-
-                t_up = 0.0
-                e_fwd_total = 0.0
-
-                # --- Uplink Latency and Energy Formulation ---
-                for h in range(num_hops_up):
-                    node_curr = node_dict[path_up[h]]
-                    node_next = node_dict[path_up[h+1]]
-                    lat = node_curr.get_latency(node_next) or 0.0
-                    
-                    bw_raw = node_curr.get_bandwidth(node_next) or 0.0
-                    b_isl = (bw_raw / 8.0) * (1024 ** 2) if bw_raw > 0 else 0.0
-                    
-                    if b_isl > 0:
-                        Wn = network_state["node_states"].get(node_curr.name, {}).get("W_net_simpy", 0.0)
-                        d_net_hop = s_r_bytes / b_isl
-                        t_up += Wn + d_net_hop + lat
-
-                        if hasattr(node_curr, 'compute_routing_energy'):
-                            e_hop_fwd = node_curr.compute_routing_energy(s_r_bytes, b_isl, p_net)
-                        else:
-                            e_hop_fwd = p_net * (s_r_bytes / b_isl)
-                            
-                        e_fwd_total += e_hop_fwd
-                        
-                        if node_curr.name in S_set:
-                            node_energy_expressions[node_curr.name].append(x[r_idx, i] * e_hop_fwd)
-
-                # --- Local CPU Execution (Latency and Energy) ---
-                node_obj = node_dict[i]
-                c_sen_i = network_state["node_states"][i]["C_sen"]
-                e_coeff_i = network_state["node_states"][i]["e_coeff"]
-
-                # Latency
-                Wc = network_state["node_states"][i].get("W_cpu_simpy", 0.0)
-                t_cpu_local = Wc + d_cpu
-
-                # Energy
-                if hasattr(node_obj, 'compute_execution_energy'):
-                    e_cpu_local = node_obj.compute_execution_energy(d_cpu, c_sen_i, e=e_coeff_i)
-                else:
-                    e_cpu_local = d_cpu * e_coeff_i * (c_sen_i ** 3)
-                    
-                node_energy_expressions[i].append(x[r_idx, i] * e_cpu_local)
-
-                # --- Metric Aggregation and Service Deadline Constraint ---
-                time_costs[r_idx, i] = t_up + t_cpu_local
-                energy_costs[r_idx, i] = e_fwd_total + e_cpu_local
-
-                # Constraint 2: Strict Service Deadline Compliance
-                R_ri_for_constraint = t_up + t_cpu_local
-                m += x[r_idx, i] * R_ri_for_constraint <= deadline, f"Deadline_{r_idx}_{i}"
-
-        # Constraint 3: Distributed Fleet Battery Energy Budget
-        for k in S_set:
-            budget_k = max(0.0, network_state["node_states"][k]["energy_residual"])
-            if node_energy_expressions[k]:
-                m += pulp.lpSum(node_energy_expressions[k]) <= budget_k, f"Energy_Limit_{k}"
-
-        # --- Constraint 4: Constellation Load Balancing (Anti-Congestion) ---
-        num_satellites = len(S_set)
-        
-        # Compute fleet fair-share allocation threshold
-        if num_satellites > 0:
-            fair_share = len(R_set) // num_satellites
-        else:
-            fair_share = len(R_set)
-
-        MAX_TASKS_PER_NODE = fair_share + 5 
-            
-        for i in S_set:
-            m += pulp.lpSum(x[r_idx, i] for r_idx in range(len(R_set))) <= MAX_TASKS_PER_NODE, f"Max_Capacity_{i}"
-        # -------------------------------------------------------------------
-        
-        # --- Orbital Eclipse (Sunset) Penalty Preparation ---
-        # Determine horizon upper bound to normalize penalty within [0, 1]
-        valid_sunsets = [network_state["node_states"][k].get("sunset_time", 0.0) for k in S_set]
-        max_sunset = max(valid_sunsets + [1.0])
-        
-        sunset_penalties = {}
-        for i in S_set:
-            s_time = network_state["node_states"][i].get("sunset_time", 0.0)
-            
-            # Assign maximum penalty (1.0) if satellite is currently in eclipse (s_time = 0.0)
-            sunset_penalties[i] = 1.0 - (s_time / max_sunset) if max_sunset > 0 else 0.0
-        # ----------------------------------------------------
-
-        # 3. Hierarchical Multi-Objective Optimization
-        PENALTY_VALUE = 1000000.0  # Heavy penalty scalar penalizing task rejection
-        
-        obj_time = pulp.lpSum(x[r_idx, i] * time_costs[r_idx, i] for r_idx in range(len(R_set)) for i in S_set) + \
-                   pulp.lpSum(y[r_idx] * PENALTY_VALUE for r_idx in range(len(R_set)))
-                   
-        obj_energy = pulp.lpSum(x[r_idx, i] * energy_costs[r_idx, i] for r_idx in range(len(R_set)) for i in S_set) + \
-                     pulp.lpSum(y[r_idx] * PENALTY_VALUE for r_idx in range(len(R_set)))
-
-        # --- Orbital Sunset Penalty Objective Term ---
-        obj_sunset = pulp.lpSum(x[r_idx, i] * sunset_penalties[i] for r_idx in range(len(R_set)) for i in S_set)
-
-        WEIGHT_PRIMARY = self.config.get("centralized_primary_weight", 1.0)
-        WEIGHT_SECONDARY = self.config.get("centralized_secondary_weight", 1.0)
-        WEIGHT_SUNSET = self.config.get("centralized_sunset_weight", 1.0)
-
-        if primary_obj == "time":
-            m += WEIGHT_PRIMARY * obj_time + WEIGHT_SECONDARY * obj_energy + WEIGHT_SUNSET * obj_sunset, "Total_Objective"
-        else:
-            m += WEIGHT_PRIMARY * obj_energy + WEIGHT_SECONDARY * obj_time + WEIGHT_SUNSET * obj_sunset, "Total_Objective"
-
-        # 4. Model Resolution via HiGHS Solver (Integrated in PuLP)
-        solver = pulp.getSolver('HiGHS', msg=False)
-        m.solve(solver)
-        
-        status = pulp.LpStatus[m.status]
-        
-        # -------------------------------------------------------
-        # Track aggregate energy consumption and task slot allocations for accepted tasks
-        assigned_energy_per_node = {i: 0.0 for i in S_set}
-        assigned_tasks_per_node = {i: 0 for i in S_set}
-        
-        if status in ('Optimal', 'Suboptimal'):
-            for r_idx in range(len(R_set)):
-                if pulp.value(y[r_idx]) is not None and pulp.value(y[r_idx]) < 0.5: # Task accepted
-                    for i in S_set:
-                        if pulp.value(x[r_idx, i]) is not None and pulp.value(x[r_idx, i]) > 0.5:
-                            assigned_energy_per_node[i] += energy_costs.get((r_idx, i), 0.0)
-                            assigned_tasks_per_node[i] += 1
-        # -------------------------------------------------------
-
-        # Decision Extraction and Cascade Rejection Diagnostics
-        assignments = []
-        if status in ('Optimal', 'Suboptimal'):
-            for r_idx, task in enumerate(R_set):
-                
-                # --- REJECTED TASK ---
-                if pulp.value(y[r_idx]) and pulp.value(y[r_idx]) > 0.5:
-                    ap_origin = task["visible_aps"][0].name
-                    deadline = task["data"].get('deadline', 300.0)
-                    specific_reason = "Unknown"
-                    
-                    reachable_sens = [i for i in S_set if network_state["routing_table"].get(ap_origin, {}).get(i)]
-                    
-                    if not reachable_sens:
-                        specific_reason = "No_Route"
-                    else:
-                        # Aggregate rejection causes across all reachable candidate satellites
-                        reasons_for_rejection = []
-                        
-                        for i in reachable_sens:
-                            R_ri = time_costs.get((r_idx, i), 0)
-                            E_ri = energy_costs.get((r_idx, i), 0)
-                            s_time_i = network_state["node_states"][i].get("sunset_time", 0)
-                            
-                            # Compute remaining battery energy after committed allocations
-                            actual_energy_left = network_state["node_states"][i]["energy_residual"] - assigned_energy_per_node.get(i, 0)
-                            
-                            # Cascade diagnostic evaluation for candidate satellite i
-                            if R_ri == 0 or R_ri > deadline:
-                                reasons_for_rejection.append("Deadline_Violation")
-                            elif R_ri > s_time_i:
-                                reasons_for_rejection.append("Sunset_Violation")
-                            elif actual_energy_left < E_ri:
-                                reasons_for_rejection.append("Energy_Exhaustion")
-                            elif assigned_tasks_per_node.get(i, 0) >= MAX_TASKS_PER_NODE:
-                                reasons_for_rejection.append("Load_Balancing_Rejected")
-                            else:
-                                reasons_for_rejection.append("Global_ILP_Conflict")
-                        
-                        if reasons_for_rejection:
-                            specific_reason = max(set(reasons_for_rejection), key=reasons_for_rejection.count)
-                        else:
-                            specific_reason = "Unknown"
-
-                    print(f"[{self.env.now:.3f}] Orchestrator: Task {task['task_id']} rejected by ILP. Cause: {specific_reason}")
-
-                    assignments.append({
-                        "task_id": task["task_id"],
-                        "data": task["data"],
-                        "assigned_sen": None,
-                        "routing_path_up": [],
-                        "routing_path_down": [],
-                        "status": f"Scartato_{specific_reason}"
-                    })
-                    continue
-
-                # --- ACCEPTED TASK ---
-                assigned_node = None
-                for i in S_set:
-                    if pulp.value(x[r_idx, i]) and pulp.value(x[r_idx, i]) > 0.5:
-                        assigned_node = i
-                        break
-                
-                if assigned_node:
-                    ap_origin = task["visible_aps"][0].name
-                    path_up = network_state["routing_table"][ap_origin][assigned_node]["path"]
-                    path_down = [assigned_node, ap_origin]
-
-                    assignments.append({
-                        "task_id": task["task_id"],
-                        "data": task["data"],
-                        "assigned_sen": assigned_node,
-                        "routing_path_up": path_up,
-                        "routing_path_down": path_down,
-                        "status": "Assigned"
-                    })
-        else:
-            print(f"[{self.env.now:.2f}] [ILP Centralized] Batch Infeasible (Optimization problem unsolvable). Status: {status}")
-            for task in R_set:
-                assignments.append({
-                    "task_id": task["task_id"], "data": task["data"],
-                    "assigned_sen": None, "routing_path_up": [], "routing_path_down": [],
-                    "status": "Infeasible"
-                })
-
-        return assignments
-\end{lstlisting}
-\end{adjustwidth}
+\begin{algorithm}[htbp]
+\caption{ILP Problem Assembly, Resolution, and Cascade Diagnostics}
+\label{alg:ilp_formulation}
+\small
+\begin{algorithmic}[1]
+\Require Routing table $\mathcal{T}_{route}$, node states $\mathcal{M}_{nodes}$, batch $R$, weights $\alpha, \beta, \gamma$
+\Ensure Task assignments list $\mathcal{A}$ with assigned nodes, paths, and rejection causes
+\State $\mathcal{P} \gets \Call{CreateProblem}{\text{"Centralized\_ILP"}, \min}$
+\State Instantiate variables: $x_{r,i} \in \{0, 1\}, \forall r \in R, i \in S$ and $y_r \in \{0, 1\}, \forall r \in R$
+\Statex \Comment{\textbf{Step 1: Constraint Matrix Construction}}
+\ForAll{$r \in R$}
+    \State Add uniqueness constraint: $\sum_{i \in S} x_{r,i} + y_r = 1$ \Comment{Eq.~\eqref{eq:constraint_uniqueness}}
+    \ForAll{$i \in S$}
+        \State Compute predicted delay $R_{r,i}$ (Eq.~\eqref{eq:total_latency}) and energy $\epsilon_{r,i}$ (Eq.~\eqref{eq:total_energy})
+        \State Add deadline constraint: $x_{r,i} \cdot R_{r,i} \le D_r$ \Comment{Eq.~\eqref{eq:constraint_deadline}}
+    \EndFor
+\EndFor
+\ForAll{$k \in S$}
+    \State Add battery constraint: $\sum_{r \in R} \sum_{i \in S} x_{r,i} \cdot \epsilon_{r,i,k} \le B_k$ \Comment{Eq.~\eqref{eq:constraint_energy}}
+    \State Add load balance constraint: $\sum_{r \in R} x_{r,i} \le \lfloor |R| / |S| \rfloor + 5$ \Comment{Eq.~\eqref{eq:constraint_load_balancing}}
+\EndFor
+\Statex \Comment{\textbf{Step 2: Model Resolution}}
+\State Set objective $Z$ (Eq.~\eqref{eq:objective_function}) and solve: $status \gets \Call{SolveHiGHS}{\mathcal{P}}$
+\State $\mathcal{A} \gets [\,]$
+\If{$status \notin \{\text{Optimal}, \text{Suboptimal}\}$}
+    \State \Return $\mathcal{A}$ with all tasks $r \in R$ flagged as $\text{"Infeasible"}$
+\EndIf
+\Statex \Comment{\textbf{Step 3: Decision Extraction and Cascade Diagnostics}}
+\ForAll{$r \in R$}
+    \If{$y_r^* < 0.5$} \Comment{Task accepted}
+        \State $i^* \gets \arg\max_{i \in S} x_{r,i}^*, \quad path \gets \mathcal{T}_{route}[AP_r][i^*]$
+        \State Append $(r, i^*, path, \text{"Assigned"})$ to $\mathcal{A}$
+    \Else \Comment{Task rejected: execute cascade diagnostic}
+        \State $S_{reach} \gets \{i \in S \mid \mathcal{T}_{route}[AP_r][i] \text{ exists}\}$
+        \State $cause \gets \text{"No\_Route"}$
+        \If{$S_{reach} \neq \emptyset$}
+            \State $\mathcal{C} \gets [\,]$
+            \ForAll{$i \in S_{reach}$}
+                \If{$R_{r,i} > D_r$}
+                    \State Append $\text{"Deadline\_Violation"}$ to $\mathcal{C}$
+                \ElsIf{$R_{r,i} > t_{sunset,i}$}
+                    \State Append $\text{"Sunset\_Violation"}$ to $\mathcal{C}$
+                \ElsIf{$B_i - E_{allocated,i} < \epsilon_{r,i}$}
+                    \State Append $\text{"Energy\_Exhaustion"}$ to $\mathcal{C}$
+                \ElsIf{$AllocatedCount(i) \ge MaxCap(i)$}
+                    \State Append $\text{"Load\_Balancing"}$ to $\mathcal{C}$
+                \Else
+                    \State Append $\text{"Global\_ILP\_Conflict"}$ to $\mathcal{C}$
+                \EndIf
+            \EndFor
+            \State $cause \gets \Call{DominantMode}{\mathcal{C}}$
+        \EndIf
+        \State Append $(r, \mathbf{null}, [\,], \text{"Scartato\_"} + cause)$ to $\mathcal{A}$
+    \EndIf
+\EndFor
+\State \Return $\mathcal{A}$
+\end{algorithmic}
+\end{algorithm}
 
 \section{Task Execution and Resilient Hybrid Routing}
 \label{sec:task_execution_routing}
 
-Once the ILP optimizer produces the assignment decision matrix, the orchestrator invokes \texttt{\_dispatch\_tasks} to spawn independent \texttt{\_route\_and\_execute\_task} processes for each accepted request. 
-Due to high orbital velocities in LEO constellations, planned ISL links may experience unexpected line-of-sight obstruction or degradation mid-flight. 
-To guarantee fault tolerance, packet routing employs a dynamic hybrid routing protocol:
+Once the solver generates the optimal assignment matrix $\mathcal{X}^*$, the orchestrator invokes \texttt{\_dispatch\_tasks} to process each decision. 
+Depending on solver status and network availability, tasks are either routed, re-enqueued, or permanently dropped.
+
+\subsection{Dispatching and Buffer Re-Enqueuing Pipeline}
+\label{subsec:dispatching_pipeline}
+
+The dispatching layer acts as an admission and recovery filter before physical packet injection:
 \begin{itemize}
-    \item \textbf{Nominal Planned Routing (Phase A):} Data packets strictly follow the shortest multi-hop ISL trajectory $\vec{P}_{up}$ pre-computed during constellation mapping.
-    \item \textbf{Emergency Geographic Greedy Fallback (Phase B):} If an intermediate link fails ($B_{u,v} \le 0$), the current node autonomously triggers greedy geographic recovery. The node inspects all available physical neighbors, calculates their Euclidean distance to the destination satellite via \texttt{get\_pos\_proximity}, and forwards the packet to the closest non-visited node. Visited sets (\texttt{routing\_task.visited}) prevent forwarding loops.
+    \item \textbf{Accepted Tasks ($status = \text{"Assigned"}$):} The orchestrator spawns an asynchronous \texttt{\_route\_and\_execute\_task} process within the simulation environment, passing the planned forwarding path $\vec{P}_{up}(AP_r, i^*)$.
+    \item \textbf{Transient Failures ($\text{"No\_Route"}$ or $\text{"Infeasible"}$):} A task marked with an infeasible status or lacking a physical ISL route at instant $t$ is not necessarily unservable; orbital motion may restore connectivity within seconds. The orchestrator re-enqueues the request into $\mathcal{B}$ while preserving its original arrival timestamp $t_{arr}$. If the re-enqueued requests saturate the buffer ($|\mathcal{B}| \ge BS$), $E_{ready}$ is triggered immediately.
+    \item \textbf{Permanent Rejections ($\text{"Energy\_Exhaustion"}$, $\text{"Deadline\_Violation"}$, etc.):} Tasks dropped due to deterministic physical violations are logged directly at the entry gateway $AP_r$ via \texttt{record\_rejected\_task} and permanently discarded.
 \end{itemize}
 
-Upon packet arrival at the destination Satellite Edge Node, the transmission duration and hop count are logged in \texttt{globals.gbl\_generated\_tasks\_data}, and the process yields to the discrete-event CPU simulator (\texttt{ILP\_simulation.TaskAssignment\_ILP}). 
-Finally, task status and timing metrics are synchronized in the global dataset.
+Algorithm~\ref{alg:task_dispatching} formalizes this dispatching and re-enqueuing engine, implemented in the \texttt{\_dispatch\_tasks} method of \texttt{Orchestrator.py}~\cite{bagini_repo_2026}.
 
-Listing~\ref{lst:orchestrator_routing} shows the hybrid routing and execution routine.
+\begin{algorithm}[H]
+\caption{Task Dispatching, Re-Enqueuing, and Drop Accounting}
+\label{alg:task_dispatching}
+\begin{algorithmic}[1]
+\Require Assignment list $\mathcal{A}$, constellation nodes $\mathcal{N}$, task buffer $\mathcal{B}$, capacity $BS$
+\Ensure Task process spawning, transient task re-enqueuing, and terminal drop logging
+\ForAll{$task \in \mathcal{A}$}
+    \State $t\_id \gets task.task\_id, \quad data \gets task.data, \quad status \gets task.status$
+    \If{$status = \text{"Assigned"}$}
+        \State Spawn discrete-event process: $\Call{RouteAndExecuteTask}{task, \mathcal{N}, env.now}$
+    \ElsIf{$\text{"No\_Route"} \in status \lor \text{"Infeasible"} \in status$} \Comment{Transient orbital failure}
+        \State Re-enqueue $(t\_id, data, AP_{global}, data.arrival\_time)$ into $\mathcal{B}$
+        \If{$|\mathcal{B}| \ge BS$ \textbf{and} $\neg \Call{IsTriggered}{E_{ready}}$}
+            \State $\Call{TriggerEvent}{E_{ready}}$ \Comment{Trigger early batch for retry}
+        \EndIf
+    \Else \Comment{Deterministic drop (e.g., Energy Exhaustion, Deadline Violation)}
+        \State $ap \gets AP_{global}[0]$
+        \State $ap.\Call{RecordRejectedTask}{t\_id, data.type, env.now, data.image\_size, status, data.d\_cpu}$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
 
-\begin{adjustwidth}{-2cm}{-2cm}
-\begin{lstlisting}[language=Python, caption={Task Execution and Dynamic Hybrid Routing Procedure.}, label={lst:orchestrator_routing}]
-    def _dispatch_tasks(self, assignments):
+\subsection{Resilient Hybrid Packet Routing}
+\label{subsec:hybrid_routing}
 
-        all_nodes = {n.name: n for n in (globals.global_access_point + globals.edge_servers)}
+In dynamic LEO constellations, planned ISL trajectories are vulnerable to mid-flight disruption. 
+Thermal expansion, high-speed orbital plane crossings, antenna micro-vibrations, and transient Doppler shifts can degrade or break an inter-satellite link while a packet is in transit. 
+Relying entirely on a pre-computed path risks packet loss. 
+To achieve operational resilience, the data forwarding layer implements a dynamic hybrid routing protocol:
+\begin{itemize}
+    \item \textbf{Nominal Planned Routing (Phase A):} Under nominal conditions, the data packet follows the shortest-path trajectory $\vec{P}_{up}(AP_r, i)$ computed during topology mapping. At each node, forwarding occurs if the next scheduled link remains operational ($B_{curr, next} > 0$).
+    \item \textbf{Emergency Geographic Greedy Fallback (Phase B):} If an intermediate forwarding link is severed ($B_{curr, next} \le 0$), the current node autonomously transitions to emergency greedy recovery. 
+    The forwarding satellite queries its active physical neighbors via \texttt{get\_neighbors()}, calculates their Euclidean distance to the destination satellite using orbital position vectors (\texttt{get\_pos\_proximity}), and forwards the payload to the closest eligible neighbor.
+\end{itemize}
 
-        for assignment in assignments:
-            task_id = assignment["task_id"]
-            data = assignment["data"]
-            status = assignment["status"]
-            dispatch_time = self.env.now
+\paragraph{Loop Prevention and Dead-End Recovery.} 
+To prevent packet cycling during greedy fallback, each task maintains a traversal set $\mathcal{V}_{visited}$ inside its header metadata (\texttt{Task.visited}). 
+Nodes already traversed are excluded from fallback selection. 
+If a node encounters a topological dead end where all active neighbors are either broken or already in $\mathcal{V}_{visited}$, the packet is dropped with status \texttt{"DROPPED\_GREEDY\_DEADEND"}, preventing buffer congestion.
 
-            if status != "Assigned":
-                if "No_Route" in status or "Infeasible" in status:
-                    arrival = data.get("arrival_time", dispatch_time)
-                    print(f"[{dispatch_time:.3f}] Orchestrator: ILP failed ({status}) for Task {task_id}. Re-enqueuing into task buffer!")
-                    
-                    self.task_buffer.append({
-                        "task_id": task_id,
-                        "data": data,
-                        "visible_aps": globals.global_access_point,
-                        "arrival_time": arrival 
-                    })
-                    
-                    if len(self.task_buffer) >= self.batch_size and not self.batch_ready_event.triggered:
-                        self.batch_ready_event.succeed()
-                        
-                    continue
+Upon arrival at the destination node $i^*$, transmission latency and hop counts are committed to \texttt{globals.gbl\_generated\_tasks\_data}, and the thread yields to the compute queue simulator (\texttt{ILP\_simulation.TaskAssignment\_ILP}~\cite{bagini_repo_2026}). 
+Algorithm~\ref{alg:hybrid_routing} details the complete hybrid routing and execution pipeline.
 
-                # --- Final Rejection (e.g., Energy Exhaustion determined by ILP) ---
-                ap = globals.global_access_point[0]
-                print(f"[{dispatch_time:.3f}] Orchestrator: Task {task_id} DROPPED ({status}).")
-                ap.record_rejected_task(
-                    task_id, data["type"], dispatch_time, data["image_size"], f"ILP_{status}", data.get("d_cpu", 0)
-                )
-                continue
-
-            # --- Accepted Task: Spawn routing and execution process ---
-            self.env.process(self._route_and_execute_task(assignment, all_nodes, dispatch_time))
-                
-    def _route_and_execute_task(self, assignment, all_nodes, dispatch_time):
-        task_id = assignment["task_id"]
-        data = assignment["data"]
-        sen_name = assignment["assigned_sen"]
-        sen_obj = all_nodes.get(sen_name)
-        path_up = assignment.get("routing_path_up", [])
-
-        ap_origin = path_up[0] if path_up else globals.global_access_point[0].name
-
-        # --- 1. TRANSIENT ROUTING TASK INITIALIZATION ---
-        routing_task = Task(
-            task_id=task_id,
-            current_node=ap_origin,
-            dest_node=sen_name,
-            routingInitTime=dispatch_time,
-            task_type=data["type"],
-            image_size=data["image_size"]
-        )
-        routing_task.weight = data["image_size"]
-        routing_task.visited.add(ap_origin) 
-        
-        start_node = all_nodes.get(ap_origin)
-        if start_node and routing_task not in start_node.tasks:
-            start_node.tasks.append(routing_task)
-
-        # --- 2. DYNAMIC NAVIGATION LOOP (Hybrid Routing: ILP -> GREEDY) ---
-        current_node_name = ap_origin
-        target_dest_name = sen_name
-        path_index = 0
-        is_greedy = False 
-    
-        while current_node_name != target_dest_name:
-            current_node_obj = all_nodes.get(current_node_name)
-            
-            if not is_greedy:
-                # ==========================================
-                # PHASE A: NOMINAL PLANNED ROUTING (ILP)
-                # ==========================================
-                next_planned = path_up[path_index + 1] if path_index < len(path_up) - 1 else None
-                next_planned_obj = all_nodes.get(next_planned) if next_planned else None
-
-                if next_planned_obj and current_node_obj.get_bandwidth(next_planned_obj) > 0:
-                    # Active link: traverse planned ISL trajectory
-                    yield self.env.process(
-                        utils.sendTask(self.env, routing_task, current_node_obj, next_planned_obj, "ILP_Centralized")
-                    )
-                    path_index += 1
-                    routing_task.visited.add(next_planned)
-                else:
-                    # BROKEN LINK: Trigger greedy recovery fallback!
-                    print(f"[{self.env.now:.3f}] Orchestrator: Broken link at node {current_node_name} (Task {task_id}). Activating GREEDY Fallback!")
-                    is_greedy = True
-                    
-            if is_greedy:
-                # ==========================================
-                # PHASE B: EMERGENCY RECOVERY NAVIGATION (GREEDY)
-                # ==========================================
-                target_dest_obj = all_nodes.get(target_dest_name)
-                dest_pos = target_dest_obj.getPositionVector(globals.ist_in_conf)
-                ranker_neighbors = []
-                neighbors_list = getattr(current_node_obj, 'neighbors', current_node_obj.get_neighbors())
-
-                for server in neighbors_list:
-                    if current_node_obj.get_bandwidth(server) > 0:
-                        neighbor_distance = get_pos_proximity(dest_pos, server.getPositionVector(globals.ist_in_conf))
-                        is_ap = getattr(server, 'is_acc_point', False)
-                        ranker_neighbors.append((server, neighbor_distance, is_ap))
-
-                ranker_neighbors.sort(key=lambda x: (not x[2], x[1]))
-
-                best_server = None
-                for neighbor_tuple in ranker_neighbors:
-                    # Loop prevention: avoid visited satellites
-                    if neighbor_tuple[0].name not in routing_task.visited:
-                        best_server = neighbor_tuple[0]
-                        break
-
-                if best_server:
-                    yield self.env.process(
-                        utils.sendTask(self.env, routing_task, current_node_obj, best_server, 'GREEDY_FALLBACK')
-                    )
-                    routing_task.visited.add(best_server.name)
-                else:
-                    print(f"[{self.env.now:.3f}] Orchestrator: GREEDY Fallback failed (dead-end) at node {current_node_name}. Task {task_id} dropped.")
-                    routing_task.routingEndTime = self.env.now
-                    routing_task.label = "DROPPED_GREEDY_DEADEND"
-                    globals.gbl_tasks.append(routing_task)
-                    return
-
-            # ==========================================
-            # PHASE C: SAFETY CONTROLS
-            # ==========================================
-            if getattr(routing_task, 'label', '') == 'TTL_EXPIRED':
-                print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} dropped due to expired TTL during routing.")
-                globals.gbl_tasks.append(routing_task)
-                return
-
-            current_node_name = routing_task.current_node
-
-        # --- 3. DESTINATION REACHED ---
-        transfer_time_up = self.env.now - data.get("arrival_time", dispatch_time)
-        final_hops = routing_task.hop
-        init_time = routing_task.routingInitTime
-        end_time = self.env.now
-        algos = routing_task.algorithms_used
-
-        print(f"[{self.env.now:.3f}] Orchestrator: Task {task_id} arrived at {sen_name} in {transfer_time_up:.3f}s (Hops: {final_hops})")
-
-        # --- 4. DATASET METRIC LOGGING ---
-        globals.initial_server_counter[sen_name] = globals.initial_server_counter.get(sen_name, 0) + 1
-        globals.gbl_task_hops[str(task_id)] = final_hops
-        globals.gbl_task_final_hops[str(task_id)] = final_hops
-        globals.gbl_generated_tasks_data.append({
-            "task_id": task_id, "arrival_time": data.get("arrival_time", dispatch_time), "type": data["type"],
-            "ram": data.get("required_ram", 0), "disk": data.get("required_disk", 0),
-            "image_size": data["image_size"], "exec_time": data["d_cpu"],
-            "transfer_time": transfer_time_up, "performed_transfers": final_hops,
-            "final_hops": final_hops, "execution_server": sen_name
-        })
-
-        # --- 5. SIMULATE CPU ON-BOARD COMPUTATION ---
-        yield self.env.process(
-            ILP_simulation.TaskAssignment_ILP(
-                env=self.env, selected_server=sen_obj, task_id=task_id, image_size=data["image_size"],
-                arrival_time_system=data.get("arrival_time", dispatch_time), num_hops=final_hops, 
-                transfer_time=transfer_time_up, task_type=data["type"], d_cpu=data["d_cpu"], D_r=data["deadline"],
-                net_bw_override_Bps=None, result_sink={}, allow_retry=False,              
-                routing_already_charged=True, routing_energy_from=None, transfer_already_simulated=True
-            )
-        )
-
-        # --- 6. POST-EXECUTION METRIC SYNCHRONIZATION ---
-        final_task = next((t for t in globals.gbl_tasks if t.id == task_id), None)
-        if final_task:
-            final_task.hop = final_hops
-            final_task.routingInitTime = init_time
-            final_task.routingEndTime = end_time
-            final_task.algorithms_used = algos
-        else:
-            routing_task.routingEndTime = end_time
-            routing_task.label = "REJECTED_POST_ROUTING"
-            globals.gbl_tasks.append(routing_task)
-\end{lstlisting}
-\end{adjustwidth}
+\begin{algorithm}[H]
+\caption{Dynamic Hybrid Routing and Task Execution}
+\label{alg:hybrid_routing}
+\begin{algorithmic}[1]
+\Require Accepted task $r$, destination SEN $i^*$, pre-computed path $\vec{P}_{up} = (v_0, v_1, \dots, v_m)$ where $v_0 = AP_r, v_m = i^*$
+\Ensure Reliable multi-hop forwarding and discrete-event CPU execution
+\State Initialize $curr \gets v_0$, $idx \gets 0$, $is\_fallback \gets \mathbf{false}$, $\mathcal{V}_{visited} \gets \{v_0\}$
+\While{$curr \neq i^*$}
+    \If{$\neg is\_fallback$} \Comment{Phase A: Nominal Planned Path}
+        \State $next \gets v_{idx+1}$
+        \If{$B_{curr, next} > 0$}
+            \State Forward payload across link $(curr, next)$
+            \State $idx \gets idx + 1$, \quad $curr \gets next$, \quad $\mathcal{V}_{visited} \gets \mathcal{V}_{visited} \cup \{curr\}$
+        \Else
+            \State $is\_fallback \gets \mathbf{true}$ \Comment{Link broken: engage emergency recovery}
+        \EndIf
+    \EndIf
+    \If{$is\_fallback$} \Comment{Phase B: Autonomous Geographic Greedy Forwarding}
+        \State Retrieve neighbor set $\mathcal{N}_{active} \gets \{u \in \Call{Neighbors}{curr} \mid B_{curr, u} > 0 \land u \notin \mathcal{V}_{visited}\}$
+        \If{$\mathcal{N}_{active} = \emptyset$}
+            \State \Return \textbf{DROP}(\texttt{"DROPPED\_GREEDY\_DEADEND"})
+        \EndIf
+        \State Select best neighbor: $next^* \gets \arg\min_{u \in \mathcal{N}_{active}} \Call{EuclideanDistance}{\mathbf{p}_u, \mathbf{p}_{i^*}}$
+        \State Forward payload across link $(curr, next^*)$
+        \State $curr \gets next^*$, \quad $\mathcal{V}_{visited} \gets \mathcal{V}_{visited} \cup \{curr\}$
+    \EndIf
+\EndWhile
+\State Record transfer latency $T_{transfer} \gets t_{now} - t_{arr}$ and final hop count $|\mathcal{V}_{visited}| - 1$
+\State Yield to discrete-event simulator: $\Call{SimulateCPUExecution}{i^*, d_{cpu,r}, D_r}$
+\end{algorithmic}
+\end{algorithm}
 
 \section{Computational Complexity and Scalability Analysis}
 \label{sec:complexity_analysis}
 
-Deploying mathematical optimization within highly dynamic Low Earth Orbit (LEO) constellations introduces fundamental operational trade-offs between theoretical optimality and execution overhead~\cite{icdcs_satellite_2025}. To characterize the scalability and runtime footprint of the proposed centralized framework, this section formalizes the algorithmic time and space complexity across the three pipeline stages: dynamic topology mapping, batch linear optimization, and hybrid packet forwarding.
+Deploying mathematical optimization within dynamic LEO constellations introduces fundamental trade-offs between theoretical optimality and runtime overhead~\cite{icdcs_satellite_2025}. 
+To establish the operational bounds of the centralized architecture, this section formalizes the asymptotic time and space complexity across the three pipeline stages: topology mapping, ILP solver resolution, and packet forwarding.
 
 \subsection{Topology Mapping and Pathfinding Complexity}
 \label{subsec:complexity_mapping}
 
-Prior to solver instantiation, the centralized orchestrator maps the constellation routing fabric using a Multi-Source Dijkstra shortest-path algorithm evaluated across the directed connectivity graph $G = (V, E)$~\cite{dijkstra1959note}. The node set $V = AP_{global} \cup S$ encompasses all regional ground access points and candidate Satellite Edge Nodes, while $E$ comprises all active ground-to-satellite up/downlinks and optical Inter-Satellite Links (ISLs)~\cite{icdcs_satellite_2025}.
+Prior to solver instantiation, the orchestrator maps the constellation routing fabric using a Multi-Source Dijkstra shortest-path algorithm over the directed graph $G = (V, E)$~\cite{dijkstra1959note}. 
+The node set $V = AP_{global} \cup S$ comprises all active regional access points and candidate satellites, while $E$ represents active ground-to-satellite links and inter-satellite links~\cite{icdcs_satellite_2025}.
 
-Using an adjacency list graph representation paired with a binary min-heap priority queue (via Python's native \texttt{heapq} module), the asymptotic time complexity across all active access points $|AP|$ is:
+Using an adjacency list representation paired with a binary min-heap priority queue (via Python's \texttt{heapq} module), the asymptotic time complexity across all active access points $|AP|$ is:
 \begin{equation}
     \mathcal{T}_{map} = \mathcal{O}\left( |AP| \cdot \left( |E| + |V| \log |V| \right) \right)
     \label{eq:mapping_time_complexity}
 \end{equation}
-In standard regional Walker-Delta constellations, satellite transceivers are architecturally limited to at most four optical heads (two intra-plane links to ahead/behind peers and two inter-plane links to adjacent orbital planes)~\cite{walker1984satellite, chen2021isl}. Consequently, the maximum node degree is strictly bounded ($\text{deg}(v) \le 4$), yielding a sparse graph where the total edge cardinality scales linearly with the constellation size:
+In standard Walker-Delta constellations, satellite transceivers are hardware-limited to at most four optical heads: two intra-plane links to ahead/behind peers and two inter-plane links to adjacent orbital planes~\cite{walker1984satellite, chen2021isl}. 
+Consequently, the maximum node degree is strictly bounded ($\text{deg}(v) \le 4$), yielding a sparse graph where the total edge cardinality scales linearly with constellation size:
 \begin{equation}
     |E| \le 4|S| + 2|AP| \implies |E| = \mathcal{O}(|S|)
 \end{equation}
@@ -942,46 +560,53 @@ Substituting this structural property into Equation~\eqref{eq:mapping_time_compl
 \begin{equation}
     \mathcal{T}_{map} = \mathcal{O}\left( |AP| \cdot |S| \log |S| \right)
 \end{equation}
-Regarding memory footprint, the orchestrator stores the adjacency graph, candidate node telemetry (queue lengths $W_{cpu,i}$, battery reserves $B_i$, eclipse horizons $t_{sunset,i}$), and all pre-computed paths. The auxiliary space complexity is $\mathcal{O}(|AP| \cdot |S| + |E|)$, which remains under a few megabytes for regional fleets ($|S| \le 50$), easily fitting within the cache memory of space-qualified embedded processing boards.
+Regarding auxiliary memory footprint, the orchestrator stores the adjacency graph, node telemetry vectors, and pre-computed paths. 
+The space complexity is $\mathcal{O}(|AP| \cdot |S| + |E|)$. For regional constellations ($|S| \le 50$), this requires under a few megabytes, fitting comfortably within the memory constraints of embedded aerospace processing boards.
 
 \subsection{ILP Formulation and Branch-and-Cut Solver Complexity}
 \label{subsec:complexity_solver}
 
 For an active batch containing $|R|$ buffered tasks and $|S|$ candidate Satellite Edge Nodes:
 \begin{itemize}
-    \item \textbf{Decision Variable Space:} The mathematical model allocates $|R| \cdot |S|$ binary assignment variables $x_{r,i} \in \{0, 1\}$ alongside $|R|$ binary drop variables $y_r \in \{0, 1\}$. The total decision dimension is:
+    \item \textbf{Decision Variable Space:} The model allocates $|R| \cdot |S|$ binary assignment variables $x_{r,i}$ alongside $|R|$ binary drop variables $y_r$. The total decision dimension is:
     \begin{equation}
         \mathcal{D}_{vars} = |R| \cdot |S| + |R| = \mathcal{O}(|R| \cdot |S|)
     \end{equation}
-    \item \textbf{Constraint Matrix Dimensions:} The constraint system enforces $|R|$ uniqueness constraints, $|R| \cdot |S|$ deadline compliance constraints, $|S|$ fleet battery budget bounds, and $|S|$ anti-congestion load balancing bounds. The total constraint row complexity is exactly:
+    \item \textbf{Constraint Matrix Dimensions:} The constraint system enforces $|R|$ uniqueness equations, $|R| \cdot |S|$ deadline compliance bounds, $|S|$ fleet battery budget limits, and $|S|$ load balancing bounds. The total constraint row complexity is:
     \begin{equation}
         \mathcal{C}_{rows} = |R| \cdot (|S| + 1) + 2|S| = \mathcal{O}(|R| \cdot |S| + |R| + 2|S|)
     \end{equation}
 \end{itemize}
 
-From a theoretical standpoint, 0-1 Integer Linear Programs are strongly NP-hard, exhibiting a worst-case computational complexity of $\mathcal{O}(2^{|R| \cdot |S|})$ under exhaustive combinatorial enumeration~\cite{wolsey1998integer}. However, the modern branch-and-cut routine in the \texttt{HiGHS} solver mitigates this combinatorial explosion through presolve reductions, cutting plane generation, and polynomial-time linear relaxations ($\mathcal{O}(n^{2.5})$) solved via the dual revised simplex algorithm at each search tree node~\cite{huangfu2018highs, wolsey1998integer}.
+While 0-1 Integer Linear Programs are strongly NP-hard in the general case, with a worst-case complexity of $\mathcal{O}(2^{|R| \cdot |S|})$~\cite{wolsey1998integer}, the modern branch-and-cut implementation in \texttt{HiGHS} mitigates combinatorial explosion through presolve reductions, cutting planes, and polynomial-time linear programming relaxations ($\mathcal{O}(n^{2.5})$) solved via the dual revised simplex method~\cite{huangfu2018highs, wolsey1998integer}.
 
-Most importantly, the \emph{Dynamic Batching Engine} acts as an architectural boundary on problem dimension. By strictly capping the batch size ($|R| \le BS$ with $BS \le 20$), the optimization problem space does not scale with the external request arrival rate $\lambda$. For a regional constellation slice ($|S| \approx 15$), the model instantiates at most $300$ binary variables and $330$ constraint rows. Because the constraint matrix is highly sparse—each task uniqueness constraint involves only $|S|$ non-zero entries, and each deadline constraint involves exactly one non-zero coefficient—the LP relaxations converge in fewer than $50$ simplex pivots, keeping pure solver execution times strictly bounded at $T_{exec} \le 0.30\text{--}0.60\text{ ms}$.
+The \emph{Dynamic Batching Engine} acts as an architectural boundary on problem scale. 
+By capping batch size ($|R| \le BS$ with $BS \le 20$), the optimization problem space does not scale with external arrival rate spikes $\lambda$. 
+For a representative regional constellation slice ($|S| \approx 15$), the model instantiates at most $300$ binary variables and $330$ constraint rows. 
+Because the constraint matrix is sparse—each uniqueness constraint contains only $|S|$ non-zero entries, and each deadline constraint contains exactly one—the LP relaxations converge in fewer than $50$ simplex pivots, keeping solver execution time bounded within $T_{exec} \le 0.30\text{--}0.60\text{ ms}$.
 
-\subsection{Hybrid Routing and Execution Forwarding Complexity}
+\subsection{Hybrid Routing and Forwarding Complexity}
 \label{subsec:complexity_routing}
 
-The complexity of the task routing and dispatching layer depends on the operational health of the Inter-Satellite Links:
+The computational overhead of the forwarding layer depends on network link stability:
 \begin{itemize}
-    \item \textbf{Nominal Planned Forwarding (Phase A):} Data packets strictly trace the pre-computed Dijkstra path $\vec{P}_{up}(AP_r, i)$. Each intermediate hop requires an $\mathcal{O}(1)$ pointer lookup in the local forwarding table. The total time complexity for routing across $h_{up}$ hops is bounded by the constellation diameter:
+    \item \textbf{Nominal Planned Forwarding (Phase A):} Forwarding nodes traverse the pre-computed Dijkstra path $\vec{P}_{up}(AP_r, i)$. Each hop requires an $\mathcal{O}(1)$ pointer lookup in the local routing table. The total time complexity for routing across $h_{up}$ hops is bounded by the network diameter:
     \begin{equation}
         \mathcal{T}_{planned} = \mathcal{O}(h_{up}) \le \mathcal{O}(\text{diam}(G)) \ll \mathcal{O}(|S|)
     \end{equation}
-    \item \textbf{Greedy Recovery Fallback (Phase B):} If a planned ISL is severed mid-flight due to orbital occlusion or attitude drift, the forwarding satellite evaluates adjacent neighbor proximities. Sorting the adjacent neighbor candidates requires $\mathcal{O}(k \log k)$ time, where $k$ is the local physical node degree. Because physical transceivers strictly bound node connectivity to $k \le 4$, the sorting step collapses to a negligible, constant-time operation:
+    \item \textbf{Greedy Recovery Fallback (Phase B):} If a planned link fails, the forwarding node evaluates adjacent neighbor distances. Sorting candidate neighbors requires $\mathcal{O}(k \log k)$ time, where $k$ is the physical node degree. Because optical transceiver architectures enforce $k \le 4$, this sorting step operates in negligible constant time:
     \begin{equation}
         \mathcal{T}_{greedy} = \mathcal{O}(k \log k) \approx \mathcal{O}(1) \quad (\text{since } k \le 4)
     \end{equation}
-    Duplicate node visits are eliminated through a hash-set lookup structure (\texttt{routing\_task.visited}), operating in $\mathcal{O}(1)$ average time and preventing forwarding loops.
+    Visited node lookups are evaluated against a hash-set structure ($\mathcal{V}_{visited}$), providing $\mathcal{O}(1)$ average-time checks and preventing forwarding loops.
 \end{itemize}
 
 \subsection{Constellation Scalability and Telemetry Overhead}
 \label{subsec:complexity_scalability}
 
-A critical factor governing the real-world scalability of centralized orbital architectures is the control signaling required to synchronize constellation state at the Master node~\cite{survey_orbital_edge_2023, icdcs_satellite_2025}. To formulate an accurate optimization model, the orchestrator collects a compact telemetry vector $\mathbf{v}_i = [W_{cpu,i}, W_{net,i}, B_i, t_{sunset,i}]$ from each Satellite Edge Node. 
+A central factor governing the feasibility of centralized orbital orchestration is the control signaling bandwidth required to maintain constellation state at the Master node~\cite{survey_orbital_edge_2023, icdcs_satellite_2025}. 
+To construct the optimization model, the orchestrator periodically collects a compact telemetry vector $\mathbf{v}_i = [W_{cpu,i}, W_{net,i}, B_i, t_{sunset,i}]$ from each satellite.
 
-Transmitting these status packets across the ISL mesh introduces a telemetry communication complexity of $\mathcal{O}(|S|)$ messages per update cycle. In regional deployments ($|S| \le 50$), telemetry frames consume less than $0.1\%$ of the optical link bandwidth ($1\text{ Gbps}$), confirming that control overhead does not saturate transmission channels. However, as constellation dimensions expand globally to thousands of spacecraft ($|S| \gg 1000$), the communication latency and stale state telemetry associated with single-master architectures make regional clustering or hierarchical decomposition indispensable~\cite{icdcs_satellite_2025}.
+Transmitting these telemetry updates across the ISL mesh introduces a control communication overhead of $\mathcal{O}(|S|)$ messages per update period. 
+In regional deployments ($|S| \le 50$), telemetry updates consume less than $0.1\%$ of the available optical link bandwidth ($1\text{ Gbps}$), ensuring that control signaling does not congest data transmission channels. 
+However, as constellation scales grow globally to thousands of spacecraft ($|S| \gg 1000$), the propagation latency and stale-state overhead of a single master node become limiting factors, motivating regional partitioning or hierarchical decomposition for global deployments~\cite{icdcs_satellite_2025}.

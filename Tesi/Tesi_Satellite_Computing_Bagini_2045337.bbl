@@ -82,6 +82,9 @@ P.~Peng, T.~Xu, X.~Chen, C.~C. Zarakovitis, and C.~Wu, ``Blocked-job-offloading-
 \bibitem{huangfu2018highs}
 Q.~Huangfu and J.~A.~J. Hall, ``Parallelizing the dual revised simplex method,'' \emph{Mathematical Programming Computation}, vol.~10, no.~1, pp. 119--142, 2018.
 
+\bibitem{bagini_repo_2026}
+C.~Bagini, ``{Centralized ILP Orchestrator for Satellite Computing},'' \url{https://github.com/baggio2003/Centralized-Scheduling-in-Satellite-Computing}, 2026, gitHub repository.
+
 \bibitem{vallado2006sgp4}
 D.~Vallado, P.~Crawford, R.~Hujsak, and T.~S. Kelso, ``Revisiting spacetrack report no. 3: Rev 2,'' in \emph{AIAA/AAS Astrodynamics Specialist Conference and Exhibit}, 2006, p. 6753.
 

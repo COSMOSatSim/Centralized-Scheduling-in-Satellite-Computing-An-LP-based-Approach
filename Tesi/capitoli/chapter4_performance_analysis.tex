@@ -98,15 +98,24 @@ The empirical curves highlight five key operational dynamics:
 \subsection{Diagnostics of Failure Causes}
 \label{subsec:failure_causes_sweep}
 
-Figures~\ref{fig:failure_causes_energy} and~\ref{fig:failure_causes_time} illustrate the relative distribution of rejection causes across the parameter sweeps.
+Figures~\ref{fig:failure_causes_energy_dijk_energy} and~\ref{fig:failure_causes_energy_dijk_time} (under Energy Mapping), alongside Figures~\ref{fig:failure_causes_time_dijk_energy} and~\ref{fig:failure_causes_time_dijk_time} (under Time Mapping), illustrate the relative distribution of rejection causes across the parameter sweeps.
 
 \begin{figure}[!t]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_ENERGY.png}%
+        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_ENERGY_Dijkstra_Energy.png}%
     }
-    \caption{Rejection causes distribution across arrival rates under Energy Mapping, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
-    \label{fig:failure_causes_energy}
+    \caption{Rejection causes distribution across arrival rates under Energy Mapping with Dijkstra Energy routing, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
+    \label{fig:failure_causes_energy_dijk_energy}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_ENERGY_Dijkstra_Time.png}%
+    }
+    \caption{Rejection causes distribution across arrival rates under Energy Mapping with Dijkstra Time routing, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
+    \label{fig:failure_causes_energy_dijk_time}
 \end{figure}
 
 The failure diagnostics reveal three structural properties of the constellation orchestrator:
@@ -126,10 +135,19 @@ The failure diagnostics reveal three structural properties of the constellation 
 \begin{figure}[!t]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_TIME.png}%
+        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_TIME_Dijkstra_Energy.png}%
     }
-    \caption{Rejection causes distribution across arrival rates under Time Mapping, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
-    \label{fig:failure_causes_time}
+    \caption{Rejection causes distribution across arrival rates under Time Mapping with Dijkstra Energy routing, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
+    \label{fig:failure_causes_time_dijk_energy}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \makebox[\textwidth][c]{%
+        \includegraphics[width=1.50\textwidth]{figures/03_Failure_Causes_TIME_Dijkstra_Time.png}%
+    }
+    \caption{Rejection causes distribution across arrival rates under Time Mapping with Dijkstra Time routing, comparing $BS$-sweep ($BT=2.0\text{ s}$) against $BT$-sweep ($BS=20$) for $\Delta D \in \{10\%, 20\%, 30\%\}$.}
+    \label{fig:failure_causes_time_dijk_time}
 \end{figure}
 
 \begin{itemize}

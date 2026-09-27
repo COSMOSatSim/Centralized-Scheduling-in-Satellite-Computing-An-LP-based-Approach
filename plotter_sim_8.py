@@ -191,10 +191,11 @@ print(f"-> Arrival Rates rilevati: {sorted_ars}")
 print(f"-> Mappings identificati: {present_mappings}")
 
 # ==============================================================================
-# 4. GRAFICO 1: SUCCESS RATE LINE PLOT (3x2 GRID)
+# 4. GRAFICO 1: SUCCESS RATE LINE PLOT (OTTIMIZZATO NELL'ASPECT RATIO)
 # ==============================================================================
 def generate_line_success_rate(mapping):
-    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(18, 12.5), sharex=True, sharey=True)
+    # Larghezza ridotta da 18 a 13.5 per riquadri più compatti ("più corti")
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(13.5, 12.5), sharex=True, sharey=True)
 
     for row, dl in enumerate(DEADLINES):
         ax_bs = axes[row, 0]
@@ -215,7 +216,7 @@ def generate_line_success_rate(mapping):
                 ls = '-' if dijk == 'Energy' else '--'
                 marker = 'o' if dijk == 'Energy' else 's'
                 ax_bs.plot(sorted_ars, y_vals, color=COLORS_BS[idx], linestyle=ls, marker=marker,
-                           markersize=6.0, linewidth=2.2, alpha=0.9)
+                           markersize=5.5, linewidth=2.0, alpha=0.9)
 
         # 2. BT Sweep (BS = 20)
         for idx, bt in enumerate(BT_VALS):
@@ -232,42 +233,42 @@ def generate_line_success_rate(mapping):
                 ls = '-' if dijk == 'Energy' else '--'
                 marker = 'o' if dijk == 'Energy' else 's'
                 ax_bt.plot(sorted_ars, y_vals, color=COLORS_BT[idx], linestyle=ls, marker=marker,
-                           markersize=6.0, linewidth=2.2, alpha=0.9)
+                           markersize=5.5, linewidth=2.0, alpha=0.9)
 
-        ax_bs.set_ylabel(f'Success Rate (%)\n[$\\Delta D = {dl}\\%$]', fontsize=14.5, fontweight='semibold')
+        ax_bs.set_ylabel(f'Success Rate (%)\n[$\\Delta D = {dl}\\%$]', fontsize=13.5, fontweight='semibold')
         ax_bs.set_ylim(-2, 105)
         ax_bt.set_ylim(-2, 105)
-        ax_bs.tick_params(labelsize=13)
-        ax_bt.tick_params(labelsize=13)
+        ax_bs.tick_params(labelsize=12)
+        ax_bt.tick_params(labelsize=12)
         ax_bs.grid(True, linestyle=':', alpha=0.55)
         ax_bt.grid(True, linestyle=':', alpha=0.55)
 
-    axes[0, 0].set_title('Batch Size Sweep ($BS$, $BT=2.0$s)', fontsize=16.5, fontweight='bold', pad=12)
-    axes[0, 1].set_title('Batch Timeout Sweep ($BT$, $BS=20$)', fontsize=16.5, fontweight='bold', pad=12)
-    axes[2, 0].set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
-    axes[2, 1].set_xlabel('Arrival Rate (req/sec)', fontsize=15.0, fontweight='semibold', labelpad=8)
+    axes[0, 0].set_title('Batch Size Sweep ($BS$, $BT=2.0$s)', fontsize=15.0, fontweight='bold', pad=10)
+    axes[0, 1].set_title('Batch Timeout Sweep ($BT$, $BS=20$)', fontsize=15.0, fontweight='bold', pad=10)
+    axes[2, 0].set_xlabel('Arrival Rate (req/sec)', fontsize=14.0, fontweight='semibold', labelpad=8)
+    axes[2, 1].set_xlabel('Arrival Rate (req/sec)', fontsize=14.0, fontweight='semibold', labelpad=8)
     axes[2, 0].set_xticks(sorted_ars)
     axes[2, 1].set_xticks(sorted_ars)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.16, wspace=0.08)
+    fig.subplots_adjust(top=0.91, bottom=0.18, hspace=0.18, wspace=0.10)
 
-    # Legende strutturate su 2 righe per scatola: zero collisioni
-    bs_lines = [Line2D([0], [0], color=COLORS_BS[i], lw=2.4, label=f'BS={bs}') for i, bs in enumerate(BS_VALS)]
-    bt_lines = [Line2D([0], [0], color=COLORS_BT[i], lw=2.4, label=f'BT={format_bt(bt)}s') for i, bt in enumerate(BT_VALS)]
+    # Legende adattate alla larghezza più compatta
+    bs_lines = [Line2D([0], [0], color=COLORS_BS[i], lw=2.2, label=f'BS={bs}') for i, bs in enumerate(BS_VALS)]
+    bt_lines = [Line2D([0], [0], color=COLORS_BT[i], lw=2.2, label=f'BT={format_bt(bt)}s') for i, bt in enumerate(BT_VALS)]
     routing_lines = [
-        Line2D([0], [0], color='#2b2b2b', linestyle='-', marker='o', lw=2.2, label='Dijkstra Energy'),
-        Line2D([0], [0], color='#2b2b2b', linestyle='--', marker='s', lw=2.2, label='Dijkstra Time')
+        Line2D([0], [0], color='#2b2b2b', linestyle='-', marker='o', lw=2.0, label='Dijkstra Energy'),
+        Line2D([0], [0], color='#2b2b2b', linestyle='--', marker='s', lw=2.0, label='Dijkstra Time')
     ]
 
-    leg1 = fig.legend(handles=bs_lines, loc='center', bbox_to_anchor=(0.21, 0.065), ncol=3, fontsize=11.5,
-                      title='Batch Size ($BS$)', title_fontsize=13.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
-    leg2 = fig.legend(handles=routing_lines, loc='center', bbox_to_anchor=(0.50, 0.065), ncol=1, fontsize=11.5,
-                      title='Routing Strategy', title_fontsize=13.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
-    leg3 = fig.legend(handles=bt_lines, loc='center', bbox_to_anchor=(0.79, 0.065), ncol=4, fontsize=11.5,
-                      title='Batch Timeout ($BT$)', title_fontsize=13.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    leg1 = fig.legend(handles=bs_lines, loc='center', bbox_to_anchor=(0.21, 0.07), ncol=3, fontsize=10.5,
+                      title='Batch Size ($BS$)', title_fontsize=12.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    leg2 = fig.legend(handles=routing_lines, loc='center', bbox_to_anchor=(0.50, 0.07), ncol=1, fontsize=10.5,
+                      title='Routing Strategy', title_fontsize=12.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
+    leg3 = fig.legend(handles=bt_lines, loc='center', bbox_to_anchor=(0.79, 0.07), ncol=4, fontsize=10.5,
+                      title='Batch Timeout ($BT$)', title_fontsize=12.0, frameon=True, facecolor='#fafafa', edgecolor='#cccccc')
 
-    fig.suptitle(f'Parametric Exploration of Success Rate (%) ({mapping} Mapping)', fontsize=19.5, fontweight='bold', y=0.985)
+    fig.suptitle(f'Parametric Exploration of Success Rate (%) ({mapping} Mapping)', fontsize=18.0, fontweight='bold', y=0.985)
 
     out_path = os.path.join(OUTPUT_DIR, f'01_Line_Success_Rate_{mapping}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2, leg3))
@@ -393,156 +394,193 @@ def generate_stacked_response_time(mapping):
     print(f"[OK] Generato: {out_path}")
 
 # ==============================================================================
-# 6. FUNZIONE REJECTION CAUSES
+# 6. FUNZIONE REJECTION CAUSES (STILE GRAFICO 2: INDICI SOPRA LE BARRE E TABELLA IN LEGENDA)
 # ==============================================================================
-def generate_rejection_causes_all_ar(mapping):
+def generate_rejection_causes_separated(mapping, routing_strategy):
+    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(16.0, 12.5), sharex=True, sharey=True)
+
     n_ars = len(sorted_ars)
     ar_indices = np.arange(n_ars)
 
-    fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(21, 14), sharex=True, sharey=True)
+    # Parametri geometrici calibrati per dare massima visibilità e stacco tra cluster
+    bs_bar_w = 0.108
+    bs_gap = 0.014
+    span_bs = len(BS_VALS) * bs_bar_w + (len(BS_VALS) - 1) * bs_gap
+    bs_start = -span_bs / 2.0 + bs_bar_w / 2.0
 
-    bs_bar_w = 0.050
-    bs_pair_gap = 0.016
-    span_bs = len(BS_VALS) * (2 * bs_bar_w) + (len(BS_VALS) - 1) * bs_pair_gap
-    bs_start_offset = -span_bs / 2.0 + bs_bar_w / 2.0
-
-    bt_bar_w = 0.038
-    bt_pair_gap = 0.012
-    span_bt = len(BT_VALS) * (2 * bt_bar_w) + (len(BT_VALS) - 1) * bt_pair_gap
-    bt_start_offset = -span_bt / 2.0 + bt_bar_w / 2.0
+    bt_bar_w = 0.082
+    bt_gap = 0.012
+    span_bt = len(BT_VALS) * bt_bar_w + (len(BT_VALS) - 1) * bt_gap
+    bt_start = -span_bt / 2.0 + bt_bar_w / 2.0
 
     for row, dl in enumerate(DEADLINES):
         ax_bs = axes[row, 0]
         ax_bt = axes[row, 1]
         group_key = (mapping, dl)
 
-        for i in range(n_ars):
-            if i % 2 == 1:
-                ax_bs.axvspan(i - 0.5, i + 0.5, color='#f8fafc', zorder=0)
-                ax_bt.axvspan(i - 0.5, i + 0.5, color='#f8fafc', zorder=0)
-
-        for i in range(n_ars - 1):
-            ax_bs.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
-            ax_bt.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
-
-        # 1. Colonna BS-Sweep
+        # ----------------------------------------------------------------------
+        # 1. Colonna Sinistra: BS-Sweep (6 barre per cluster)
+        # ----------------------------------------------------------------------
         for a_idx, ar in enumerate(sorted_ars):
             c_x = ar_indices[a_idx]
             for g_idx, bs in enumerate(BS_VALS):
-                pair_base_x = c_x + bs_start_offset + g_idx * (2 * bs_bar_w + bs_pair_gap)
-                for d_idx, dijk in enumerate(ROUTING_TYPES):
-                    x_pos = pair_base_x + d_idx * bs_bar_w
-                    cfg = f"BS:{bs} | BT:2 | Dijk:{dijk}"
-                    rows = data_store.get(group_key, {}).get(cfg, {}).get(ar, [])
-                    st = compute_stats(rows)
-                    rej_tot = st['rejected']
+                x_pos = c_x + bs_start + g_idx * (bs_bar_w + bs_gap)
+                cfg = f"BS:{bs} | BT:2 | Dijk:{routing_strategy}"
+                rows = data_store.get(group_key, {}).get(cfg, {}).get(ar, [])
+                st = compute_stats(rows)
+                rej_tot = st['rejected']
 
-                    hatch_pattern = None if dijk == 'Energy' else '/'
-                    bottom = 0.0
+                bottom = 0.0
+                for key in CAUSE_KEYS:
+                    val_pct = (st[key] / rej_tot * 100.0) if rej_tot > 0 else 0.0
+                    if val_pct > 0:
+                        ax_bs.bar(
+                            x_pos, val_pct, bottom=bottom, width=bs_bar_w,
+                            color=LUMINOUS_CAUSE_COLORS[key],
+                            edgecolor='#1e293b', linewidth=0.35, zorder=3
+                        )
+                        bottom += val_pct
 
-                    for key in CAUSE_KEYS:
-                        val_pct = (st[key] / rej_tot * 100.0) if rej_tot > 0 else 0.0
-                        if val_pct > 0:
-                            ax_bs.bar(
-                                x_pos, val_pct, bottom=bottom, width=bs_bar_w,
-                                color=LUMINOUS_CAUSE_COLORS[key],
-                                hatch=hatch_pattern,
-                                edgecolor='#2d3748',
-                                linewidth=0.25,
-                                zorder=3
-                            )
-                            bottom += val_pct
+                # Indice numerico 1..6 sopra ciascuna barra (presente su tutte le righe)
+                ax_bs.text(
+                    x_pos, 102.2, str(g_idx + 1),
+                    ha='center', va='bottom', fontsize=7.2, fontweight='bold',
+                    color='#334155', zorder=4
+                )
 
-        # 2. Colonna BT-Sweep
+        # ----------------------------------------------------------------------
+        # 2. Colonna Destra: BT-Sweep (8 barre per cluster)
+        # ----------------------------------------------------------------------
         for a_idx, ar in enumerate(sorted_ars):
             c_x = ar_indices[a_idx]
             for g_idx, bt in enumerate(BT_VALS):
-                bt_str = format_bt(bt)
-                pair_base_x = c_x + bt_start_offset + g_idx * (2 * bt_bar_w + bt_pair_gap)
-                for d_idx, dijk in enumerate(ROUTING_TYPES):
-                    x_pos = pair_base_x + d_idx * bt_bar_w
-                    cfg = f"BS:20 | BT:{bt_str} | Dijk:{dijk}"
-                    rows = data_store.get(group_key, {}).get(cfg, {}).get(ar, [])
-                    st = compute_stats(rows)
-                    rej_tot = st['rejected']
+                x_pos = c_x + bt_start + g_idx * (bt_bar_w + bt_gap)
+                cfg = f"BS:20 | BT:{format_bt(bt)} | Dijk:{routing_strategy}"
+                rows = data_store.get(group_key, {}).get(cfg, {}).get(ar, [])
+                st = compute_stats(rows)
+                rej_tot = st['rejected']
 
-                    hatch_pattern = None if dijk == 'Energy' else '/'
-                    bottom = 0.0
+                bottom = 0.0
+                for key in CAUSE_KEYS:
+                    val_pct = (st[key] / rej_tot * 100.0) if rej_tot > 0 else 0.0
+                    if val_pct > 0:
+                        ax_bt.bar(
+                            x_pos, val_pct, bottom=bottom, width=bt_bar_w,
+                            color=LUMINOUS_CAUSE_COLORS[key],
+                            edgecolor='#1e293b', linewidth=0.35, zorder=3
+                        )
+                        bottom += val_pct
 
-                    for key in CAUSE_KEYS:
-                        val_pct = (st[key] / rej_tot * 100.0) if rej_tot > 0 else 0.0
-                        if val_pct > 0:
-                            ax_bt.bar(
-                                x_pos, val_pct, bottom=bottom, width=bt_bar_w,
-                                color=LUMINOUS_CAUSE_COLORS[key],
-                                hatch=hatch_pattern,
-                                edgecolor='#2d3748',
-                                linewidth=0.25,
-                                zorder=3
-                            )
-                            bottom += val_pct
+                # Indice numerico 1..8 sopra ciascuna barra (presente su tutte le righe)
+                ax_bt.text(
+                    x_pos, 102.2, str(g_idx + 1),
+                    ha='center', va='bottom', fontsize=6.8, fontweight='bold',
+                    color='#334155', zorder=4
+                )
 
-        ax_bs.set_ylabel(f'Rejection Breakdown (%)\n[$\\Delta D = {dl}\\%$]', fontsize=14.5, fontweight='semibold')
-        ax_bs.set_ylim(0, 100)
-        ax_bs.tick_params(labelsize=13)
-        ax_bt.tick_params(labelsize=13)
-        ax_bs.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
-        ax_bt.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
+        # Configurazione assi Y e griglia leggera
+        ax_bs.set_ylabel(f'Rejection Breakdown (%)\n[$\\Delta D = {dl}\\%$]', fontsize=13.0, fontweight='semibold')
+        ax_bs.set_ylim(0, 108)  # Lo spazio tra 100 e 108 ospita i numeri sopra le barre
+        ax_bt.set_ylim(0, 108)
+        ax_bs.set_yticks([0, 20, 40, 60, 80, 100])
+        ax_bt.set_yticks([0, 20, 40, 60, 80, 100])
+        ax_bs.tick_params(axis='y', labelsize=11.5)
+        ax_bt.tick_params(axis='y', labelsize=11.5)
+        ax_bs.grid(axis='y', linestyle=':', alpha=0.55, zorder=1)
+        ax_bt.grid(axis='y', linestyle=':', alpha=0.55, zorder=1)
 
-    # Assi inferiori
-    for col_idx in [0, 1]:
-        axes[2, col_idx].set_xticks(ar_indices)
-        axes[2, col_idx].set_xticklabels([f'{ar} req/s' for ar in sorted_ars], fontsize=13.0, fontweight='semibold')
-        axes[2, col_idx].set_xlabel('Arrival Rate ($\\lambda$)', fontsize=15.0, fontweight='semibold', labelpad=8)
+        # Limiti orizzontali centrati sui cluster
+        ax_bs.set_xlim(-0.55, n_ars - 0.45)
+        ax_bt.set_xlim(-0.55, n_ars - 0.45)
 
-    axes[0, 0].set_title('BS-Sweep: Bars paired by $BS \\in [1, 2, 4, 6, 8, 10]$ ($BT=2.0$s)', fontsize=16.5, fontweight='bold', pad=12)
-    axes[0, 1].set_title('BT-Sweep: Bars paired by $BT \\in [0.0 \\dots 1.0]$s ($BS=20$)', fontsize=16.5, fontweight='bold', pad=12)
+    # Titoli standard dei subplot superiori
+    axes[0, 0].set_title(f'BS-Sweep ($BT=2.0$s) — Dijkstra {routing_strategy}', fontsize=14.5, fontweight='bold', pad=10)
+    axes[0, 1].set_title(f'BT-Sweep ($BS=20$) — Dijkstra {routing_strategy}', fontsize=14.5, fontweight='bold', pad=10)
 
-    fig.tight_layout()
-    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.16, wspace=0.08)
+    # Asse X inferiore pulito (solo Arrival Rate centrato sotto i cluster)
+    for col in [0, 1]:
+        axes[2, col].set_xticks(ar_indices)
+        axes[2, col].set_xticklabels([str(ar) for ar in sorted_ars], fontsize=12.5, fontweight='semibold')
+        axes[2, col].set_xlabel('Arrival Rate (req/sec)', fontsize=13.5, fontweight='semibold', labelpad=8)
+        axes[2, col].tick_params(axis='x', pad=5, length=4, color='#64748b')
 
-    # Legende ravvicinate verso il centro
+    # Spaziatura del canvas con margine inferiore calibrato per le legende
+    fig.subplots_adjust(top=0.915, bottom=0.175, hspace=0.16, wspace=0.08)
+
+    # --------------------------------------------------------------------------
+    # LEGENDA 1 (SINISTRA): CAUSE DI RIGETTO
+    # --------------------------------------------------------------------------
     cause_patches = [
-        mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#4a5568', linewidth=0.5, label=label)
+        mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#334155', linewidth=0.5, label=label)
         for k, label in zip(CAUSE_KEYS, CAUSE_LABELS)
     ]
-    pattern_patches = [
-        mpatches.Patch(facecolor='#e2e8f0', edgecolor='#2d3748', linewidth=0.5, label='Dijkstra Energy (Solid)'),
-        mpatches.Patch(facecolor='#e2e8f0', hatch='/', edgecolor='#2d3748', linewidth=0.5, label='Dijkstra Time (Hatched)')
-    ]
-
     leg_causes = fig.legend(
-        handles=cause_patches, loc='center', bbox_to_anchor=(0.36, 0.07),
-        ncol=3, fontsize=12.0, title='Failure Causes Breakdown', title_fontsize=13.5,
+        handles=cause_patches, loc='center', bbox_to_anchor=(0.25, 0.065),
+        ncol=2, fontsize=10.0, title='Failure Causes Breakdown', title_fontsize=11.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
-    leg_pattern = fig.legend(
-        handles=pattern_patches, loc='center', bbox_to_anchor=(0.69, 0.07),
-        ncol=2, fontsize=12.0, title='Routing Strategy', title_fontsize=13.5,
-        frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
+
+    # --------------------------------------------------------------------------
+    # LEGENDA 2 (DESTRA): MAPPA DI DECODIFICA DEI PARAMETRI (COME GRAFICO 2)
+    # --------------------------------------------------------------------------
+    # Tabella 4 colonne x 4 righe (ordinata per colonne da Matplotlib)
+    mapping_labels = [
+        # Colonna 1: BS [1..3]
+        '1  [1] BS = 1',
+        '2  [2] BS = 2',
+        '3  [3] BS = 4',
+        '',
+        # Colonna 2: BS [4..6]
+        '4  [4] BS = 6',
+        '5  [5] BS = 8',
+        '6  [6] BS = 10',
+        '',
+        # Colonna 3: BT [1..4]
+        '1  [1] BT = 0.0s',
+        '2  [2] BT = 0.05s',
+        '3  [3] BT = 0.1s',
+        '4  [4] BT = 0.2s',
+        # Colonna 4: BT [5..8]
+        '5  [5] BT = 0.4s',
+        '6  [6] BT = 0.6s',
+        '7  [7] BT = 0.8s',
+        '8  [8] BT = 1.0s'
+    ]
+    mapping_handles = [mpatches.Patch(color='none', label=lbl) for lbl in mapping_labels]
+
+    leg_mapping = fig.legend(
+        handles=mapping_handles, loc='center', bbox_to_anchor=(0.71, 0.065),
+        ncol=4, fontsize=9.0,
+        title='Sweep Configurations: [1-6] BS-Sweep (Left) | [1-8] BT-Sweep (Right)',
+        title_fontsize=11.5, frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1',
+        handlelength=0, handletextpad=0, columnspacing=1.6
     )
 
     fig.suptitle(
-        f'Failure Causes Evolution Across Arrival Rates ({mapping} Mapping)',
-        fontsize=19.5, fontweight='bold', y=0.985
+        f'Failure Causes Evolution — Dijkstra {routing_strategy} ({mapping} Mapping)',
+        fontsize=17.0, fontweight='bold', y=0.982
     )
 
-    out_path = os.path.join(OUTPUT_DIR, f'03_Failure_Causes_{mapping}.png')
-    plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg_causes, leg_pattern))
+    out_path = os.path.join(OUTPUT_DIR, f'03_Failure_Causes_{mapping}_Dijkstra_{routing_strategy}.png')
+    plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg_causes, leg_mapping))
     plt.close()
-    print(f'[OK] Salvato con successo: {out_path}')
+    print(f'[OK] Generato: {out_path}')
+
 
 # ==============================================================================
-# 7. ESECUZIONE PIPELINE COMPLETA
+# 7. ESECUZIONE AGGIORNATA
 # ==============================================================================
 if __name__ == '__main__':
-    print("\n--- AVVIO GENERAZIONE SUITE GRAFICI ---")
+    print("\n--- AVVIO GENERAZIONE SUITE GRAFICI AGGIORNATA ---")
     for mapping in present_mappings:
         print(f"\n==========================================")
         print(f" ELABORAZIONE MAPPING: {mapping}")
         print(f"==========================================")
         generate_line_success_rate(mapping)
         generate_stacked_response_time(mapping)
-        generate_rejection_causes_all_ar(mapping)
+
+        # Generazione separata per Dijkstra Energy e Dijkstra Time
+        for r_strat in ROUTING_TYPES:
+            generate_rejection_causes_separated(mapping, r_strat)
 
     print(f"\nCompletato con successo! Tutti i grafici si trovano in '{OUTPUT_DIR}/'.")
