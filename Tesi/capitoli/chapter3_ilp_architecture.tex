@@ -173,6 +173,7 @@ Algorithm~\ref{alg:dynamic_batching} formalizes the dual lifecycle of task inges
 \EndProcedure
 \end{algorithmic}
 \end{algorithm}
+\FloatBarrier
 
 \section{Constellation Topology Mapping and Metric Normalization}
 \label{sec:constellation_mapping}
@@ -271,6 +272,7 @@ The complete procedure is formalized in Algorithm~\ref{alg:constellation_mapping
 \State \Return $(\mathcal{T}_{route}, \mathcal{M}_{nodes})$
 \end{algorithmic}
 \end{algorithm}
+\FloatBarrier
 
 \section{Centralized Integer Linear Programming Formulation}
 \label{sec:mathematical_model}
@@ -440,6 +442,7 @@ Algorithm~\ref{alg:ilp_formulation} details the complete optimization assembly, 
 \State \Return $\mathcal{A}$
 \end{algorithmic}
 \end{algorithm}
+\FloatBarrier
 
 \section{Task Execution and Resilient Hybrid Routing}
 \label{sec:task_execution_routing}
@@ -482,6 +485,7 @@ Algorithm~\ref{alg:task_dispatching} formalizes this dispatching and re-enqueuin
 \EndFor
 \end{algorithmic}
 \end{algorithm}
+\FloatBarrier
 
 \subsection{Resilient Hybrid Packet Routing}
 \label{subsec:hybrid_routing}
@@ -536,7 +540,7 @@ Algorithm~\ref{alg:hybrid_routing} details the complete hybrid routing and execu
 \State Yield to discrete-event simulator: $\Call{TaskAssignmentILP}{env, SelectedServer, TaskData}$
 \end{algorithmic}
 \end{algorithm}
-
+\FloatBarrier
 \section{Computational Complexity and Scalability Analysis}
 \label{sec:complexity_analysis}
 

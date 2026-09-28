@@ -13,12 +13,12 @@ plt.rcParams.update({
     'figure.dpi': 300,
     'font.sans-serif': 'DejaVu Sans',
     'font.size': 13.5,
-    'axes.labelsize': 15.5,
+    'axes.labelsize': 14.5,
     'axes.titlesize': 13.0,
-    'xtick.labelsize': 13.5,
-    'ytick.labelsize': 12.5,
-    'legend.fontsize': 11.5,
-    'legend.title_fontsize': 13.0
+    'xtick.labelsize': 12.5,
+    'ytick.labelsize': 12.0,
+    'legend.fontsize': 11.0,
+    'legend.title_fontsize': 12.5
 })
 
 # ==============================================================================
@@ -53,7 +53,7 @@ ALPHA_STYLE = {
     1000: {'color': '#10B981', 'marker': '^', 'ls': '-.', 'hatch': '\\\\', 'label': r'$\alpha = 1000$'}
 }
 
-# Configurazione dei 4 scenari per riga (2x4)
+# Configurazione dei 4 scenari disposti in griglia 2x2
 SCENARIO_CONFIGS = [
     ('BS:2',  'BT:2.0',  'Dijk-Energy'),
     ('BS:2',  'BT:2.0',  'Dijk-Time'),
@@ -180,45 +180,44 @@ sorted_ars = sorted(list(all_ars)) if all_ars else [8, 10]
 print(f"-> Arrival Rates rilevati: {sorted_ars}")
 
 # ==============================================================================
-# 4. GRAFICO 1: CROSS SUCCESS RATE
+# 4. GRAFICO 1: CROSS SUCCESS RATE (GRIGLIA 2x2)
 # ==============================================================================
-def generate_cross_success_rate(ar_target):
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(25, 9.8), sharex=True, sharey=True)
+def generate_cross_success_rate(ar_target, mapping):
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15.0, 11.5), sharex=True, sharey=True)
     x_indices = np.arange(len(SUNSET_WEIGHTS))
 
-    for row_idx, mapping in enumerate(['Energy', 'Time']):
-        for col_idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
-            ax = axes[row_idx, col_idx]
-            scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
+    for idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
+        r = idx // 2
+        c = idx % 2
+        ax = axes[r, c]
+        scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
 
-            for alpha in ALPHA_VALS:
-                y_vals = []
-                for sunw in SUNSET_WEIGHTS:
-                    rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
-                    st = compute_stats(rows)
-                    tot = st['completed'] + st['rejected']
-                    y_vals.append((st['completed'] / tot * 100.0) if tot > 0 else 0.0)
+        for alpha in ALPHA_VALS:
+            y_vals = []
+            for sunw in SUNSET_WEIGHTS:
+                rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
+                st = compute_stats(rows)
+                tot = st['completed'] + st['rejected']
+                y_vals.append((st['completed'] / tot * 100.0) if tot > 0 else 0.0)
 
-                cfg = ALPHA_STYLE[alpha]
-                ax.plot(x_indices, y_vals, color=cfg['color'], linestyle=cfg['ls'],
-                        marker=cfg['marker'], markersize=6.5, linewidth=2.2, alpha=0.92)
+            cfg = ALPHA_STYLE[alpha]
+            ax.plot(x_indices, y_vals, color=cfg['color'], linestyle=cfg['ls'],
+                    marker=cfg['marker'], markersize=6.5, linewidth=2.2, alpha=0.92)
 
-            ax.set_title(scenario_key, fontsize=12.5, fontweight='bold', pad=10)
-            ax.set_ylim(-2, 105)
-            # Mostra i valori sull'asse Y per ogni singolo subplot
-            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
-            ax.grid(True, linestyle=':', alpha=0.6)
-            if col_idx == 0:
-                ax.set_ylabel(f'{mapping} Mapping\nSuccess Rate (%)', fontsize=14.5, fontweight='semibold')
+        ax.set_title(scenario_key, fontsize=13.0, fontweight='bold', pad=9)
+        ax.set_ylim(-2, 105)
+        ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.0)
+        ax.grid(True, linestyle=':', alpha=0.6)
+        if c == 0:
+            ax.set_ylabel('Success Rate (%)', fontsize=14.0, fontweight='semibold')
 
-    for col in range(4):
-        axes[1, col].set_xticks(x_indices)
-        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=13.5, rotation=30)
-        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=15.5, fontweight='semibold', labelpad=9)
+    for c in range(2):
+        axes[1, c].set_xticks(x_indices)
+        axes[1, c].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=12.5, rotation=30)
+        axes[1, c].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=14.5, fontweight='semibold', labelpad=8)
 
     fig.tight_layout()
-    # wspace aumentato a 0.13 per garantire spazio sufficiente alle etichette Y
-    fig.subplots_adjust(top=0.90, bottom=0.20, hspace=0.26, wspace=0.13)
+    fig.subplots_adjust(top=0.91, bottom=0.16, hspace=0.26, wspace=0.15)
 
     alpha_handles = [
         Line2D([0], [0], color=ALPHA_STYLE[a]['color'], linestyle=ALPHA_STYLE[a]['ls'],
@@ -226,76 +225,76 @@ def generate_cross_success_rate(ar_target):
         for a in ALPHA_VALS
     ]
     leg = fig.legend(
-        handles=alpha_handles, loc='center', bbox_to_anchor=(0.50, 0.075),
-        ncol=3, fontsize=12.0, title='Primary Weight ($\\alpha$)', title_fontsize=13.5,
+        handles=alpha_handles, loc='center', bbox_to_anchor=(0.50, 0.065),
+        ncol=3, fontsize=12.0, title='Primary Weight ($\\alpha$)', title_fontsize=13.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
 
-    fig.suptitle(f'Cross-Sensitivity Success Rate ($\\gamma \\times \\alpha$) at {ar_target} req/s',
-                 fontsize=19.5, fontweight='bold', y=0.985)
+    fig.suptitle(f'Cross-Sensitivity Success Rate ($\\gamma \\times \\alpha$) — {mapping} Mapping at {ar_target} req/s',
+                 fontsize=17.0, fontweight='bold', y=0.975)
 
-    out_path = os.path.join(OUTPUT_DIR, f'01_Cross_Success_Rate_AR_{ar_target}.png')
+    out_path = os.path.join(OUTPUT_DIR, f'01_Cross_Success_Rate_{mapping}_AR_{ar_target}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg,))
     plt.close()
-    print(f"[OK] Generato Success Rate: {out_path}")
+    print(f"[OK] Generato Success Rate ({mapping}): {out_path}")
 
 # ==============================================================================
-# 5. GRAFICO 2: CROSS FAILURE CAUSES
+# 5. GRAFICO 2: CROSS FAILURE CAUSES (GRIGLIA 2x2)
 # ==============================================================================
-def generate_cross_rejection_causes(ar_target):
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(25, 10.0), sharex=True, sharey=True)
+def generate_cross_rejection_causes(ar_target, mapping):
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15.5, 12.0), sharex=True, sharey=True)
 
     n_sunw = len(SUNSET_WEIGHTS)
     x_indices = np.arange(n_sunw)
     bar_w = 0.22
     offsets = [-bar_w, 0.0, bar_w]
 
-    for row_idx, mapping in enumerate(['Energy', 'Time']):
-        for col_idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
-            ax = axes[row_idx, col_idx]
-            scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
+    for idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
+        r = idx // 2
+        c = idx % 2
+        ax = axes[r, c]
+        scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
 
-            for i in range(n_sunw):
-                if i % 2 == 1:
-                    ax.axvspan(i - 0.5, i + 0.5, color='#f8fafc', zorder=0)
+        for i in range(n_sunw):
+            if i % 2 == 1:
+                ax.axvspan(i - 0.5, i + 0.5, color='#f8fafc', zorder=0)
 
-            for i in range(n_sunw - 1):
-                ax.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
+        for i in range(n_sunw - 1):
+            ax.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
 
-            for s_idx, sunw in enumerate(SUNSET_WEIGHTS):
-                c_x = x_indices[s_idx]
-                for a_idx, alpha in enumerate(ALPHA_VALS):
-                    x_pos = c_x + offsets[a_idx]
-                    rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
-                    st = compute_stats(rows)
-                    rej_tot = st['rejected']
+        for s_idx, sunw in enumerate(SUNSET_WEIGHTS):
+            c_x = x_indices[s_idx]
+            for a_idx, alpha in enumerate(ALPHA_VALS):
+                x_pos = c_x + offsets[a_idx]
+                rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
+                st = compute_stats(rows)
+                rej_tot = st['rejected']
 
-                    hatch_pat = ALPHA_STYLE[alpha]['hatch']
-                    bottom = 0.0
+                hatch_pat = ALPHA_STYLE[alpha]['hatch']
+                bottom = 0.0
 
-                    for key in CAUSE_KEYS:
-                        val_pct = (st[key] / rej_tot * 100.0) if rej_tot > 0 else 0.0
-                        if val_pct > 0:
-                            ax.bar(x_pos, val_pct, bottom=bottom, width=bar_w * 0.88,
-                                   color=LUMINOUS_CAUSE_COLORS[key], hatch=hatch_pat,
-                                   edgecolor='#2d3748', linewidth=0.25, zorder=3)
-                            bottom += val_pct
+                for key in CAUSE_KEYS:
+                    val_pct = (st[key] / rej_tot * 100.0) if rej_tot > 0 else 0.0
+                    if val_pct > 0:
+                        ax.bar(x_pos, val_pct, bottom=bottom, width=bar_w * 0.88,
+                               color=LUMINOUS_CAUSE_COLORS[key], hatch=hatch_pat,
+                               edgecolor='#2d3748', linewidth=0.25, zorder=3)
+                        bottom += val_pct
 
-            ax.set_title(scenario_key, fontsize=12.5, fontweight='bold', pad=10)
-            ax.set_ylim(0, 100)
-            # Mostra i valori sull'asse Y per ogni singolo subplot
-            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
-            ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
-            if col_idx == 0:
-                ax.set_ylabel(f'{mapping} Mapping\nRejection Breakdown (%)', fontsize=14.5, fontweight='semibold')
+        ax.set_title(scenario_key, fontsize=13.0, fontweight='bold', pad=9)
+        ax.set_ylim(0, 100)
+        ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.0)
+        ax.grid(axis='y', linestyle='--', alpha=0.35, zorder=2)
+        if c == 0:
+            ax.set_ylabel('Rejection Breakdown (%)', fontsize=14.0, fontweight='semibold')
 
-    for col in range(4):
-        axes[1, col].set_xticks(x_indices)
-        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=13.5, rotation=30)
-        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=15.5, fontweight='semibold', labelpad=9)
+    for c in range(2):
+        axes[1, c].set_xticks(x_indices)
+        axes[1, c].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=12.5, rotation=30)
+        axes[1, c].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=14.5, fontweight='semibold', labelpad=8)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.90, bottom=0.21, hspace=0.26, wspace=0.13)
+    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.26, wspace=0.15)
 
     cause_patches = [mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#4a5568', linewidth=0.5, label=l)
                      for k, l in zip(CAUSE_KEYS, CAUSE_LABELS)]
@@ -304,29 +303,29 @@ def generate_cross_rejection_causes(ar_target):
                      for a in ALPHA_VALS]
 
     leg1 = fig.legend(
-        handles=cause_patches, loc='center', bbox_to_anchor=(0.38, 0.08), ncol=3,
-        fontsize=11.5, title='Failure Causes Breakdown', title_fontsize=13.0,
+        handles=cause_patches, loc='center', bbox_to_anchor=(0.34, 0.065), ncol=3,
+        fontsize=10.5, title='Failure Causes Breakdown', title_fontsize=12.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
     leg2 = fig.legend(
-        handles=alpha_hatches, loc='center', bbox_to_anchor=(0.67, 0.08), ncol=3,
-        fontsize=11.5, title='Primary Weight Pattern ($\\alpha$)', title_fontsize=13.0,
+        handles=alpha_hatches, loc='center', bbox_to_anchor=(0.76, 0.065), ncol=3,
+        fontsize=10.5, title='Primary Weight Pattern ($\\alpha$)', title_fontsize=12.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
 
-    fig.suptitle(f'Cross-Sensitivity Rejection Causes ($\\gamma \\times \\alpha$) at {ar_target} req/s',
-                 fontsize=19.5, fontweight='bold', y=0.985)
+    fig.suptitle(f'Cross-Sensitivity Rejection Causes ($\\gamma \\times \\alpha$) — {mapping} Mapping at {ar_target} req/s',
+                 fontsize=17.0, fontweight='bold', y=0.975)
 
-    out_path = os.path.join(OUTPUT_DIR, f'02_Cross_Failure_Causes_AR_{ar_target}.png')
+    out_path = os.path.join(OUTPUT_DIR, f'02_Cross_Failure_Causes_{mapping}_AR_{ar_target}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
     plt.close()
-    print(f"[OK] Generato Rejection Causes: {out_path}")
+    print(f"[OK] Generato Rejection Causes ({mapping}): {out_path}")
 
 # ==============================================================================
-# 6. GRAFICO 3: CROSS RESPONSE TIME
+# 6. GRAFICO 3: CROSS RESPONSE TIME (GRIGLIA 2x2)
 # ==============================================================================
-def generate_cross_response_time(ar_target):
-    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(25, 10.0), sharex=True)
+def generate_cross_response_time(ar_target, mapping):
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15.5, 12.0), sharex=True)
 
     n_sunw = len(SUNSET_WEIGHTS)
     x_indices = np.arange(n_sunw)
@@ -334,56 +333,56 @@ def generate_cross_response_time(ar_target):
     offsets = [-bar_w, 0.0, bar_w]
     max_y = 0.0
 
-    for row_idx, mapping in enumerate(['Energy', 'Time']):
-        for col_idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
-            ax = axes[row_idx, col_idx]
-            scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
+    for idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
+        r = idx // 2
+        c = idx % 2
+        ax = axes[r, c]
+        scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
 
-            for i in range(n_sunw):
-                if i % 2 == 1:
-                    ax.axvspan(i - 0.5, i + 0.5, color='#f8fafc', zorder=0)
+        for i in range(n_sunw):
+            if i % 2 == 1:
+                ax.axvspan(i - 0.5, i + 0.5, color='#f8fafc', zorder=0)
 
-            for i in range(n_sunw - 1):
-                ax.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
+        for i in range(n_sunw - 1):
+            ax.axvline(i + 0.5, color='#e2e8f0', linestyle='-', linewidth=0.75, zorder=1)
 
-            for s_idx, sunw in enumerate(SUNSET_WEIGHTS):
-                c_x = x_indices[s_idx]
-                for a_idx, alpha in enumerate(ALPHA_VALS):
-                    x_pos = c_x + offsets[a_idx]
-                    rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
-                    st = compute_stats(rows)
-                    comp = st['completed']
+        for s_idx, sunw in enumerate(SUNSET_WEIGHTS):
+            c_x = x_indices[s_idx]
+            for a_idx, alpha in enumerate(ALPHA_VALS):
+                x_pos = c_x + offsets[a_idx]
+                rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
+                st = compute_stats(rows)
+                comp = st['completed']
 
-                    sys_t = (st['sys_time'] / comp) if comp > 0 else 0.0
-                    tot_t = (st['total_time'] / comp) if comp > 0 else 0.0
-                    wait_t = max(0.0, tot_t - sys_t)
-                    if tot_t > max_y:
-                        max_y = tot_t
+                sys_t = (st['sys_time'] / comp) if comp > 0 else 0.0
+                tot_t = (st['total_time'] / comp) if comp > 0 else 0.0
+                wait_t = max(0.0, tot_t - sys_t)
+                if tot_t > max_y:
+                    max_y = tot_t
 
-                    base_c = ALPHA_STYLE[alpha]['color']
-                    ax.bar(x_pos, sys_t, width=bar_w * 0.88, color=base_c,
-                           edgecolor='#1a202c', linewidth=0.35, zorder=3)
-                    ax.bar(x_pos, wait_t, bottom=sys_t, width=bar_w * 0.88, color=base_c,
-                           alpha=0.38, hatch='//', edgecolor='#1a202c', linewidth=0.35, zorder=3)
+                base_c = ALPHA_STYLE[alpha]['color']
+                ax.bar(x_pos, sys_t, width=bar_w * 0.88, color=base_c,
+                       edgecolor='#1a202c', linewidth=0.35, zorder=3)
+                ax.bar(x_pos, wait_t, bottom=sys_t, width=bar_w * 0.88, color=base_c,
+                       alpha=0.38, hatch='//', edgecolor='#1a202c', linewidth=0.35, zorder=3)
 
-            ax.set_title(scenario_key, fontsize=12.5, fontweight='bold', pad=10)
-            # Mostra i valori sull'asse Y per ogni singolo subplot
-            ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.5)
-            ax.grid(axis='y', linestyle='--', alpha=0.4, zorder=2)
-            if col_idx == 0:
-                ax.set_ylabel(f'{mapping} Mapping\nResponse Time (s)', fontsize=14.5, fontweight='semibold')
+        ax.set_title(scenario_key, fontsize=13.0, fontweight='bold', pad=9)
+        ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.0)
+        ax.grid(axis='y', linestyle='--', alpha=0.4, zorder=2)
+        if c == 0:
+            ax.set_ylabel('Response Time (s)', fontsize=14.0, fontweight='semibold')
 
     for r in range(2):
-        for c in range(4):
+        for c in range(2):
             axes[r, c].set_ylim(0, max_y * 1.12 if max_y > 0 else 1.0)
 
-    for col in range(4):
-        axes[1, col].set_xticks(x_indices)
-        axes[1, col].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=13.5, rotation=30)
-        axes[1, col].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=15.5, fontweight='semibold', labelpad=9)
+    for c in range(2):
+        axes[1, c].set_xticks(x_indices)
+        axes[1, c].set_xticklabels([str(w) for w in SUNSET_WEIGHTS], fontsize=12.5, rotation=30)
+        axes[1, c].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=14.5, fontweight='semibold', labelpad=8)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.90, bottom=0.21, hspace=0.26, wspace=0.13)
+    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.26, wspace=0.15)
 
     alpha_patches = [mpatches.Patch(color=ALPHA_STYLE[a]['color'], label=ALPHA_STYLE[a]['label'])
                      for a in ALPHA_VALS]
@@ -393,35 +392,38 @@ def generate_cross_response_time(ar_target):
     ]
 
     leg1 = fig.legend(
-        handles=alpha_patches, loc='center', bbox_to_anchor=(0.38, 0.08), ncol=3,
-        fontsize=11.5, title='Primary Weight ($\\alpha$)', title_fontsize=13.0,
+        handles=alpha_patches, loc='center', bbox_to_anchor=(0.36, 0.065), ncol=3,
+        fontsize=11.0, title='Primary Weight ($\\alpha$)', title_fontsize=12.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
     leg2 = fig.legend(
-        handles=time_comp_patches, loc='center', bbox_to_anchor=(0.67, 0.08), ncol=2,
-        fontsize=11.5, title='Decomposition Component', title_fontsize=13.0,
+        handles=time_comp_patches, loc='center', bbox_to_anchor=(0.74, 0.065), ncol=2,
+        fontsize=11.0, title='Decomposition Component', title_fontsize=12.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
 
-    fig.suptitle(f'Cross-Sensitivity Response Time Decomposition ($\\gamma \\times \\alpha$) at {ar_target} req/s',
-                 fontsize=19.5, fontweight='bold', y=0.985)
+    fig.suptitle(f'Cross-Sensitivity Response Time Decomposition ($\\gamma \\times \\alpha$) — {mapping} Mapping at {ar_target} req/s',
+                 fontsize=17.0, fontweight='bold', y=0.975)
 
-    out_path = os.path.join(OUTPUT_DIR, f'03_Cross_Response_Time_AR_{ar_target}.png')
+    out_path = os.path.join(OUTPUT_DIR, f'03_Cross_Response_Time_{mapping}_AR_{ar_target}.png')
     plt.savefig(out_path, bbox_inches='tight', bbox_extra_artists=(leg1, leg2))
     plt.close()
-    print(f"[OK] Generato Response Time: {out_path}")
+    print(f"[OK] Generato Response Time ({mapping}): {out_path}")
 
 # ==============================================================================
-# 7. ESECUZIONE SU TUTTI GLI ARRIVAL RATES DISPONIBILI
+# 7. ESECUZIONE SU TUTTI GLI ARRIVAL RATES E MAPPINGS
 # ==============================================================================
 if __name__ == '__main__':
-    print("\n--- AVVIO GENERAZIONE SUITE CROSS-SENSITIVITY ---")
+    print("\n--- AVVIO GENERAZIONE SUITE CROSS-SENSITIVITY (6 FIGURE 2x2 PER AR) ---")
+    MAPPINGS = ['Energy', 'Time']
     for ar in sorted_ars:
         print(f"\n==========================================")
         print(f" ELABORAZIONE ARRIVAL RATE: {ar} req/s")
         print(f"==========================================")
-        generate_cross_success_rate(ar)
-        generate_cross_rejection_causes(ar)
-        generate_cross_response_time(ar)
+        for mapping in MAPPINGS:
+            print(f" -> Mapping: {mapping}")
+            generate_cross_success_rate(ar, mapping)
+            generate_cross_rejection_causes(ar, mapping)
+            generate_cross_response_time(ar, mapping)
 
     print(f"\nCompletato con successo! Tutti i grafici si trovano in '{OUTPUT_DIR}/'.")
