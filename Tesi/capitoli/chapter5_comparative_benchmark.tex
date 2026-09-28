@@ -93,19 +93,19 @@ The mixed workload profile represents a standard multi-tenant operational scenar
 \subsubsection{Success Rate Dynamics}
 \label{subsubsec:sr_mixed}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_40kJ.png}%
     }
     \caption{Success Rate across arrival rates under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ for $40\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_mixed_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/01_Success_Rate_Beta_0_4_0_35_0_25_80kJ.png}%
     }
     \caption{Success Rate across arrival rates under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ for $80\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_mixed_80kJ}
@@ -123,23 +123,23 @@ In contrast, mathematical optimization formulations exhibit substantial performa
 \end{itemize}
 
 Across payload distributions, shifting from \textit{Standard} $\boldsymbol{\alpha} = (0.3, 0.5, 0.2)$ to \textit{VL-heavy} $\boldsymbol{\alpha} = (0, 0.3, 0.7)$ or \textit{Pure L} $\boldsymbol{\alpha} = (0, 1, 0)$ systematically depresses completion rates by $2\text{--}5\%$ across all algorithms due to increased serialization delay over optical ISLs. Doubling the usable battery capacity from $40\text{ kJ}$ to $80\text{ kJ}$ provides a uniform upward shift of $+4\%$ to $+12\%$, with the most pronounced benefit observed in multi-hop optimization configurations.
-
+\FloatBarrier
 \subsubsection{Response Time Analysis}
 \label{subsubsec:rt_mixed}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/02_Response_Time_Beta_0_4_0_35_0_25_40kJ.png}%
     }
     \caption{Response Time decomposition under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ comparing Onboard Task Execution and Network/Wait latency for $40\text{ kJ}$.}
     \label{fig:rt_mixed_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/02_Response_Time_Beta_0_4_0_35_0_25_80kJ.png}%
     }
     \caption{Response Time decomposition under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ comparing Onboard Task Execution and Network/Wait latency for $80\text{ kJ}$.}
     \label{fig:rt_mixed_80kJ}
@@ -154,23 +154,24 @@ The empirical results demonstrate a clear architectural bifurcation in latency d
     \item \textbf{Low-Latency Bounds of Fast Dispatch:} The centralized fast-dispatch models (\texttt{BS20, BT0.05}) achieve the lowest baseline response times in the entire benchmark, recording $0.50\text{--}0.54\text{ s}$ for Time (bar~[6]) and $0.42\text{--}0.48\text{ s}$ for Energy (bar~[7]) at $\lambda = 2\text{ req/s}$. Under peak load ($\lambda = 10\text{ req/s}$), response time expands moderately to $0.65\text{--}0.75\text{ s}$ (Time) and $0.60\text{--}0.65\text{ s}$ (Energy). Their onboard execution footprint is exceptionally low ($T_{exec} \le 0.26\text{ s}$), while capping the batch timeout at $0.05\text{ s}$ strictly suppresses ingress queuing accumulation.
     \item \textbf{Small-Batch Dynamics:} For \texttt{ILP-Centr [BS2, BT2, Time]} (bar~[8]), response time starts slightly higher at $\lambda = 2\text{ req/s}$ ($0.72\text{--}0.76\text{ s}$) due to queuing dwell times awaiting batch capacity or timeout trigger ($T_{net+wait} \approx 0.50\text{--}0.53\text{ s}$, $T_{exec} \approx 0.21\text{--}0.23\text{ s}$). However, as traffic scales to $\lambda = 10\text{ req/s}$, response time decreases and stabilizes at $0.56\text{--}0.65\text{ s}$ across all payload profiles, because the small batch threshold of 2 is satisfied almost instantaneously by incoming traffic bursts. Meanwhile, \texttt{ILP-Centr [BS2, BT2, Energy]} (bar~[9]) exhibits low latency ($0.45\text{--}0.63\text{ s}$, with $T_{exec} \approx 0.17\text{--}0.23\text{ s}$) because it aggressively drops tasks requiring multi-hop routing, admitting predominantly single-hop assignments.
 \end{itemize}
+\FloatBarrier
 
 \subsubsection{Failure Diagnostics}
 \label{subsubsec:rej_mixed}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_40kJ.png}%
     }
     \caption{Rejection Causes distribution under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ across arrival rates for $40\text{ kJ}$.}
     \label{fig:rej_mixed_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/03_Rejection_Causes_Beta_0_4_0_35_0_25_80kJ.png}%
     }
     \caption{Rejection Causes distribution under Mixed Workload $\boldsymbol{\beta} = (0.40, 0.35, 0.25)$ across arrival rates for $80\text{ kJ}$.}
     \label{fig:rej_mixed_80kJ}
@@ -183,7 +184,7 @@ Figure~\ref{fig:rej_mixed_40kJ} and Figure~\ref{fig:rej_mixed_80kJ} illustrate t
     \item \textbf{Fast-Dispatch Profile (\texttt{BS20, BT0.05}):} Centralized fast-dispatch configurations (bars~[6] and~[7]) exhibit substantial deadline degradation under traffic saturation despite the aggressive $50\text{ ms}$ timeout. At light load ($\lambda = 2\text{ req/s}$), \textit{Deadline Exceeded} accounts for $45\text{--}52\%$ of drops under Time mapping (bar~[6]) and $40\text{--}48\%$ under Energy mapping (bar~[7]). Under peak traffic ($\lambda = 10\text{ req/s}$), queuing backlogs expand deadline failures to $65\text{--}75\%$ at $40\text{ kJ}$ and up to $72\text{--}80\%$ at $80\text{ kJ}$, with physical exhaustion accounting for the remainder (\textit{Insufficient CPU+NET} at $12\text{--}18\%$ and \textit{Insufficient CPU} at $10\text{--}15\%$).
     \item \textbf{Small-Batching Dynamics (\texttt{BS2, BT2}):} Small-batch configurations demonstrate that restricting batch capacity to $BS = 2$ drastically suppresses queuing timeouts under sustained traffic. Under Time mapping (bar~[8]), \textit{Deadline Exceeded} accounts for $10\text{--}15\%$ of drops at $\lambda = 2\text{ req/s}$ (due to dwell times awaiting batch completion, alongside a minor $2\text{--}4\%$ share of \textit{Sunset} drops), but diminishes to $<2\%$ at $\lambda = 10\text{ req/s}$ as arrival bursts saturate the small threshold immediately. Consequently, rejections are overwhelmingly governed by physical resource exhaustion, split between \textit{Insufficient CPU} ($58\text{--}62\%$) and \textit{Insufficient CPU+NET} ($36\text{--}40\%$). Under Energy mapping (bar~[9]), deadline violations remain virtually absent across all arrival rates ($\le 2\%$), with failures driven strictly by physical limitations (\textit{Insufficient CPU} at $58\text{--}62\%$ and \textit{Insufficient CPU+NET} at $36\text{--}40\%$) as the energy objective rejects multi-hop routes exceeding battery budgets.
 \end{itemize}
-
+\FloatBarrier
 % -----------------------------------------------------------------------------
 % SUBSECTION 5.2.2: CPU-INTENSIVE WORKLOAD
 % -----------------------------------------------------------------------------
@@ -195,19 +196,19 @@ When the workload consists entirely of compute-intensive requests with minimal p
 \subsubsection{Success Rate Dynamics and Invariance across Payload Distributions}
 \label{subsubsec:sr_cpu}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_1_0_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/01_Success_Rate_Beta_0_1_0_40kJ.png}%
     }
     \caption{Success Rate across arrival rates under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $40\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_cpu_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_1_0_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/01_Success_Rate_Beta_0_1_0_80kJ.png}%
     }
     \caption{Success Rate across arrival rates under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $80\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_cpu_80kJ}
@@ -223,23 +224,23 @@ Under these operating conditions, a marked performance differentiation is observ
     \item \textbf{Collapse of Hierarchical Formulations:} The \texttt{ILP-Hierarchical} models suffer an immediate breakdown as soon as traffic exceeds $\lambda = 2\text{ req/s}$. The success rate drops precipitously from $70\text{--}76\%$ ($40\text{ kJ}$) / $80\text{--}84\%$ ($80\text{ kJ}$) at $\lambda = 2\text{ req/s}$ down to $46\text{--}49\%$ at $\lambda = 3\text{ req/s}$, before stabilizing at $25\text{--}26\%$ under $40\text{ kJ}$ and $28\text{--}30\%$ under $80\text{ kJ}$ at $\lambda = 10\text{ req/s}$. Multi-tier aggregation delays render the hierarchical paradigm inadequate for dense computational workloads.
     \item \textbf{Superiority of Small-Batching over Fast-Dispatch:} The small-batching configuration with latency optimization (\texttt{ILP-Centr [BS2, BT2, Time]}) demonstrates superior resilience under computational stress, sustaining a completion rate of $46\text{--}47\%$ at $40\text{ kJ}$ and $56\text{--}58\%$ at $80\text{ kJ}$ at $\lambda = 10\text{ req/s}$. Centralized fast-dispatch (\texttt{ILP-Centr [BS20, BT0.05, Time/Energy]}) achieves $75\text{--}77\%$ at $40\text{ kJ}$ and $84\text{--}85\%$ at $80\text{ kJ}$ under light load, but degrades steeply to $29\text{--}30\%$ at $40\text{ kJ}$ and $31\text{--}33\%$ at $80\text{ kJ}$ under full load. Small-batching out-performs fast-dispatch by up to $+25\%$ at peak load. Furthermore, \texttt{ILP-Centr [BS2, BT2, Energy]} starts at $54\%$ ($40\text{ kJ}$) / $60\text{--}61\%$ ($80\text{ kJ}$) at $\lambda = 2\text{ req/s}$ and sustains $37\text{--}38\%$ ($40\text{ kJ}$) / $47\text{--}48\%$ ($80\text{ kJ}$) at $\lambda = 10\text{ req/s}$, also exceeding fast-dispatch throughput under high traffic.
 \end{itemize}
-
+\FloatBarrier
 \subsubsection{Response Time Analysis}
 \label{subsubsec:rt_cpu}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_1_0_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/02_Response_Time_Beta_0_1_0_40kJ.png}%
     }
     \caption{Response Time decomposition under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $40\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rt_cpu_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_1_0_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/02_Response_Time_Beta_0_1_0_80kJ.png}%
     }
     \caption{Response Time decomposition under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $80\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rt_cpu_80kJ}
@@ -253,23 +254,23 @@ The analysis highlights a pronounced divergence in system latency behavior:
     \item \textbf{Fast-Dispatch Latency Progression:} Fast-dispatch configurations (\texttt{BS20, BT0.05}, bars~[6] and~[7]) exhibit one of the lowest latency under light traffic ($0.68\text{--}0.75\text{ s}$), expanding to $0.98\text{--}1.05\text{ s}$ ($40\text{ kJ}$) and $1.05\text{--}1.10\text{ s}$ ($80\text{ kJ}$) at $\lambda = 10\text{ req/s}$, with $T_{exec}$ increasing from $\approx 0.30\text{ s}$ to $0.44\text{--}0.48\text{ s}$.
     \item \textbf{Small-Batch Latency Compression:} In contrast to fast-dispatch, small-batching with Time optimization (\texttt{BS2, BT2, Time}, bar~[8]) begins at $0.90\text{ s}$ ($40\text{ kJ}$) / $0.96\text{--}0.98\text{ s}$ ($80\text{ kJ}$) at $\lambda = 2\text{ req/s}$ due to the batch completion dwell time ($T_{net+wait} \approx 0.50\text{--}0.56\text{ s}$). However, as traffic scales to $\lambda = 10\text{ req/s}$, response time compresses and stabilizes at $0.78\text{--}0.80\text{ s}$ ($40\text{ kJ}$) and $0.80\text{--}0.83\text{ s}$ ($80\text{ kJ}$), because incoming request bursts fulfill the small batch capacity of 2 almost instantaneously. Meanwhile, \texttt{ILP-Centr [BS2, BT2, Energy]} (bar~[9]) increases from $0.75\text{--}0.78\text{ s}$ at $\lambda = 2\text{ req/s}$ up to $1.08\text{--}1.10\text{ s}$ at $\lambda = 10\text{ req/s}$.
 \end{itemize}
-
+\FloatBarrier
 \subsubsection{Failure Diagnostics and Bottleneck Analysis}
 \label{subsubsec:rej_cpu}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/03_Rejection_Causes_Beta_0_1_0_40kJ.png}%
     }
     \caption{Rejection Causes distribution under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $40\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_cpu_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/03_Rejection_Causes_Beta_0_1_0_80kJ.png}%
     }
     \caption{Rejection Causes distribution under CPU-Intensive Workload $\boldsymbol{\beta} = (0, 1, 0)$ for $80\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_cpu_80kJ}
@@ -284,7 +285,7 @@ Figure~\ref{fig:rej_cpu_40kJ} and Figure~\ref{fig:rej_cpu_80kJ} illustrate the d
 \end{itemize}
 
 Network saturation (\textit{Insufficient CPU+NET}) remains strictly at $0\%$ across all algorithms, confirming that ISL bandwidth is never contested under compute-only workloads. A negligible fraction ($2\text{--}5\%$) of rejections attributed to \textit{Sunset} (grey) appears exclusively under low arrival rates ($\lambda \le 4\text{ req/s}$) in optimization baselines, caused by tasks dwelling in queues across orbital plane visibility transitions.
-
+\FloatBarrier
 % -----------------------------------------------------------------------------
 % SUBSECTION 5.2.3: DATA-INTENSIVE WORKLOAD
 % -----------------------------------------------------------------------------
@@ -296,19 +297,19 @@ In the data-intensive regime ($\boldsymbol{\beta} = (0, 0, 1)$), requests combin
 \subsubsection{Success Rate Dynamics and Optimality Supremacy}
 \label{subsubsec:sr_data}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_0_1_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/01_Success_Rate_Beta_0_0_1_40kJ.png}%
     }
     \caption{Success Rate across arrival rates under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $40\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_data_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/01_Success_Rate_Beta_0_0_1_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/01_Success_Rate_Beta_0_0_1_80kJ.png}%
     }
     \caption{Success Rate across arrival rates under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $80\text{ kJ}$ battery budget across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:sr_data_80kJ}
@@ -322,23 +323,23 @@ The data-intensive regime produces a profound inversion in algorithmic ranking a
     \item \textbf{Asymmetric Energy Sizing Sensitivity ($40\text{ kJ}$ vs. $80\text{ kJ}$):} Moving massive payloads ($20\text{--}50\text{ MB}$) across multi-hop paths induces substantial transceiver energy drain ($P_{net} \cdot S_r / B_{u,v}$). At $40\text{ kJ}$, centralized models suffer from early battery exhaustion, reaching $48\text{--}63\%$ for Time mapping and $44\text{--}52\%$ for Energy mapping at peak load. In contrast, distributed heuristics and \texttt{ILP-Hierarchical (Time)} sustain $72\text{--}76\%$ at $\lambda = 10\text{ req/s}$ (with Hierarchical Time reaching a peak of $85\%$ at $\lambda = 8\text{ req/s}$ in \textit{VL-heavy}) even at $40\text{ kJ}$. Expanding battery reserves to $80\text{ kJ}$ yields a $+4\%$ gain for heuristics, $+4\text{--}8\%$ for centralized models, and up to $+9\text{--}15\%$ for hierarchical models under heavy load.
     \item \textbf{Centralized Dispatch Performance:} Centralized latency-optimizing configurations deliver strong completion rates under $80\text{ kJ}$, with fast-dispatch (\texttt{BS20, BT0.05, Time}) achieving $79\text{--}84\%$ at low load and stabilizing at $59\text{--}67\%$ at $\lambda = 10\text{ req/s}$. Small-batching with latency optimization (\texttt{BS2, BT2, Time}) behaves similarly, sustaining $59\text{--}68\%$ at peak load. In contrast, their energy-optimizing counterparts (\texttt{Energy} mapping) achieve $65\text{--}71\%$ at light load and drop to $49\text{--}57\%$ at $\lambda = 10\text{ req/s}$ due to strict transmission power rejection thresholds.
 \end{itemize}
-
+\FloatBarrier
 \subsubsection{Response Time Analysis}
 \label{subsubsec:rt_data}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_0_1_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/02_Response_Time_Beta_0_0_1_40kJ.png}%
     }
     \caption{Response Time decomposition under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ across arrival rates for $40\text{ kJ}$.}
     \label{fig:rt_data_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/02_Response_Time_Beta_0_0_1_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/02_Response_Time_Beta_0_0_1_80kJ.png}%
     }
     \caption{Response Time decomposition under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ across arrival rates for $80\text{ kJ}$.}
     \label{fig:rt_data_80kJ}
@@ -353,23 +354,23 @@ The empirical trends highlight four foundational behaviors:
     \item \textbf{Latency Boundedness of Hierarchical ILP:} In the data-intensive regime, \texttt{ILP-Hierarchical} models exhibit remarkable latency stability ($\approx 1.20\text{--}1.26\text{ s}$ in \textit{Std}, $\approx 1.48\text{--}1.55\text{ s}$ in \textit{VL-heavy}, and $\approx 1.05\text{--}1.12\text{ s}$ in \textit{Pure L}) across all arrival rates, closely tracking distributed heuristics because the absence of complex CPU scheduling eliminates cluster-level queuing bottlenecks.
     \item \textbf{Fast-Dispatch Bounds and Energy Queuing Penalties:} Centralized fast-dispatch models (\texttt{BS20, BT0.05}, bars~[6--7]) achieve the lowest response times at light load ($0.90\text{--}1.05\text{ s}$ in \textit{Std}, $0.85\text{--}0.95\text{ s}$ in \textit{Pure L}), expanding moderately to $1.15\text{--}1.25\text{ s}$ under peak traffic. In contrast, the small-batch energy-minimizing configuration (\texttt{ILP-Centr [BS2, BT2, Energy]}, bar~[9]) incurs a sharp latency inflation under peak traffic ($\lambda = 10\text{ req/s}$), reaching $1.65\text{--}1.75\text{ s}$ across all payload distributions due to extended queue dwell times and the selection of detour paths designed to avoid energy-depleted nodes.
 \end{itemize}
-
+\FloatBarrier
 \subsubsection{Failure Diagnostics and Link Saturation}
 \label{subsubsec:rej_data}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/03_Rejection_Causes_Beta_0_0_1_40kJ.png}%
     }
     \caption{Rejection Causes distribution under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $40\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_data_40kJ}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[hbtp]
     \centering
     \makebox[\textwidth][c]{%
-        \includegraphics[width=1.50\textwidth]{figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png}%
+        \includegraphics[width=1.25\textwidth]{figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png}%
     }
     \caption{Rejection Causes distribution under Data-Intensive Workload $\boldsymbol{\beta} = (0, 0, 1)$ for $80\text{ kJ}$ across payload distributions $\boldsymbol{\alpha}$.}
     \label{fig:rej_data_80kJ}
@@ -382,7 +383,7 @@ Figure~\ref{fig:rej_data_40kJ} and Figure~\ref{fig:rej_data_80kJ} display the di
     \item \textbf{Suppression of Queuing Timeouts and Normalization Artifacts:} Unlike the CPU-intensive regime, deadline failures (\textit{Deadline Exceeded}, blue) are virtually eradicated, remaining below $2\text{--}5\%$ across moderate-to-high arrival rates. An apparent anomaly occurs in \texttt{ILP-Hierarchical} at light load ($\lambda \le 3\text{ req/s}$) under $80\text{ kJ}$ in \textit{Std} and \textit{VL-heavy}, where rejections appear as $100\%$ \textit{Deadline Exceeded}. Conversely, in \textit{L-heavy} and \textit{Pure L} at $\lambda = 2\text{ req/s}$, bars~[4] and~[5] are completely absent because the success rate is exactly $100\%$ (zero drops). Where isolated failures occur under near-perfect throughput, a single sporadic deadline expiration accounts for the entirety ($100\%$) of the normalized failure breakdown.
     \item \textbf{Absence of Orbital Eclipse Interruptions:} Rejections triggered by orbital line-of-sight loss (\textit{Sunset}, grey) remain strictly at \textbf{$0\%$} throughout all evaluated scenarios.
 \end{itemize}
-
+\FloatBarrier
 % =============================================================================
 % SECTION 5.3: TRADE-OFF ANALYSIS AND OPERATIONAL DISCUSSION
 % =============================================================================

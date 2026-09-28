@@ -191,10 +191,13 @@ print(f"-> Arrival Rates rilevati: {sorted_ars}")
 print(f"-> Mappings identificati: {present_mappings}")
 
 # ==============================================================================
-# 4. GRAFICO 1: SUCCESS RATE LINE PLOT (NON MODIFICATO)
+# 4. GRAFICO 1: SUCCESS RATE LINE PLOT (EQUISPAZIATO SU ASSE X)
 # ==============================================================================
 def generate_line_success_rate(mapping):
     fig, axes = plt.subplots(nrows=3, ncols=2, figsize=(13.5, 12.5), sharex=True, sharey=True)
+    
+    # Indici discreti per forzare la spaziatura uniforme tra i punti di sweep
+    x_indices = np.arange(len(sorted_ars))
 
     for row, dl in enumerate(DEADLINES):
         ax_bs = axes[row, 0]
@@ -214,7 +217,7 @@ def generate_line_success_rate(mapping):
 
                 ls = '-' if dijk == 'Energy' else '--'
                 marker = 'o' if dijk == 'Energy' else 's'
-                ax_bs.plot(sorted_ars, y_vals, color=COLORS_BS[idx], linestyle=ls, marker=marker,
+                ax_bs.plot(x_indices, y_vals, color=COLORS_BS[idx], linestyle=ls, marker=marker,
                            markersize=5.5, linewidth=2.0, alpha=0.9)
 
         # 2. BT Sweep (BS = 20)
@@ -231,7 +234,7 @@ def generate_line_success_rate(mapping):
 
                 ls = '-' if dijk == 'Energy' else '--'
                 marker = 'o' if dijk == 'Energy' else 's'
-                ax_bt.plot(sorted_ars, y_vals, color=COLORS_BT[idx], linestyle=ls, marker=marker,
+                ax_bt.plot(x_indices, y_vals, color=COLORS_BT[idx], linestyle=ls, marker=marker,
                            markersize=5.5, linewidth=2.0, alpha=0.9)
 
         ax_bs.set_ylabel(f'Success Rate (%)\n[$\\Delta D = {dl}\\%$]', fontsize=13.5, fontweight='semibold')
@@ -244,10 +247,13 @@ def generate_line_success_rate(mapping):
 
     axes[0, 0].set_title('Batch Size Sweep ($BS$, $BT=2.0$s)', fontsize=15.0, fontweight='bold', pad=10)
     axes[0, 1].set_title('Batch Timeout Sweep ($BT$, $BS=20$)', fontsize=15.0, fontweight='bold', pad=10)
-    axes[2, 0].set_xlabel('Arrival Rate (req/sec)', fontsize=14.0, fontweight='semibold', labelpad=8)
-    axes[2, 1].set_xlabel('Arrival Rate (req/sec)', fontsize=14.0, fontweight='semibold', labelpad=8)
-    axes[2, 0].set_xticks(sorted_ars)
-    axes[2, 1].set_xticks(sorted_ars)
+
+    # Configurazione tick equispaziati e margini dell'asse X
+    for col in [0, 1]:
+        axes[2, col].set_xticks(x_indices)
+        axes[2, col].set_xticklabels([str(ar) for ar in sorted_ars], fontsize=13.0)
+        axes[2, col].set_xlabel('Arrival Rate (req/sec)', fontsize=14.0, fontweight='semibold', labelpad=8)
+        axes[2, col].set_xlim(-0.25, len(sorted_ars) - 0.75)
 
     fig.tight_layout()
     fig.subplots_adjust(top=0.91, bottom=0.18, hspace=0.18, wspace=0.10)

@@ -180,11 +180,44 @@ sorted_ars = sorted(list(all_ars)) if all_ars else [8, 10]
 print(f"-> Arrival Rates rilevati: {sorted_ars}")
 
 # ==============================================================================
-# 4. GRAFICO 1: CROSS SUCCESS RATE (GRIGLIA 2x2)
+# 4. GRAFICO 1: CROSS SUCCESS RATE (GRIGLIA 2x2 WIDESCREEN CON Y-LIMIT DINAMICO)
 # ==============================================================================
 def generate_cross_success_rate(ar_target, mapping):
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15.0, 11.5), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(17.5, 9.2), sharex=True, sharey=True)
     x_indices = np.arange(len(SUNSET_WEIGHTS))
+
+    # Pre-calcolo di tutti i valori per stabilire limiti Y dinamici e compatti
+    scenario_plot_data = {}
+    all_y_values = []
+
+    for idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
+        scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
+        scenario_plot_data[scenario_key] = {}
+        for alpha in ALPHA_VALS:
+            y_vals = []
+            for sunw in SUNSET_WEIGHTS:
+                rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
+                st = compute_stats(rows)
+                tot = st['completed'] + st['rejected']
+                val = (st['completed'] / tot * 100.0) if tot > 0 else 0.0
+                y_vals.append(val)
+            scenario_plot_data[scenario_key][alpha] = y_vals
+            all_y_values.extend(y_vals)
+
+    # Calcolo compatto dei limiti Y: elimina il vuoto mantenendo la leggibilità
+    if all_y_values:
+        min_v = min(all_y_values)
+        max_v = max(all_y_values)
+        span = max_v - min_v
+        # Padding di sicurezza minimo del 2% o del 12% del delta
+        pad = max(2.0, span * 0.12)
+        y_min = max(0.0, np.floor((min_v - pad) / 2.0) * 2.0)
+        y_max = min(100.0, np.ceil((max_v + pad) / 2.0) * 2.0)
+        # Se i valori sono quasi piatti, garantisce una finestra minima di 5 punti percentuali
+        if (y_max - y_min) < 5.0:
+            y_min = max(0.0, y_max - 5.0)
+    else:
+        y_min, y_max = 0.0, 100.0
 
     for idx, (bs_str, bt_str, dijk_str) in enumerate(SCENARIO_CONFIGS):
         r = idx // 2
@@ -193,19 +226,13 @@ def generate_cross_success_rate(ar_target, mapping):
         scenario_key = f"{mapping} | {bs_str} {bt_str} | {dijk_str}"
 
         for alpha in ALPHA_VALS:
-            y_vals = []
-            for sunw in SUNSET_WEIGHTS:
-                rows = data_store.get(ar_target, {}).get(scenario_key, {}).get(sunw, {}).get(alpha, [])
-                st = compute_stats(rows)
-                tot = st['completed'] + st['rejected']
-                y_vals.append((st['completed'] / tot * 100.0) if tot > 0 else 0.0)
-
             cfg = ALPHA_STYLE[alpha]
-            ax.plot(x_indices, y_vals, color=cfg['color'], linestyle=cfg['ls'],
-                    marker=cfg['marker'], markersize=6.5, linewidth=2.2, alpha=0.92)
+            ax.plot(x_indices, scenario_plot_data[scenario_key][alpha], color=cfg['color'],
+                    linestyle=cfg['ls'], marker=cfg['marker'], markersize=6.5,
+                    linewidth=2.2, alpha=0.92)
 
         ax.set_title(scenario_key, fontsize=13.0, fontweight='bold', pad=9)
-        ax.set_ylim(-2, 105)
+        ax.set_ylim(y_min, y_max)
         ax.tick_params(axis='y', which='both', labelleft=True, labelsize=12.0)
         ax.grid(True, linestyle=':', alpha=0.6)
         if c == 0:
@@ -217,7 +244,7 @@ def generate_cross_success_rate(ar_target, mapping):
         axes[1, c].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=14.5, fontweight='semibold', labelpad=8)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.91, bottom=0.16, hspace=0.26, wspace=0.15)
+    fig.subplots_adjust(top=0.90, bottom=0.20, hspace=0.28, wspace=0.14)
 
     alpha_handles = [
         Line2D([0], [0], color=ALPHA_STYLE[a]['color'], linestyle=ALPHA_STYLE[a]['ls'],
@@ -225,7 +252,7 @@ def generate_cross_success_rate(ar_target, mapping):
         for a in ALPHA_VALS
     ]
     leg = fig.legend(
-        handles=alpha_handles, loc='center', bbox_to_anchor=(0.50, 0.065),
+        handles=alpha_handles, loc='center', bbox_to_anchor=(0.50, 0.075),
         ncol=3, fontsize=12.0, title='Primary Weight ($\\alpha$)', title_fontsize=13.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
@@ -239,10 +266,10 @@ def generate_cross_success_rate(ar_target, mapping):
     print(f"[OK] Generato Success Rate ({mapping}): {out_path}")
 
 # ==============================================================================
-# 5. GRAFICO 2: CROSS FAILURE CAUSES (GRIGLIA 2x2)
+# 5. GRAFICO 2: CROSS FAILURE CAUSES (GRIGLIA 2x2 WIDESCREEN)
 # ==============================================================================
 def generate_cross_rejection_causes(ar_target, mapping):
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15.5, 12.0), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(17.5, 9.2), sharex=True, sharey=True)
 
     n_sunw = len(SUNSET_WEIGHTS)
     x_indices = np.arange(n_sunw)
@@ -294,7 +321,7 @@ def generate_cross_rejection_causes(ar_target, mapping):
         axes[1, c].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=14.5, fontweight='semibold', labelpad=8)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.26, wspace=0.15)
+    fig.subplots_adjust(top=0.90, bottom=0.20, hspace=0.28, wspace=0.14)
 
     cause_patches = [mpatches.Patch(facecolor=LUMINOUS_CAUSE_COLORS[k], edgecolor='#4a5568', linewidth=0.5, label=l)
                      for k, l in zip(CAUSE_KEYS, CAUSE_LABELS)]
@@ -303,12 +330,12 @@ def generate_cross_rejection_causes(ar_target, mapping):
                      for a in ALPHA_VALS]
 
     leg1 = fig.legend(
-        handles=cause_patches, loc='center', bbox_to_anchor=(0.34, 0.065), ncol=3,
+        handles=cause_patches, loc='center', bbox_to_anchor=(0.33, 0.06), ncol=3,
         fontsize=10.5, title='Failure Causes Breakdown', title_fontsize=12.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
     leg2 = fig.legend(
-        handles=alpha_hatches, loc='center', bbox_to_anchor=(0.76, 0.065), ncol=3,
+        handles=alpha_hatches, loc='center', bbox_to_anchor=(0.75, 0.075), ncol=3,
         fontsize=10.5, title='Primary Weight Pattern ($\\alpha$)', title_fontsize=12.0,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
@@ -322,10 +349,10 @@ def generate_cross_rejection_causes(ar_target, mapping):
     print(f"[OK] Generato Rejection Causes ({mapping}): {out_path}")
 
 # ==============================================================================
-# 6. GRAFICO 3: CROSS RESPONSE TIME (GRIGLIA 2x2)
+# 6. GRAFICO 3: CROSS RESPONSE TIME (GRIGLIA 2x2 WIDESCREEN)
 # ==============================================================================
 def generate_cross_response_time(ar_target, mapping):
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15.5, 12.0), sharex=True)
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(17.5, 9.2), sharex=True)
 
     n_sunw = len(SUNSET_WEIGHTS)
     x_indices = np.arange(n_sunw)
@@ -382,7 +409,7 @@ def generate_cross_response_time(ar_target, mapping):
         axes[1, c].set_xlabel('Sunset Weight ($\\gamma$)', fontsize=14.5, fontweight='semibold', labelpad=8)
 
     fig.tight_layout()
-    fig.subplots_adjust(top=0.91, bottom=0.17, hspace=0.26, wspace=0.15)
+    fig.subplots_adjust(top=0.90, bottom=0.20, hspace=0.28, wspace=0.14)
 
     alpha_patches = [mpatches.Patch(color=ALPHA_STYLE[a]['color'], label=ALPHA_STYLE[a]['label'])
                      for a in ALPHA_VALS]
@@ -392,12 +419,12 @@ def generate_cross_response_time(ar_target, mapping):
     ]
 
     leg1 = fig.legend(
-        handles=alpha_patches, loc='center', bbox_to_anchor=(0.36, 0.065), ncol=3,
+        handles=alpha_patches, loc='center', bbox_to_anchor=(0.35, 0.075), ncol=3,
         fontsize=11.0, title='Primary Weight ($\\alpha$)', title_fontsize=12.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
     leg2 = fig.legend(
-        handles=time_comp_patches, loc='center', bbox_to_anchor=(0.74, 0.065), ncol=2,
+        handles=time_comp_patches, loc='center', bbox_to_anchor=(0.74, 0.075), ncol=2,
         fontsize=11.0, title='Decomposition Component', title_fontsize=12.5,
         frameon=True, facecolor='#ffffff', edgecolor='#cbd5e1'
     )
