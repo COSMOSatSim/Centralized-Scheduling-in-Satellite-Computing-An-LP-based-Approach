@@ -361,16 +361,17 @@ INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr5.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr9.tfm
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx5.tfm
-INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx7.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/rm-lmbx5.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr9.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmcsc10.tfm
+INPUT /usr/share/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbx8.tfm
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbx6.tfm
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmtt10.tfm
 INPUT ./capitoli/chapter4_performance_analysis.tex
 INPUT ./capitoli/chapter4_performance_analysis.tex
 OUTPUT capitoli/chapter4_performance_analysis.aux
@@ -582,7 +583,6 @@ INPUT ./figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png
 INPUT ./figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png
 INPUT ./figures/03_Rejection_Causes_Beta_0_0_1_80kJ.png
 INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmbxi10.tfm
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmtt10.tfm
 INPUT ./capitoli/chapter6_conclusions.tex
 INPUT ./capitoli/chapter6_conclusions.tex
 OUTPUT capitoli/chapter6_conclusions.aux
@@ -620,6 +620,7 @@ INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmcsc10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmex10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi12.pfb
+INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi5.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi6.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi7.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmmi8.pfb
@@ -634,6 +635,7 @@ INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmss10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmss17.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmssbx10.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmsy10.pfb
+INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmsy5.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmsy6.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmsy7.pfb
 INPUT /usr/share/texmf-dist/fonts/type1/public/lm/lmsy8.pfb

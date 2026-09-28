@@ -19,8 +19,8 @@ We model a regional Low Earth Orbit (LEO) satellite network operating within a W
 LEO satellites traverse circular orbits at altitudes ranging between $500\text{ km}$ and $1200\text{ km}$, resulting in orbital velocities exceeding $7.5\text{ km/s}$ and orbital periods of roughly $90\text{--}100\text{ minutes}$. 
 The operational network comprises a set of candidate Satellite Edge Nodes (SENs), denoted by $S = \{1, 2, \dots, n\}$, and a set of regional Access Points (APs) or satellite ground stations, denoted by $AP_{global}$~\cite{icdcs_satellite_2025}. 
 Each SEN is equipped with compute capabilities, a finite battery reserve, and inter-satellite communication transceivers. 
-Within the observed geographical region, a designated satellite acts as the centralized \emph{Master Orchestrator}. The Master maintains real-time visibility over constellation kinematics, dynamic processor queue occupancies, residual energy budgets, and active Inter-Satellite Link (ISL) topologies. 
-The orchestration logic and event management are implemented in the \texttt{Orchestrator} class, while the physical state of ground and orbital nodes is encapsulated in \texttt{EdgeServer.py}~\cite{bagini_repo_2026}.
+Within the observed geographical region, a designated coordinator acts as the centralized \emph{Master Orchestrator}. The Master maintains real-time visibility over constellation kinematics, dynamic processor queue occupancies, residual energy budgets, and active Inter-Satellite Link (ISL) topologies. 
+The orchestration logic and event management are implemented in the \texttt{Orchestrator} class, while the physical state of orbital nodes is encapsulated in \texttt{EdgeServer.py}~\cite{bagini_repo_2026}.
 
 Ground Users (GUs) deploy compute-intensive applications (e.g., Earth observation inference, disaster response imagery processing) whose requests arrive dynamically at regional gateways. 
 Each offloading request $r \in R$ is represented by a five-element tuple:
@@ -111,8 +111,8 @@ Conversely, static time-window batching introduces artificial buffering delay, p
 To reconcile these competing operational demands, the Master Orchestrator implements an event-driven dynamic batching mechanism within a \texttt{SimPy} discrete-event environment~\cite{simpy2023}. 
 The engine is parameterized by two complementary thresholds:
 \begin{itemize}
-    \item \textbf{Maximum Batch Size ($BS$):} A capacity ceiling (\texttt{centralized\_batch\_size}) that limits the cardinality of the task set $|R|$ submitted to the solver. Bounding $|R|$ bounds the binary variable space $|R| \times |S|$, establishing a deterministic upper limit on branch-and-cut execution time.
-    \item \textbf{Batch Timeout ($BT$):} A temporal window (\texttt{centralized\_batch\_timeout}) that bounds the maximum buffering delay experienced by any single request, preventing starvation during low-throughput operational phases.
+    \item \textbf{Maximum Batch Size ($BS$):} A capacity ceiling that limits the cardinality of the task set $|R|$ submitted to the solver. Bounding $|R|$ bounds the binary variable space $|R| \times |S|$, establishing a deterministic upper limit on branch-and-cut execution time.
+    \item \textbf{Batch Timeout ($BT$):} A temporal window that bounds the maximum buffering delay experienced by any single request, preventing starvation during low-throughput operational phases.
 \end{itemize}
 
 \subsection{State Consistency and Discrete-Event Synchronization}
@@ -134,6 +134,7 @@ Algorithm~\ref{alg:dynamic_batching} formalizes the dual lifecycle of task inges
 \begin{algorithm}[H]
 \caption{Event-Driven Batch Ingestion and Orchestrator Lifecycle}
 \label{alg:dynamic_batching}
+\small
 \begin{algorithmic}[1]
 \Require Simulation environment $env$, buffer capacity $BS$, timeout duration $BT$
 \Ensure Aggregation of incoming tasks into batches and invocation of optimization pipeline
@@ -190,7 +191,7 @@ To decouple graph exploration from individual task sizes, each directed inter-sa
 \begin{equation}
     S_{ref} = 1~\text{MB} = 1024^2~\text{bytes}
 \end{equation}
-For an edge $(u, v)$ characterized by propagation delay $\tau_{u,v}$ and transmission bandwidth $B_{u,v}$ (in Bytes/s), the physical traversal time and energy consumption for the reference payload over optical ISL channels~\cite{chen2021isl, chaudhry2021laser} are formulated as:
+For an edge $(u, v)$ characterized by propagation delay $\tau_{u,v}$ ($\tau_{u,v} = \frac{C}{D_{u,v}}$ where $C$ is the speed of light and $D_{u,v}$ is the distance between nodes) and transmission bandwidth $B_{u,v}$ (in Bytes/s), the physical traversal time and energy consumption for the reference payload over optical ISL channels~\cite{chen2021isl, chaudhry2021laser} are formulated as:
 \begin{equation}
     t_{link}(u,v) = \tau_{u,v} + \frac{S_{ref}}{B_{u,v}}
     \label{eq:t_link}
@@ -229,6 +230,7 @@ The complete procedure is formalized in Algorithm~\ref{alg:constellation_mapping
 \begin{algorithm}[H]
 \caption{Multi-Source Constellation Topology and Telemetry Mapping}
 \label{alg:constellation_mapping}
+\small
 \begin{algorithmic}[1]
 \Require Access points $AP_{global}$, satellites $S$, weights $w_R, w_e$, reference size $S_{ref}$, bounds $T_{max}, E_{max}$
 \Ensure Routing table $\mathcal{T}_{route}$ and node operational telemetry dictionary $\mathcal{M}_{nodes}$
@@ -237,7 +239,7 @@ The complete procedure is formalized in Algorithm~\ref{alg:constellation_mapping
     \State $\mathcal{T}_{route}[ap] \gets \emptyset$
     \State Initialize min-heap $\mathcal{Q} \gets \emptyset$, distance map $dist[v] \gets \infty, \forall v \in (AP_{global} \cup S)$
     \State $dist[ap] \gets 0.0$
-    \State $\Call{Push}{\mathcal{Q}, (0.0, 0.0, 0.0, ap, [ap])}$ \Comment{Store $(cost, time, energy, node, path)$}
+    \State $\Call{Push}{\mathcal{Q}, (0.0, 0.0, 0.0, ap, [ap])}$ \Comment{Store $(cost, time, energy, access point, path)$}
     \While{$\mathcal{Q} \neq \emptyset$}
         \State $(cost, time, energy, u, path) \gets \Call{PopMin}{\mathcal{Q}}$
         \If{$cost > dist[u]$}
@@ -301,13 +303,12 @@ The CPU energy model is derived from dynamic CMOS switching power dissipation:
 which, integrated over the computational duration $d_{cpu,r}$, yields the second term in Equation~\eqref{eq:total_energy}~\cite{icdcs_satellite_2025}.
 
 To protect satellites approaching orbital eclipse from battery depletion, we define an orbital sunset penalty $\Omega_i \in [0, 1]$. 
-If a satellite is in direct sunlight, its photovoltaic arrays harvest solar energy; when entering the Earth's shadow (eclipse), the node must rely entirely on stored chemical battery reserves. 
-Assigning intensive tasks to a node nearing eclipse risks unexpected brownouts. 
-Let $t_{sunset,i}$ represent the remaining solar visibility time for satellite $i$. The penalty factor is defined as:
+Assigning tasks to a node nearing eclipse risks unexpected outages. 
+Let $t_{sunset,i}$ represent the remaining visibility time for satellite $i$. The penalty factor is defined as:
 \begin{equation}
     \Omega_i = \begin{cases}
         1.0 - \frac{t_{sunset,i}}{\max_{k \in S} (t_{sunset,k})}, & \text{if } \max_{k \in S} (t_{sunset,k}) > 0 \\
-        1.0, & \text{if } t_{sunset,i} = 0 \text{ (currently in eclipse)} \\
+        1.0, & \text{if } t_{sunset,i} = 0 \\
         0.0, & \text{otherwise}
     \end{cases}
 \end{equation}
@@ -461,6 +462,7 @@ Algorithm~\ref{alg:task_dispatching} formalizes this dispatching and re-enqueuin
 \begin{algorithm}[H]
 \caption{Task Dispatching, Re-Enqueuing, and Drop Accounting}
 \label{alg:task_dispatching}
+\small
 \begin{algorithmic}[1]
 \Require Assignment list $\mathcal{A}$, constellation nodes $\mathcal{N}$, task buffer $\mathcal{B}$, capacity $BS$
 \Ensure Task process spawning, transient task re-enqueuing, and terminal drop logging
@@ -505,6 +507,7 @@ Algorithm~\ref{alg:hybrid_routing} details the complete hybrid routing and execu
 \begin{algorithm}[H]
 \caption{Dynamic Hybrid Routing and Task Execution}
 \label{alg:hybrid_routing}
+\small
 \begin{algorithmic}[1]
 \Require Accepted task $r$, destination SEN $i^*$, pre-computed path $\vec{P}_{up} = (v_0, v_1, \dots, v_m)$ where $v_0 = AP_r, v_m = i^*$
 \Ensure Reliable multi-hop forwarding and discrete-event CPU execution
@@ -530,7 +533,7 @@ Algorithm~\ref{alg:hybrid_routing} details the complete hybrid routing and execu
     \EndIf
 \EndWhile
 \State Record transfer latency $T_{transfer} \gets t_{now} - t_{arr}$ and final hop count $|\mathcal{V}_{visited}| - 1$
-\State Yield to discrete-event simulator: $\Call{SimulateCPUExecution}{i^*, d_{cpu,r}, D_r}$
+\State Yield to discrete-event simulator: $\Call{TaskAssignmentILP}{env, SelectedServer, TaskData}$
 \end{algorithmic}
 \end{algorithm}
 
@@ -608,5 +611,5 @@ A central factor governing the feasibility of centralized orbital orchestration 
 To construct the optimization model, the orchestrator periodically collects a compact telemetry vector $\mathbf{v}_i = [W_{cpu,i}, W_{net,i}, B_i, t_{sunset,i}]$ from each satellite.
 
 Transmitting these telemetry updates across the ISL mesh introduces a control communication overhead of $\mathcal{O}(|S|)$ messages per update period. 
-In regional deployments ($|S| \le 50$), telemetry updates consume less than $0.1\%$ of the available optical link bandwidth ($1\text{ Gbps}$), ensuring that control signaling does not congest data transmission channels. 
+In regional deployments ($|S| \le 50$), telemetry updates consume less than $0.1\%$ of the available optical link bandwidth, ensuring that control signaling does not congest data transmission channels. 
 However, as constellation scales grow globally to thousands of spacecraft ($|S| \gg 1000$), the propagation latency and stale-state overhead of a single master node become limiting factors, motivating regional partitioning or hierarchical decomposition for global deployments~\cite{icdcs_satellite_2025}.
