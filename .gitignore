@@ -1,0 +1,70 @@
+/OrbitAware_simulation result-open-System_AP5_0.5-1.5/
+/.idea
+/simulation result-open-System_AP8/
+/simulation result-open-System_AP20/
+/simulation result-open-System_AP10/
+/simulation result-open-System_AP15/
+/Tmax result/
+/server_migration/
+/HeatMap AP-Server/
+/combined_data_AVG_all_versions.csv
+/combined_data_AVG_NoOrbit.csv
+/combined_data_AVG_Orbit.csv
+/combined_data_AVG_response_time.csv
+/combined_data_AVG_v1.csv
+/combined_data_AVG_v2.csv
+/data_High_priority.csv
+/data_Low_priority.csv
+/heatmap.py
+/heatmap_AP_SERVER_NQL_NQH.py
+/Relazione_I_Answer_To_openquestions.pdf
+/Relazione_II_Modello_di movimento.pdf
+/Resoconto_modifiche_simulatore (2).pdf
+/server_name_migration_AP.py
+/server_name_migration.py
+/simulation result-open-System_AP5_10_15_20_senza controllo orbita.zip
+/simulation result-open-System_Orbit_NON_Aware.zip
+/temp.zip
+/Tmax result.zip
+/Tmax result (2).zip
+/Tmax result (corretto no orbit aware).zip
+/wetransfer_all-csv_2025-02-24_1813_Vincenzo.zip
+/simulation_PriorityResource.py
+/boxplot_Merged.py
+/boxplot.py
+/data/
+/Test/
+__pycache__/
+/SIMS_SETS/
+/SIMS_IMG_RESOLUTIONS/
+SBATCHFILES/
+SBATCH_LOGS/
+/result/
+info.txt
+/Generated_datasets/
+/Dome_Plots/
+.vscode/
+definizione_ILP
+results_esp_1/
+results_esp_2/
+results_esp_3/
+results_esp_4/
+results_esp_5/
+results_esp_6/
+results_esp_7/
+results_esp_8/
+results_esp_9/
+results_esp_10/
+results_esp_11/
+simulazioni_esp_8/
+simulazioni_esp_8_2/
+simulazioni_esp_9/
+simulazioni_esp_9_2/
+simulazioni_esp_10_2/
+simulazioni_esp_11_2/
+plots/
+venv/
+.venv/
+parte-2/
+sims_sets_list.txt
+img_resolutions_list.txt
