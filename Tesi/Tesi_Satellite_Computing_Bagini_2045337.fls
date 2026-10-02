@@ -77,11 +77,6 @@ INPUT /usr/share/texmf-dist/tex/latex/sapthesis/sapienzalogo.pdf
 INPUT /usr/share/texmf-dist/tex/latex/sapthesis/sapienzalogo.pdf
 INPUT /usr/share/texmf-dist/tex/latex/base/inputenc.sty
 INPUT /usr/share/texmf-dist/tex/latex/base/inputenc.sty
-INPUT /usr/share/texmf-dist/tex/latex/base/fontenc.sty
-INPUT /usr/share/texmf-dist/tex/latex/lm/t1lmr.fd
-INPUT /usr/share/texmf-dist/tex/latex/lm/t1lmr.fd
-INPUT /usr/share/texmf-dist/tex/latex/lm/t1lmr.fd
-INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr10.tfm
 INPUT /usr/share/texmf-dist/tex/generic/babel/babel.sty
 INPUT /usr/share/texmf-dist/tex/generic/babel/babel.sty
 INPUT /usr/share/texmf-dist/tex/generic/babel/txtbabel.def
@@ -192,6 +187,10 @@ INPUT /usr/share/texmf-dist/tex/latex/algorithmicx/algorithmicx.sty
 INPUT /usr/share/texmf-dist/tex/latex/algorithmicx/algorithmicx.sty
 INPUT /usr/share/texmf-dist/tex/latex/placeins/placeins.sty
 INPUT /usr/share/texmf-dist/tex/latex/placeins/placeins.sty
+INPUT /usr/share/texmf-dist/tex/latex/lm/t1lmr.fd
+INPUT /usr/share/texmf-dist/tex/latex/lm/t1lmr.fd
+INPUT /usr/share/texmf-dist/tex/latex/lm/t1lmr.fd
+INPUT /usr/share/texmf-dist/fonts/tfm/public/lm/ec-lmr10.tfm
 INPUT /usr/share/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 INPUT /usr/share/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 INPUT ./Tesi_Satellite_Computing_Bagini_2045337.aux

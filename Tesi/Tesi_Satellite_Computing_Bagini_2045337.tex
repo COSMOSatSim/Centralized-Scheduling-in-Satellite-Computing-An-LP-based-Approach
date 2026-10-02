@@ -1,13 +1,9 @@
-\documentclass[english, oneside, noexaminfo]{sapthesis}
+\documentclass[english, oneside]{sapthesis}
 \usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage{babel}
 \usepackage[hidelinks]{hyperref}
-\usepackage{amsmath, amssymb}
-\usepackage{graphicx}
-\usepackage{booktabs}
+\usepackage{amssymb}
 \usepackage{microtype}
-\usepackage{caption}
 \usepackage{subcaption}
 \usepackage{listings}
 \usepackage{xcolor}
@@ -20,8 +16,9 @@
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 \usepackage[below]{placeins}
+
 % Corregge il bug nativo di \Call con argomenti complessi o formule
-\renewcommand{\Call}[2]{\textproc{#1}(#2)}
+\renewcommand{\Call}[2]{\textproc{#1} (#2)}
 
 \setcounter{secnumdepth}{3} % Attiva la numerazione per le subsubsection
 \setcounter{tocdepth}{3}    % Inserisce le subsubsection nell'indice
@@ -39,19 +36,19 @@
     keywordstyle=\color{blue}\bfseries,
     numberstyle=\tiny\color{codegray},
     stringstyle=\color{codepurple},
-    basicstyle=\ttfamily\footnotesize, % Font monospaziato ridotto per evitare sforamenti
+    basicstyle=\ttfamily\footnotesize, 
     breakatwhitespace=false,         
-    breaklines=true,                 % FONDAMENTALE: spezza automaticamente le righe lunghe
-    postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space}, % Simbolo visivo di riga spezzata
+    breaklines=true,                 
+    postbreak=\mbox{\textcolor{gray}{$\hookrightarrow$}\space}, 
     captionpos=b,                    
     keepspaces=true,                 
-    numbers=left,                    % Mostra i numeri di riga a sinistra
+    numbers=left,                    
     numbersep=8pt,                  
     showspaces=false,                
     showstringspaces=false,
     showtabs=false,                  
     tabsize=4,
-    frame=single,                    % Riquadro attorno al codice
+    frame=single,                    
     rulecolor=\color{codegray!30},
 }
 
@@ -67,8 +64,6 @@
 \authoremail{claudio.bagini@gmail.com}
 \versiondate{\today}
 \thesistype{Bachelor's Thesis}
-
-%Correggi: Grafici, Codice, bibliografia (aggiungi references github).
 
 \begin{document}
 
@@ -88,12 +83,6 @@ Using discrete-event simulations developed within the SimPy framework, the propo
 Finally, the centralized orchestrator is benchmarked against state-of-the-art distributed and heuristic solutions (\emph{OrbitAware}, \emph{DTS-base}, \emph{DTS-Optimal}, and distributed ILP) across heterogeneous workload profiles and operational energy budgets. Through this comprehensive evaluation, the thesis aims to characterize the operational boundaries and fundamental trade-offs between the theoretical global optimality of centralized mathematical scheduling and the responsiveness of decentralized models.
 \end{abstract}
 
-\begin{comment}
-\begin{acknowledgments}
-Acknowledgments
-\end{acknowledgments}
-\end{comment}
-
 \tableofcontents
 
 \mainmatter
@@ -112,5 +101,28 @@ Acknowledgments
 \addcontentsline{toc}{chapter}{Bibliography}
 \bibliographystyle{IEEEtran}
 \bibliography{bibliografia}
+
+\cleardoublepage
+\phantomsection
+
+\addcontentsline{toc}{chapter}{Acknowledgments}
+
+\begin{acknowledgments}
+Siamo finalmente giunti alla conclusione di questo percorso interminabile, ancora non me ne rendo conto ma sono vermante passati 4 anni dal suo inizio.
+Mi sembra ieri quando mi sono finalmente diplomato ed ho deciso di intraprendere questo nuovo viaggio.
+
+Adesso però comincia la parte più difficile di tutta la tesi, scrivere i ringraziamenti. Non mi trovo molto a mio agio con questo tipo di cose ma ci tengo a 
+ringraziare tutte le persone che mi hanno accompagnato e supportato in questo percorso, senza di loro non sarei arrivato a questo punto.
+Di conseguenza chiedo a voi lettori di leggere con pazienza e comprensione queste righe, che nonostante siano scritte con il cuore, non riescono a trasmettere tutto quello che vorrei dire.
+Vi chiederei di leggere solo la parte a voi indirizzata ma so già che alcuni di voi vorranno leggere tutto, quindi vi chiedo solo di non farmi sentire più in imbarazzo di quanto già io non sia, grazie.
+
+In primis vorrei ringraziare i miei genitori, mia madre, che mi ha sempre supportato ed incoraggiato, e mio padre, che nonostante qualche divergenza di opinioni, mi ha sempre sostenuto e spronato a fare di meglio. Mi avete dato tanto ed è un qualcosa che mi portrò sempre nel cuore, grazie di tutto.
+Voglio ringraziare i miei nonni per aver vegliato su di me per tutti questi anni, in particolare voglio ringraziare mia nonna che per quanto ormai non possa più aiutarmi a ripetere storia come un tempo continua ad aiutarmi in altri modi.
+Fratello\ldots secondo quanto mi dicono dovrei includere anche te nei ringraziamenti, non so bene per cosa dovrei ringraziarti ma so che in qualche modo mi hai aiutato a crescere, anche se non ne sono sicurissimo ma vabbè, grazie per esserci stato.
+
+
+
+
+\end{acknowledgments}
 
 \end{document}
