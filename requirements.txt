@@ -1,13 +1,15 @@
-certifi==2026.1.4
-charset-normalizer==3.4.4
-idna==3.11
-jplephem==2.23
-json5==0.13.0
-numpy==2.4.0
+# Python >= 3.12 (tested on 3.12)
+#
+# --- Simulator + ILP orchestrator (required) ---
+numpy==2.3.5
 PuLP==3.3.0
-requests==2.32.5
-sgp4==2.25
+highspy==1.7.2        # HiGHS solver backend used by pulp.getSolver('HiGHS')
 simpy==4.1.1
-skyfield==1.53
-urllib3==2.6.2
-highspy==1.7.2
+skyfield==1.53        # pulls in sgp4 and jplephem
+json5==0.13.0
+requests==2.32.5      # only to download TLE data from CelesTrak
+
+# --- Plotting / result analysis (optional, only for plot_*.py and latex_table_generator.py) ---
+matplotlib==3.10.8
+pandas==2.3.3
+seaborn==0.13.2
