@@ -229,16 +229,4 @@ The simulator is built on top of the [SECMotionModel](https://github.com/casalic
 ## License
 
 Released under the GNU General Public License v3.0, see [`LICENSE`](LICENSE).
-
-## Citation
-
-```bibtex
-@mastersthesis{bagini2026centralized,
-  author = {Bagini, Claudio},
-  title  = {Centralized Scheduling in Satellite Computing: An LP-based Approach},
-  school = {Sapienza University of Rome},
-  year   = {2026},
-  type   = {Bachelor's thesis},
-  note   = {Advisor: Prof. Emiliano Casalicchio}
-}
 ```
