@@ -229,4 +229,3 @@ The simulator is built on top of the [SECMotionModel](https://github.com/casalic
 ## License
 
 Released under the GNU General Public License v3.0, see [`LICENSE`](LICENSE).
-```
