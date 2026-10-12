@@ -224,7 +224,7 @@ The thesis configurations use $(BS, BT) = (20, 0.05\text{ s})$ or $(2, 2.0\text{
 
 ## Acknowledgements
 
-The simulator is built on top of the [SECMotionModel](https://github.com/casalicchio/SECMotionModel) framework developed in Prof. Casalicchio's group (originally by Vincenzo Salvatore). The baseline algorithms follow E. Casalicchio et al., *Handling of energy- and time-constrained heterogeneous satellite computing services*, IEEE ICDCS 2025. The centralized ILP orchestrator, the dynamic batching with deadline compensation, the hybrid routing and the experimental evaluation are the contribution of this thesis.
+The simulator is built on top of the [SECMotionModel](https://github.com/casalicchio/SECMotionModel) framework developed in Prof. Casalicchio's group (originally by Vincenzo Salvatore). The baseline algorithms follow E. Casalicchio et al., *Handling of energy- and time-constrained heterogeneous satellite computing services*, IEEE MASCOTS 2026. The centralized ILP orchestrator, the dynamic batching with deadline compensation, the hybrid routing and the experimental evaluation are the contribution of this thesis.
 
 ## License
 
